@@ -275,12 +275,7 @@ export class UpdateWebhookParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateWebhookParams {
-    return new UpdateWebhookParams(
-      prepareInit(
-        UpdateWebhookParams,
-        raw,
-      ) as unknown as UpdateWebhookParamsInit,
-    );
+    return new UpdateWebhookParams(prepareInit(UpdateWebhookParams, raw));
   }
 }
 

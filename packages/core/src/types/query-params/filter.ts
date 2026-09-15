@@ -81,7 +81,7 @@ export class PropertyInput {
     // #3: `{ property: "x" }` typo) previously crashed lazily inside
     // `pythonStrip` at first use. Missing-field check only — Python
     // dataclasses do not type-check values, so neither does this.
-    if (fields === undefined || fields.name === undefined) {
+    if (fields?.name === undefined) {
       throw new TypeError(
         "PropertyInput.__init__() missing 1 required positional argument: 'name'",
       );
@@ -237,11 +237,7 @@ export class ListItemGroupMode {
       );
     }
     // LG2_INVALID_SUB_TYPE: sub_type must be a known scalar type.
-    if (
-      !["string", "number", "boolean", "datetime"].includes(
-        this.sub_type as string,
-      )
-    ) {
+    if (!["string", "number", "boolean", "datetime"].includes(this.sub_type)) {
       throw new ParamValidationError(
         "ListItemGroupMode.sub_type must be one of " +
           "'string'/'number'/'boolean'/'datetime', " +
@@ -1062,9 +1058,7 @@ export class Filter {
       // as Python does (`_sanitize_raw_cohort(cohort.to_dict())`).
       // Stub closed by P2-9: the differential gate surfaced the
       // leftover TODO(port, P2-5b) throw on this branch.
-      cohortEntry["raw_cohort"] = sanitizeRawCohort(
-        (cohort as CohortDefinition).toDict(),
-      );
+      cohortEntry["raw_cohort"] = sanitizeRawCohort(cohort.toDict());
     }
 
     const value: ReadonlyArray<Readonly<Record<string, unknown>>> = [

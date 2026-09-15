@@ -41,7 +41,7 @@ function flattenDefinition(
     definition !== null &&
     definition !== undefined &&
     typeof definition === "object" &&
-    Object.keys(definition as Record<string, unknown>).length > 0
+    Object.keys(definition).length > 0
   ) {
     Object.assign(dumped, definition as Record<string, unknown>);
   }
@@ -111,9 +111,7 @@ export class CohortCreator extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CohortCreator {
-    return new CohortCreator(
-      prepareInit(CohortCreator, raw) as unknown as CohortCreatorInit,
-    );
+    return new CohortCreator(prepareInit(CohortCreator, raw));
   }
 }
 
@@ -435,9 +433,7 @@ export class UpdateCohortParams extends EntityModel {
   }
 
   static fromDict(raw: unknown): UpdateCohortParams {
-    return new UpdateCohortParams(
-      prepareInit(UpdateCohortParams, raw) as unknown as UpdateCohortParamsInit,
-    );
+    return new UpdateCohortParams(prepareInit(UpdateCohortParams, raw));
   }
 }
 

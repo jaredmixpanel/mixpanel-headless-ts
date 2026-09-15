@@ -591,9 +591,7 @@ async function pollLookupUpload(
     if (uploadStatus === "FAILURE" || uploadStatus === "REVOKED") {
       throw new MixpanelHeadlessError(
         `Lookup table upload failed with status ` +
-          `'${pythonStr(uploadStatus as PythonValue)}': ${pythonStr(
-            status as PythonValue,
-          )}`,
+          `'${pythonStr(uploadStatus)}': ${pythonStr(status as PythonValue)}`,
         "UPLOAD_FAILED",
         { upload_id: uploadId, status },
       );
@@ -674,7 +672,7 @@ export async function uploadLookupTable(
     key: urlInfo["key"] as string,
   };
   if (params.data_group_id !== null) {
-    formData["data-group-id"] = pythonStr(params.data_group_id as PythonValue);
+    formData["data-group-id"] = pythonStr(params.data_group_id);
   }
 
   let raw: unknown = nativeInt64(await client.registerLookupTable(formData));
@@ -735,7 +733,7 @@ export async function markLookupTableReady(
     key: params.key,
   };
   if (params.data_group_id !== null) {
-    formData["data-group-id"] = pythonStr(params.data_group_id as PythonValue);
+    formData["data-group-id"] = pythonStr(params.data_group_id);
   }
   const raw = await client.markLookupTableReady(formData);
   return validateResponseModel(LookupTable, nativeInt64(raw), {

@@ -94,7 +94,7 @@ describe("select_workspace_id precedence (PBT)", () => {
         // For a non-empty input, the chosen id is always one of the
         // views' ids.
         const ids = new Set(views.map((view) => view.id));
-        expect(ids.has(selectWorkspaceId(views) as number)).toBe(true);
+        expect(ids.has(selectWorkspaceId(views)!)).toBe(true);
       }),
     );
   });
@@ -108,7 +108,7 @@ describe("select_workspace_id precedence (PBT)", () => {
             .filter((view) => view.name === GLOBAL_WORKSPACE_NAME)
             .map((view) => view.id),
         );
-        expect(apdIds.has(selectWorkspaceId(views) as number)).toBe(true);
+        expect(apdIds.has(selectWorkspaceId(views)!)).toBe(true);
       }),
     );
   });

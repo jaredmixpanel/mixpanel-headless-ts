@@ -387,7 +387,7 @@ describe("runVector — wire kind", () => {
    */
   function faithfulClient(query: string) {
     return async (ctx: InvocationContext): Promise<unknown> => {
-      const fetchImpl = ctx.fetch as typeof fetch;
+      const fetchImpl = ctx.fetch!;
       const response = await fetchImpl(
         `https://mixpanel.com/api/query/segmentation?${query}`,
         { headers: { authorization: "Basic dGVzdA==" } },
@@ -445,7 +445,7 @@ describe("runVector — wire kind", () => {
     });
     const deps = depsWith({
       "api_client.get_events": async (ctx) => {
-        const fetchImpl = ctx.fetch as typeof fetch;
+        const fetchImpl = ctx.fetch!;
         const response = await fetchImpl(
           "https://mixpanel.com/api/query/segmentation?event=Login&unit=day",
           { headers: { authorization: "Bearer wrong-scheme" } },
@@ -480,7 +480,7 @@ describe("runVector — wire kind", () => {
     });
     const deps = depsWith({
       "api_client.get_events": async (ctx) => {
-        const fetchImpl = ctx.fetch as typeof fetch;
+        const fetchImpl = ctx.fetch!;
         await fetchImpl(
           "https://mixpanel.com/api/query/segmentation?event=Wrong",
           {
@@ -516,7 +516,7 @@ describe("runVector — wire kind", () => {
         ctx.state.set("workspace_id", ctx.kwargs["workspace_id"]);
       },
       "api_client.get_events": async (ctx) => {
-        const fetchImpl = ctx.fetch as typeof fetch;
+        const fetchImpl = ctx.fetch!;
         const workspace = ctx.state.get("workspace_id") as string;
         const response = await fetchImpl(
           `https://mixpanel.com/api/workspace/${workspace}`,
@@ -564,7 +564,7 @@ describe("runVector — wire kind", () => {
     });
     const deps = depsWith({
       "api_client.get_events": async (ctx) => {
-        const fetchImpl = ctx.fetch as typeof fetch;
+        const fetchImpl = ctx.fetch!;
         try {
           await fetchImpl("https://mixpanel.com/flaky");
         } catch (error) {
@@ -596,7 +596,7 @@ describe("runVector — wire kind", () => {
     }`;
     const goodDeps = depsWith({
       "api_client.get_events": async (ctx) => {
-        const fetchImpl = ctx.fetch as typeof fetch;
+        const fetchImpl = ctx.fetch!;
         await fetchImpl("https://mixpanel.com/export");
         const onBatch = ctx.kwargs["on_batch"] as RecordingCallback;
         onBatch.fn(1);
@@ -617,7 +617,7 @@ describe("runVector — wire kind", () => {
 
     const badDeps = depsWith({
       "api_client.get_events": async (ctx) => {
-        const fetchImpl = ctx.fetch as typeof fetch;
+        const fetchImpl = ctx.fetch!;
         await fetchImpl("https://mixpanel.com/export");
         (ctx.kwargs["on_batch"] as RecordingCallback).fn(1);
         return null;
@@ -670,7 +670,7 @@ describe("runVector — parse kind", () => {
     });
     const deps = depsWith({
       "api_client.get_events": async (ctx) => {
-        const fetchImpl = ctx.fetch as typeof fetch;
+        const fetchImpl = ctx.fetch!;
         // Deliberately different path: parse vectors must not diff requests.
         const response = await fetchImpl("https://anything.example/other");
         return parseLossless(await response.text());

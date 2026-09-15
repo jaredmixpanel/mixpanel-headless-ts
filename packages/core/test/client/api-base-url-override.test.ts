@@ -434,9 +434,7 @@ describe("TestApiFamilyFor", () => {
     const us = ENDPOINTS.get("us");
     expect(us).toBeDefined();
     for (const [url, family] of cases) {
-      expect(apiFamilyFor(url, us as ReadonlyMap<EndpointKind, string>)).toBe(
-        family,
-      );
+      expect(apiFamilyFor(url, us!)).toBe(family);
     }
   });
 
@@ -494,8 +492,8 @@ describe("TestPrefixCollisionConfigs", () => {
       await client.getEvents();
     }
     expect(transport.captures).toHaveLength(1);
-    const request = transport.captures[0] as CapturedFetchRequest;
-    return { request, timeout: capturedTimeouts[0] as number };
+    const request = transport.captures[0]!;
+    return { request, timeout: capturedTimeouts[0]! };
   }
 
   it("test_app_request_is_app_family", async () => {
@@ -528,7 +526,7 @@ describe("TestPrefixCollisionConfigs", () => {
       recorder(),
     );
     await client.engageStats();
-    const request = transport.captures[0] as CapturedFetchRequest;
+    const request = transport.captures[0]!;
     expect(
       request.url.startsWith("https://mixpanel.com/api/query/engage/stats"),
     ).toBe(true);

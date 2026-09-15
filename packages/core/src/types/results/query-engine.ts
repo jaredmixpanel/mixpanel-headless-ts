@@ -2099,7 +2099,7 @@ export class UserQueryResult {
         ? {
             aggregate_data: isPlainRecord(aggregate)
               ? aggregate
-              : ((aggregate_value ?? null) as number | null),
+              : (aggregate_value ?? null),
           }
         : {}),
     });

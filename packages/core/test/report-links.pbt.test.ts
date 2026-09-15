@@ -107,7 +107,7 @@ function decorate(url: string, variant: Variant): string {
       return `${scheme}://${host.toUpperCase()}/${tail}`;
     }
     case "no_scheme": {
-      return url.split("://", 2)[1] as string;
+      return url.split("://", 2)[1]!;
     }
     case "percent_hash": {
       return `${head}%23${fragment}`;
@@ -375,7 +375,7 @@ function assertKindFields(parsed: ParsedReportLink): void {
   switch (parsed.kind) {
     case "slug": {
       expect(parsed.slug).not.toBeNull();
-      expect(isSlug(parsed.slug as string)).toBe(true);
+      expect(isSlug(parsed.slug!)).toBe(true);
       break;
     }
     case "bookmark": {

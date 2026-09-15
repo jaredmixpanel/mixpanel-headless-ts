@@ -423,7 +423,7 @@ export class ReplaysService {
       // doesn't exist on the CDN.
       let terminateAt = results.length;
       for (const [i, result] of results.entries()) {
-        const [status] = result as FetchOutcome;
+        const [status] = result;
         if (status === 404) {
           if (fileNum + i === 0) {
             throw replayNotFoundError(signed.replay_id, {

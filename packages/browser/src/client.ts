@@ -389,7 +389,7 @@ function guardBrowserFetch(
     }
     return inner(input, init);
   };
-  return guarded as typeof fetch;
+  return guarded;
 }
 
 /**

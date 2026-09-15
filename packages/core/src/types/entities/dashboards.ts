@@ -599,12 +599,7 @@ export class UpdateDashboardParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateDashboardParams {
-    return new UpdateDashboardParams(
-      prepareInit(
-        UpdateDashboardParams,
-        raw,
-      ) as unknown as UpdateDashboardParamsInit,
-    );
+    return new UpdateDashboardParams(prepareInit(UpdateDashboardParams, raw));
   }
 }
 
@@ -1168,11 +1163,6 @@ export class UpdateTextCardParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateTextCardParams {
-    return new UpdateTextCardParams(
-      prepareInit(
-        UpdateTextCardParams,
-        raw,
-      ) as unknown as UpdateTextCardParamsInit,
-    );
+    return new UpdateTextCardParams(prepareInit(UpdateTextCardParams, raw));
   }
 }

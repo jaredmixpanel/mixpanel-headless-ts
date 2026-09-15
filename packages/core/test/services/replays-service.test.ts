@@ -140,7 +140,7 @@ function parseFileNum(url: string): number {
  * @returns The fetch implementation.
  */
 function cdnFetch(handler: CdnHandler): typeof fetch {
-  return (async (input: string | URL | Request): Promise<Response> => {
+  return async (input: string | URL | Request): Promise<Response> => {
     const url =
       typeof input === "string"
         ? input
@@ -157,7 +157,7 @@ function cdnFetch(handler: CdnHandler): typeof fetch {
       body = canned.text;
     }
     return new Response(body, { status: canned.status, headers });
-  }) as typeof fetch;
+  };
 }
 
 /**
@@ -442,10 +442,10 @@ describe("credential redaction on transport errors (TestFetchFilesCredentialReda
       // A fetch rejection is the `httpx.ConnectError` analog (R2.10
       // normalizes it to MixpanelHttpError); the message embeds the
       // credentialed URL exactly as httpx's does.
-      fetchImpl: (async (input: string | URL | Request): Promise<Response> => {
+      fetchImpl: async (input: string | URL | Request): Promise<Response> => {
         const url = input instanceof Request ? input.url : String(input);
         throw new TypeError(`connection failed for ${url}`);
-      }) as typeof fetch,
+      },
     });
 
     let caught: unknown;

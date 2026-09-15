@@ -247,7 +247,7 @@ describe("project axis — 2^4 bitmap × 3 account states vs firstPresent", () =
           [explicitP, "222222"],
           [targetP, "333333"],
           [bridgeP, "444444"],
-          [account !== null && account.default_project != null, "555555"],
+          [account?.default_project != null, "555555"],
         ]);
         const resolved = resolveProjectAxis({
           explicit: explicitP ? "222222" : null,
@@ -375,7 +375,7 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
     for (const missing of Object.keys(quad)) {
       const partial = { ...quad };
       delete partial[missing];
-      const session = resolveSession({}, src(partial as ResolverEnv, config));
+      const session = resolveSession({}, src(partial, config));
       expect(session.account.name, `missing ${missing}`).toBe("team");
     }
   });

@@ -529,7 +529,7 @@ describe("all five mouse-interaction types (TestMouseInteractions)", () => {
     const result = new RrwebAnalyzer().analyze(events);
     const clickAction = result.actions.find((a) => a.action === "click");
     expect(clickAction).toBeDefined();
-    expect(selectorLabelFn("data-testid")(clickAction as UserAction)).toBe(
+    expect(selectorLabelFn("data-testid")(clickAction!)).toBe(
       "click:checkout@/cart",
     );
   });

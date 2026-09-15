@@ -480,7 +480,7 @@ export function validateUserArgs(
 
   // U10: Filter property names must be non-empty
   for (const [i, validFilter] of validFilters.entries()) {
-    const f = validFilter as Filter;
+    const f = validFilter;
     if (typeof f._property === "string" && pythonStrip(f._property) === "") {
       errors.push(
         new ValidationError(
@@ -494,7 +494,7 @@ export function validateUserArgs(
 
   // U25: Filter property must be a string for engage queries
   for (const [i, validFilter] of validFilters.entries()) {
-    const f = validFilter as Filter;
+    const f = validFilter;
     if (!isCohortFilter(f) && typeof f._property !== "string") {
       errors.push(
         new ValidationError(
@@ -521,7 +521,7 @@ export function validateUserArgs(
   // U11: properties items must be non-empty strings
   if (properties !== null) {
     for (const [i, property] of properties.entries()) {
-      const prop = property as string;
+      const prop = property;
       if (pythonStrip(prop) === "") {
         errors.push(
           new ValidationError(
@@ -536,7 +536,7 @@ export function validateUserArgs(
 
   // U12: Filter.not_in_cohort() not supported
   for (const [i, validFilter] of validFilters.entries()) {
-    const f = validFilter as Filter;
+    const f = validFilter;
     if (isCohortFilter(f) && f._operator === "does not contain") {
       errors.push(
         new ValidationError(
@@ -606,7 +606,7 @@ export function validateUserArgs(
   // U17: segment_by IDs must be positive integers
   if (segmentBy !== null) {
     for (const [i, element] of segmentBy.entries()) {
-      const sid = element as number;
+      const sid = element;
       if (sid <= 0) {
         errors.push(
           new ValidationError(
@@ -872,8 +872,8 @@ export function validateUserParams(
     }
     if (
       isPythonDict(fbc) &&
-      !Object.hasOwn(fbc as object, "id") &&
-      !Object.hasOwn(fbc as object, "raw_cohort")
+      !Object.hasOwn(fbc, "id") &&
+      !Object.hasOwn(fbc, "raw_cohort")
     ) {
       errors.push(
         new ValidationError(

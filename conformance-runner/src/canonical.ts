@@ -588,7 +588,7 @@ export function canonicalizeInteractions(interactions: JsonValue[]): string {
   const result: JsonValue[] = [...interactions];
   const groups = new Map<string, number[]>();
   for (const [position, interaction_] of interactions.entries()) {
-    const interaction = interaction_ as JsonValue;
+    const interaction = interaction_;
     if (!isPlainObject(interaction)) {
       continue;
     }

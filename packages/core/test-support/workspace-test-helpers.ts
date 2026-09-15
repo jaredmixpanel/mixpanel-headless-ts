@@ -130,7 +130,7 @@ export function mockWorkspaceClient(
       try {
         return Promise.resolve(pageHandler(page, options));
       } catch (error) {
-        return Promise.reject(error as Error);
+        return Promise.reject(error);
       }
     },
     engageStats: (

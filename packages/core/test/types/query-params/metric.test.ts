@@ -386,13 +386,7 @@ describe("C9 guard-totality property (fast-check #4)", () => {
   it("every valid relative unit constructs", () => {
     fc.assert(
       fc.property(
-        fc.constantFrom(
-          "day",
-          "week",
-          "month",
-          "quarter",
-          "year",
-        ) as fc.Arbitrary<"day" | "week" | "month" | "quarter" | "year">,
+        fc.constantFrom("day", "week", "month", "quarter", "year"),
         (unit) => TimeComparison.relative(unit).unit === unit,
       ),
     );

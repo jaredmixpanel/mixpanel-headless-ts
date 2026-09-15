@@ -91,7 +91,7 @@ describe("TestDiscovery", () => {
     expect(capturedParams["limit"]).toBe("5000");
     expect(capturedParams["from_date"]).toBe("2000-01-01");
     expect(Object.hasOwn(capturedParams, "to_date")).toBe(true);
-    expect(capturedParams["to_date"] as string).toHaveLength(10);
+    expect(capturedParams["to_date"]!).toHaveLength(10);
   });
 
   it("test_get_events_caller_overrides", async () => {
@@ -118,7 +118,7 @@ describe("TestDiscovery", () => {
       makeSession(),
       (request) => {
         callCount += 1;
-        capturedFromDates.push(request.params["from_date"] as string);
+        capturedFromDates.push(request.params["from_date"]!);
         if (callCount === 1) {
           return {
             status: 403,
@@ -329,7 +329,7 @@ describe("TestActivityFeed (request contract)", () => {
       from_date: "2026-05-01",
       to_date: "2026-06-01",
     });
-    const body = captured.body as Record<string, unknown>;
+    const body = captured.body!;
     expect((body["bookmark"] as Record<string, unknown>)["entries"]).toEqual(
       [],
     );
@@ -388,7 +388,7 @@ describe("TestActivityFeed (request contract)", () => {
       from_date: "2026-05-01",
       to_date: "2026-06-01",
     });
-    const body = captured.body as Record<string, unknown>;
+    const body = captured.body!;
     expect(body["mode"]).toBe("raw");
     for (const key of [
       "limit",
@@ -419,7 +419,7 @@ describe("TestActivityFeed (request contract)", () => {
       sentinel_event: sentinel,
       paging_window: 7,
     });
-    const body = captured.body as Record<string, unknown>;
+    const body = captured.body!;
     expect(body["limit"]).toBe(500);
     expect(body["include_events"]).toEqual(["Sign Up", "Purchase"]);
     expect(body["sentinel_event"]).toEqual(sentinel);
@@ -460,7 +460,7 @@ describe("TestActivityFeed (request contract)", () => {
       search: "san francisco",
       search_properties: searchProps,
     });
-    const body = captured.body as Record<string, unknown>;
+    const body = captured.body!;
     expect(body["search"]).toBe("san francisco");
     expect(body["search_properties"]).toEqual(searchProps);
   });

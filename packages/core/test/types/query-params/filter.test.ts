@@ -605,7 +605,7 @@ describe("Filter.inCohort with an inline CohortDefinition (P2-9 gate finding)", 
     expect(filter._operator).toBe("does not contain");
     const entry = (
       filter._value as ReadonlyArray<Record<string, Record<string, unknown>>>
-    )[0]?.["cohort"] as Record<string, unknown>;
+    )[0]!["cohort"]!;
     expect(entry["negated"]).toBe(true);
     expect(entry["name"]).toBe("Churn risk");
     expect(entry["raw_cohort"]).toBeDefined();
@@ -660,7 +660,7 @@ function valueErrorMessage(thunk: () => unknown): string {
     expect(error).not.toBeInstanceOf(ParamValidationError);
     return (error as Error).message;
   }
-  return expect.unreachable("expected ValueError") as never;
+  return expect.unreachable("expected ValueError");
 }
 
 /**
@@ -889,7 +889,7 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
 
   it("the LC1 guard still runs after operator normalization", () => {
     expectGuard(
-      () => direct("cart", "list_contains", null, "object" as never),
+      () => direct("cart", "list_contains", null, "object"),
       ParamValidationError,
       "LC1_MISSING_ITEM_FILTERS",
     );

@@ -203,7 +203,7 @@ export function isFloatCarrier(
     !Array.isArray(value) &&
     !isPythonDict(value) &&
     "spelling" in value &&
-    typeof (value as { spelling: unknown }).spelling === "string"
+    typeof value.spelling === "string"
   );
 }
 
@@ -1203,7 +1203,7 @@ export function _scanFiltersForCustomProperties(
 ): ValidationError[] {
   const errors: ValidationError[] = [];
   for (const [i, filter] of filters.entries()) {
-    const f = filter as Filter;
+    const f = filter;
     if (
       f._property instanceof CustomPropertyRef ||
       f._property instanceof InlineCustomProperty
@@ -1355,7 +1355,7 @@ export function _scanCustomProperties(
   // Scan flow steps (FlowStep.filters)
   if (flow_steps !== null && flow_steps !== undefined) {
     for (const [idx, flow_step] of flow_steps.entries()) {
-      const fstep = flow_step as FlowStep;
+      const fstep = flow_step;
       if (fstep.filters !== null && fstep.filters.length > 0) {
         errors.push(
           ..._scanFiltersForCustomProperties(
@@ -1371,7 +1371,7 @@ export function _scanCustomProperties(
   // retention_events is always [born_event, return_event]
   if (retention_events !== null && retention_events !== undefined) {
     for (const [idx, retention_event] of retention_events.entries()) {
-      const rev = retention_event as RetentionEvent;
+      const rev = retention_event;
       if (rev.filters !== null && rev.filters.length > 0) {
         const label = idx === 0 ? "born_event" : "return_event";
         errors.push(..._scanFiltersForCustomProperties(rev.filters, label));

@@ -1384,7 +1384,7 @@ export class SessionReplayError extends APIError {
    *   `self._details.update(details)` does.
    */
   constructor(message: string, options: SessionReplayErrorOptions = {}) {
-    const ctor = new.target as typeof SessionReplayError;
+    const ctor = new.target;
     super(message, {
       statusCode: options.statusCode ?? ctor.defaultStatus,
       responseBody: options.responseBody ?? null,
@@ -1508,7 +1508,7 @@ export class ReportLinkError extends MixpanelHeadlessError {
    *   most-derived class's static default.
    */
   constructor(message: string, options: ReportLinkErrorOptions = {}) {
-    const ctor = new.target as typeof ReportLinkError;
+    const ctor = new.target;
     super(
       message,
       options.code ?? ctor.defaultCode,

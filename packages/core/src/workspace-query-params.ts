@@ -1129,7 +1129,7 @@ export function resolveAndBuildFunnelParams(
     data_group_id,
   });
   // CP1-CP6: Custom property validation for where filters
-  argErrors.push(..._scanCustomProperties({ where: where as never }));
+  argErrors.push(..._scanCustomProperties({ where }));
   if (anyError(argErrors)) {
     throw new BookmarkValidationError(argErrors);
   }
@@ -1629,7 +1629,7 @@ export function resolveAndBuildFlowParams(
         new ValidationError(
           `${spath}.filters_combinator`,
           "filters_combinator must be 'all' or 'any' " +
-            `(got ${pythonRepr(s.filters_combinator as never)})`,
+            `(got ${pythonRepr(s.filters_combinator)})`,
           "FL_INVALID_FILTERS_COMBINATOR",
         ),
       );
@@ -1705,7 +1705,7 @@ export function resolveAndBuildFlowParams(
   argErrors.push(
     ..._scanCustomProperties({
       flow_steps: steps,
-      where: where as never,
+      where,
     }),
   );
   if (anyError(argErrors)) {
@@ -1867,7 +1867,7 @@ export function resolveAndBuildRetentionParams(
   // CP1-CP6: Custom property validation for where and event filters
   argErrors.push(
     ..._scanCustomProperties({
-      where: where as never,
+      where,
       retention_events: [normBorn, normReturn],
     }),
   );

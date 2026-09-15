@@ -149,8 +149,8 @@ function walk(value: JsonValue, vectorId: string, path: string): void {
 }
 
 for (const vector of corpus.vectors) {
-  walk(vector.call as JsonValue, vector.id, "call");
-  walk(vector.expect as JsonValue, vector.id, "expect");
+  walk(vector.call, vector.id, "call");
+  walk(vector.expect, vector.id, "expect");
 }
 
 /**

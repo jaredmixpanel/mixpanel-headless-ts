@@ -131,7 +131,7 @@ export class Metric {
     // MT2_INVALID_SEGMENT_METHOD: segment_method must be valid if set.
     if (
       this.segment_method !== null &&
-      !["all", "first"].includes(this.segment_method as string)
+      !["all", "first"].includes(this.segment_method)
     ) {
       throw new ParamValidationError(
         "Metric segment_method must be one of ['all', 'first'], " +
@@ -260,11 +260,7 @@ export class TimeComparison {
     this.unit = fields.unit ?? null;
     this.date = fields.date ?? null;
     // TC0_INVALID_TYPE: type must be a valid TimeComparisonType.
-    if (
-      !["relative", "absolute-start", "absolute-end"].includes(
-        this.type as string,
-      )
-    ) {
+    if (!["relative", "absolute-start", "absolute-end"].includes(this.type)) {
       throw new ParamValidationError(
         "TimeComparison type must be one of " +
           "['absolute-end', 'absolute-start', 'relative'], " +
@@ -282,11 +278,7 @@ export class TimeComparison {
         );
       }
       // TC1B_INVALID_UNIT: unit must be a valid TimeComparisonUnit.
-      if (
-        !["day", "week", "month", "quarter", "year"].includes(
-          this.unit as string,
-        )
-      ) {
+      if (!["day", "week", "month", "quarter", "year"].includes(this.unit)) {
         throw new ParamValidationError(
           "TimeComparison unit must be one of " +
             "['day', 'month', 'quarter', 'week', 'year'], " +

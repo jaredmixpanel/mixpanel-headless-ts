@@ -444,9 +444,7 @@ export class MeResponse extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): MeResponse {
-    return new MeResponse(
-      prepareInit(MeResponse, raw) as unknown as MeResponseInit,
-    );
+    return new MeResponse(prepareInit(MeResponse, raw));
   }
 }
 

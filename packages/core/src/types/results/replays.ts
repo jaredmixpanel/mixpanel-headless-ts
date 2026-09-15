@@ -371,7 +371,7 @@ export class SignedReplay {
     // SR3_INVALID_ENV: env must be 'prod' or 'dev'.
     if (this.env !== "prod" && this.env !== "dev") {
       throw new ParamValidationError(
-        `env must be 'prod' or 'dev'; got ${JSON.stringify(this.env as string)}`,
+        `env must be 'prod' or 'dev'; got ${JSON.stringify(this.env)}`,
         "SR3_INVALID_ENV",
       );
     }

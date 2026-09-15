@@ -126,7 +126,7 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
 
   it("carries api-index kind/capability/module/signature on every entry", () => {
     for (const [pythonApi, entry] of Object.entries(API_MAP)) {
-      const indexEntry = universe[pythonApi] as ApiIndexEntry;
+      const indexEntry = universe[pythonApi]!;
       expect(entry.kind, pythonApi).toBe(indexEntry.kind);
       expect(entry.capability, pythonApi).toBe(indexEntry.capability);
       expect(entry.pythonModule, pythonApi).toBe(indexEntry.module);
@@ -138,7 +138,7 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
   it("KNOWN_PYTHON_MODULES is the sorted prefix set of the full universe", () => {
     const prefixes = [
       ...new Set([
-        ...Object.keys(universe).map((api) => api.split(".", 1)[0] as string),
+        ...Object.keys(universe).map((api) => api.split(".", 1)[0]!),
         ...authoredApis.known_modules,
       ]),
     ].sort();

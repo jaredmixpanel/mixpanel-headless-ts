@@ -95,7 +95,7 @@ const propertyTypesArb = fc.constantFrom(
   "number",
   "boolean",
   "datetime",
-) as fc.Arbitrary<"string" | "number" | "boolean" | "datetime">;
+);
 
 /** Port of `bucket_sizes` (None | float in [-10, 100] | NaN | inf). */
 const bucketSizesArb: fc.Arbitrary<number | null> = fc.oneof(

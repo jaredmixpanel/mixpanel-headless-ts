@@ -27,7 +27,6 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  type Account,
   ConfigError,
   type OAuthBrowserAccount,
   OAuthError,
@@ -248,7 +247,7 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
     const effects = createNodeBridgeEffects();
     const out = join(makeTempDir(cleanups), "bridge.json");
     const result = effects.export({
-      account: teamSa() as Account,
+      account: teamSa(),
       to: out,
       project: null,
       workspace: null,
@@ -271,7 +270,7 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
     const effects = createNodeBridgeEffects();
     const out = join(makeTempDir(cleanups), "bridge.json");
     effects.export({
-      account: teamSa() as Account,
+      account: teamSa(),
       to: out,
       project: null,
       workspace: null,
@@ -686,7 +685,7 @@ describe("B8-ARB-B F1/F2 bridge epoch acceptance + writer datetime shapes", () =
     process.env["MP_OAUTH_STORAGE_DIR"] = join(home, ".mp");
     const written = materializeBridgeTokens(bridge);
     expect(written).not.toBeNull();
-    const text = readFileSync(written as string, "utf8");
+    const text = readFileSync(written!, "utf8");
     // `json.dumps` default separators (`token.py:212` — byte parity).
     expect(text).toContain('"expires_at": "2030-01-01T00:00:00+00:00"');
     expect(text).not.toContain('Z"');

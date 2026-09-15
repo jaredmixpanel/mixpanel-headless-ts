@@ -239,7 +239,7 @@ export function requireIsoText(value: unknown, path: string): string {
     typeof value === "object" &&
     value !== null &&
     "iso" in value &&
-    typeof (value as { iso: unknown }).iso === "string"
+    typeof value.iso === "string"
   ) {
     return (value as { iso: string }).iso;
   }

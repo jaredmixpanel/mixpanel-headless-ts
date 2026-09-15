@@ -68,7 +68,7 @@ describe("TestQueryHostInjectionWhenPinned", () => {
       params: { type: "general" },
     });
     expect(captured).toHaveLength(1);
-    const request = captured[0] as CapturedFetchRequest;
+    const request = captured[0]!;
     expect(request.url.includes("/api/query/events/names")).toBe(true);
     expect(request.params["workspace_id"]).toBe(String(PINNED_WORKSPACE_ID));
   });
@@ -89,7 +89,7 @@ describe("TestQueryHostInjectionWhenPinned", () => {
       },
     );
     expect(captured).toHaveLength(1);
-    const request = captured[0] as CapturedFetchRequest;
+    const request = captured[0]!;
     expect(request.method).toBe("POST");
     expect(request.url.includes("/api/query/insights")).toBe(true);
     expect(request.params["workspace_id"]).toBe(String(PINNED_WORKSPACE_ID));
@@ -143,7 +143,7 @@ describe("TestNoWorkspacePinned", () => {
     // EXPLICIT-ONLY gating: exactly one request goes out and none
     // touches a /workspaces discovery endpoint.
     expect(captured).toHaveLength(1);
-    const request = captured[0] as CapturedFetchRequest;
+    const request = captured[0]!;
     expect(Object.hasOwn(request.params, "workspace_id")).toBe(false);
     expect(request.url.includes("/workspaces")).toBe(false);
   });
@@ -173,7 +173,7 @@ describe("TestNonQueryHostsUnaffected", () => {
     expect(path).toBe(`/workspaces/${PINNED_WORKSPACE_ID}/dashboards`);
     await client.appRequest("GET", path);
     expect(captured).toHaveLength(1);
-    const request = captured[0] as CapturedFetchRequest;
+    const request = captured[0]!;
     expect(
       request.url.includes(
         `/api/app/workspaces/${PINNED_WORKSPACE_ID}/dashboards`,

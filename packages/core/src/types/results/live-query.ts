@@ -1672,15 +1672,11 @@ export class FlowsResult {
       bookmark_id: expectInt(payload, "bookmark_id", cls),
       computed_at: expectStr(payload, "computed_at", cls),
       ...(Object.hasOwn(payload, "steps")
-        ? { steps: expectRecordArray(payload, "steps", cls) as readonly Row[] }
+        ? { steps: expectRecordArray(payload, "steps", cls) }
         : {}),
       ...(Object.hasOwn(payload, "breakdowns")
         ? {
-            breakdowns: expectRecordArray(
-              payload,
-              "breakdowns",
-              cls,
-            ) as readonly Row[],
+            breakdowns: expectRecordArray(payload, "breakdowns", cls),
           }
         : {}),
       ...(Object.hasOwn(payload, "overall_conversion_rate")

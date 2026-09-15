@@ -100,7 +100,7 @@ function redactTokenPayload(data: unknown): string {
           ? v
           : "<redacted>",
       ]),
-    ) as never,
+    ),
   );
 }
 

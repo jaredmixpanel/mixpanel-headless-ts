@@ -1978,7 +1978,7 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
       const f = new Filter({
         _property: "$cohorts",
         _operator: "contains",
-        _value: value as never,
+        _value: value,
         _property_type: "list",
         _resource_type: "events",
       });
@@ -1998,7 +1998,7 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
       const f = new Filter({
         _property: "$cohorts",
         _operator: "contains",
-        _value: value as never,
+        _value: value,
         _property_type: "list",
         _resource_type: "events",
       });

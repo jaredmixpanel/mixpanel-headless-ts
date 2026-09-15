@@ -523,9 +523,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
         const fallback = Object.hasOwn(record, "download_url")
           ? record["download_url"]
           : "";
-        const urlValue = jsonTruthy(primary as JsonValue | undefined)
-          ? primary
-          : fallback;
+        const urlValue = jsonTruthy(primary) ? primary : fallback;
         if (typeof urlValue === "string" && urlValue !== "") {
           return urlValue;
         }

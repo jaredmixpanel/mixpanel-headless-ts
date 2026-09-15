@@ -170,36 +170,51 @@ export function sortingCodeMapper(
   loc: ReadonlyArray<string | number>,
 ): string {
   const last = loc.length > 0 ? loc[loc.length - 1] : null;
-  if (errType === "missing") {
-    if (last === "colSortAttrs") {
-      return "S2_MISSING_COL_SORT_ATTRS";
+  // One switch over `errType` (source-order branches preserved); a case
+  // that matches the type but not the path falls through to the default
+  // mapping exactly as the Python if-chain does.
+  switch (errType) {
+    case "missing": {
+      if (last === "colSortAttrs") {
+        return "S2_MISSING_COL_SORT_ATTRS";
+      }
+      if (last === "sortBy") {
+        return "S8_MISSING_SORT_BY";
+      }
+      if (last === "sortOrder") {
+        return "S9_MISSING_SORT_ORDER";
+      }
+      break;
     }
-    if (last === "sortBy") {
-      return "S8_MISSING_SORT_BY";
+    case "literal_error": {
+      if (last === "sortBy") {
+        return "S1_INVALID_SORT_BY";
+      }
+      if (last === "sortOrder") {
+        return "S6_INVALID_SORT_ORDER";
+      }
+      break;
     }
-    if (last === "sortOrder") {
-      return "S9_MISSING_SORT_ORDER";
-    }
-  }
-  if (errType === "literal_error") {
-    if (last === "sortBy") {
+    case "union_tag_invalid":
+    case "union_tag_not_found": {
       return "S1_INVALID_SORT_BY";
     }
-    if (last === "sortOrder") {
-      return "S6_INVALID_SORT_ORDER";
+    case "extra_forbidden": {
+      return "S3_UNKNOWN_FIELD";
     }
-  }
-  if (errType === "union_tag_invalid" || errType === "union_tag_not_found") {
-    return "S1_INVALID_SORT_BY";
-  }
-  if (errType === "extra_forbidden") {
-    return "S3_UNKNOWN_FIELD";
-  }
-  if (errType === "list_type" && last === "colSortAttrs") {
-    return "S7_NOT_A_LIST";
-  }
-  if (errType === "dict_type" || errType === "model_type") {
-    return "S5_NOT_A_DICT";
+    case "list_type": {
+      if (last === "colSortAttrs") {
+        return "S7_NOT_A_LIST";
+      }
+      break;
+    }
+    case "dict_type":
+    case "model_type": {
+      return "S5_NOT_A_DICT";
+    }
+    default: {
+      break;
+    }
   }
   return DEFAULT_CODE_MAP.get(errType) ?? "VALIDATION_ERROR";
 }

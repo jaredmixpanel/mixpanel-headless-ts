@@ -33,7 +33,7 @@ describe("buildAuthorizeUrl (§3.3 CPython urlencode golden)", () => {
       "state=st%2Aate~%2F%2B&" +
       "code_challenge=ch%2Fallenge~+%3D&" +
       "code_challenge_method=S256";
-    const url = buildAuthorizeUrl(OAUTH_BASE_URLS["us"] as string, {
+    const url = buildAuthorizeUrl(OAUTH_BASE_URLS["us"]!, {
       clientId: "cli~ent id+x",
       redirectUri: "https://app.example.com/cb path/ü:1?x=*",
       challenge: "ch/allenge~ =",
@@ -46,7 +46,7 @@ describe("buildAuthorizeUrl (§3.3 CPython urlencode golden)", () => {
     // `flow.py:625-627`: scope is INTENTIONALLY OMITTED — DCR apps have
     // an empty scope field, so the provider defaults to all scopes.
     // Param order is Python dict insertion order (`flow.py:606-635`).
-    const url = buildAuthorizeUrl(OAUTH_BASE_URLS["eu"] as string, {
+    const url = buildAuthorizeUrl(OAUTH_BASE_URLS["eu"]!, {
       clientId: "cid",
       redirectUri: "https://app.example.com/cb",
       challenge: "chal",

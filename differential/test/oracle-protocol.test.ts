@@ -62,7 +62,7 @@ async function serveLine(
 ): Promise<Envelope> {
   const response = await server.handleLine(line);
   expect(response).not.toBeNull();
-  return JSON.parse(response as string) as Envelope;
+  return JSON.parse(response!) as Envelope;
 }
 
 /**
@@ -100,7 +100,7 @@ async function call(
 ): Promise<Record<string, unknown>> {
   const envelope = await serve(server, "oracle.call", { api, input });
   expect(envelope.error).toBeUndefined();
-  return envelope.result as Record<string, unknown>;
+  return envelope.result!;
 }
 
 describe("oracle.info / oracle.shutdown / framing", () => {
@@ -162,10 +162,8 @@ describe("oracle.info / oracle.shutdown / framing", () => {
     );
     expect(line).not.toBeNull();
     expect(line).not.toContain("\n");
-    expect([...(line as string)].every((ch) => ch.charCodeAt(0) < 128)).toBe(
-      true,
-    );
-    const envelope = JSON.parse(line as string) as Envelope;
+    expect([...line!].every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
+    const envelope = JSON.parse(line!) as Envelope;
     expect(envelope.result?.["output"]).toBe("\u{1F40D}");
   });
 
@@ -518,7 +516,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       '{"jsonrpc": "2.0", "id": 10, "method": "oracle.call", "params": ' +
         '{"api": "types.Filter.in_the_last", "input": ' +
         '{"property": "p", "quantity": 18.0, "date_unit": "day"}}}',
-    )) as string;
+    ))!;
     expect(raw).toContain('"_value": 18.0');
   });
 
@@ -573,7 +571,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
   ): Promise<Record<string, unknown>> {
     const envelope = await serve(server, "codec.roundtrip", { value });
     expect(envelope.error).toBeUndefined();
-    return envelope.result as Record<string, unknown>;
+    return envelope.result!;
   }
 
   it("round-trips a tagged Filter payload to itself", async () => {
@@ -605,7 +603,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
     const raw = (await server.handleLine(
       '{"jsonrpc": "2.0", "id": 3, "method": "codec.roundtrip", ' +
         '"params": {"value": [18.0, 1.5, 18]}}',
-    )) as string;
+    ))!;
     const envelope = JSON.parse(raw) as Envelope;
     expect(envelope.error).toBeUndefined();
     expect(raw).toContain("[18.0, 1.5, 18]");

@@ -1125,10 +1125,7 @@ describe("TestValidateUserArgsErrorShape", () => {
     const error = errors.find((e) => e.code === "U3");
     expect(error).toBeDefined();
     // Python `assert error.path` — truthy, i.e. a non-empty string.
-    expect(
-      (error as ValidationError).path.length,
-      "path should be non-empty",
-    ).toBeGreaterThan(0);
+    expect(error!.path.length, "path should be non-empty").toBeGreaterThan(0);
   });
 
   it("test_error_has_message", () => {
@@ -1137,7 +1134,7 @@ describe("TestValidateUserArgsErrorShape", () => {
     const error = errors.find((e) => e.code === "U3");
     expect(error).toBeDefined();
     expect(
-      (error as ValidationError).message.length,
+      error!.message.length,
       "message should be non-empty",
     ).toBeGreaterThan(0);
   });
@@ -1147,7 +1144,7 @@ describe("TestValidateUserArgsErrorShape", () => {
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const error = errors.find((e) => e.code === "U3");
     expect(error).toBeDefined();
-    expect((error as ValidationError).code).toBe("U3");
+    expect(error!.code).toBe("U3");
   });
 
   it("test_error_severity_is_error", () => {
@@ -1155,7 +1152,7 @@ describe("TestValidateUserArgsErrorShape", () => {
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const error = errors.find((e) => e.code === "U3");
     expect(error).toBeDefined();
-    expect((error as ValidationError).severity).toBe("error");
+    expect(error!.severity).toBe("error");
   });
 });
 

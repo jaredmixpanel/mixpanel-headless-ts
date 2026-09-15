@@ -1239,10 +1239,7 @@ export class UpdateCustomPropertyParams extends EntityModel {
    */
   static fromDict(raw: unknown): UpdateCustomPropertyParams {
     return new UpdateCustomPropertyParams(
-      prepareInit(
-        UpdateCustomPropertyParams,
-        raw,
-      ) as unknown as UpdateCustomPropertyParamsInit,
+      prepareInit(UpdateCustomPropertyParams, raw),
     );
   }
 }
@@ -1647,10 +1644,7 @@ export class UpdateLookupTableParams extends EntityModel {
    */
   static fromDict(raw: unknown): UpdateLookupTableParams {
     return new UpdateLookupTableParams(
-      prepareInit(
-        UpdateLookupTableParams,
-        raw,
-      ) as unknown as UpdateLookupTableParamsInit,
+      prepareInit(UpdateLookupTableParams, raw),
     );
   }
 }

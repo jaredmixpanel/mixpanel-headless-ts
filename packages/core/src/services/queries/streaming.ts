@@ -186,7 +186,7 @@ function bodyByteSource(
       /* empty body */
     })();
   }
-  return body as unknown as AsyncIterable<Uint8Array>;
+  return body;
 }
 
 /**

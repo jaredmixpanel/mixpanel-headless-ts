@@ -376,7 +376,7 @@ describe("TestLoginUnifiedProgressHook (test_accounts_namespace.py:1358)", () =>
     expect(messages).toHaveLength(1);
     expect(messages[0]).not.toBe("");
     // No numeric duration in the message (043 cli-feedback rule).
-    expect(/\d/.test(messages[0] as string)).toBe(false);
+    expect(/\d/.test(messages[0]!)).toBe(false);
   });
 
   it("progress=null keeps the silent default behavior", async () => {

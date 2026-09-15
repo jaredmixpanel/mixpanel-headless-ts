@@ -848,7 +848,7 @@ describe("TestUFilterWrapPreservation", () => {
   it("a converted ES11 raise surfaces as U_FILTER", async () => {
     const bad = new Filter({
       _property: "prop",
-      _operator: "is between" as never,
+      _operator: "is between",
       _value: ["low", 10] as never,
     });
 

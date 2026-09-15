@@ -74,7 +74,7 @@ function meResponseDict(): Record<string, JsonValue> {
         is_default: true,
       },
     },
-  } as unknown as Record<string, JsonValue>;
+  };
 }
 
 /** The `mock_api` fixture twin — a client exposing only `me()`. */

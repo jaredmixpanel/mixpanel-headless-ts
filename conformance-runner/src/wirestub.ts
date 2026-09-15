@@ -94,7 +94,7 @@ function classifyRejection(cause: unknown): never {
       typeof inner === "object" &&
       inner !== null &&
       "code" in inner &&
-      typeof (inner as { code: unknown }).code === "string"
+      typeof inner.code === "string"
     ) {
       const mapped =
         CAUSE_CODE_TO_HTTPX_CLASS[(inner as { code: string }).code];

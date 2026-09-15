@@ -271,7 +271,7 @@ export function encodeFacadeValue(
     typeof value === "number" ||
     typeof value === "bigint"
   ) {
-    return value as JsonValue;
+    return value;
   }
   if (value instanceof JsonNumber) {
     return value;

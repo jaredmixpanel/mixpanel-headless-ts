@@ -125,7 +125,7 @@ function rawEvent(
       $insert_id: `evt_${String(timestamp)}`,
       ...extra,
     },
-  } as unknown as JsonValue;
+  };
 }
 
 /**
@@ -148,7 +148,7 @@ function rawProfile(
   return {
     $distinct_id: distinctId,
     $properties: props,
-  } as unknown as JsonValue;
+  };
 }
 
 /**
@@ -274,7 +274,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
     expect(events).toHaveLength(2);
     expect(events[0]?.["event"]).toBe("PageView");
-    expect(Object.hasOwn(events[0] as Rec, "properties")).toBe(true);
+    expect(Object.hasOwn(events[0]!, "properties")).toBe(true);
     const props = events[0]?.["properties"] as Rec;
     expect(props["distinct_id"]).toBe("user_1");
     expect(props["time"]).toBe(1705328400);
@@ -298,7 +298,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
     )) as Rec[];
 
     expect(events).toHaveLength(1);
-    const event = events[0] as Rec;
+    const event = events[0]!;
     expect(event["event_name"]).toBe("Purchase");
     expect(event["distinct_id"]).toBe("user_123");
     // `isinstance(event_time, datetime)` + `tzinfo == utc` (see header).
@@ -482,7 +482,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
     expect(profiles).toHaveLength(2);
     expect(profiles[0]?.["$distinct_id"]).toBe("user_1");
-    expect(Object.hasOwn(profiles[0] as Rec, "$properties")).toBe(true);
+    expect(Object.hasOwn(profiles[0]!, "$properties")).toBe(true);
     const first = profiles[0]?.["$properties"] as Rec;
     expect(first["$last_seen"]).toBe("2024-01-15T10:00:00");
     expect(first["name"]).toBe("Alice");
@@ -503,7 +503,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
     const profiles = (await drain(ws.streamProfiles({ raw: false }))) as Rec[];
 
     expect(profiles).toHaveLength(1);
-    const profile = profiles[0] as Rec;
+    const profile = profiles[0]!;
     expect(profile["distinct_id"]).toBe("user_abc");
     expect(profile["last_seen"]).toBe("2024-01-15T14:30:00");
     const props = profile["properties"] as Rec;
@@ -534,7 +534,7 @@ describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
       ws.streamEvents({ from_date: "2024-01-15", to_date: "2024-01-15" }),
     )) as Rec[];
 
-    const event = events[0] as Rec;
+    const event = events[0]!;
     for (const key of [
       "event_name",
       "event_time",
@@ -570,7 +570,7 @@ describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
       }),
     )) as Rec[];
 
-    const event = events[0] as Rec;
+    const event = events[0]!;
     expect(Object.hasOwn(event, "event")).toBe(true);
     expect(Object.hasOwn(event, "properties")).toBe(true);
     const props = event["properties"] as Rec;
@@ -593,7 +593,7 @@ describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => 
 
     const profiles = (await drain(ws.streamProfiles())) as Rec[];
 
-    const profile = profiles[0] as Rec;
+    const profile = profiles[0]!;
     for (const key of ["distinct_id", "last_seen", "properties"]) {
       expect(Object.hasOwn(profile, key)).toBe(true);
     }
@@ -618,7 +618,7 @@ describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
 
     const profiles = (await drain(ws.streamProfiles({ raw: true }))) as Rec[];
 
-    const profile = profiles[0] as Rec;
+    const profile = profiles[0]!;
     expect(Object.hasOwn(profile, "$distinct_id")).toBe(true);
     expect(Object.hasOwn(profile, "$properties")).toBe(true);
     expect(profile["$distinct_id"]).toBe("user_abc123");

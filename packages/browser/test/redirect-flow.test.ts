@@ -139,7 +139,7 @@ describe("beginLogin", () => {
     const result = await begin(store, cannedIdp());
     const raw = await store.get(CREDENTIAL_KEYS.pendingLogin("us"));
     expect(raw).not.toBeNull();
-    const pending = JSON.parse(raw as string) as Record<string, unknown>;
+    const pending = JSON.parse(raw!) as Record<string, unknown>;
     // Fixed, non-numeric key set in insertion order (§7 caution 7).
     expect(Object.keys(pending)).toEqual([
       "state",
@@ -221,7 +221,7 @@ describe("completeLogin", () => {
     const transport = cannedIdp();
     const { state } = await begin(store, transport);
     const pendingRaw = await store.get(CREDENTIAL_KEYS.pendingLogin("us"));
-    const pending = JSON.parse(pendingRaw as string) as Record<string, string>;
+    const pending = JSON.parse(pendingRaw!) as Record<string, string>;
 
     const tokens = await completeLogin({
       region: "us",
@@ -245,7 +245,7 @@ describe("completeLogin", () => {
         // quote_plus(REDIRECT_URI) — no space/`+`/`~` chars in the
         // fixture, so encodeURIComponent agrees byte-for-byte here.
         `redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-        `&client_id=dcr-client-123&code_verifier=${pending["verifier"] as string}`,
+        `&client_id=dcr-client-123&code_verifier=${pending["verifier"]!}`,
     );
     expect(tokens.access_token.reveal()).toBe("new-access-token");
     // Frozen clock: expires_at = now + 3600s, isoformat `+00:00` shape.
@@ -265,7 +265,7 @@ describe("completeLogin", () => {
     });
     const raw = await store.get(CREDENTIAL_KEYS.tokens("us"));
     expect(raw).not.toBeNull();
-    const payload = JSON.parse(raw as string) as Record<string, unknown>;
+    const payload = JSON.parse(raw!) as Record<string, unknown>;
     expect(payload["access_token"]).toBe("new-access-token");
     expect(payload["refresh_token"]).toBe("new-refresh-token");
     expect(payload["expires_at"]).toBe("2026-01-15T11:30:00+00:00");

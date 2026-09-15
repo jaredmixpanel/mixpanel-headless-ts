@@ -51,11 +51,8 @@ import {
 import {
   pythonFloatStr,
   ReplayBundle,
-  type ReplayBundleFields,
   ReplayEvent,
-  type ReplayEventFields,
   ReplaySummary,
-  type ReplaySummaryFields,
   zfill,
 } from "@mixpanel-headless/core";
 
@@ -125,12 +122,9 @@ const COMPAT_APIS: ReadonlySet<string> = new Set([
 const ORACLE_REPLAY_ROWS: ReadonlyArray<
   readonly [string, new (fields: never) => object]
 > = [
-  [
-    "ReplaySummary",
-    ReplaySummary as new (fields: ReplaySummaryFields) => object,
-  ],
-  ["ReplayEvent", ReplayEvent as new (fields: ReplayEventFields) => object],
-  ["ReplayBundle", ReplayBundle as new (fields: ReplayBundleFields) => object],
+  ["ReplaySummary", ReplaySummary],
+  ["ReplayEvent", ReplayEvent],
+  ["ReplayBundle", ReplayBundle],
 ];
 
 /**
@@ -314,7 +308,7 @@ function registerOracleReplayCodecs(codecs: RunnerDeps["codecs"]): void {
         const bag: Record<string, unknown> = {};
         for (const [key, member] of Object.entries(payload)) {
           if (key !== "$type") {
-            bag[key] = decodeField(member as JsonValue);
+            bag[key] = decodeField(member);
           }
         }
         try {
@@ -330,7 +324,7 @@ function registerOracleReplayCodecs(codecs: RunnerDeps["codecs"]): void {
         encode: (value, encodeChild) => {
           const out: Record<string, JsonValue> = { $type: tag };
           for (const [key, member] of Object.entries(value as object)) {
-            out[key] = encodeChild(member) as JsonValue;
+            out[key] = encodeChild(member);
           }
           return out;
         },

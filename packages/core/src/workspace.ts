@@ -29,7 +29,7 @@ import { type JsonValue, toNativeJson } from "./client/json-value.js";
 import type { MeResponse } from "./client/me.js";
 import { validateResponseModel } from "./client/response-validation.js";
 import { pythonInt, pythonIntCoerce } from "./compat/python-int.js";
-import { pythonRepr, type PythonValue } from "./compat/python-str.js";
+import { pythonRepr } from "./compat/python-str.js";
 import { zfill } from "./compat/zfill.js";
 import {
   AuthenticationError,
@@ -2505,7 +2505,7 @@ export class Workspace {
 
     let result = await this.#exportPage(0, apiKwargs);
     let profiles: Array<Record<string, unknown>> = result.profiles.map((p) =>
-      transformProfile(p as Readonly<Record<string, unknown>>),
+      transformProfile(p),
     );
     const sessionId = result.session_id;
     let pagesFetched = 1;
@@ -2529,9 +2529,7 @@ export class Workspace {
           break;
         }
         for (const p of result.profiles) {
-          profiles.push(
-            transformProfile(p as Readonly<Record<string, unknown>>),
-          );
+          profiles.push(transformProfile(p));
         }
         pagesFetched += 1;
       }
@@ -2573,9 +2571,7 @@ export class Workspace {
     // of the `self`-free half, `workspace.py:10027-10046`).
     const statsKwargs = buildStatsKwargs(params);
 
-    const response = (await this.client.engageStats(
-      statsKwargs as never,
-    )) as unknown;
+    const response = (await this.client.engageStats(statsKwargs)) as unknown;
     const body = toNativeRecord(response);
 
     const aggregateData = Object.hasOwn(body, "results")
@@ -2644,7 +2640,7 @@ export class Workspace {
     const computedAt = isoUtc(this.client.core.now());
 
     let allProfiles: Array<Record<string, unknown>> = page0.profiles.map((p) =>
-      transformProfile(p as Readonly<Record<string, unknown>>),
+      transformProfile(p),
     );
 
     let pagesNeeded: number;
@@ -2696,12 +2692,7 @@ export class Workspace {
         ...pageKwargs,
         session_id: sessionId,
       });
-      return [
-        pageNum,
-        result.profiles.map((p) =>
-          transformProfile(p as Readonly<Record<string, unknown>>),
-        ),
-      ];
+      return [pageNum, result.profiles.map((p) => transformProfile(p))];
     };
 
     // Bounded-concurrency scheduler: the TS twin of
@@ -2786,7 +2777,7 @@ export class Workspace {
     page: number,
     kwargs: Readonly<Record<string, unknown>>,
   ): Promise<ProfilePageResult> {
-    return this.client.exportProfilesPage(page, kwargs as never);
+    return this.client.exportProfilesPage(page, kwargs);
   }
 
   /**
@@ -3033,7 +3024,7 @@ export class Workspace {
         queryFn: async (
           events: string,
           options: Readonly<Record<string, unknown>>,
-        ) => this.query(events, options as WorkspaceQueryOptions),
+        ) => this.query(events, options),
         ...(this.#warn === undefined ? {} : { warn: this.#warn }),
         ...(this.#logger === undefined ? {} : { logger: this.#logger }),
       });
@@ -6879,7 +6870,7 @@ export function checkEventPropertiesCount(
     throw new ParamValidationError(
       `events_for_replay accepts at most 5 event_properties ` +
         `(Insights group-by limit). Got ${String(eventProperties.length)}: ${pythonRepr(
-          eventProperties as unknown as PythonValue,
+          eventProperties,
         )}`,
       "WR1_TOO_MANY_EVENT_PROPERTIES",
     );
@@ -6993,7 +6984,7 @@ function reportLinkInputs(
     resultClass = "FlowQueryResult";
   } else {
     return {
-      rawParams: params as Record<string, unknown>,
+      rawParams: params,
       reportType: reportType ?? "insights",
     };
   }

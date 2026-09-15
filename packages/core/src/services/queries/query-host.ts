@@ -798,17 +798,17 @@ export function createQueryHostMethods(
         "include_events and exclude_events are mutually exclusive",
         {
           requestParams: {
-            include_events: includeEvents as unknown,
-            exclude_events: excludeEvents as unknown,
-          } as Record<string, unknown>,
+            include_events: includeEvents,
+            exclude_events: excludeEvents,
+          },
         },
       );
     }
     if (isSet(options.search_properties) && !isSet(options.search)) {
       throw new QueryError("search_properties requires a search string", {
         requestParams: {
-          search_properties: options.search_properties as unknown,
-        } as Record<string, unknown>,
+          search_properties: options.search_properties,
+        },
       });
     }
     const url = core.buildUrl("query", "/stream/bookmark");
