@@ -122,3 +122,7 @@ export { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 // also carries `UrlSplitError`, `LosslessJsonError`, …).
 export * as errorsModule from "./errors.js";
 export * as queryParamsModule from "./types/query-params/index.js";
+
+// Lane F (Phase 6) appended these two for packages/node and packages/browser; Ω folds them into their sections.
+export { requireOAuthBaseUrl } from "./auth/oauth-constants.js";
+export { isPythonValue } from "./compat/python-str.js";
