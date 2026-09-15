@@ -1,8 +1,8 @@
 # Dependabot configuration (docs/history/cleanup-plan-2026-09.md §13.2).
 #
 # Both ecosystems use a 7-day cooldown: a release must be at least a week old
-# before Dependabot proposes it. This matches the owner's npm
-# `min-release-age=7` policy, so a PR here never asks for a version that a
+# before Dependabot proposes it. This matches the repository's npm
+# `min-release-age=7` (.npmrc), so a PR here never asks for a version that a
 # local `npm install` would refuse.
 version: 2
 

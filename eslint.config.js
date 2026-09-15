@@ -711,10 +711,10 @@ const config = defineConfig([
   },
   // `max-lines` ratchet — files over the 800-line cap, each pinned at its
   // current size (rounded up) so none can grow; delete an entry once its
-  // file drops below 800. Splitting these is a per-file decision recorded
-  // in the Phase 6 Ω report: the data-table modules (entity/result/param
-  // models, the pydantic schema mirrors) mirror Python module boundaries
-  // and share one 1000-line ceiling; the rest are listed singly.
+  // file drops below 800. Splitting these is a per-file decision: the
+  // data-table modules (entity/result/param models, the pydantic schema
+  // mirrors) mirror Python module boundaries and share one 1000-line
+  // ceiling; the rest are listed singly.
   ...[
     [
       [

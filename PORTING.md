@@ -8,14 +8,14 @@ history (why a decision was taken, by whom, when) lives in
 
 ## Pinned Python revision
 
-| What                                                                | Value                                                                                                                                   |
-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Corpus pin (`conformance-runner/corpus.config.json` `sourceCommit`) | `0dde50608a6af026e94cdb75bacbcebe5ce105db` — Python `main`, 2026-09-11, "fix(types): validate Filter operator on direct construction …" |
-| Python `__version__` at the pin                                     | `0.2.2` (`pyproject.toml` declares `dynamic = ["version"]`; the value lives in `src/mixpanel_headless/__init__.py`)                     |
-| Python `requires-python`                                            | `>= 3.10`; the compat tables and canonical fixtures were generated with **CPython 3.14.6 / Unicode 16.0.0** (recorded in their headers) |
-| Corpus record epoch (frozen clock)                                  | `2026-01-15T12:00:00Z`                                                                                                                  |
-| Python `main` at the time of writing                                | `07bfe57` (2026-09-14, "Bump version to 0.2.3") — two commits past the pin: the version bump and the Python-side corpus re-pin          |
-| TS package versions                                                 | `@mixpanel-headless/{core,node,browser}` `0.1.0`, private                                                                               |
+| What                                                                | Value                                                                                                                                       |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Corpus pin (`conformance-runner/corpus.config.json` `sourceCommit`) | `0dde50608a6af026e94cdb75bacbcebe5ce105db` — Python `main`, 2026-09-11, "fix(types): validate Filter operator on direct construction …"     |
+| Python `__version__` at the pin                                     | `0.2.2` (`pyproject.toml` declares `dynamic = ["version"]`; the value lives in `src/mixpanel_headless/__init__.py`)                         |
+| Python `requires-python`                                            | `>= 3.10`; the compat tables and canonical fixtures were generated with **CPython 3.14.6 / Unicode 16.0.0** (recorded in their headers)     |
+| Corpus record epoch (frozen clock)                                  | `2026-01-15T12:00:00Z`                                                                                                                      |
+| Python `main` at the time of writing                                | `07bfe57` (2026-09-14, "Bump version to 0.2.3") — two commits past the pin: the version bump and the Python-side corpus re-pin              |
+| TS package versions                                                 | `@mixpanel-headless/{core,node,browser}` `0.1.0`, `private: true`; released in lockstep through Changesets (`CONTRIBUTING.md`, "Releasing") |
 
 Python-side changes that arrive after the pin are absorbed by re-pinning the
 corpus (procedure in [`CONTRIBUTING.md`](CONTRIBUTING.md#refreshing-the-corpus))
@@ -32,8 +32,7 @@ Python `snake_case` methods and static builders become `camelCase`
 **stay `snake_case`** when they mirror Python keywords or wire fields
 (`{ math: "dau", last: 90 }`, entity-model fields, bookmark params, error
 `details`); constructor/config option bags are `camelCase`. The rule and its
-enforcement are described in the README's "Naming" section.
-<!-- TODO(final-pass): the README "Naming" section is being written by the naming-convention lane; confirm the anchor once it lands. -->
+enforcement are described in the README's [Naming](README.md#naming) section.
 
 The Python→TS name of every corpus entry point is resolved through the
 generated `conformance-runner/src/api-map.gen.ts`; exceptions to the
@@ -53,12 +52,12 @@ marked `// Divergence:` at the site.
   rejects anything beyond ±(2^53 − 1) with `PY_INT_UNSAFE_INTEGER` —
   `pythonInt` (`compat/python-int.ts`).
 - A `Retry-After` header beyond 2^53 − 1 reads as absent (`retry_after: null`);
-  CPython parses it, sleeps the capped 60 s and reports it — `retryWaitSeconds`
+  CPython parses it, sleeps the capped 60 s and reports it — `parseRetryAfter`
   (`client/backoff.ts`).
 - Workspace `id` tokens beyond 2^53 − 1 read as unusable (`null`); Python
   returns the exact big int — `metadataWorkspaceId` (`client/me.ts`).
 - `safeInt` on a numeric string beyond 2^53 − 1 returns the default; Python
-  parses it — `safeInt` (`types/results/query-engine.ts`).
+  parses it — `safeInt` (`types/results/flow-graph.ts`).
 - Pydantic's Python-object lax mode accepts `True → 1` for int/float fields;
   the port (like pydantic's JSON mode) rejects booleans — `coerceInt` /
   `coerceFloat` (`coerce.ts`).
@@ -68,7 +67,7 @@ marked `// Divergence:` at the site.
 - Iterating `SchemaGraphResult.event_to_properties` / `property_to_events`
   lists integer-like event/property names first; Python keeps insertion order.
   `toGraph()` rebuilds its order from `events` / `properties` and is
-  unaffected — `SchemaGraphResult` (`types/results/discovery.ts`, `TODO(port)`).
+  unaffected — `SchemaGraphResult` (`types/results/discovery.ts`).
 - Pydantic error emission order flips for integer-like unknown chart-type keys
   and for `extra="forbid"` violations on integer-like keys; unreachable
   because `S4_UNKNOWN_CHART_TYPE` filters such keys first — `validateModel`
@@ -86,26 +85,45 @@ marked `// Divergence:` at the site.
   `resolveProjectAxis` (`auth/resolver.ts`).
 - `{"computed_at": null}` in schema-audit metadata: Python leaks a bare
   `pydantic.ValidationError`; the port raises `ResponseValidationError` /
-  `RESPONSE_VALIDATION_ERROR` — `listSchemaRegistry` and siblings
-  (`workspace-members/schemas-audit.ts`).
+  `RESPONSE_VALIDATION_ERROR` — `auditResponseFrom`
+  (`workspace-members/schemas-audit.ts`), which every schema-registry and
+  audit method goes through.
 - Additive hardening: non-positive-integer entity ids are rejected up front
   with Python's own `RL6_INVALID_ID`; Python would send
   `/annotations/[object Object]/` and surface the server's 404 —
   `requireEntityId` (`workspace-members/shared.ts`).
+- Its `data_group_id` twin, `requireInt64Id` (`workspace-members/shared.ts`),
+  accepts a non-zero `number | bigint` of either sign and rejects a `number`
+  beyond ±(2^53 − 1) as already rounded, with the same `RL6_INVALID_ID`;
+  Python sends whatever it is given.
+- `session.use({ target, … })` combined with any axis option raises
+  `ParamValidationError` / `WS1_TARGET_MUTUALLY_EXCLUSIVE`; Python raises a
+  bare `ValueError` — `createSessionNamespace`
+  (`accounts/session-namespace.ts`) and `resolveSession` (`auth/resolver.ts`).
+- `ReplaysService.discover` / `eventsFor` on a service constructed without
+  a `queryFn` raise `MixpanelHeadlessError` / `REPLAYS_QUERY_FN_REQUIRED`;
+  Python raises a bare `RuntimeError` — `ReplaysService`
+  (`services/replays.ts`).
+- `InvalidArgumentError` constructed with a `violation` outside the three
+  documented values raises `ParamValidationError` / `VALIDATION_ERROR` (the
+  site has no registry code); Python raises a bare `ValueError` —
+  `InvalidArgumentError` (`errors.ts`).
+- The "account directory already exists" `ConfigError` in the browser login
+  flow names the account; Python prints the directory path (the in-memory
+  staging seam has no path). Same class and code — `loginUnifiedNewBrowser`
+  (`accounts/login-unified.ts`).
 - A non-object schema response body raises a JS `TypeError` where Python
-  raises `AttributeError` — `dictGet` (`services/entities/schemas.ts`,
-  `TODO(port)`).
+  raises `AttributeError` — `resultDictGet` (`services/entities/schemas.ts`).
 - Timestamps beyond `datetime.max` raise `ValueError` everywhere in TS;
   CPython raises `OSError` (errno 84) across most of that span (platform
   dependent) and `OverflowError` past 2^63. Both sides always raise —
-  `fromTimestampUtcIso` (`query/transforms.ts`, `TODO(port)`).
+  `fromTimestampUtcIso` (`query/transforms.ts`).
 - When a retry-from window cannot be computed, Python raises `OverflowError`
   from date subtraction; the port re-throws the original error. Out of reach
   for real values — `createQueryHostMethods` (`services/queries/query-host.ts`).
 - The `ConfigError` raised when an account swap resolves no project has a
   shorter, static message; Python's enumerates four config-dependent fixes.
-  Same class and code — `noProjectError` (`workspace-members/lifecycle.ts`,
-  `TODO(port)`).
+  Same class and code — `noProjectError` (`workspace-members/lifecycle.ts`).
 - Closed in favour of bug-compatibility: `x in frozenset` with a list/dict
   raises `TypeError` in Python; the port raises at the same sixteen sites —
   `requireHashable` (`query/validation-shared.ts`).
@@ -124,7 +142,7 @@ marked `// Divergence:` at the site.
   `LookupUploadSeams.monotonic` (`workspace-members/governance-data.ts`).
 - Default date windows ("today", "last N days") are computed in UTC from the
   injected clock; Python reads the host's local calendar. They can differ by
-  one day near local midnight — `services/queries/py-dates.ts` (`TODO(port)`).
+  one day near local midnight — `services/queries/py-dates.ts`.
 - After `Workspace.close()`, Python's recreated httpx client forgets a runtime
   `set_workspace_id()` pin and re-applies the initial one; the port keeps the
   current pin — `Workspace.close` (`workspace.ts`).
@@ -141,10 +159,7 @@ marked `// Divergence:` at the site.
   parallel user query's `failed_pages` meta).
 - Replay `$time` parsing accepts ISO-8601 (and unix seconds) only; Python's
   `pd.Timestamp` also accepts free-form dates. Anything else yields `0`
-  ("skip row") — `toUnixMs` (`services/replays.ts`, `TODO(port)`).
-- A `/me` organization with `name: null` crashes Python with
-  `AttributeError`; the port sorts it as an empty name —
-  `resolveProjectForLogin` (`accounts/login-unified.ts`, `TODO(port)`).
+  ("skip row") — `toUnixMs` (`services/replays.ts`).
 
 ### Node file system and OAuth callback (`@mixpanel-headless/node`)
 
@@ -152,16 +167,19 @@ marked `// Divergence:` at the site.
   layer is replaced by `lstat` symlink refusal plus `stat` regular-file /
   mode / size checks. Caller-visible refusals are preserved; a TOCTOU window
   between probe and read is the accepted deviation, and tmp-file naming
-  differs — `io-utils.ts`, `auth/storage.ts` (`OAuthStorage`).
+  differs — `atomicWriteBytes` / `readCredentialText` (`io-utils.ts`),
+  `OAuthStorage` (`auth/storage.ts`, where an `lstat` probe followed by a
+  by-path `chmodSync` replaces Python's `_fchmod_no_follow` inode pin — the
+  same accepted window).
 - `// Divergence:` Python chmods the config file's parent to `0o700` on every
   write whatever the path; the port tightens only the default `~/.mp` and
   leaves a custom `configPath` / `MP_CONFIG_PATH` parent alone —
-  `ConfigManager` (`config.ts`). _Upstream candidate: the Python behaviour
+  `ConfigManager` (`config/manager.ts`). _Upstream candidate: the Python behaviour
   chmods unrelated directories such as a repo `config/` or `/tmp`._
 - The default config path is captured at import time in Python and at
   `ConfigManager` construction in TS, so a mid-process `HOME` change is
-  followed only by TS (with `MP_CONFIG_PATH` unset) — `ConfigManager`
-  (`config.ts`).
+  followed only by TS (with `MP_CONFIG_PATH` unset) — `defaultConfigPath`
+  (`config/blocks.ts`).
 - `// Divergence:` on an OAuth `state` mismatch Python puts `expected_state`
   in `OAuthError.details`; the port keeps only `received_state` so logged
   errors never carry the nonce — `startCallbackServer`
@@ -181,6 +199,10 @@ marked `// Divergence:` at the site.
 - The browser launcher on Windows uses `rundll32 url.dll,FileProtocolHandler`
   instead of `start` (which needs a shell) — `browserLaunchArgv`
   (`auth/flow.ts`).
+- Not observable: when the callback server and the pasted-redirect reader
+  race during `login`, the loser is cancelled through an `AbortSignal`;
+  Python leaves its daemon thread running. The loser's outcome is discarded
+  in both runtimes — `OAuthFlow.login` (`auth/flow.ts`).
 
 ### Wire and encoding
 
@@ -192,20 +214,27 @@ marked `// Divergence:` at the site.
   429 loop — exactly like Python's `pagination.py`, which the client equally
   does not use (`client/pagination.ts`). Numeric `next_cursor` values are
   re-spelled with CPython float repr; only string cursors are ever observed —
-  `cursorParamValue` (`TODO(port)`).
+  `cursorParamValue`.
 - JS `$` does not match before a trailing `\n`, so `"2025-04-23\n"` is
   rejected one step earlier than in Python; both classify it `"string"` —
   `DATE_PATTERN` (`services/discovery.ts`).
-- Non-string dict keys are stringified with `json.dumps` spelling (`true`,
-  `18.0`, `null`); Python keeps typed keys until serialization. Reachable
-  only through a `dict(iterable-of-pairs)` branch no Mixpanel response
-  produces — `dictKeyText` (`query/transforms.ts`, `TODO(port)`).
+- Non-string dict keys (int, float, bool, `None`) are stringified with
+  `json.dumps` spelling (`true`, `18.0`, `null`); Python keeps typed keys
+  until serialization. Reachable only through the pair-list branch of
+  `dict(properties)`, which no Mixpanel response produces — `dictKeyText`
+  (`query/transforms.ts`).
 - Pydantic-shaped `type` / `msg` strings for validation errors other than
   `missing` are transcribed, not vector-verified — `client/response-validation.ts`
-  header (`TODO(port)`).
-- Pydantic / CPython `\d` matches Unicode `Nd`; the JS `/^\d+$/` gates
-  (`ProjectId` pattern, `Project.id`, the bridge project pin, the
-  `\d{4}-\d{2}-\d{2}` date gates) are ASCII-only.
+  header.
+- Pydantic / CPython `\d` matches Unicode `Nd`. `Project.id`
+  (`auth/session.ts`) and `default_project` (`auth/account.ts`) gate with
+  `/^\p{Nd}+$/u` and match it; the entities `ProjectId` pattern
+  (`types/entities/accounts.ts`), the node bridge project pin and the
+  `\d{4}-\d{2}-\d{2}` date gates are ASCII-only.
+- `slugify` NFKD-normalizes with the host engine's Unicode tables; CPython
+  3.14.6 pins Unicode 16.0. A name containing a codepoint whose
+  compatibility decomposition differs between the two may slug differently —
+  `slugify` (`accounts/naming.ts`).
 - Anywhere a float-typed value is interpolated into library output text,
   the port spells it with `pythonFloatStr` so `18.0` stays `18.0`
   (`compat/python-float-str.ts`); a new interpolation site that forgets this
@@ -218,7 +247,8 @@ marked `// Divergence:` at the site.
 
 - No refresh-token grant: an expired stored token raises `OAuthError` /
   `OAUTH_TOKEN_ERROR` asking for a fresh login. Python and
-  `@mixpanel-headless/node` refresh — `client.ts` (`TODO(port)`).
+  `@mixpanel-headless/node` refresh — `client.ts` (the store-backed token
+  resolver) and `redirect-flow.ts`.
 - Header-redirect shortlinks resolve only on Node: browser `fetch` with
   `redirect: "manual"` returns an opaque redirect with no `Location` —
   `services/entities/bookmark-urls.ts`.
@@ -233,7 +263,10 @@ marked `// Divergence:` at the site.
   calls `Object.freeze`, so every entity instance is mutable at runtime and
   read-only only at the type level — `EntityModel`
   (`types/entities/model-base.ts`); the Python `test_frozen` assertion is
-  recorded as `it.todo` in `test/types/report-links.test.ts`.
+  recorded as `it.todo` in `test/types/report-links.test.ts`. The type-level
+  half of the contract — `readonly` fields on `BookmarkUrl`, `ReportLink`,
+  `ResolvedReport` and the query results — is pinned at compile time in
+  `test/types/report-links.test-d.ts` (vitest typecheck, part of the gate).
 
 ### A JS-only hazard the port had and fixed
 
@@ -254,117 +287,6 @@ marked `// Divergence:` at the site.
   divergence to list.
 - Printability for `repr()` uses a generated CPython 3.14.6 / Unicode 16.0
   table rather than the host engine's Unicode version (`compat/non-printable.ts`).
-
-<!-- lane 5A -->
-
-### Facade layer (lane 5A additions)
-
-- `requireInt64Id` (`workspace-members/shared.ts`) is the `data_group_id`
-  twin of the additive `requireEntityId` guard above: it accepts a non-zero
-  `number | bigint` of either sign and rejects a `number` beyond
-  ±(2^53 − 1) as already rounded, with the same `RL6_INVALID_ID`; Python
-  sends whatever it is given.
-- Sites that now carry a `// Divergence:` marker for entries already
-  listed above: `Workspace.close` (`workspace.ts`, the workspace-id pin);
-  `noProjectError` (`workspace-members/lifecycle.ts` — its `TODO(port)` is
-  gone, so that entry's `TODO(port)` parenthetical is stale);
-  `auditResponseFrom` (`workspace-members/schemas-audit.ts` — the
-  `{"computed_at": null}` entry's trigger is the audit metadata, so
-  `runAudit` / `auditResponseFrom` name it more precisely than
-  `listSchemaRegistry`); `requireEntityId` (`workspace-members/shared.ts`).
-
-<!-- /lane 5A -->
-
-<!-- lane 5C -->
-
-### Added by the comment pass over types, query, bookmarks, compat, replays and errors
-
-- `InvalidArgumentError` constructed with a `violation` outside the three
-  documented values: Python raises a bare `ValueError`; the port raises
-  `ParamValidationError` / `VALIDATION_ERROR` (the site has no registry code)
-  — `InvalidArgumentError` (`errors.ts`).
-- A `dict(iterable-of-pairs)` whose pair carries a non-string key (int,
-  float, bool, `None`) stores it under its JSON spelling (`"18.0"`,
-  `"true"`, `"null"`); Python keeps the typed key. Only reachable through the
-  pair-list branch of `dict(properties)`, which no Mixpanel response produces
-  — `dictKeyText` (`query/transforms.ts`).
-- `ReplayBundle.failures` is TS-only: Python's `fetch_replays` only logs
-  skipped replay ids (`logger.warning`); the port records `{replay_id, error}`
-  on a prototype getter so a partial bundle is never silently short. It is
-  not an own property, so `toJSON()` and the codec still see the Python shape
-  — `ReplayBundle.failures` (`types/results/replays.ts`).
-- Corrections to entries above (sites now carry `// Divergence:` markers):
-  the `SchemaGraphResult` integer-key bullet no longer has a `TODO(port)`
-  (`types/results/discovery.ts`), and `safeInt` now lives in
-  `types/results/flow-graph.ts`, not `query-engine.ts`.
-
-<!-- lane 5B (client, services, accounts, auth): merge each bullet into the section named in parentheses -->
-
-### Lane 5B additions
-
-- (Error class or message only) `session.use({ target, … })` combined with
-  any axis option raises `ParamValidationError` /
-  `WS1_TARGET_MUTUALLY_EXCLUSIVE`; Python raises a bare `ValueError` —
-  `createSessionNamespace` (`accounts/session-namespace.ts`) and
-  `resolveSession` (`auth/resolver.ts`).
-- (Error class or message only) `ReplaysService.discover` / `eventsFor` on a
-  service constructed without a `queryFn` raise `MixpanelHeadlessError` /
-  `REPLAYS_QUERY_FN_REQUIRED`; Python raises a bare `RuntimeError` —
-  `ReplaysService` (`services/replays.ts`).
-- (Error class or message only) The "account directory already exists"
-  `ConfigError` in the browser login flow names the account; Python prints
-  the directory path (the in-memory staging seam has no path). Same class
-  and code — `loginUnifiedNewBrowser` (`accounts/login-unified.ts`).
-- (Wire and encoding) `slugify` NFKD-normalizes with the host engine's
-  Unicode tables; CPython 3.14.6 pins Unicode 16.0. A name containing a
-  codepoint whose compatibility decomposition differs between the two may
-  slug differently — `slugify` (`accounts/naming.ts`).
-
-Corrections to existing bullets, for the final pass to apply in place:
-
-- "A non-object schema response body raises a JS `TypeError`…": the TS
-  symbol is `resultDictGet` (`services/entities/schemas.ts`), not `dictGet`.
-- "A `Retry-After` header beyond 2^53 − 1 reads as absent": the behaviour
-  lives in `parseRetryAfter` (`client/backoff.ts`), not `retryWaitSeconds`.
-- "Pydantic / CPython `\d` matches Unicode `Nd`; the JS `/^\d+$/` gates …":
-  `Project.id` (`auth/session.ts`) and `default_project` (`auth/account.ts`)
-  gate with `/^\p{Nd}+$/u` and are not ASCII-only; the entities `ProjectId`
-  pattern (`types/entities/accounts.ts`), the node bridge pin and the date
-  gates still are.
-- "A `/me` organization with `name: null` crashes Python with
-  `AttributeError`; the port sorts it as an empty name": unreachable as
-  stated — `MeOrgInfo.name` is a required `str` in both `me.py` and
-  `client/me.ts`, so a null name is rejected at parse before any sort.
-  Drop the bullet, or restate it as a parse-time error-class difference if
-  one is confirmed.
-- Every `TODO(port)` in these four directories is now a `// Divergence:`
-  marker; the "(`TODO(port)`)" parentheticals on the pagination, schemas,
-  py-dates and replays bullets can be dropped.
-
-<!-- lane 5D -->
-
-### Platform site markers (`@mixpanel-headless/node`, `@mixpanel-headless/browser`)
-
-Marker updates and additions from the platform comment pass; the final pass
-folds them into the sections above.
-
-- `// Divergence:` markers now sit at every node deviation listed under
-  "Node file system and OAuth callback": `defaultConfigPath`
-  (`config/blocks.ts`, the `HOME` capture), the tmp-sibling naming of
-  `atomicWriteBytes` and the lstat→read window of `readCredentialText`
-  (`io-utils.ts`), the `~/.mp` parent chmod scope (`config/manager.ts`) and
-  both callback-server entries (`auth/callback-server.ts`).
-- New: `OAuthStorage` replaces Python's `_fchmod_no_follow` inode pin with an
-  `lstat` probe followed by `chmodSync` by path; the probe→chmod window is
-  the same accepted TOCTOU class as the read path — `auth/storage.ts`.
-- New (not observable): when the callback server and the pasted-redirect
-  reader race during `login`, the loser is cancelled through an
-  `AbortSignal`; Python leaves its daemon thread running. The loser's
-  outcome is discarded in both runtimes — `OAuthFlow.login` (`auth/flow.ts`).
-- Browser: the refresh-grant gap listed under "Browser" is now marked
-  `// Divergence:` in `client.ts` (the store-backed token resolver) and in
-  the `redirect-flow.ts` module header; that entry's `(TODO(port))` tag is
-  stale.
 
 ## What the rig proves — and does not
 
@@ -400,5 +322,3 @@ those.
 | Conformance corpus @ `0dde506` | **3,453 vectors — 3,453 passed, 0 failed, 0 unported**                                   | `npm run conformance -- --report json`, 2026-09-14; `conformance-runner/GATE.md` |
 | Differential oracle            | **28,091 examples / 0 skips / 0 divergences**, seed 403581649, both bridges at `0dde506` | `differential/oracle/RUN.md`, entry dated 2026-09-14                             |
 | Bookmark-schema referee (ajv)  | green, 0 rejects over 127 recorded `build_params` payloads                               | same RUN.md entry (`npm run referee:bookmark`)                                   |
-
-<!-- TODO(final-pass): refresh these three rows after the last corpus re-pin or oracle run before the branch merges. -->

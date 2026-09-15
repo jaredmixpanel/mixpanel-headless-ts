@@ -22,15 +22,16 @@ differential-oracle record is [`differential/oracle/RUN.md`](../differential/ora
 Pin history (source commit the snapshot was extracted from; totals where a
 full run was recorded):
 
-| Date       | Pin       | Totals                                     | Note                                                                         |
-| ---------- | --------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
-| 2026-08-14 | `5269674` | 2,603 vectors — 42 live, 2,561 unported    | Phase-1 gate (the historical record below)                                   |
-| 2026-08-15 | `8ae7631` | —                                          | Phase-2 contract layer                                                       |
-| 2026-08-21 | `390c6e7` | —                                          | Python PR #215 (`schema_graph` timeouts)                                     |
-| 2026-09-03 | `c9991d1` | —                                          | Python PR #223 (report links); provenance repair                             |
-| 2026-09-14 | `0dde506` | 3,453 — 3,453 passed, 0 failed, 0 unported | Python PRs #225 / #235 / #236 (`Filter` constructor validation); current pin |
+| Date       | Pin       | Totals                                          | Note                                                                         |
+| ---------- | --------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| 2026-08-14 | `5269674` | 2,603 vectors — 42 live, 2,561 unported         | Phase-1 gate (the historical record below)                                   |
+| 2026-08-15 | `8ae7631` | —                                               | Phase-2 contract layer                                                       |
+| 2026-08-21 | `390c6e7` | 3,052 vectors in the manifest; run not recorded | Python PR #215 (`schema_graph` timeouts)                                     |
+| 2026-09-03 | `c9991d1` | 3,340 — 3,340 passed, 0 failed, 0 unported      | Python PR #223 (report links); provenance repair (stamp-only re-pin)         |
+| 2026-09-14 | `0dde506` | 3,453 — 3,453 passed, 0 failed, 0 unported      | Python PRs #225 / #235 / #236 (`Filter` constructor validation); current pin |
 
-<!-- TODO(final-pass): add a row if the corpus is re-pinned before the branch merges; the intermediate totals above were not recorded in this repo. -->
+Intermediate re-pins between these rows (`git log -- conformance-runner/corpus.config.json`)
+recorded no full-run totals in this repository, hence the gap for `8ae7631`.
 
 ---
 

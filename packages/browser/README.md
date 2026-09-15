@@ -117,5 +117,6 @@ Rules for the redirect flow:
 
 ## Status
 
-Published as `"private": true` until the release process lands; flipping that
-flag is the owner's one-line change. Licence: MIT.
+Carries `"private": true` until the owner flips it; versions and release notes
+are managed by Changesets and published through `release.yml` (see the
+repository's `CONTRIBUTING.md`, "Releasing"). Licence: MIT.

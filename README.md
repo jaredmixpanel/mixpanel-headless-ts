@@ -791,10 +791,28 @@ Developing the repository needs a newer Node than using the packages does, and
 `typescript` is pinned to a tilde range on purpose — see
 [CONTRIBUTING.md → Toolchain pins](CONTRIBUTING.md#toolchain-pins).
 
----
+## Development
 
-_Developing the port itself? This README covers the consumer surface — see
-[`CONTRIBUTING.md`](CONTRIBUTING.md) for the repository layout, the
-`npm run check` gate, generated files and conventions, and
-[`PORTING.md`](PORTING.md) for the pinned Python revision, the known
-divergences, and what the conformance corpus and differential oracle prove._
+This README covers the consumer surface. To work on the port itself:
+
+```bash
+git clone git@github.com:jaredmixpanel/mixpanel-headless-ts.git && cd mixpanel-headless-ts
+npm ci           # lockfile-exact; installs the git hooks
+npm run check    # the gate: build, packaging, lint, format, archaeology, vendor, tests + coverage, browser smoke
+```
+
+- **The gate** (`npm run check`) is what CI runs on Node 22 and 24; it is green
+  before every commit. Its test step replays the whole conformance corpus.
+- **Conformance CLI**: `npm run conformance -- --report json` replays the
+  Python-extracted vectors and prints the verdict summary (3,453 vectors,
+  0 failures at the current pin); `--filter <substring>` narrows by vector id.
+- **Differential oracle**: `npm run oracle` is the stdio bridge the Python fuzz
+  harness drives (`--right "node …/scripts/run-oracle.mjs"`); the last run is
+  28,091 examples with 0 divergences.
+- **Run records**: [`conformance-runner/GATE.md`](conformance-runner/GATE.md)
+  (corpus pin history and totals) and
+  [`differential/oracle/RUN.md`](differential/oracle/RUN.md) (oracle runs).
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): layout, toolchain pins, the gate in
+  detail, generated files, corpus refresh, comment and test conventions,
+  releasing. [`PORTING.md`](PORTING.md): the pinned Python revision, naming,
+  every known divergence, and what the corpus and oracle do and do not prove.

@@ -15,8 +15,12 @@ port's process record is archived under [`docs/history/`](docs/history/README.md
 git clone git@github.com:jaredmixpanel/mixpanel-headless-ts.git
 cd mixpanel-headless-ts
 npm ci          # lockfile-exact; engine-strict, see "Toolchain pins"
-npm run check   # the gate: build, packaging, lint, format, tests, browser smoke
+npm run check   # the gate: build, packaging, lint, format, archaeology, vendor, tests, browser smoke
 ```
+
+`npm ci` also installs the git hooks (`lefthook.yml`: eslint + prettier on the
+staged files at commit, typecheck + `npm run test:fast` before push;
+`LEFTHOOK=0 git commit` skips them once). They are a fast subset, not the gate.
 
 `npm run check` takes a few minutes the first time (it packs and installs the
 three package tarballs; `MP_SKIP_PACK_TEST=1 npm run check` skips that step
@@ -40,6 +44,9 @@ locally). A Python checkout of `mixpanel-headless` next to this repository
 - Everything else floats within its caret range; Dependabot
   (`.github/dependabot.yml`) proposes bumps. The lockfile is authoritative —
   CI fails if `npm ci` rewrites it.
+- `.npmrc` sets `min-release-age=7`: npm resolves only to releases at least a
+  week old, the same cooldown Dependabot applies, so an `npm install` and a
+  Dependabot PR never disagree about a version (and `fund=false`).
 
 ## Layout
 
@@ -98,30 +105,33 @@ Each package has `tsconfig.json` (`rootDir: src`, `outDir: dist`) and
 `tsconfig.lib.json`, run `npx tsc -b --force` once; incremental builds have
 been seen to miss `isolatedDeclarations` diagnostics.
 
-`stripInternal` is deliberately off (reasons in `tsconfig.lib.json`); the
-boundary the repo actually wants — nothing tagged `@internal` reachable from a
+`stripInternal` is deliberately off (reasons in `tsconfig.lib.json`; the last
+trial produced 407 `tsc -b` errors, all in white-box test projects that read
+`@internal` members through the built declarations); the boundary the repo
+actually wants — nothing tagged `@internal` reachable from a
 package's `"."` entry — is enforced by `tests/core-public-surface.test.ts`.
 
 ## The gate
 
 `npm run check` runs these in order; CI (`.github/workflows/ci.yml`) runs the
-same script on Node 22 and 24 and adds a lockfile-freshness check and a
-conformance-report artifact. Run it before every commit.
+same script on Node 22 and 24. Run it before every commit.
 
-| Step                | Command                                                                     | What it proves                                                                                                                                                                                                                                                                              |
-| ------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build + typecheck   | `tsc -b` (`npm run typecheck`, also `npm run build`)                        | The three packages compile into `dist/` under the strict flags above with `isolatedDeclarations`; every test, rig and script project type-checks against the built declarations.                                                                                                            |
-| Package correctness | `npm run pack:check` (`publint --strict`, `attw --pack --profile esm-only`) | Each package's `npm pack` tarball has a coherent `exports` map, ships its types, and resolves correctly for ESM consumers.                                                                                                                                                                  |
-| Dead code           | `npm run knip`                                                              | No unused files or dependencies. Unused exports/types are reported as warnings until the un-export sweep lands. <!-- TODO(final-pass): flip knip `exports`/`types` rules back to error after the Phase 6 un-export sweep. -->                                                               |
-| Lint                | `npm run lint` (`eslint . --max-warnings 0`)                                | Typed, exhaustive lint; every rule is `error` or `off` with a reason, never `warn` (asserted when the config loads). Includes the purity boundary and import ordering. Rules still being hand-applied are parked in delimited lane blocks; `MP_LINT_UNPARK=<lane>` shows one lane's errors. |
-| Format              | `npm run fmt:check`                                                         | Prettier owns all formatting (`npm run fmt` to apply). Generated and vendored paths are excluded through the one list in `scripts/lib/lint-ignores.mjs`.                                                                                                                                    |
-| Tests               | `npm test` (`vitest run`)                                                   | All workspace unit tests; the full conformance corpus (`conformance-runner/test/corpus.test.ts`); generated-file freshness tests; the public-surface lock; the ignore-list sync; and `tests/package-consumption.test.ts`, which packs and installs the three tarballs.                      |
-| Browser smoke       | `npm run smoke:browser`                                                     | `packages/core` and `packages/browser` bundle for `platform: "browser"` with no Node built-in in the graph, and the bundle exposes the required exports.                                                                                                                                    |
+| Step                | Command                                                                     | What it proves                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Build + typecheck   | `tsc -b` (`npm run typecheck`, also `npm run build`)                        | The three packages compile into `dist/` under the strict flags above with `isolatedDeclarations`; every test, rig and script project type-checks against the built declarations.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Package correctness | `npm run pack:check` (`publint --strict`, `attw --pack --profile esm-only`) | Each package's `npm pack` tarball has a coherent `exports` map, ships its types, and resolves correctly for ESM consumers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Dead code           | `npm run knip`                                                              | No unused files, dependencies, exports or types (`exports` / `types` at error level; an interface or type alias used only in its own module's exported signatures is exempt, because declaration emit needs it exported). Not `--strict` — `knip.jsonc` says why.                                                                                                                                                                                                                                                                                                                                                                                            |
+| Lint                | `npm run lint` (`eslint . --max-warnings 0`)                                | Typed, exhaustive lint; every rule is `error` or `off` with a reason, never `warn` (asserted when the config loads). Covers the purity boundary, import ordering, per-file size caps, the naming convention, the jsdoc/tsdoc content rules (every exported symbol documented, `@example` on classes and exported functions, `@throws` on deliberate throws) and the English-title rule for tests.                                                                                                                                                                                                                                                            |
+| Format              | `npm run fmt:check`                                                         | Prettier owns all formatting (`npm run fmt` to apply). Generated and vendored paths are excluded through the one list in `scripts/lib/lint-ignores.mjs`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Comment archaeology | `npm run audit:comments -- --summary`                                       | No comment or test title carries a port-process identifier (batch/task ids, `foo.py:123` citations, shard/packet vocabulary); any hit is exit 1.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Vendor integrity    | `npm run vendor:drift`                                                      | Every file under `vendor/mixpanel-contracts/` matches the sha256 in its `PROVENANCE.json`; with `ANALYTICS_ROOT` set it also byte-diffs each file against the analytics checkout.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Tests + coverage    | `npm run test:coverage` (`vitest run --coverage`, every project)            | All workspace unit tests; the type-level tests (`*.test-d.ts`, vitest's typecheck inside the `core` and `browser` projects); the full conformance corpus (`conformance-runner/test/corpus.test.ts`); generated-file freshness and provenance tests; the public-surface lock; the ignore-list sync; and `tests/package-consumption.test.ts`, which packs and installs the three tarballs (`MP_SKIP_PACK_TEST=1` skips it locally). Global v8 coverage floors over `packages/*/src` (generated tables and pure barrels excluded): lines 88 / statements 88 / functions 90 / branches 82 — set two points under the measured suite; raise by hand, never lower. |
+| Browser smoke       | `npm run smoke:browser`                                                     | `packages/core` and `packages/browser` bundle for `platform: "browser"` with no Node built-in in the graph, and the bundle exposes the required exports.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
-Not yet in `check`: `npm run vendor:drift` (sha256 integrity of the vendored
-contracts; byte-diff against the analytics checkout when `ANALYTICS_ROOT` is
-set) and `npm run audit:comments` (the comment-archaeology scan).
-<!-- TODO(final-pass): the planned end state of the gate (docs/history/cleanup-plan-2026-09.md §14) also lists coverage thresholds, `vitest --typecheck`, vitest projects (so `npm test` can skip the corpus locally), the archaeology guard and vendor drift wired into `check`. Update this table when Phases 5–7 land. -->
+CI adds what an npm script cannot: the Node 22 / 24 matrix, lockfile
+freshness (`git diff --exit-code package-lock.json` after `npm ci`), and the
+coverage and conformance-report artifacts. `release.yml` runs the same
+`check` before anything is versioned or published.
 
 If you changed anything under `packages/core/src`, also run the corpus CLI
 and confirm zero `FAIL_*` verdicts:
@@ -136,24 +146,25 @@ npm run conformance -- --report json --filter "bookmarks/"   # vector-id substri
 Every generated artefact has a generator; regenerate instead of editing. Where
 a byte-exact freshness test exists it fails on a hand edit.
 
-| Artefact                                                     | Generator / command                                                                                 | Inputs                                                                                                                                                        | Freshness test                                                                                                                         |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `conformance-runner/src/api-map.gen.ts`                      | `npm run generate:api-map` (`scripts/generate-api-map.mjs`)                                         | `conformance-runner/corpus/{api-index,typescript-port-api-map}.json`, `conformance-runner/src/{naming-exceptions,authored-apis}.json`                         | `conformance-runner/test/api-map.test.ts` — sha256 stamps of all four inputs + parity with `src/naming.ts`                             |
-| `packages/core/src/errors-codes.gen.ts`                      | `npm run generate:error-codes` (`scripts/generate-error-codes.mjs`; `--check` for a dry diff)       | `conformance-runner/corpus/contract/error-codes.json`                                                                                                         | `conformance-runner/test/error-codes-registry.test.ts` — regenerate-and-diff, plus registry equality against the live `errors.ts`      |
-| `conformance-runner/bridge-allowlist.gen.json`               | `npm run generate:bridge-allowlist` (`scripts/generate-bridge-allowlist.mjs`)                       | Corpus wire vectors, `api-index.json`, `api-map.gen.ts`, `scripts/{bridge-allowlist-rules,consent-verbs,route-verbs}.json`                                    | `conformance-runner/test/bridge-allowlist.test.ts` — byte-identical regeneration (the two moving stamps excluded)                      |
-| `packages/core/src/compat/non-printable.gen.ts`              | `uv run --no-project python scripts/generate-non-printable.py`                                      | The host CPython's `str.isprintable()` (header records CPython 3.14.6 / Unicode 16.0.0)                                                                       | **None.** `packages/core/test/compat/python-str.test.ts` asserts parity on pinned cases, not byte freshness.                           |
-| `packages/core/src/compat/decimal-digits.gen.ts`             | `uv run --no-project python scripts/generate-decimal-digits.py`                                     | The host CPython's `int(ch)` per codepoint                                                                                                                    | **None.**                                                                                                                              |
-| `packages/core/src/compat/whitespace.gen.ts`                 | `uv run --no-project python scripts/generate-whitespace.py`                                         | The host CPython's `str.isspace()` / `int()` whitespace acceptance                                                                                            | **None.** `python-strip.test.ts` consumes the table.                                                                                   |
-| `packages/core/test/compat/fixtures/canonical-fixtures.json` | `uv run --no-project python scripts/generate-canonical-fixtures.py`, then `npm run fmt`             | A deterministic sample of corpus `builder` vectors rendered by CPython `json.dumps`                                                                           | Parity only (`python-json-dumps-canonical.test.ts`); its provenance header currently names the previous corpus pin.                    |
-| `conformance-runner/corpus/**`                               | `npm run sync:corpus` (`scripts/sync-corpus.sh`)                                                    | The Python checkout's `conformance/vectors/**`, `conformance/contract/*.json`, `conformance/schema/canonical-selftest.json`; the api-map from `docs/history/` | Pin gate inside the script (`corpus.config.json` `sourceCommit` must equal the source manifest); `corpus.test.ts` replays every vector |
-| `vendor/mixpanel-contracts/**`                               | Re-vendor per `vendor/mixpanel-contracts/README.md`; `PROVENANCE.json` records source path + sha256 | The analytics checkout (`ANALYTICS_ROOT`, read-only)                                                                                                          | `npm run vendor:drift` (integrity always; byte-diff when the checkout is mounted) — not in `check`                                     |
+| Artefact                                                     | Generator / command                                                                                       | Inputs                                                                                                                                                        | Freshness test                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `conformance-runner/src/api-map.gen.ts`                      | `npm run generate:api-map` (`scripts/generate-api-map.mjs`)                                               | `conformance-runner/corpus/{api-index,typescript-port-api-map}.json`, `conformance-runner/src/{naming-exceptions,authored-apis}.json`                         | `conformance-runner/test/api-map.test.ts` — sha256 stamps of all four inputs + parity with `src/naming.ts`                                                                                                                                                                                                   |
+| `packages/core/src/errors-codes.gen.ts`                      | `npm run generate:error-codes` (`scripts/generate-error-codes.mjs`; `--check` for a dry diff)             | `conformance-runner/corpus/contract/error-codes.json`                                                                                                         | `conformance-runner/test/error-codes-registry.test.ts` — regenerate-and-diff, plus registry equality against the live `errors.ts`                                                                                                                                                                            |
+| `conformance-runner/bridge-allowlist.gen.json`               | `npm run generate:bridge-allowlist` (`scripts/generate-bridge-allowlist.mjs`)                             | Corpus wire vectors, `api-index.json`, `api-map.gen.ts`, `scripts/{bridge-allowlist-rules,consent-verbs,route-verbs}.json`                                    | `conformance-runner/test/bridge-allowlist.test.ts` — byte-identical regeneration (the two moving stamps excluded)                                                                                                                                                                                            |
+| `packages/core/src/compat/non-printable.gen.ts`              | `npm run generate:compat-tables` (`scripts/generate-non-printable.py` through `uv run --python <pin>`)    | The pinned CPython's `str.isprintable()` per codepoint                                                                                                        | `tests/generated-tables-provenance.test.ts` — the header names the interpreter and Unicode version of `scripts/compat-python.pin.json` and the generator's sha256, its counts match the body, and the npm script names the pinned interpreter; body parity in `packages/core/test/compat/python-str.test.ts` |
+| `packages/core/src/compat/decimal-digits.gen.ts`             | `npm run generate:compat-tables` (`scripts/generate-decimal-digits.py`, same pin)                         | The pinned CPython's `int(ch)` per codepoint                                                                                                                  | Same provenance test; body parity in the `compat/` tests                                                                                                                                                                                                                                                     |
+| `packages/core/src/compat/whitespace.gen.ts`                 | `npm run generate:compat-tables` (`scripts/generate-whitespace.py`, same pin)                             | The pinned CPython's `str.isspace()` / `int()` whitespace acceptance                                                                                          | Same provenance test; body parity in `python-strip.test.ts`                                                                                                                                                                                                                                                  |
+| `packages/core/test/compat/fixtures/canonical-fixtures.json` | `npm run generate:canonical-fixtures` (`scripts/generate-canonical-fixtures.py`, same pin, then Prettier) | A deterministic sample of corpus `builder` vectors rendered by CPython `json.dumps`                                                                           | Same provenance test — pinned interpreter, generator sha256, corpus pin equal to `corpus.config.json` `sourceCommit`, row count and per-row sha256; parity in `python-json-dumps-canonical.test.ts`                                                                                                          |
+| `conformance-runner/corpus/**`                               | `npm run sync:corpus` (`scripts/sync-corpus.sh`)                                                          | The Python checkout's `conformance/vectors/**`, `conformance/contract/*.json`, `conformance/schema/canonical-selftest.json`; the api-map from `docs/history/` | Pin gate inside the script (`corpus.config.json` `sourceCommit` must equal the source manifest); `corpus.test.ts` replays every vector                                                                                                                                                                       |
+| `vendor/mixpanel-contracts/**`                               | Re-vendor per `vendor/mixpanel-contracts/README.md`; `PROVENANCE.json` records source path + sha256       | The analytics checkout (`ANALYTICS_ROOT`, read-only)                                                                                                          | `npm run vendor:drift` in `check` (integrity always; byte-diff when the checkout is mounted)                                                                                                                                                                                                                 |
 
 `npm run generate:all` runs the three Node generators in dependency order
-(error-codes, api-map, then bridge-allowlist). The Python generators run
-against a specific CPython: the headers they emit record the interpreter and
-Unicode version, and they must be re-run (and committed) only when the port's
-target CPython is upgraded.
-<!-- TODO(final-pass): Phase 7 adds byte-exact freshness tests for the three compat tables and a pin check for the canonical-fixtures provenance; update the "Freshness test" column when they land. -->
+(error-codes, api-map, then bridge-allowlist). The four Python generators run
+through `uv run --python <pin>`; the pin is `scripts/compat-python.pin.json`
+(CPython 3.14.6 / Unicode 16.0.0) and `scripts/gen_provenance.py` makes each
+generator refuse any other interpreter and stamp its own sha256 into the
+header it emits. Re-run them, and commit the output, only when the port's
+target CPython is upgraded: update the pin first, then regenerate all four.
 
 ### Refreshing the corpus
 
@@ -207,9 +218,9 @@ The corpus is a committed snapshot pinned by `sourceCommit` in
    carries a description; neither appears in library source without a linked
    issue or a one-line justification.
 
-`npm run audit:comments` reports comments and test titles that still carry
-process identifiers; `npm run audit:comments:fix -- --dry-run` previews the
-mechanical rewrites (see `scripts/audit/README.md`).
+`npm run audit:comments` (in the gate as `-- --summary`) fails on any comment
+or test title that carries a process identifier; `npm run audit:comments:fix -- --dry-run`
+previews the mechanical rewrites the tool knows (see `scripts/audit/README.md`).
 
 ## Tests
 
@@ -232,22 +243,29 @@ mechanical rewrites (see `scripts/audit/README.md`).
   `const itPosix = …`.
 - Never mutate `process.env` or `HOME` directly in a test; use `vi.stubEnv`
   (restored automatically) so a failing test cannot leak state into the next.
-  <!-- TODO(final-pass): Phase 7 converts the remaining direct `process.env` writes in packages/node/test to `vi.stubEnv`; drop this sentence's hedging once done. -->
 - Property-based tests (`fast-check`) go in `*.pbt.test.ts` and must be
   reproducible: a failure report carries the seed; pin it in the fix.
 - Generated-file freshness tests regenerate and byte-compare; when you change a
   generator, regenerate and commit the output in the same change.
 
-Running subsets:
+`vitest.config.ts` defines one project per test tree: `core`, `node`,
+`browser`, `rig` (the conformance runner's own tests), `corpus` (the vector
+replay, one `it` per vector), `differential` and `repo` (`tests/`). `npm test`
+runs them all (CI parity); the corpus replay is the slow one.
 
 ```bash
-npx vitest run packages/node                          # one workspace
+npm run test:fast                                     # every project but the corpus
+npm run test:corpus                                   # only the corpus replay
+npx vitest run --project node                         # one project
 npx vitest run conformance-runner/test/runner.test.ts # one file
 npx vitest run -t "rejects a redirect"                # by title
 npx tsc -b packages/core/tsconfig.test.json           # type-check one package's tests
 ```
 
-<!-- TODO(final-pass): Phase 7 introduces vitest projects; document `vitest run --project <name>` and the local `npm test` (without the corpus) once they exist. -->
+Type-level tests (`*.test-d.ts`: `expectTypeOf`, `@ts-expect-error`) sit next
+to the runtime tests and run inside the `core` and `browser` projects through
+vitest's typecheck; their `tsconfig.test-d.json` includes `src/` directly, so
+a stale `dist/` can never satisfy an assertion.
 
 ## Running the differential oracle
 
@@ -280,15 +298,51 @@ referee over the recorded `build_params` payloads.
   shared builder, the oracle run it was checked against.
 - A PR that changes behaviour relative to Python adds a `// Divergence:`
   marker and a `PORTING.md` row in the same change.
+- A PR that changes a published package adds a changeset (`npx changeset`;
+  see "Releasing").
 - The gate must be green locally before pushing; CI runs the same script.
 - Scratch notes for a task go in `.notes/` (git-ignored); durable run records
   go in `conformance-runner/GATE.md` / `differential/oracle/RUN.md`.
 
-## Publishing
+## Releasing
 
-The three packages carry `"private": true`. They are built as publishable
-ESM-only packages (`publishConfig.access = "public"`, provenance enabled) and
-pass `publint` / `attw` on every gate run, but publishing is the owner's
-decision: removing the `"private": true` line from each `packages/*/package.json`
-is the one-line flip.
-<!-- TODO(final-pass): Phase 9 adds the release process (Changesets + trusted publishing); link it here. -->
+Versions and changelogs are managed by
+[Changesets](https://github.com/changesets/changesets) (`.changeset/config.json`):
+the three packages form one `fixed` group and release in lockstep, the two
+rig workspaces are ignored, and `packages/*/CHANGELOG.md` are the release
+notes (the root `CHANGELOG.md` only points at them).
+
+1. A pull request that changes a published package adds a changeset:
+   `npx changeset`, pick the bump (`patch` / `minor`; `major` only once 1.0
+   is out), write the release-note line, commit the generated
+   `.changeset/*.md` with the change.
+2. On every push to `main`, `.github/workflows/release.yml` runs the gate and
+   then `changesets/action`. With unreleased changesets present it opens or
+   refreshes a "Version Packages" PR (`npm run version` = `changeset version`:
+   bumps the three manifests, rewrites the `^` ranges between them, folds
+   the changesets into the changelogs). With none pending it runs
+   `npm run release` = `changeset publish`, which publishes every package
+   whose version is not on the registry yet.
+3. Merging the "Version Packages" PR therefore publishes. `changeset publish`
+   runs `npm publish` per package with provenance (`publishConfig` in each
+   manifest) through npm trusted publishing: the workflow's `id-token: write`
+   permission and its `npm` deployment environment; no token secret exists.
+
+**Publishing is a no-op today.** The three manifests carry `"private": true`,
+which `changeset publish` skips; the version flow still runs
+(`privatePackages.version` is on), so changesets accumulate into changelogs
+meanwhile. Turning releases on is the owner's flip:
+
+1. Remove the `"private": true` line from `packages/core/package.json`,
+   `packages/node/package.json` and `packages/browser/package.json`.
+2. On npmjs.com, create the `@mixpanel-headless` organisation and add a
+   trusted publisher to each of the three packages: GitHub Actions,
+   repository `jaredmixpanel/mixpanel-headless-ts`, workflow `release.yml`,
+   environment `npm`. If npm still requires a package to exist before a
+   trusted publisher can be attached, publish `0.1.0` once by hand
+   (`npx changeset publish` from a logged-in machine) and configure the
+   publisher afterwards. Protect the `npm` environment in the repository
+   settings (required reviewers) if a human should approve each publish.
+3. Merge to `main`. With no changeset pending, the publish step releases the
+   `0.1.0` already in the manifests; from then on every release goes through
+   a "Version Packages" PR.
