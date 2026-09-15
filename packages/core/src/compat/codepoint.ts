@@ -45,11 +45,8 @@ export function cpLength(text: string): number {
  * ```
  */
 export function codepoints(text: string): string[] {
-  const out: string[] = [];
-  for (const ch of text) {
-    out.push(ch);
-  }
-  return out;
+  // eslint-disable-next-line @typescript-eslint/no-misused-spread -- this IS the code-point split (String's iterator yields code points); every other site routes here
+  return [...text];
 }
 
 /**
@@ -95,7 +92,7 @@ function normalizeBound(index: number, length: number): number {
  * ```
  */
 export function cpSlice(text: string, start?: number, end?: number): string {
-  const points = Array.from(text);
+  const points = codepoints(text);
   const from = start === undefined ? 0 : normalizeBound(start, points.length);
   const to =
     end === undefined ? points.length : normalizeBound(end, points.length);

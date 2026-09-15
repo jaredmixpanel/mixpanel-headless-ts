@@ -11,6 +11,7 @@
  * decisions independent of the JS engine's Unicode database version
  * (V8 tracks Unicode 17; see the `python-str.ts` precedent).
  */
+import { codepoints } from "./codepoint.js";
 import { PYTHON_STR_WHITESPACE } from "./whitespace.gen.js";
 
 /**
@@ -28,7 +29,7 @@ import { PYTHON_STR_WHITESPACE } from "./whitespace.gen.js";
  * ```
  */
 export function pythonStrip(text: string): string {
-  const points = Array.from(text);
+  const points = codepoints(text);
   let start = 0;
   let end = points.length;
   while (

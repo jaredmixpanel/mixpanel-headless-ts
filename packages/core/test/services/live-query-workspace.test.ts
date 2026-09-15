@@ -117,7 +117,7 @@ function callInsightsMethod(
  * @returns The options bag of the most recent call.
  */
 function lastKwargs(calls: readonly RecordedCall[]): InlineQueryScope {
-  const last = calls[calls.length - 1];
+  const last = calls.at(-1);
   expect(last).toBeDefined();
   return last?.options ?? {};
 }

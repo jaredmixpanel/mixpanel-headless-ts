@@ -1230,7 +1230,7 @@ export function transformSavedReport(
         ? sortedByCodepoint(Object.keys(pyMapping(data, "keys")))
         : [];
       fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
-      toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
+      toDate = dateKeys.length > 0 ? dateKeys.at(-1) : "";
       headers = ["$funnel"]; // Synthetic header for type detection
       series = data;
 
@@ -1241,7 +1241,7 @@ export function transformSavedReport(
       computedAt = ""; // Not provided by retention API
       const dateKeys = pyTruthy(raw) ? sortedByCodepoint(Object.keys(raw)) : [];
       fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
-      toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
+      toDate = dateKeys.length > 0 ? dateKeys.at(-1) : "";
       headers = ["$retention"]; // Synthetic header for type detection
       series = raw; // Entire response is the data
 

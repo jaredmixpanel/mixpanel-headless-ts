@@ -171,7 +171,7 @@ export function sortingCodeMapper(
   errType: string,
   loc: ReadonlyArray<string | number>,
 ): string {
-  const last = loc.length > 0 ? loc[loc.length - 1] : null;
+  const last = loc.length > 0 ? loc.at(-1) : null;
   if (errType === "missing") {
     if (last === "colSortAttrs") {
       return "S2_MISSING_COL_SORT_ATTRS";

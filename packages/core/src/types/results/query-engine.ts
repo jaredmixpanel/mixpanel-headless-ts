@@ -425,7 +425,7 @@ export class FunnelQueryResult {
     if (this.steps_data.length === 0) {
       return 0.0;
     }
-    const last = this.steps_data[this.steps_data.length - 1];
+    const last = this.steps_data.at(-1);
     const value = Object.hasOwn(last ?? {}, "overall_conv_ratio")
       ? last?.["overall_conv_ratio"]
       : 0.0;

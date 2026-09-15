@@ -211,7 +211,7 @@ describe("TestGenerateSlug", () => {
     );
     expect(
       generateSlug({
-        choice: (alphabet) => alphabet[alphabet.length - 1] as string,
+        choice: (alphabet) => alphabet.at(-1) as string,
       }),
     ).toBe("z".repeat(12));
   });

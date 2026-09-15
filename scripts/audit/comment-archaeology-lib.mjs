@@ -642,12 +642,11 @@ function tidyEmptied(records, kind, originals) {
   const out = [];
   for (const rec of kept) {
     const blank = isBlankContent(rec.line, kind);
-    const prevBlank =
-      out.length > 0 && isBlankContent(out[out.length - 1].line, kind);
+    const prevBlank = out.length > 0 && isBlankContent(out.at(-1).line, kind);
     if (blank && (out.length === 0 || prevBlank)) continue;
     out.push(rec);
   }
-  while (out.length > 0 && isBlankContent(out[out.length - 1].line, kind)) {
+  while (out.length > 0 && isBlankContent(out.at(-1).line, kind)) {
     out.pop();
   }
   return out;
@@ -731,7 +730,7 @@ export function rewriteSource(text, options = {}) {
       if (g.standalone) {
         const kept = tidyEmptied(records, "line", originals);
         const first = g.items[0];
-        const last = g.items[g.items.length - 1];
+        const last = g.items.at(-1);
         const start = lineStartOf(text, first.pos);
         let end = lineEndOf(text, last.end);
         const hasNewline = end < text.length;
@@ -803,7 +802,7 @@ export function rewriteSource(text, options = {}) {
       const interior = records.slice(1, -1);
       const interiorOriginals = originals.slice(1, -1);
       const tidied = tidyEmptied(interior, c.kind, interiorOriginals);
-      kept = [records[0], ...tidied, records[records.length - 1]];
+      kept = [records[0], ...tidied, records.at(-1)];
     }
     let replacement = kept.map((r) => r.line).join("\n");
     const contentLeft = kept.some((r) => !isBlankContent(r.line, c.kind));

@@ -22,7 +22,11 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { type OAuthClientInfo, OAuthError } from "@mixpanel-headless/core";
+import {
+  cpLength,
+  type OAuthClientInfo,
+  OAuthError,
+} from "@mixpanel-headless/core";
 
 import { CallbackResult } from "../src/auth/callback-server.js";
 import { OAuthFlow, parsePastedRedirect } from "../src/auth/flow.js";
@@ -611,7 +615,7 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     expect(serialized).not.toContain("SECRET_TRUNC");
     expect(exc.details).not.toHaveProperty("response_body");
     expect(exc.details["content_type"]).toBe("application/json");
-    expect(exc.details["body_length"]).toBe(Array.from(body).length);
+    expect(exc.details["body_length"]).toBe(cpLength(body));
   });
 
   // ARB-A F1 (pair-A fidelity review): the Python bug-(d) redaction fix

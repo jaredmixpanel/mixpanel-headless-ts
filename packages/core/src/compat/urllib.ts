@@ -444,7 +444,7 @@ export function urljoin(base: string, url: string): string {
   }
 
   const baseParts = b.path.split("/");
-  if (baseParts[baseParts.length - 1] !== "") {
+  if (baseParts.at(-1) !== "") {
     baseParts.pop();
   }
   let segments: string[];
@@ -466,7 +466,7 @@ export function urljoin(base: string, url: string): string {
       resolved.push(seg);
     }
   }
-  const last = segments[segments.length - 1];
+  const last = segments.at(-1);
   if (last === "." || last === "..") {
     resolved.push("");
   }

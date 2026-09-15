@@ -924,10 +924,8 @@ const config = defineConfig([
   // --- Phase 4 lane L3b: semantics-sensitive autofixers — pending; L3 applies these one rule at a time against the corpus ---
   ...lane("L3b", {
     rules: {
-      "unicorn/prefer-spread": "off",
       "unicorn/no-for-each": "off",
       "unicorn/no-useless-undefined": "off",
-      "unicorn/prefer-at": "off",
     },
   }),
 

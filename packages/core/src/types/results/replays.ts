@@ -1388,10 +1388,7 @@ export class ReplayBundle {
       ).length;
       const navigations = r.actions.filter((a) => a.action === "navigate");
       const entry_url = navigations.length > 0 ? navigations[0]?.url : null;
-      const exit_url =
-        navigations.length > 0
-          ? navigations[navigations.length - 1]?.url
-          : null;
+      const exit_url = navigations.length > 0 ? navigations.at(-1)?.url : null;
       return {
         replay_id: r.replay_id,
         distinct_id: r.distinct_id,

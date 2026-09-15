@@ -243,9 +243,10 @@ export async function probeRegion(
         // Mirror the failure tail back into the success attempts so the
         // caller sees the full probe history (US 401 → EU 200 appears
         // as [["us", 401], ["eu", 200]]) — bodies dropped (:163-166).
-        const fullAttempts = failureAttempts
-          .map(([r, s]) => [r, s] as const)
-          .concat(successAttempts);
+        const fullAttempts = [
+          ...failureAttempts.map(([r, s]) => [r, s] as const),
+          ...successAttempts,
+        ];
         return { region, attempts: fullAttempts };
       }
       failureAttempts.push([

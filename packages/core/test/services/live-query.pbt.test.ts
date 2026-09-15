@@ -215,7 +215,7 @@ describe("TestTransformFunnelProperties", () => {
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
           if (result.steps.length > 0) {
             const firstCount = result.steps[0]!.count;
-            const lastCount = result.steps[result.steps.length - 1]!.count;
+            const lastCount = result.steps.at(-1)!.count;
             if (firstCount > 0) {
               const expected = lastCount / firstCount;
               expect(Math.abs(result.conversion_rate - expected)).toBeLessThan(
