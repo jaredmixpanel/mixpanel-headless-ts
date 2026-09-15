@@ -763,20 +763,14 @@ are reproduced so results match byte-for-byte across languages.
 
 ### Toolchain pins (developing the repo)
 
-- **Two Node floors.** The published packages run on Node ≥ 22.12
-  (`.node-version` pins the 22 line; CI runs 24). Developing the repo needs
-  **Node ^22.22.2 or ≥ 24.15** — the strictest dev dependency
-  (`eslint-plugin-jsdoc` 64) requires it, so the root `package.json`
-  `engines` carries that higher floor and `.npmrc`'s `engine-strict=true`
-  turns it into one clear `npm ci` error up front rather than a confusing
-  per-package failure mid-install.
-- **`typescript` is pinned `~6.0.3`, not `^`.** TypeScript 7 is `latest` on npm,
-  but typescript-eslint's peer range is `<6.1.0`, so a casual
-  `npm i -D typescript` would break `npm run lint`. Move the pin when
-  typescript-eslint (and TypeDoc) support TS 7.
+Developing the repository needs a newer Node than using the packages does, and
+`typescript` is pinned to a tilde range on purpose — see
+[CONTRIBUTING.md → Toolchain pins](CONTRIBUTING.md#toolchain-pins).
 
 ---
 
 _Developing the port itself? This README covers the consumer surface — see
-[`CLAUDE.md`](CLAUDE.md) for the repository layout, the conformance rig, and the
-`npm run check` gate._
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for the repository layout, the
+`npm run check` gate, generated files and conventions, and
+[`PORTING.md`](PORTING.md) for the pinned Python revision, the known
+divergences, and what the conformance corpus and differential oracle prove._
