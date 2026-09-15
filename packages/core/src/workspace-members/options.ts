@@ -97,7 +97,14 @@ export interface WorkspaceOptions {
   readonly clientOptions?: Omit<MixpanelClientOptions, "session"> | undefined;
   /** `warnings.warn` sink threaded into the discovery service (R9.5). */
   readonly warn?: WarningSink | undefined;
-  /** Debug-log sink threaded into the discovery service (R9.5). */
+  /**
+   * Debug/warning/info log sink (R9.5 — `core` never touches
+   * `console`). Default: {@link NOOP_LOGGER}, so every message is
+   * dropped. Python's default (`logging.lastResort`) prints WARNING and
+   * above to stderr, so hosts that want that visibility inject a logger
+   * that writes `warning` somewhere — the node and browser factories are
+   * the places to do it. Missing levels are filled with no-ops.
+   */
   readonly logger?: WorkspaceLogger | undefined;
   /**
    * Slug minter for {@link Workspace.createReportLink} (the
@@ -191,6 +198,51 @@ export interface WorkspaceLogger extends DiscoveryLogger {
    * @param message - The formatted text (never vector-compared).
    */
   info?: (message: string) => void;
+}
+
+/** A {@link WorkspaceLogger} with every level present — what the facade stores. */
+export type ResolvedWorkspaceLogger = Required<WorkspaceLogger>;
+
+/** A log sink that drops the message (`core` has no stderr, R9.5). */
+function dropMessage(): void {
+  // Intentionally empty: the default logger discards every level.
+}
+
+/**
+ * The facade's default logger: every level is a no-op. Python's default
+ * (`logging.lastResort`) prints WARNING and above to stderr; a host that
+ * wants the same visibility passes its own {@link WorkspaceOptions.logger}.
+ */
+export const NOOP_LOGGER: ResolvedWorkspaceLogger = Object.freeze({
+  debug: dropMessage,
+  warning: dropMessage,
+  info: dropMessage,
+});
+
+/**
+ * Fill the optional levels of an injected logger with no-ops so the
+ * facade can call `logger.warning(...)` unconditionally.
+ *
+ * @param logger - The injected logger, or `undefined` for the default.
+ * @returns A logger with every level present.
+ */
+export function resolveWorkspaceLogger(
+  logger: WorkspaceLogger | undefined,
+): ResolvedWorkspaceLogger {
+  if (logger === undefined) {
+    return NOOP_LOGGER;
+  }
+  return {
+    debug: (message: string): void => {
+      logger.debug(message);
+    },
+    warning: (message: string): void => {
+      logger.warning?.(message);
+    },
+    info: (message: string): void => {
+      logger.info?.(message);
+    },
+  };
 }
 
 /** Options bag of {@link Workspace.events}. */

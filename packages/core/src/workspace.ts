@@ -293,46 +293,47 @@ import {
   noProjectError,
   type ResolverSeams,
 } from "./workspace-members/lifecycle.js";
-import type {
-  ReportLinkParamsInput,
-  WorkspaceCreateReportLinkOptions,
-  WorkspaceEventCountsOptions,
-  WorkspaceEventsForReplayOptions,
-  WorkspaceEventsOptions,
-  WorkspaceFetchReplayOptions,
-  WorkspaceFetchReplaysOptions,
-  WorkspaceFlowQueryOptions,
-  WorkspaceFrequencyOptions,
-  WorkspaceFunnelOptions,
-  WorkspaceFunnelQueryOptions,
-  WorkspaceLexiconSchemasOptions,
-  WorkspaceListReplaysOptions,
-  WorkspaceLogger,
-  WorkspaceMeOptions,
-  WorkspaceNumericOptions,
-  WorkspaceOptions,
-  WorkspaceProjectsOptions,
-  WorkspacePropertyCountsOptions,
-  WorkspacePropertyValuesOptions,
-  WorkspaceQueryOptions,
-  WorkspaceQueryReportLinkOptions,
-  WorkspaceReplaysForUserOptions,
-  WorkspaceRetentionOptions,
-  WorkspaceRetentionQueryOptions,
-  WorkspaceRunFlowParamsOptions,
-  WorkspaceRunParamsOptions,
-  WorkspaceRunUserParamsOptions,
-  WorkspaceSavedReportLinkOptions,
-  WorkspaceSchemaGraphOptions,
-  WorkspaceSegmentationNumericOptions,
-  WorkspaceSegmentationOptions,
-  WorkspaceSignReplayOptions,
-  WorkspaceStreamReplayOptions,
-  WorkspaceSubpropertiesOptions,
-  WorkspaceTopEventsOptions,
-  WorkspaceUseOptions,
-  WorkspaceUserQueryOptions,
-  WorkspaceWorkspacesOptions,
+import {
+  type ReportLinkParamsInput,
+  type ResolvedWorkspaceLogger,
+  resolveWorkspaceLogger,
+  type WorkspaceCreateReportLinkOptions,
+  type WorkspaceEventCountsOptions,
+  type WorkspaceEventsForReplayOptions,
+  type WorkspaceEventsOptions,
+  type WorkspaceFetchReplayOptions,
+  type WorkspaceFetchReplaysOptions,
+  type WorkspaceFlowQueryOptions,
+  type WorkspaceFrequencyOptions,
+  type WorkspaceFunnelOptions,
+  type WorkspaceFunnelQueryOptions,
+  type WorkspaceLexiconSchemasOptions,
+  type WorkspaceListReplaysOptions,
+  type WorkspaceMeOptions,
+  type WorkspaceNumericOptions,
+  type WorkspaceOptions,
+  type WorkspaceProjectsOptions,
+  type WorkspacePropertyCountsOptions,
+  type WorkspacePropertyValuesOptions,
+  type WorkspaceQueryOptions,
+  type WorkspaceQueryReportLinkOptions,
+  type WorkspaceReplaysForUserOptions,
+  type WorkspaceRetentionOptions,
+  type WorkspaceRetentionQueryOptions,
+  type WorkspaceRunFlowParamsOptions,
+  type WorkspaceRunParamsOptions,
+  type WorkspaceRunUserParamsOptions,
+  type WorkspaceSavedReportLinkOptions,
+  type WorkspaceSchemaGraphOptions,
+  type WorkspaceSegmentationNumericOptions,
+  type WorkspaceSegmentationOptions,
+  type WorkspaceSignReplayOptions,
+  type WorkspaceStreamReplayOptions,
+  type WorkspaceSubpropertiesOptions,
+  type WorkspaceTopEventsOptions,
+  type WorkspaceUseOptions,
+  type WorkspaceUserQueryOptions,
+  type WorkspaceWorkspacesOptions,
 } from "./workspace-members/options.js";
 import type {
   WorkspaceDeleteSchemasOptions,
@@ -356,6 +357,7 @@ import {
 } from "./workspace-query-params.js";
 
 export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
+export { NOOP_LOGGER } from "./workspace-members/options.js";
 // TODO(Ω): shim — the option types live in ./workspace-members/options.ts;
 // repoint the barrel and delete this re-export.
 export type { MeCacheStore, MeService } from "./services/me.js";
@@ -466,8 +468,8 @@ export class Workspace {
   /** `warnings.warn` sink handed to the discovery service. */
   readonly #warn: WarningSink | undefined;
 
-  /** Debug-log sink handed to the discovery service. */
-  readonly #logger: WorkspaceLogger | undefined;
+  /** The log seam; {@link NOOP_LOGGER} unless the host injected one. */
+  readonly #logger: ResolvedWorkspaceLogger;
   /** The `generate_slug` seam (045-report-links). */
   readonly #generateSlug: () => string;
 
@@ -536,7 +538,7 @@ export class Workspace {
     this.#seams = mergeResolverSeams(options.seams);
     this.#meCacheFactory = options.meCache ?? inMemoryMeCache;
     this.#warn = options.warn;
-    this.#logger = options.logger;
+    this.#logger = resolveWorkspaceLogger(options.logger);
     this.#generateSlug = options.generateSlug ?? ((): string => generateSlug());
     // B6-W7 seams (W7 owns these two lines).
     this.#readFile = options.readFile ?? unportedReadFile;
@@ -584,7 +586,7 @@ export class Workspace {
     if (this.#discovery === null) {
       this.#discovery = new DiscoveryService(this.client, {
         ...(this.#warn === undefined ? {} : { warn: this.#warn }),
-        ...(this.#logger === undefined ? {} : { logger: this.#logger }),
+        logger: this.#logger,
       });
     }
     return this.#discovery;
@@ -1559,7 +1561,7 @@ export class Workspace {
         await this.#executeUserQueryParallel(params, limit, workers);
     } else {
       if (parallel && limit === 1) {
-        this.#logger?.debug(
+        this.#logger.debug(
           "parallel=True ignored: limit=1 uses sequential path",
         );
       }
@@ -1812,7 +1814,7 @@ export class Workspace {
     }
 
     if (pagesNeeded > 48) {
-      this.#logger?.warning?.(
+      this.#logger.warning(
         `Fetching ${pagesNeeded} pages may trigger rate limiting ` +
           "(engage API allows ~60 queries/hour).",
       );
@@ -1871,7 +1873,7 @@ export class Workspace {
             abort.error = error;
             return;
           }
-          this.#logger?.warning?.(
+          this.#logger.warning(
             `Failed to fetch page ${pageNum} (${
               error instanceof Error ? error.constructor.name : typeof error
             }: ${String(error)}), continuing with partial results`,
@@ -2174,7 +2176,7 @@ export class Workspace {
           options: Readonly<Record<string, unknown>>,
         ) => this.query(events, options),
         ...(this.#warn === undefined ? {} : { warn: this.#warn }),
-        ...(this.#logger === undefined ? {} : { logger: this.#logger }),
+        logger: this.#logger,
       });
     }
     return this.#replays;
@@ -2527,7 +2529,7 @@ export class Workspace {
           // One replay's CDN stall, 404, or parse error must not sink
           // the whole bundle. Log it and keep the successful replays;
           // only an all-fail batch raises.
-          this.#logger?.warning?.(
+          this.#logger.warning(
             `fetch_replays: skipping replay ${rid} — ` +
               `${error instanceof Error ? error.name : typeof error}: ${String(error)}`,
           );
@@ -5464,7 +5466,7 @@ export class Workspace {
       if (!(error instanceof WorkspaceScopeError)) {
         throw error;
       }
-      this.#logger?.debug(
+      this.#logger.debug(
         `report link: no workspace resolved for project ` +
           `${this.#session.project.id}; emitting project-only URL`,
       );
@@ -5532,7 +5534,7 @@ export class Workspace {
       }
       for (const w of schemaErrors) {
         if (w.severity === "warning") {
-          this.#logger?.warning?.(
+          this.#logger.warning(
             `create_report_link validation warning: ${w.message} [${w.code}]`,
           );
         }
@@ -5786,7 +5788,7 @@ export class Workspace {
           hintType !== null && SLUG_APP_FOR_TYPE.has(hintType)
             ? hintType
             : "insights";
-        this.#logger?.warning?.(
+        this.#logger.warning(
           `slug ${record.slug} has unknown report type ` +
             `${pythonRepr(record.bookmark_type)}; the canonical URL uses ` +
             `the ${SLUG_APP_FOR_TYPE.get(slugUrlType) as string} app and may ` +
@@ -5867,7 +5869,7 @@ export class Workspace {
       throw error;
     }
     if (parsed.overrides_jsurl !== null) {
-      this.#logger?.warning?.(
+      this.#logger.warning(
         `ignoring URL overrides ${pythonRepr(parsed.overrides_jsurl)}; ` +
           `running the saved report's base params`,
       );
@@ -5880,7 +5882,7 @@ export class Workspace {
         parsed.report_type_hint !== null && parsed.report_type_hint !== ""
           ? parsed.report_type_hint
           : "insights";
-      this.#logger?.warning?.(
+      this.#logger.warning(
         `saved report ${String(bookmark.id)} has unknown report type ` +
           `${pythonRepr(reportType)}; the canonical URL uses the ` +
           `${String(parsed.app)} app and may not open it correctly`,
