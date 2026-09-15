@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "description": "Conformance rig for Mixpanel Headless: replays the Python-extracted vector corpus against the TypeScript port.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",

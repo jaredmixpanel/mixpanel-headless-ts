@@ -59,7 +59,7 @@ export const MANIFEST_FILE = "manifest.json";
 // bytes rather than in a side file nobody vendors.
 const LICENSE_BANNER =
   `/*! ${PACKAGE_NAME} — bundled from ${SOURCE_REPO}. ` +
-  `Copyright (c) 2025-2026 Jared McFarland. MIT License. */`;
+  `Copyright (c) 2025-2026 Mixpanel, Inc. Licensed under the Apache License, Version 2.0. */`;
 
 // Recorded verbatim in the manifest so the consumer can reproduce the
 // build without reading this file.

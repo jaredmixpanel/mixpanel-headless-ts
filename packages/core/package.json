@@ -11,7 +11,7 @@
     "isomorphic",
     "api-client"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",
@@ -24,7 +24,8 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "NOTICE"
   ],
   "exports": {
     ".": {

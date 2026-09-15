@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Differential rig for Mixpanel Headless: the oracle-ts stdio bridge for cross-language fuzzing and the ajv bookmark-schema referee.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",

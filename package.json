@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "TypeScript port of the Python mixpanel_headless library: typed Mixpanel analytics queries, entity management, and data extraction for Node.js and browsers, verified against a Python-extracted conformance corpus.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git"
