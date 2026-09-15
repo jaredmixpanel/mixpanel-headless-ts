@@ -27,7 +27,7 @@ import ts from "typescript";
 export const BANNED_TOKENS = Object.freeze([
   {
     name: "batch-id",
-    re: /\bB\d+(?:-[A-Z]\d+|-R\d+|-W\d+|-S\d+|-N\d+|-K\d+|-M\d+|-ARB|-BIND|-MAPFIX)?\b/g,
+    re: /\bB\d+(?:-[A-Z]\d+|-ARB|-BIND|-MAPFIX)?\b/g,
   },
   { name: "requirement-id", re: /\bR\d+\.\d+\b/g },
   { name: "packet-id", re: /\bP\d-\d+\b/g },
@@ -469,9 +469,10 @@ export function fixPyLineRefs(line) {
   return { line: out, count };
 }
 
+// eslint-disable-next-line regexp/no-super-linear-backtracking -- audit-only regex over one trusted source line at a time; a linear-time rewrite would change which banner titles it accepts
 const MARKER_RE = /^(\s*)\/\/\s*(?:={3,}|-{3,})\s*(.*?)\s*(?:={3,}|-{3,})\s*$/;
 const OWNERSHIP_PART_RE = new RegExp(
-  String.raw`^(?:\S+\s+owns|owns|append-only|read-only|owned by \S+|${ID_ALTERNATION})$`,
+  String.raw`^(?:\S+\s+owns|owns|append-only|read-only|owned by \S+)$|^${ID_ALTERNATION}$`,
   "i",
 );
 
@@ -816,18 +817,19 @@ export function rewriteSource(text, options = {}) {
     }
     if (!contentLeft) {
       for (const ch of changes) ch.after = null;
+      let start;
+      let end;
       if (g.standalone) {
-        const start = lineStartOf(text, c.pos);
-        let end = lineEndOf(text, c.end);
+        start = lineStartOf(text, c.pos);
+        end = lineEndOf(text, c.end);
         if (end < text.length) end += 1;
-        edits.push({ start, end, replacement: "", changes });
       } else {
-        let start = c.pos;
-        let end = c.end;
+        start = c.pos;
+        end = c.end;
         if (start > 0 && text[start - 1] === " ") start--;
         else if (text[end] === " ") end++;
-        edits.push({ start, end, replacement: "", changes });
       }
+      edits.push({ start, end, replacement: "", changes });
       continue;
     }
     if (lines.length > 1 && kept.length === 2) {

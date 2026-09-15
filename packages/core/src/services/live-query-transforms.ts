@@ -177,6 +177,26 @@ function dictGetRecord(
 }
 
 /**
+ * Python `a or b or fallback` — the first truthy candidate, else the
+ * fallback.
+ *
+ * @param candidates - The operands, in order.
+ * @param fallback - Returned when every candidate is falsy.
+ * @returns The first Python-truthy candidate, or `fallback`.
+ */
+function firstPyTruthy(
+  candidates: readonly unknown[],
+  fallback: unknown,
+): unknown {
+  for (const candidate of candidates) {
+    if (pyTruthy(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
+}
+
+/**
  * CPython's binary `+` over the JSON value domain
  * (`existing + count`, `live_query.py:127` — B5-ARB FID-F1: the raw
  * values are stored and the coercion happens AT the operator site).
@@ -476,8 +496,14 @@ export function transformFunnel(
   let prevCount: unknown = 0;
   const orderedSteps = [...aggregatedCounts].sort((a, b) => a[0] - b[0]);
   for (const [idx, [event, count]] of orderedSteps) {
-    const convRate =
-      idx === 0 ? 1.0 : pyGtZero(prevCount) ? pyDiv(count, prevCount) : 0.0;
+    let convRate: number;
+    if (idx === 0) {
+      convRate = 1.0;
+    } else if (pyGtZero(prevCount)) {
+      convRate = pyDiv(count, prevCount);
+    } else {
+      convRate = 0.0;
+    }
     steps.push(
       new FunnelResultStep({
         event: passthrough(event),
@@ -1338,7 +1364,7 @@ export function transformFlowResult(
 
   // Determine the result mode literal
   const resultMode: FlowMode =
-    mode === "tree" ? "tree" : mode === "paths" ? "paths" : "sankey";
+    mode === "tree" || mode === "paths" ? mode : "sankey";
 
   return new FlowQueryResult({
     computed_at: passthrough(computedAt),
@@ -1411,16 +1437,14 @@ export function parseTreeNode(raw: unknown): FlowTreeNode {
   // Time percentiles: camelCase or snake_case, may be null
   const tpStartRaw = dictGet(rawMap, "timePercentilesFromStart", null);
   const tpPrevRaw = dictGet(rawMap, "timePercentilesFromPrev", null);
-  const tpStart = pyTruthy(tpStartRaw)
-    ? tpStartRaw
-    : pyTruthy(dictGet(rawMap, "time_percentiles_from_start", null))
-      ? dictGet(rawMap, "time_percentiles_from_start", null)
-      : {};
-  const tpPrev = pyTruthy(tpPrevRaw)
-    ? tpPrevRaw
-    : pyTruthy(dictGet(rawMap, "time_percentiles_from_prev", null))
-      ? dictGet(rawMap, "time_percentiles_from_prev", null)
-      : {};
+  const tpStart = firstPyTruthy(
+    [tpStartRaw, dictGet(rawMap, "time_percentiles_from_start", null)],
+    {},
+  );
+  const tpPrev = firstPyTruthy(
+    [tpPrevRaw, dictGet(rawMap, "time_percentiles_from_prev", null)],
+    {},
+  );
 
   return new FlowTreeNode({
     event: passthrough(dictGet(step, "event", "")),

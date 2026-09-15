@@ -73,7 +73,9 @@ function classEscape(cp: number): string {
  * range against CPython 3.14.6 (B2-M3 probe, notes file) — which is
  * the pinned {@link PYTHON_STR_WHITESPACE} table.
  */
-const PY_SPACE_CLASS = [...PYTHON_STR_WHITESPACE].map(classEscape).join("");
+const PY_SPACE_CLASS = [...PYTHON_STR_WHITESPACE]
+  .map((cp) => classEscape(cp))
+  .join("");
 
 /**
  * RegExp character-class body for Python's `\d` in a **str** pattern:

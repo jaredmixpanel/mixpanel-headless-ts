@@ -1441,8 +1441,7 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
     steps: stepDicts,
     date_range: buildDateRange({ from_date, to_date, last }),
     chartType: mode === "paths" ? "top-paths" : "sankey",
-    flows_merge_type:
-      mode === "tree" ? "tree" : mode === "paths" ? "list" : "graph",
+    flows_merge_type: flowsMergeType(mode),
     count_type,
     cardinality_threshold: cardinality,
     version: 2,
@@ -1622,8 +1621,10 @@ export function resolveAndBuildFlowParams(
   for (const [i, s] of steps.entries()) {
     const spath = `steps[${i}]`;
     // Per-step forward/reverse type + range checks
-    stepErrors.push(...checkStepDirection(s.forward, "forward", spath));
-    stepErrors.push(...checkStepDirection(s.reverse, "reverse", spath));
+    stepErrors.push(
+      ...checkStepDirection(s.forward, "forward", spath),
+      ...checkStepDirection(s.reverse, "reverse", spath),
+    );
     // Per-step filters_combinator must be "all" or "any"
     if (s.filters_combinator !== "all" && s.filters_combinator !== "any") {
       stepErrors.push(
@@ -2299,6 +2300,22 @@ function timegmFromIsoDate(value: string): number {
     throw new ValueError(`day is out of range for month`);
   }
   return daysFromCivilDate(year, month, day) * 86400;
+}
+
+/**
+ * The `flows_merge_type` bookmark literal for a flows `mode`.
+ *
+ * @param mode - The flows mode (`tree` / `paths` / anything else = sankey).
+ * @returns The bookmark literal.
+ */
+function flowsMergeType(mode: string): "tree" | "list" | "graph" {
+  if (mode === "tree") {
+    return "tree";
+  }
+  if (mode === "paths") {
+    return "list";
+  }
+  return "graph";
 }
 
 /**

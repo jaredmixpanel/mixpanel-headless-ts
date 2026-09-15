@@ -334,7 +334,7 @@ describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () =
         wrong.push(`${row.method} ${row.template}: ${row.pin} with no source`);
         continue;
       }
-      const placeholder = `{${row.pin === "project" ? "project_id" : row.pin === "organization" ? "organization_id" : "workspace_id"}}`;
+      const placeholder = `{${row.pin}_id}`;
       if (evidence.has("path") !== row.template.includes(placeholder)) {
         wrong.push(`${row.method} ${row.template}: path source disagrees`);
       }

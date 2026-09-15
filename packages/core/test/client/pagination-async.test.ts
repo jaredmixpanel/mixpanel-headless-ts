@@ -52,12 +52,14 @@ describe("PaginationAsyncBehavior", () => {
       requestCount += 1;
       await new Promise((resolve) => setTimeout(resolve, 1));
       const cursor = new URL(request.url).searchParams.get("cursor");
-      const body =
-        cursor === null
-          ? page([1], "c2")
-          : cursor === "c2"
-            ? page([2], "c3")
-            : page([3], null);
+      let body: ReturnType<typeof page>;
+      if (cursor === null) {
+        body = page([1], "c2");
+      } else if (cursor === "c2") {
+        body = page([2], "c3");
+      } else {
+        body = page([3], null);
+      }
       return new Response(JSON.stringify(body.json), {
         status: 200,
         headers: { "content-type": "application/json" },

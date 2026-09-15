@@ -876,8 +876,8 @@ class SequenceMatcher {
    */
   ratio(): number {
     let matches = 0;
-    for (const [, , size] of this.getMatchingBlocks()) {
-      matches += size;
+    for (const block of this.getMatchingBlocks()) {
+      matches += block[2];
     }
     return SequenceMatcher.calculateRatio(
       matches,
@@ -893,11 +893,11 @@ class SequenceMatcher {
    */
   quickRatio(): number {
     if (this.fullbcount === null) {
-      const fullbcount = new Map<string, number>();
+      const counts = new Map<string, number>();
       for (const elt of this.b) {
-        fullbcount.set(elt, (fullbcount.get(elt) ?? 0) + 1);
+        counts.set(elt, (counts.get(elt) ?? 0) + 1);
       }
-      this.fullbcount = fullbcount;
+      this.fullbcount = counts;
     }
     const fullbcount = this.fullbcount;
     const avail = new Map<string, number>();

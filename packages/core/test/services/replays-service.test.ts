@@ -141,12 +141,14 @@ function parseFileNum(url: string): number {
  */
 function cdnFetch(handler: CdnHandler): typeof fetch {
   return ((input: string | URL | Request): Promise<Response> => {
-    const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input.url;
+    let url: string;
+    if (typeof input === "string") {
+      url = input;
+    } else if (input instanceof URL) {
+      url = input.href;
+    } else {
+      url = input.url;
+    }
     const canned = handler(url);
     const headers = new Headers(canned.headers ?? {});
     let body: string | null = null;
@@ -679,7 +681,9 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
   it("test_missing_retention_defaults_30_with_warning", async () => {
     const warnings: string[] = [];
     const { service } = serviceWithSeries(DISCOVERY_SERIES_NO_RETENTION, {
-      warn: (message) => warnings.push(message),
+      warn: (message) => {
+        warnings.push(message);
+      },
     });
     const out = await service.discover({
       distinctId: "u-1",
@@ -717,7 +721,9 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
       },
     };
     const { service } = serviceWithSeries(series, {
-      warn: (message) => warnings.push(message),
+      warn: (message) => {
+        warnings.push(message);
+      },
     });
     const out = await service.discover({
       distinctId: "u-1",
@@ -768,7 +774,9 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
   it("test_missing_retention_warning_has_no_doubled_prefix", async () => {
     const warnings: string[] = [];
     const { service } = serviceWithSeries(DISCOVERY_SERIES_NO_RETENTION, {
-      warn: (message) => warnings.push(message),
+      warn: (text) => {
+        warnings.push(text);
+      },
     });
     await service.discover({
       distinctId: "u-1",

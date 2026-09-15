@@ -215,9 +215,13 @@ export async function listBookmarksV2(
     bookmark_type: options.bookmark_type ?? null,
     ids: options.ids ?? null,
   });
-  return validateResponseModels(Bookmark, raw.map(native), {
-    endpoint: "list_bookmarks_v2",
-  });
+  return validateResponseModels(
+    Bookmark,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_bookmarks_v2",
+    },
+  );
 }
 
 /**
@@ -451,9 +455,13 @@ export async function listCohortsFull(
     data_group_id: options.data_group_id ?? null,
     ids: options.ids ?? null,
   });
-  return validateResponseModels(Cohort, raw.map(native), {
-    endpoint: "list_cohorts_full",
-  });
+  return validateResponseModels(
+    Cohort,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_cohorts_full",
+    },
+  );
 }
 
 /**

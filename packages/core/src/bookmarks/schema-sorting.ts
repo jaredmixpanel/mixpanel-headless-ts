@@ -974,7 +974,7 @@ export function validateFieldValue(
       // `1`/`0` and `1.0` matches `1`; strings never coerce
       // (probe `lit-int/*`).
       const numeric =
-        typeof value === "boolean" ? (value ? 1 : 0) : numericValue(value);
+        typeof value === "boolean" ? Number(value) : numericValue(value);
       if (numeric !== undefined && type.values.includes(numeric)) {
         return;
       }

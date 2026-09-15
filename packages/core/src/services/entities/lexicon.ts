@@ -527,13 +527,14 @@ export function createLexiconMethods(core: ClientCore): LexiconMethods {
       });
       // Python `result.get("results") if isinstance(result, dict) else
       // result` — a missing key reads as None (`.get` default).
-      const rows: JsonValue | null = isPlainRecord(result)
-        ? Object.hasOwn(result, "results")
-          ? // noUncheckedIndexedAccess: hasOwn guarantees presence and
-            // the lossless JSON model carries no undefined members.
-            (result["results"] ?? null)
-          : null
-        : result;
+      let rows: JsonValue | null = result;
+      if (isPlainRecord(result)) {
+        // noUncheckedIndexedAccess: hasOwn guarantees presence and the
+        // lossless JSON model carries no undefined members.
+        rows = Object.hasOwn(result, "results")
+          ? (result["results"] ?? null)
+          : null;
+      }
       if (!Array.isArray(rows)) {
         throw new MixpanelHeadlessError(
           `Unexpected response from per-event properties: ` +

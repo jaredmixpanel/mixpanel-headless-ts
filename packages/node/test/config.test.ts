@@ -534,7 +534,7 @@ describe("TestFixtureLoad", () => {
   // Fixture TOML carried VERBATIM from tests/fixtures/configs/ (packet
   // §0.4 — read-side locks over the exact Python bytes).
   function loadFixture(name: string): ConfigManager {
-    const src = new URL(`./fixtures/configs/${name}`, import.meta.url);
+    const src = new URL(`fixtures/configs/${name}`, import.meta.url);
     const dir = makeTempDir(cleanups);
     const dst = join(dir, "config.toml");
     writeFileSync(dst, readFileSync(src));

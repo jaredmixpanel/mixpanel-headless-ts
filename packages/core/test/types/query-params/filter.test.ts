@@ -478,12 +478,12 @@ describe("property-spec helper types", () => {
   });
 
   it("InlineCustomProperty defaults + numeric factory", () => {
-    const inline = new InlineCustomProperty({
+    const prop = new InlineCustomProperty({
       formula: "A * B",
       inputs: { A: new PropertyInput({ name: "price", type: "number" }) },
     });
-    expect(inline.property_type).toBeNull();
-    expect(inline.resource_type).toBe("events");
+    expect(prop.property_type).toBeNull();
+    expect(prop.resource_type).toBe("events");
     const numeric = InlineCustomProperty.numeric("A * B", {
       A: "price",
       B: "quantity",

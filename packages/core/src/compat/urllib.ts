@@ -201,7 +201,7 @@ function isIpv6Literal(text: string): boolean {
     for (let i = 0; i < groups.length; i += 1) {
       const group = groups[i] as string;
       if (i === groups.length - 1 && group.includes(".")) {
-        if (!/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.test(group)) {
+        if (!/^\d{1,3}(?:\.\d{1,3}){3}$/u.test(group)) {
           return null;
         }
         if (group.split(".").some((octet) => Number(octet) > 255)) {

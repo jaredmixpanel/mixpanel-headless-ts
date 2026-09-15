@@ -240,14 +240,16 @@ async function* guardedByteSource(
  * @returns The error text.
  */
 function httpStatusText(status: number, url: string): string {
-  const category =
-    status < 200
-      ? "Informational response"
-      : status < 400
-        ? "Redirect response"
-        : status < 500
-          ? "Client error"
-          : "Server error";
+  let category: string;
+  if (status < 200) {
+    category = "Informational response";
+  } else if (status < 400) {
+    category = "Redirect response";
+  } else if (status < 500) {
+    category = "Client error";
+  } else {
+    category = "Server error";
+  }
   return `${category} '${status}' for url '${url}'`;
 }
 

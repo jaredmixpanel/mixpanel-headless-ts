@@ -910,34 +910,6 @@ const config = defineConfig([
     },
   }),
 
-  // --- Phase 4 lane L3: exhaustiveness, throw/async hygiene, misc — pending; delete this block when the lane lands ---
-  ...lane("L3", {
-    rules: {
-      "@typescript-eslint/no-shadow": "off",
-      "no-nested-ternary": "off",
-      "@typescript-eslint/no-extraneous-class": "off",
-      "@typescript-eslint/no-useless-constructor": "off",
-      "@typescript-eslint/no-generated-empty-object-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "unicorn/no-array-callback-reference": "off",
-      "unicorn/no-return-array-push": "off",
-      "unicorn/no-useless-recursion": "off",
-      "unicorn/no-error-property-assignment": "off",
-      "unicorn/no-unreadable-array-destructuring": "off",
-      "unicorn/no-this-assignment": "off",
-      "unicorn/no-object-as-default-parameter": "off",
-      "unicorn/relative-url-style": "off",
-      "unicorn/prefer-number-coercion": "off",
-      "unicorn/prefer-hoisting-branch-code": "off",
-      "unicorn/no-immediate-mutation": "off",
-      "unicorn/prefer-single-call": "off",
-      "regexp/no-super-linear-backtracking": "off",
-      "regexp/no-dupe-disjunctions": "off",
-      "regexp/no-unused-capturing-group": "off",
-      "regexp/no-useless-non-capturing-group": "off",
-    },
-  }),
-
   // --- Phase 4 lane L3b: semantics-sensitive autofixers — pending; L3 applies these one rule at a time against the corpus ---
   ...lane("L3b", {
     rules: {

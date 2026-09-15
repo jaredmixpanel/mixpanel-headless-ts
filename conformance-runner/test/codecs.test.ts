@@ -184,7 +184,9 @@ describe("encodeExpectValue (D6 rules 2/5 at the output boundary)", () => {
   });
 
   it("rejects unknown class instances", () => {
-    class Mystery {}
+    class Mystery {
+      readonly tag = "mystery";
+    }
     expect(() => encodeExpectValue(new Mystery())).toThrow(
       UnencodableValueError,
     );

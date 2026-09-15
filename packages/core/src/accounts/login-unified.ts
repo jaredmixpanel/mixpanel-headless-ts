@@ -804,7 +804,7 @@ async function loginUnifiedNewCredential(
   let finalName: string;
   if (args.name === null) {
     const existingNames = new Set(
-      effects.config.listAccounts().map((summary) => summary.name),
+      effects.config.listAccounts().map((account) => account.name),
     );
     finalName = defaultAccountName(meResp, existingNames);
   } else {

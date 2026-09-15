@@ -587,9 +587,9 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
           // Mirror OnDiskTokenResolver.get_browser_token: serve the
           // persisted per-account tokens (the fake store here), else
           // the actionable missing-tokens error.
-          const persisted = tokenStore.written.get(name);
-          if (persisted !== undefined) {
-            return Promise.resolve(persisted.access_token.reveal());
+          const written = tokenStore.written.get(name);
+          if (written !== undefined) {
+            return Promise.resolve(written.access_token.reveal());
           }
           return Promise.reject(
             new OAuthError(

@@ -199,7 +199,7 @@ function jsonDumpsLike(value: JsonValue): string {
     return value.raw;
   }
   if (Array.isArray(value)) {
-    return `[${value.map(jsonDumpsLike).join(", ")}]`;
+    return `[${value.map((item) => jsonDumpsLike(item)).join(", ")}]`;
   }
   return `{${Object.entries(value)
     .map(([k, v]) => `${JSON.stringify(k)}: ${jsonDumpsLike(v)}`)
@@ -237,7 +237,7 @@ function toPythonValue(value: JsonValue): PythonValue {
     return value.isIntegerToken() ? BigInt(value.raw) : value.toNumber();
   }
   if (Array.isArray(value)) {
-    return value.map(toPythonValue);
+    return value.map((item) => toPythonValue(item));
   }
   if (isPlainRecord(value)) {
     const out: Record<string, PythonValue> = {};
@@ -406,12 +406,14 @@ export function handleResponse(
     // context/phase3/bug-reports/python-handle-response-403-typeerror.md;
     // the R10.7 element-membership / TypeError twin retired with it).
     const flag = "SESSION_RECORDING_SENSITIVE_DATA";
-    const bodyText: string =
-      typeof responseBody === "string"
-        ? responseBody
-        : responseBody === null
-          ? ""
-          : jsonDumpsLike(responseBody);
+    let bodyText: string;
+    if (typeof responseBody === "string") {
+      bodyText = responseBody;
+    } else if (responseBody === null) {
+      bodyText = "";
+    } else {
+      bodyText = jsonDumpsLike(responseBody);
+    }
     const flagged = bodyText.includes(flag);
     if (flagged) {
       const projectIdInt = pythonInt(context.projectId);

@@ -419,11 +419,11 @@ export function serializeAsciiJson(value: SerializableValue): string {
     return `[${value.map((item) => serializeAsciiJson(item)).join(", ")}]`;
   }
   if (value instanceof RawObject) {
-    const members = value.entries.map(
+    const rawMembers = value.entries.map(
       ([key, member]) =>
         `${serializeAsciiString(key)}: ${serializeAsciiJson(member)}`,
     );
-    return `{${members.join(", ")}}`;
+    return `{${rawMembers.join(", ")}}`;
   }
   if (typeof value === "object" && !isPlainObject(value)) {
     throw new Error(

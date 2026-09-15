@@ -176,7 +176,11 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
   /** The `_narration_lines` twin: every string passed to `narrate`. */
   async function narrationLines(env: Env): Promise<string[]> {
     const lines: string[] = [];
-    await runWithSpy(env, { narrate: (msg) => lines.push(msg) });
+    await runWithSpy(env, {
+      narrate: (msg) => {
+        lines.push(msg);
+      },
+    });
     expect(lines.length).toBeGreaterThan(0);
     return lines;
   }

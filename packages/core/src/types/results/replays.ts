@@ -32,7 +32,11 @@
  * `:13585`, `:13738`, `:13777`).
  */
 
-import { compareCodepoints, pythonFloatStr } from "../../compat/index.js";
+import {
+  compareCodepoints,
+  compareCodeUnits,
+  pythonFloatStr,
+} from "../../compat/index.js";
 import { pythonSample } from "../../compat/python-random.js";
 import { ParamValidationError } from "../../errors.js";
 import {
@@ -1573,7 +1577,7 @@ export class ReplayBundle {
    */
   filter(predicate: (replay: Replay) => boolean): ReplayBundle {
     return new ReplayBundle({
-      replays: this.replays.filter(predicate),
+      replays: this.replays.filter((replay) => predicate(replay)),
       computed_at: this.computed_at,
       project_id: this.project_id,
     });
@@ -1852,9 +1856,11 @@ export class ReplayBundle {
     if (rows.length > 0) {
       const sum = (column: string): number =>
         rows.reduce((acc, row) => acc + Number(row[column] ?? 0), 0);
-      sections.push(`- total events: ${String(Math.trunc(sum("n_events")))}`);
-      sections.push(`- total actions: ${String(Math.trunc(sum("n_actions")))}`);
-      sections.push(`- total errors: ${String(Math.trunc(sum("n_errors")))}`);
+      sections.push(
+        `- total events: ${String(Math.trunc(sum("n_events")))}`,
+        `- total actions: ${String(Math.trunc(sum("n_actions")))}`,
+        `- total errors: ${String(Math.trunc(sum("n_errors")))}`,
+      );
     }
     sections.push("");
     for (const r of this.replays) {
@@ -1904,8 +1910,8 @@ export class ReplayBundle {
     };
     const a = countByAction(this);
     const b = countByAction(other);
-    const keys = [...new Set([...a.keys(), ...b.keys()])].sort((x, y) =>
-      x < y ? -1 : x > y ? 1 : 0,
+    const keys = [...new Set([...a.keys(), ...b.keys()])].sort(
+      compareCodeUnits,
     );
     return keys.map((k) => ({
       action: k,

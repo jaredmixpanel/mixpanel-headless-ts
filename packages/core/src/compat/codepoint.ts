@@ -137,6 +137,27 @@ export function compareCodepoints(a: string, b: string): number {
 }
 
 /**
+ * JS default string order — UTF-16 code units, i.e. what `a < b` does.
+ * The counterpart of {@link compareCodepoints} for sort sites that keep
+ * the engine's native order (they differ only where a surrogate pair
+ * meets a BMP character above U+D7FF); consolidating those sites onto
+ * one comparator is a Phase 6 item (CLEANUP-PLAN.md §10.8).
+ *
+ * @param a - Left operand.
+ * @param b - Right operand.
+ * @returns Negative when `a < b`, positive when `a > b`, `0` when equal.
+ */
+export function compareCodeUnits(a: string, b: string): number {
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
  * Python `sorted(values)` for strings — codepoint order (rulebook R11.5).
  *
  * JS default `<`/`sort()` compare UTF-16 units, which inverts pairs like

@@ -201,12 +201,18 @@ export async function findAvailablePort(): Promise<number | null> {
  * @param url - The authorize URL to open.
  */
 function defaultOpenBrowser(url: string): void {
-  const [command, args]: readonly [string, readonly string[]] =
-    process.platform === "darwin"
-      ? ["open", [url]]
-      : process.platform === "win32"
-        ? ["cmd", ["/c", "start", "", url]]
-        : ["xdg-open", [url]];
+  let command: string;
+  let args: readonly string[];
+  if (process.platform === "darwin") {
+    command = "open";
+    args = [url];
+  } else if (process.platform === "win32") {
+    command = "cmd";
+    args = ["/c", "start", "", url];
+  } else {
+    command = "xdg-open";
+    args = [url];
+  }
   const child = spawn(command, [...args], {
     stdio: "ignore",
     detached: true,

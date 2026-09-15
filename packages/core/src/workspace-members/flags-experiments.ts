@@ -121,9 +121,13 @@ export async function listFeatureFlags(
   const raw = await client.listFeatureFlags({
     include_archived: options.include_archived ?? false,
   });
-  return validateResponseModels(FeatureFlag, raw.map(native), {
-    endpoint: "list_feature_flags",
-  });
+  return validateResponseModels(
+    FeatureFlag,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_feature_flags",
+    },
+  );
 }
 
 /**
@@ -371,9 +375,13 @@ export async function listExperiments(
   const raw = await client.listExperiments({
     include_archived: options.include_archived ?? false,
   });
-  return validateResponseModels(Experiment, raw.map(native), {
-    endpoint: "list_experiments",
-  });
+  return validateResponseModels(
+    Experiment,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_experiments",
+    },
+  );
 }
 
 /**

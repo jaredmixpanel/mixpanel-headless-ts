@@ -232,9 +232,10 @@ for (const entry of entries) {
     `    tsName: "${entry.tsName}",`,
     `    kind: "${entry.kind}",`,
     `    capability: "${entry.capability}",`,
+    `    params: ${JSON.stringify(entry.params)},`,
+    `    kwonly: ${JSON.stringify(entry.kwonly)},`,
+    "  },",
   );
-  lines.push(`    params: ${JSON.stringify(entry.params)},`);
-  lines.push(`    kwonly: ${JSON.stringify(entry.kwonly)},`, "  },");
 }
 lines.push("};", "");
 

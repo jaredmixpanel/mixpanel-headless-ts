@@ -365,7 +365,11 @@ describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
 describe("missing retention defaults to 30 with a warning (TestRetentionWarning)", () => {
   it("test_missing_retention_emits_userwarning", async () => {
     const recorded: string[] = [];
-    const ws = makeWorkspace({ warn: (message) => recorded.push(message) });
+    const ws = makeWorkspace({
+      warn: (message) => {
+        recorded.push(message);
+      },
+    });
     ws.replaysService = new ReplaysService(ws.client, {
       queryFn: () =>
         Promise.resolve({
@@ -376,7 +380,9 @@ describe("missing retention defaults to 30 with a warning (TestRetentionWarning)
             },
           },
         }),
-      warn: (message) => recorded.push(message),
+      warn: (message) => {
+        recorded.push(message);
+      },
     });
 
     const result = await ws.listReplays({

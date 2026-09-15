@@ -11,7 +11,11 @@
  * `nodes_df`/`edges_df`/`trees_df`).
  */
 
-import { pythonFloatCoerce, pythonInt } from "../../compat/index.js";
+import {
+  compareCodeUnits,
+  pythonFloatCoerce,
+  pythonInt,
+} from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
 import type {
   FlowAnchorType,
@@ -105,7 +109,7 @@ export function normalizeDateKey(date_key: string): string {
  * @returns A new sorted array.
  */
 function sortedKeys(keys: readonly string[]): readonly string[] {
-  return [...keys].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...keys].sort(compareCodeUnits);
 }
 
 // ---------------------------------------------------------------------------

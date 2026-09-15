@@ -151,9 +151,13 @@ export async function listAnnotations(
     to_date: options.to_date ?? null,
     tags: options.tags ?? null,
   });
-  return validateResponseModels(Annotation, raw.map(native), {
-    endpoint: "list_annotations",
-  });
+  return validateResponseModels(
+    Annotation,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_annotations",
+    },
+  );
 }
 
 /**
@@ -248,9 +252,13 @@ export async function listAnnotationTags(
   client: MixpanelClient,
 ): Promise<AnnotationTag[]> {
   const raw = await client.listAnnotationTags();
-  return validateResponseModels(AnnotationTag, raw.map(native), {
-    endpoint: "list_annotation_tags",
-  });
+  return validateResponseModels(
+    AnnotationTag,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_annotation_tags",
+    },
+  );
 }
 
 /**
@@ -288,9 +296,13 @@ export async function listWebhooks(
   client: MixpanelClient,
 ): Promise<ProjectWebhook[]> {
   const raw = await client.listWebhooks();
-  return validateResponseModels(ProjectWebhook, raw.map(native), {
-    endpoint: "list_webhooks",
-  });
+  return validateResponseModels(
+    ProjectWebhook,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_webhooks",
+    },
+  );
 }
 
 /**
@@ -394,9 +406,13 @@ export async function listAlerts(
     bookmark_id: options.bookmark_id ?? null,
     skip_user_filter: options.skip_user_filter ?? null,
   });
-  return validateResponseModels(CustomAlert, raw.map(native), {
-    endpoint: "list_alerts",
-  });
+  return validateResponseModels(
+    CustomAlert,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_alerts",
+    },
+  );
 }
 
 /**

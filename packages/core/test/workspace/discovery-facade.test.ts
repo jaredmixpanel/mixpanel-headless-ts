@@ -117,7 +117,11 @@ describe("Workspace discovery members", () => {
         status: 200,
         json: [JSON.stringify({ id: "abc" }), JSON.stringify({ id: 123 })],
       }),
-      { warn: (message) => captured.push(message) },
+      {
+        warn: (message) => {
+          captured.push(message);
+        },
+      },
     );
     const subs = await ws.subproperties("cart", { event: "X" });
     expect(subs[0]).toBeInstanceOf(SubPropertyInfo);

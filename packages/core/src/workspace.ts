@@ -2397,14 +2397,18 @@ export class Workspace {
     const workers = options.workers ?? 5;
 
     if (Object.hasOwn(params, "action")) {
-      const [aggregateData, total, computedAt, meta] =
-        await this.#executeUserAggregate(params);
+      const [
+        aggregateData,
+        aggregateTotal,
+        aggregateComputedAt,
+        aggregateMeta,
+      ] = await this.#executeUserAggregate(params);
       return new UserQueryResult({
-        computed_at: computedAt,
-        total,
+        computed_at: aggregateComputedAt,
+        total: aggregateTotal,
         profiles: [],
         params,
-        meta,
+        meta: aggregateMeta,
         mode: "aggregate",
         aggregate_data: aggregateData,
       });
@@ -3819,7 +3823,7 @@ export class Workspace {
    * @internal
    */
   #businessContextHost(): BusinessContextHost {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    // eslint-disable-next-line @typescript-eslint/no-this-alias, unicorn/no-this-assignment -- the object-literal getters below need the facade's `this`, not the literal's
     const facade = this;
     return {
       client: facade.client,
@@ -6373,6 +6377,11 @@ export class Workspace {
       ? response["created_at"]
       : undefined;
 
+    let createdAt: string | null = null;
+    if (created !== undefined && created !== null) {
+      createdAt =
+        typeof created === "string" ? created : jsonValuePythonStr(created);
+    }
     return new ReportLink({
       url,
       slug,
@@ -6382,12 +6391,7 @@ export class Workspace {
       name,
       description,
       bookmark_id: bookmarkId,
-      created_at:
-        created !== undefined && created !== null
-          ? typeof created === "string"
-            ? created
-            : jsonValuePythonStr(created)
-          : null,
+      created_at: createdAt,
     });
   }
 
@@ -6567,12 +6571,7 @@ export class Workspace {
     const region = this.#session.account.region;
     const projectId = this.#projectId();
     const pinned = this.#session.workspace ?? null;
-    const workspaceId =
-      parsed.workspace_id === null
-        ? pinned === null
-          ? null
-          : pinned.id
-        : parsed.workspace_id;
+    const workspaceId = parsed.workspace_id ?? pinned?.id ?? null;
 
     if (parsed.kind === "slug") {
       const raw = await this.client.getBookmarkUrl(parsed.slug as string);
@@ -6860,8 +6859,7 @@ export class Workspace {
     const normalized = reportType === "funnel" ? "funnels" : reportType;
     const pinned = this.#session.workspace ?? null;
     const explicit = options.workspace_id ?? null;
-    const wid =
-      explicit === null ? (pinned === null ? null : pinned.id) : explicit;
+    const wid = explicit ?? pinned?.id ?? null;
     return buildBookmarkUrl({
       region: this.#session.account.region,
       project_id: this.#projectId(),

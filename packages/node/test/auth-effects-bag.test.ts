@@ -72,7 +72,10 @@ afterEach(() => {
  * @returns The bag plus the tmp config path.
  */
 function tmpBag(
-  extra: Omit<Parameters<typeof createNodeAuthEffects>[0], "configPath"> = {},
+  extra: Omit<
+    NonNullable<Parameters<typeof createNodeAuthEffects>[0]>,
+    "configPath"
+  > = {},
 ): {
   effects: ReturnType<typeof createNodeAuthEffects>;
   configPath: string;

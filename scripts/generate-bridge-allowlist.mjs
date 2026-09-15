@@ -51,6 +51,8 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { compareStrings } from "./lib/compare-strings.mjs";
+
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RUNNER_DIR = resolve(REPO_ROOT, "conformance-runner");
 const CORPUS_DIR = resolve(RUNNER_DIR, "corpus");
@@ -122,7 +124,7 @@ function loadJson(path) {
 function corpusFiles(dir) {
   const found = [];
   for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
-    a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+    compareStrings(a.name, b.name),
   )) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
@@ -582,8 +584,7 @@ for (const route of routes.values()) {
   const access = [...route.access.keys()][0];
   const apis = [...route.apis.values()].sort(
     (a, b) =>
-      b.vectors.size - a.vectors.size ||
-      (a.pyApi < b.pyApi ? -1 : a.pyApi > b.pyApi ? 1 : 0),
+      b.vectors.size - a.vectors.size || compareStrings(a.pyApi, b.pyApi),
   );
   const primary = apis[0];
   const vectorCount = new Set(apis.flatMap((a) => [...a.vectors])).size;
@@ -698,9 +699,9 @@ if (problems.length > 0) {
 
 /** Sorted by (family, template, method) — spec §5.3 step 6. */
 const byRoute = (a, b) =>
-  (a.family < b.family ? -1 : a.family > b.family ? 1 : 0) ||
-  (a.template < b.template ? -1 : a.template > b.template ? 1 : 0) ||
-  (a.method < b.method ? -1 : a.method > b.method ? 1 : 0);
+  compareStrings(a.family, b.family) ||
+  compareStrings(a.template, b.template) ||
+  compareStrings(a.method, b.method);
 rows.sort(byRoute);
 deniedRoutes.sort(byRoute);
 

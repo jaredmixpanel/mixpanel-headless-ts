@@ -13,6 +13,7 @@
 // in TS — phase2-design C6 "no caching needed").
 import { describe, expect, it } from "vitest";
 
+import { compareCodeUnits } from "../../../src/compat/codepoint.js";
 import {
   UserQueryResult,
   type UserQueryResultFields,
@@ -173,9 +174,7 @@ describe("UserQueryResult.df profiles mode (TestUserQueryResultProfilesDf)", () 
       total: 2,
     }).rowColumns();
     const property_cols = cols.slice(2);
-    expect(property_cols).toEqual(
-      [...property_cols].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
-    );
+    expect(property_cols).toEqual([...property_cols].sort(compareCodeUnits));
   });
 
   it("test_df_row_count_matches_profiles", () => {

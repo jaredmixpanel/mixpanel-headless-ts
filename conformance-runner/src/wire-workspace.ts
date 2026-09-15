@@ -262,75 +262,82 @@ export function encodeFacadeValue(
   codecs: CodecRegistry,
   value: unknown,
 ): JsonValue {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (
-    typeof value === "string" ||
-    typeof value === "boolean" ||
-    typeof value === "number" ||
-    typeof value === "bigint"
-  ) {
-    return value as JsonValue;
-  }
-  if (value instanceof JsonNumber) {
-    return value;
-  }
-  if (value instanceof CoreJsonNumber) {
-    return new JsonNumber(value.raw);
-  }
-  if (value instanceof PyFloat) {
-    if (["NaN", "Infinity", "-Infinity"].includes(value.spelling)) {
-      return { $type: "float", value: value.spelling };
+  // Objects that re-encode through `toVectorPayload()` / `toJSON()` loop
+  // back here with the projected value (no self-call).
+  let current: unknown = value;
+  for (;;) {
+    if (current === null || current === undefined) {
+      return null;
     }
-    return new JsonNumber(value.spelling);
-  }
-  if (value instanceof PyDatetime) {
-    return { $type: "datetime", iso: value.iso };
-  }
-  if (value instanceof PyDate) {
-    return { $type: "date", iso: value.iso };
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => encodeFacadeValue(codecs, item));
-  }
-  if (value instanceof Map) {
-    const out: Record<string, JsonValue> = {};
-    for (const [key, member] of value) {
-      out[String(key)] = encodeFacadeValue(codecs, member);
+    if (
+      typeof current === "string" ||
+      typeof current === "boolean" ||
+      typeof current === "number" ||
+      typeof current === "bigint"
+    ) {
+      return current as JsonValue;
     }
-    return out;
-  }
-  if (typeof value === "object") {
-    if (isPlainObject(value)) {
+    if (current instanceof JsonNumber) {
+      return current;
+    }
+    if (current instanceof CoreJsonNumber) {
+      return new JsonNumber(current.raw);
+    }
+    if (current instanceof PyFloat) {
+      if (["NaN", "Infinity", "-Infinity"].includes(current.spelling)) {
+        return { $type: "float", current: current.spelling };
+      }
+      return new JsonNumber(current.spelling);
+    }
+    if (current instanceof PyDatetime) {
+      return { $type: "datetime", iso: current.iso };
+    }
+    if (current instanceof PyDate) {
+      return { $type: "date", iso: current.iso };
+    }
+    if (Array.isArray(current)) {
+      return current.map((item) => encodeFacadeValue(codecs, item));
+    }
+    if (current instanceof Map) {
       const out: Record<string, JsonValue> = {};
-      for (const [key, member] of Object.entries(value)) {
-        if (member === undefined) {
-          continue; // absent, not null (R3.5)
-        }
-        out[key] = encodeFacadeValue(codecs, member);
+      for (const [key, member] of current) {
+        out[String(key)] = encodeFacadeValue(codecs, member);
       }
       return out;
     }
-    const withPayload = value as { toVectorPayload?: () => unknown };
-    if (typeof withPayload.toVectorPayload === "function") {
-      return encodeFacadeValue(codecs, withPayload.toVectorPayload());
-    }
-    try {
-      return stripRichTags(codecs.encodeValue(value));
-    } catch (error) {
-      if (!(error instanceof UnencodableValueError)) {
-        throw error;
+    if (typeof current === "object") {
+      if (isPlainObject(current)) {
+        const out: Record<string, JsonValue> = {};
+        for (const [key, member] of Object.entries(current)) {
+          if (member === undefined) {
+            continue; // absent, not null (R3.5)
+          }
+          out[key] = encodeFacadeValue(codecs, member);
+        }
+        return out;
+      }
+      const withPayload = current as { toVectorPayload?: () => unknown };
+      if (typeof withPayload.toVectorPayload === "function") {
+        current = withPayload.toVectorPayload();
+        continue;
+      }
+      try {
+        return stripRichTags(codecs.encodeValue(current));
+      } catch (error) {
+        if (!(error instanceof UnencodableValueError)) {
+          throw error;
+        }
+      }
+      const withJson = current as { toJSON?: () => unknown };
+      if (typeof withJson.toJSON === "function") {
+        current = withJson.toJSON();
+        continue;
       }
     }
-    const withJson = value as { toJSON?: () => unknown };
-    if (typeof withJson.toJSON === "function") {
-      return encodeFacadeValue(codecs, withJson.toJSON());
-    }
+    throw new Error(
+      `wire-workspace: no expect encoding for ${typeof current === "object" ? current.constructor.name : typeof current}`,
+    );
   }
-  throw new Error(
-    `wire-workspace: no expect encoding for ${typeof value === "object" ? value.constructor.name : typeof value}`,
-  );
 }
 
 /**

@@ -29,7 +29,7 @@
  * (b2-packets.md §V1b TS-homes).
  */
 
-import { sortedByCodepoint } from "../compat/codepoint.js";
+import { compareCodepoints, sortedByCodepoint } from "../compat/codepoint.js";
 
 /**
  * Python source module these tables mirror (locked against the
@@ -741,7 +741,7 @@ export function bookmarkEnumTablesSnapshot(): Readonly<
       snapshot[name] = sortedByCodepoint([...table]);
     } else {
       const entries = [...table.entries()].sort(([a], [b]) =>
-        a < b ? -1 : a > b ? 1 : 0,
+        compareCodepoints(a, b),
       );
       snapshot[name] = Object.fromEntries(entries) as Readonly<
         Record<string, number>

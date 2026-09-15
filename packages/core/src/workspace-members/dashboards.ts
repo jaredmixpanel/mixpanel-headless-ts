@@ -82,9 +82,13 @@ export async function listDashboards(
   options: WorkspaceListDashboardsOptions = {},
 ): Promise<Dashboard[]> {
   const raw = await client.listDashboards({ ids: options.ids ?? null });
-  return validateResponseModels(Dashboard, raw.map(native), {
-    endpoint: "list_dashboards",
-  });
+  return validateResponseModels(
+    Dashboard,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_dashboards",
+    },
+  );
 }
 
 /**
@@ -319,9 +323,13 @@ export async function listBlueprintTemplates(
   const raw = await client.listBlueprintTemplates({
     include_reports: options.include_reports ?? false,
   });
-  return validateResponseModels(BlueprintTemplate, raw.map(native), {
-    endpoint: "list_blueprint_templates",
-  });
+  return validateResponseModels(
+    BlueprintTemplate,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "list_blueprint_templates",
+    },
+  );
 }
 
 /**

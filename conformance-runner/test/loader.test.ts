@@ -168,9 +168,13 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
       if (value instanceof JsonNumber) {
         sawToken = true;
       } else if (Array.isArray(value)) {
-        value.forEach(scan);
+        for (const item of value) {
+          scan(item);
+        }
       } else if (typeof value === "object" && value !== null) {
-        Object.values(value).forEach(scan);
+        for (const member of Object.values(value)) {
+          scan(member);
+        }
       }
     };
     for (const vector of corpus.vectors) {

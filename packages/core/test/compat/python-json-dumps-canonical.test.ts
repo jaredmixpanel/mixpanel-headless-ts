@@ -226,17 +226,17 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
 
   it.each(fixtures.map((f) => [f.name, f] as const))(
     "%s — canonical string matches CPython byte for byte",
-    (_name, fixture) => {
-      expect(pythonJsonDumpsCanonical(fixture.params)).toBe(fixture.canonical);
+    (_name, entry) => {
+      expect(pythonJsonDumpsCanonical(entry.params)).toBe(entry.canonical);
     },
   );
 
   it.each(fixtures.map((f) => [f.name, f] as const))(
     "%s — sha256 of the canonical bytes matches CPython",
-    async (_name, fixture) => {
-      expect(fixture.sha256).toMatch(/^[0-9a-f]{64}$/);
-      expect(await sha256Hex(pythonJsonDumpsCanonical(fixture.params))).toBe(
-        fixture.sha256,
+    async (_name, entry) => {
+      expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(await sha256Hex(pythonJsonDumpsCanonical(entry.params))).toBe(
+        entry.sha256,
       );
     },
   );
@@ -293,8 +293,8 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
   it("escapes every non-ASCII byte out of the canonical form", () => {
     // `ensure_ascii=True` in one assertion: the identity's bytes are pure
     // printable ASCII, so no transport can renormalize them.
-    for (const fixture of fixtures) {
-      expect(fixture.canonical).toMatch(/^[\x20-\x7E]*$/);
+    for (const entry of fixtures) {
+      expect(entry.canonical).toMatch(/^[\x20-\x7E]*$/);
     }
   });
 });
@@ -308,7 +308,7 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
  */
 function reverseKeyOrder(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.map(reverseKeyOrder);
+    return value.map((item) => reverseKeyOrder(item));
   }
   if (typeof value === "object" && value !== null) {
     const out: Record<string, unknown> = {};

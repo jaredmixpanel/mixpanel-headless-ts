@@ -842,6 +842,7 @@ export {
 export {
   codepoints,
   compareCodepoints,
+  compareCodeUnits,
   cpLength,
   cpSlice,
   sortedByCodepoint,
