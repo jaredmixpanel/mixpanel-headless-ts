@@ -73,7 +73,11 @@ export class AccountSummary extends EntityModel<AccountSummaryInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AccountSummaryInit> = [
     { name: "name", required: true, kind: "str" },
     {
@@ -179,7 +183,11 @@ export class AccountTestResult extends EntityModel<AccountTestResultInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AccountTestResultInit> = [
     { name: "account_name", required: true, kind: "str" },
     { name: "ok", required: true, kind: "bool" },
@@ -288,7 +296,11 @@ export class Target extends EntityModel<TargetInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "forbid" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<TargetInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "account", required: true, kind: "str" },
@@ -388,7 +400,11 @@ export class OAuthLoginResult extends EntityModel<OAuthLoginResultInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<OAuthLoginResultInit> = [
     { name: "account_name", required: true, kind: "str" },
     { name: "user", nullable: true },

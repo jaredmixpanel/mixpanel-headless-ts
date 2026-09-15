@@ -1241,7 +1241,7 @@ export class Workspace {
    * Run pre-built flow bookmark params against the Mixpanel API.
    *
    * The execution half of {@link buildFlowParams}. The chart mode is
-   * read from the params via {@link flowModeFromParams} unless
+   * read from the params via `flowModeFromParams` unless
    * `options.mode` overrides it.
    *
    * @param params - Flow bookmark params dict, normally from
@@ -1998,8 +1998,8 @@ export class Workspace {
    * Python's event-loop caveat (`asyncio.run` cannot run inside a
    * running loop) has no TS counterpart — this member is `async` and
    * composes naturally; the Python docstring's advice to drive
-   * `walk_cdn_async` directly maps to {@link ReplaysService.walkCdnAsync},
-   * which is public here too.
+   * `walk_cdn_async` directly maps to `ReplaysService.walkCdnAsync` on
+   * `@mixpanel-headless/core/internal`.
    * @param replayId - The replay to fetch.
    * @param options - Retention / bounds / concurrency / join knobs.
    * @returns A `Replay` with `rrweb_events` and `actions` populated.

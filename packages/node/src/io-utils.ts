@@ -159,7 +159,7 @@ export function isErrnoError(exc: unknown): exc is NodeJS.ErrnoException {
 }
 
 /**
- * The injectable FS operation set of {@link atomicWriteBytes} — the
+ * The injectable FS operation set of `atomicWriteBytes` — the
  * `unittest.mock.patch("…io_utils.os.replace")` monkeypatch twin used
  * by the crash-window resilience tests and harness fault injection.
  */
@@ -200,7 +200,10 @@ const REAL_FS_OPS: AtomicWriteFsOps = {
 /** Per-process tmp-name counter (the `threading.get_ident()` substitute). */
 let tmpCounter = 0;
 
-/** Options bag of {@link atomicWriteBytes} (Python's keyword-only args). */
+/**
+ * Options bag of the atomic write behind {@link ConfigWriteBytes}
+ * (Python's keyword-only args).
+ */
 export interface AtomicWriteOptions {
   /**
    * POSIX file mode applied to the final file. Must not grant any
@@ -444,7 +447,7 @@ export function readCredentialText(
 
 /**
  * A synchronous chunk reader over stdin — the injectable seam of
- * {@link readCappedSecretFromStdin} (the `sys.stdin.buffer` BytesIO stub
+ * `readCappedSecretFromStdin` (the `sys.stdin.buffer` BytesIO stub
  * twin). A `Readable` cannot be consumed synchronously, so the seam has
  * the `fs.readSync(0, …)` shape.
  *

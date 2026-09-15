@@ -374,7 +374,7 @@ export interface ValidateBookmarkOptions {
  * @see mixpanel_headless._internal.validation.validate_bookmark
  */
 export function validateBookmark(
-  params: Dict,
+  params: Record<string, unknown>,
   options: ValidateBookmarkOptions = {},
 ): ValidationError[] {
   const bookmarkType = options.bookmark_type ?? "insights";

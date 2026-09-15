@@ -60,7 +60,11 @@ export class BookmarkMetadata extends EntityModel<BookmarkMetadataInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BookmarkMetadataInit> = [
     { name: "table_display_mode", kind: "str", nullable: true },
     { name: "compare_enabled", kind: "bool", nullable: true },
@@ -197,7 +201,11 @@ export class Bookmark extends EntityModel<BookmarkInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BookmarkInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "project_id", kind: "int", nullable: true },
@@ -363,7 +371,11 @@ export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> 
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateBookmarkParamsInit> = [
     { name: "name", required: true, kind: "str" },
     {
@@ -464,7 +476,11 @@ export class UpdateBookmarkParams extends EntityModel<UpdateBookmarkParamsInit> 
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateBookmarkParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "params", nullable: true },
@@ -556,7 +572,11 @@ export class BulkUpdateBookmarkEntry extends EntityModel<BulkUpdateBookmarkEntry
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkUpdateBookmarkEntryInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
@@ -641,7 +661,11 @@ export class BookmarkHistoryPagination extends EntityModel<BookmarkHistoryPagina
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BookmarkHistoryPaginationInit> =
     [
       { name: "next_cursor", kind: "str", nullable: true },
@@ -717,7 +741,11 @@ export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponse
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BookmarkHistoryResponseInit> = [
     { name: "results", default: () => [] },
     {
@@ -815,7 +843,11 @@ export class BookmarkUrl extends EntityModel<BookmarkUrlInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BookmarkUrlInit> = [
     { name: "slug", required: true, kind: "str" },
     {

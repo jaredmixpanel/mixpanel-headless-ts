@@ -42,6 +42,7 @@ export interface CohortMethods {
    *   (429).
    * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
    * @throws {@link ServerError} - Server-side errors (5xx).
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_cohorts_app
    */
   listCohortsApp: (options?: ListCohortsAppOptions) => Promise<JsonValue[]>;

@@ -112,9 +112,14 @@ const architecture: DefaultTheme.SidebarItem = {
   ],
 };
 
+const apiOverview: DefaultTheme.SidebarItem = {
+  text: "Overview",
+  link: "/api/",
+};
+
 const reference: DefaultTheme.SidebarItem = {
   text: "API reference",
-  items: [{ text: "Overview", link: "/api/" }, ...referenceSidebar()],
+  items: [apiOverview, ...referenceSidebar()],
 };
 
 export default defineConfig({
@@ -175,7 +180,16 @@ export default defineConfig({
         ignoreFiles: ["history/**"],
         // The generated reference is ~800 pages: keep it out of the llms.txt
         // index (the API overview page links into it) but in the full bundle.
+        // The plugin builds that index from the sidebar and warns for every
+        // sidebar link whose page is excluded, so it gets a sidebar without
+        // the reference tree.
         ignoreFilesPerOutput: { llmsTxt: ["reference/**"] },
+        sidebar: [
+          gettingStarted,
+          guide,
+          { text: "API reference", items: [apiOverview] },
+          architecture,
+        ],
       }) as unknown as VitePlugins,
     ],
   },

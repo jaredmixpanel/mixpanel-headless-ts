@@ -30,6 +30,7 @@ export interface BusinessContextMethods {
    * @param options - Optional `organization_id` scope + signal.
    * @returns `{content: "<markdown>"}` (empty string when unset).
    * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_business_context
    */
   getBusinessContext: (
@@ -44,6 +45,7 @@ export interface BusinessContextMethods {
    * @param options - Optional `organization_id` scope + signal.
    * @returns `{content: "<saved markdown>"}` echoed by the server.
    * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.set_business_context
    */
   setBusinessContext: (

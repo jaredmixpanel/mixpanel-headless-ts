@@ -55,6 +55,7 @@ export interface DashboardMethods {
    *   (429).
    * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
    * @throws {@link ServerError} - Server-side errors (5xx).
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_dashboards
    */
   listDashboards: (options?: ListDashboardsOptions) => Promise<JsonValue[]>;
@@ -213,6 +214,7 @@ export interface DashboardMethods {
    * @param options - `include_reports` + signal.
    * @returns The template list.
    * @throws {@link MixpanelHeadlessError} - Unrecognized response shape.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_blueprint_templates
    */
   listBlueprintTemplates: (
