@@ -441,11 +441,11 @@ if (CHECK) {
   process.exit(0);
 }
 writeFileSync(absPath, output);
-execFileSync("npx", ["prettier", "--write", absPath], {
+execFileSync("npx", ["eslint", "--fix", absPath], {
   cwd: REPO_ROOT,
   stdio: "inherit",
 });
-execFileSync("npx", ["eslint", "--fix", absPath], {
+execFileSync("npx", ["prettier", "--write", absPath], {
   cwd: REPO_ROOT,
   stdio: "inherit",
 });
