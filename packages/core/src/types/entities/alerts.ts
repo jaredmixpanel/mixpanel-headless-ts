@@ -10,7 +10,7 @@
 
 import {
   codepointLength,
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   modelFail,
   oneOf,
@@ -36,15 +36,15 @@ export interface AlertBookmarkInit {
  * Mirror of Python `mixpanel_headless.types.AlertBookmark` (types.py:4151;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertBookmark extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertBookmark extends EntityModel<AlertBookmarkInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertBookmark";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertBookmarkInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
     { name: "type", kind: "str", nullable: true },
@@ -65,10 +65,7 @@ export class AlertBookmark extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertBookmarkInit) {
-    super(
-      AlertBookmark,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertBookmark, fields);
   }
 
   /**
@@ -80,9 +77,7 @@ export class AlertBookmark extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AlertBookmark {
-    return new AlertBookmark(
-      prepareInit(AlertBookmark, raw) as unknown as AlertBookmarkInit,
-    );
+    return new AlertBookmark(prepareInit(AlertBookmark, raw));
   }
 }
 
@@ -107,15 +102,15 @@ export interface AlertCreatorInit {
  * Mirror of Python `mixpanel_headless.types.AlertCreator` (types.py:4177;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertCreator extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertCreator extends EntityModel<AlertCreatorInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertCreator";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertCreatorInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "first_name", kind: "str", nullable: true },
     { name: "last_name", kind: "str", nullable: true },
@@ -139,7 +134,7 @@ export class AlertCreator extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertCreatorInit) {
-    super(AlertCreator, fields as unknown as Readonly<Record<string, unknown>>);
+    super(AlertCreator, fields);
   }
 
   /**
@@ -151,9 +146,7 @@ export class AlertCreator extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AlertCreator {
-    return new AlertCreator(
-      prepareInit(AlertCreator, raw) as unknown as AlertCreatorInit,
-    );
+    return new AlertCreator(prepareInit(AlertCreator, raw));
   }
 }
 
@@ -174,15 +167,15 @@ export interface AlertWorkspaceInit {
  * Mirror of Python `mixpanel_headless.types.AlertWorkspace` (types.py:4207;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertWorkspace extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertWorkspace extends EntityModel<AlertWorkspaceInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertWorkspace";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertWorkspaceInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
   ];
@@ -200,10 +193,7 @@ export class AlertWorkspace extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertWorkspaceInit) {
-    super(
-      AlertWorkspace,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertWorkspace, fields);
   }
 
   /**
@@ -215,9 +205,7 @@ export class AlertWorkspace extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AlertWorkspace {
-    return new AlertWorkspace(
-      prepareInit(AlertWorkspace, raw) as unknown as AlertWorkspaceInit,
-    );
+    return new AlertWorkspace(prepareInit(AlertWorkspace, raw));
   }
 }
 
@@ -238,15 +226,15 @@ export interface AlertProjectInit {
  * Mirror of Python `mixpanel_headless.types.AlertProject` (types.py:4229;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertProject extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertProject extends EntityModel<AlertProjectInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertProject";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertProjectInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
   ];
@@ -264,7 +252,7 @@ export class AlertProject extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertProjectInit) {
-    super(AlertProject, fields as unknown as Readonly<Record<string, unknown>>);
+    super(AlertProject, fields);
   }
 
   /**
@@ -276,9 +264,7 @@ export class AlertProject extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AlertProject {
-    return new AlertProject(
-      prepareInit(AlertProject, raw) as unknown as AlertProjectInit,
-    );
+    return new AlertProject(prepareInit(AlertProject, raw));
   }
 }
 
@@ -335,15 +321,15 @@ export interface CustomAlertInit {
  * Mirror of Python `mixpanel_headless.types.CustomAlert` (types.py:4251;
  * model_config: frozen=True, extra='allow').
  */
-export class CustomAlert extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CustomAlert extends EntityModel<CustomAlertInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CustomAlert";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CustomAlertInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     { name: "bookmark", nullable: true, nested: () => AlertBookmark },
@@ -410,7 +396,7 @@ export class CustomAlert extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CustomAlertInit) {
-    super(CustomAlert, fields as unknown as Readonly<Record<string, unknown>>);
+    super(CustomAlert, fields);
   }
 
   /**
@@ -422,9 +408,7 @@ export class CustomAlert extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CustomAlert {
-    return new CustomAlert(
-      prepareInit(CustomAlert, raw) as unknown as CustomAlertInit,
-    );
+    return new CustomAlert(prepareInit(CustomAlert, raw));
   }
 }
 
@@ -456,15 +440,15 @@ export interface CreateAlertParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateAlertParams` (types.py:4333;
  * model_config: extra='ignore').
  */
-export class CreateAlertParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateAlertParams extends EntityModel<CreateAlertParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateAlertParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateAlertParamsInit> = [
     { name: "bookmark_id", required: true, kind: "int" },
     {
       name: "name",
@@ -511,10 +495,7 @@ export class CreateAlertParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateAlertParamsInit) {
-    super(
-      CreateAlertParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateAlertParams, fields);
   }
 
   /**
@@ -526,9 +507,7 @@ export class CreateAlertParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CreateAlertParams {
-    return new CreateAlertParams(
-      prepareInit(CreateAlertParams, raw) as unknown as CreateAlertParamsInit,
-    );
+    return new CreateAlertParams(prepareInit(CreateAlertParams, raw));
   }
 }
 
@@ -561,15 +540,15 @@ export interface UpdateAlertParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateAlertParams` (types.py:4385;
  * model_config: extra='ignore').
  */
-export class UpdateAlertParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateAlertParams extends EntityModel<UpdateAlertParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateAlertParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateAlertParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "bookmark_id", kind: "int", nullable: true },
     { name: "condition", nullable: true },
@@ -606,10 +585,7 @@ export class UpdateAlertParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateAlertParamsInit) {
-    super(
-      UpdateAlertParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateAlertParams, fields);
   }
 
   /**
@@ -644,15 +620,15 @@ export interface AlertCountInit {
  * Mirror of Python `mixpanel_headless.types.AlertCount` (types.py:4425;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertCount extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertCount extends EntityModel<AlertCountInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertCount";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertCountInit> = [
     { name: "anomaly_alerts_count", required: true, kind: "int" },
     { name: "alert_limit", required: true, kind: "int" },
     { name: "is_below_limit", required: true, kind: "bool" },
@@ -673,7 +649,7 @@ export class AlertCount extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertCountInit) {
-    super(AlertCount, fields as unknown as Readonly<Record<string, unknown>>);
+    super(AlertCount, fields);
   }
 
   /**
@@ -685,9 +661,7 @@ export class AlertCount extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AlertCount {
-    return new AlertCount(
-      prepareInit(AlertCount, raw) as unknown as AlertCountInit,
-    );
+    return new AlertCount(prepareInit(AlertCount, raw));
   }
 }
 
@@ -710,15 +684,15 @@ export interface AlertHistoryPaginationInit {
  * Mirror of Python `mixpanel_headless.types.AlertHistoryPagination` (types.py:4453;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertHistoryPagination extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertHistoryPagination extends EntityModel<AlertHistoryPaginationInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertHistoryPagination";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertHistoryPaginationInit> = [
     { name: "next_cursor", kind: "str", nullable: true },
     { name: "previous_cursor", kind: "str", nullable: true },
     { name: "page_size", default: () => 20, kind: "int" },
@@ -739,10 +713,7 @@ export class AlertHistoryPagination extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertHistoryPaginationInit) {
-    super(
-      AlertHistoryPagination,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertHistoryPagination, fields);
   }
 
   /**
@@ -780,15 +751,15 @@ export interface AlertHistoryResponseInit {
  * Mirror of Python `mixpanel_headless.types.AlertHistoryResponse` (types.py:4479;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertHistoryResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertHistoryResponse extends EntityModel<AlertHistoryResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertHistoryResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertHistoryResponseInit> = [
     { name: "results", default: () => [] },
     {
       name: "pagination",
@@ -810,10 +781,7 @@ export class AlertHistoryResponse extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertHistoryResponseInit) {
-    super(
-      AlertHistoryResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertHistoryResponse, fields);
   }
 
   /**
@@ -844,15 +812,15 @@ export interface AlertScreenshotResponseInit {
  * Mirror of Python `mixpanel_headless.types.AlertScreenshotResponse` (types.py:4503;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertScreenshotResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertScreenshotResponse extends EntityModel<AlertScreenshotResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertScreenshotResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertScreenshotResponseInit> = [
     { name: "signed_url", required: true, kind: "str" },
   ];
 
@@ -867,10 +835,7 @@ export class AlertScreenshotResponse extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertScreenshotResponseInit) {
-    super(
-      AlertScreenshotResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertScreenshotResponse, fields);
   }
 
   /**
@@ -883,10 +848,7 @@ export class AlertScreenshotResponse extends EntityModel {
    */
   static fromDict(raw: unknown): AlertScreenshotResponse {
     return new AlertScreenshotResponse(
-      prepareInit(
-        AlertScreenshotResponse,
-        raw,
-      ) as unknown as AlertScreenshotResponseInit,
+      prepareInit(AlertScreenshotResponse, raw),
     );
   }
 }
@@ -912,15 +874,15 @@ export interface AlertValidationInit {
  * Mirror of Python `mixpanel_headless.types.AlertValidation` (types.py:4522;
  * model_config: frozen=True, extra='allow').
  */
-export class AlertValidation extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertValidation extends EntityModel<AlertValidationInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertValidation";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertValidationInit> = [
     { name: "alert_id", required: true, kind: "int" },
     { name: "alert_name", required: true, kind: "str" },
     { name: "valid", required: true, kind: "bool" },
@@ -944,10 +906,7 @@ export class AlertValidation extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AlertValidationInit) {
-    super(
-      AlertValidation,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertValidation, fields);
   }
 
   /**
@@ -959,9 +918,7 @@ export class AlertValidation extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AlertValidation {
-    return new AlertValidation(
-      prepareInit(AlertValidation, raw) as unknown as AlertValidationInit,
-    );
+    return new AlertValidation(prepareInit(AlertValidation, raw));
   }
 }
 
@@ -984,32 +941,33 @@ export interface ValidateAlertsForBookmarkParamsInit {
  * Mirror of Python `mixpanel_headless.types.ValidateAlertsForBookmarkParams` (types.py:4552;
  * model_config: extra='ignore').
  */
-export class ValidateAlertsForBookmarkParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ValidateAlertsForBookmarkParams extends EntityModel<ValidateAlertsForBookmarkParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ValidateAlertsForBookmarkParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "alert_ids",
-      required: true,
-      check: (value: unknown, path: string): void => {
-        if (typeof value === "string" && codepointLength(value) < 1)
-          modelFail(path, "min_length 1");
-        if (Array.isArray(value) && value.length === 0)
-          modelFail(path, "min_length 1");
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ValidateAlertsForBookmarkParamsInit> =
+    [
+      {
+        name: "alert_ids",
+        required: true,
+        check: (value: unknown, path: string): void => {
+          if (typeof value === "string" && codepointLength(value) < 1)
+            modelFail(path, "min_length 1");
+          if (Array.isArray(value) && value.length === 0)
+            modelFail(path, "min_length 1");
+        },
       },
-    },
-    {
-      name: "bookmark_type",
-      required: true,
-      check: oneOf(["insights", "funnels"]),
-    },
-    { name: "bookmark_params", required: true },
-  ];
+      {
+        name: "bookmark_type",
+        required: true,
+        check: oneOf(["insights", "funnels"]),
+      },
+      { name: "bookmark_params", required: true },
+    ];
 
   /** Alert IDs to validate (must not be empty). */
   declare readonly alert_ids: readonly number[];
@@ -1026,10 +984,7 @@ export class ValidateAlertsForBookmarkParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: ValidateAlertsForBookmarkParamsInit) {
-    super(
-      ValidateAlertsForBookmarkParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ValidateAlertsForBookmarkParams, fields);
   }
 
   /**
@@ -1042,10 +997,7 @@ export class ValidateAlertsForBookmarkParams extends EntityModel {
    */
   static fromDict(raw: unknown): ValidateAlertsForBookmarkParams {
     return new ValidateAlertsForBookmarkParams(
-      prepareInit(
-        ValidateAlertsForBookmarkParams,
-        raw,
-      ) as unknown as ValidateAlertsForBookmarkParamsInit,
+      prepareInit(ValidateAlertsForBookmarkParams, raw),
     );
   }
 }
@@ -1069,23 +1021,24 @@ export interface ValidateAlertsForBookmarkResponseInit {
  * Mirror of Python `mixpanel_headless.types.ValidateAlertsForBookmarkResponse` (types.py:4580;
  * model_config: frozen=True, extra='allow').
  */
-export class ValidateAlertsForBookmarkResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ValidateAlertsForBookmarkResponse extends EntityModel<ValidateAlertsForBookmarkResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ValidateAlertsForBookmarkResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "alert_validations",
-      default: () => [],
-      nested: () => AlertValidation,
-      container: "list",
-    },
-    { name: "invalid_count", default: () => 0, kind: "int" },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ValidateAlertsForBookmarkResponseInit> =
+    [
+      {
+        name: "alert_validations",
+        default: () => [],
+        nested: () => AlertValidation,
+        container: "list",
+      },
+      { name: "invalid_count", default: () => 0, kind: "int" },
+    ];
 
   /** Per-alert validation results. */
   declare readonly alert_validations: readonly AlertValidation[];
@@ -1100,10 +1053,7 @@ export class ValidateAlertsForBookmarkResponse extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: ValidateAlertsForBookmarkResponseInit) {
-    super(
-      ValidateAlertsForBookmarkResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ValidateAlertsForBookmarkResponse, fields);
   }
 
   /**

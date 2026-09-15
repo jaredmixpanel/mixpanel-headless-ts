@@ -9,7 +9,7 @@
  */
 
 import {
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   oneOf,
   prepareInit,
@@ -108,15 +108,15 @@ export interface DashboardInit {
  * Mirror of Python `mixpanel_headless.types.Dashboard` (types.py:1762;
  * model_config: frozen=True, extra='allow').
  */
-export class Dashboard extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class Dashboard extends EntityModel<DashboardInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "Dashboard";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<DashboardInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "title", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -248,7 +248,7 @@ export class Dashboard extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: DashboardInit) {
-    super(Dashboard, fields as unknown as Readonly<Record<string, unknown>>);
+    super(Dashboard, fields);
   }
 
   /**
@@ -260,9 +260,7 @@ export class Dashboard extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): Dashboard {
-    return new Dashboard(
-      prepareInit(Dashboard, raw) as unknown as DashboardInit,
-    );
+    return new Dashboard(prepareInit(Dashboard, raw));
   }
 }
 
@@ -283,15 +281,15 @@ export interface DashboardRowContentInit {
  * Mirror of Python `mixpanel_headless.types.DashboardRowContent` (types.py:1948;
  * model_config: extra='ignore').
  */
-export class DashboardRowContent extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class DashboardRowContent extends EntityModel<DashboardRowContentInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "DashboardRowContent";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<DashboardRowContentInit> = [
     { name: "content_type", required: true, check: oneOf(["text", "report"]) },
     { name: "content_params", required: true },
   ];
@@ -309,10 +307,7 @@ export class DashboardRowContent extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: DashboardRowContentInit) {
-    super(
-      DashboardRowContent,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(DashboardRowContent, fields);
   }
 
   /**
@@ -324,12 +319,7 @@ export class DashboardRowContent extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): DashboardRowContent {
-    return new DashboardRowContent(
-      prepareInit(
-        DashboardRowContent,
-        raw,
-      ) as unknown as DashboardRowContentInit,
-    );
+    return new DashboardRowContent(prepareInit(DashboardRowContent, raw));
   }
 }
 
@@ -350,15 +340,15 @@ export interface DashboardRowInit {
  * Mirror of Python `mixpanel_headless.types.DashboardRow` (types.py:1989;
  * model_config: extra='ignore').
  */
-export class DashboardRow extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class DashboardRow extends EntityModel<DashboardRowInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "DashboardRow";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<DashboardRowInit> = [
     {
       name: "contents",
       required: true,
@@ -378,7 +368,7 @@ export class DashboardRow extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: DashboardRowInit) {
-    super(DashboardRow, fields as unknown as Readonly<Record<string, unknown>>);
+    super(DashboardRow, fields);
   }
 
   /**
@@ -390,9 +380,7 @@ export class DashboardRow extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): DashboardRow {
-    return new DashboardRow(
-      prepareInit(DashboardRow, raw) as unknown as DashboardRowInit,
-    );
+    return new DashboardRow(prepareInit(DashboardRow, raw));
   }
 }
 
@@ -430,15 +418,15 @@ export interface CreateDashboardParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateDashboardParams` (types.py:2019;
  * model_config: extra='ignore').
  */
-export class CreateDashboardParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateDashboardParams extends EntityModel<CreateDashboardParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateDashboardParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateDashboardParamsInit> = [
     { name: "title", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
     { name: "is_private", kind: "bool", nullable: true },
@@ -482,10 +470,7 @@ export class CreateDashboardParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateDashboardParamsInit) {
-    super(
-      CreateDashboardParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateDashboardParams, fields);
   }
 
   /**
@@ -497,12 +482,7 @@ export class CreateDashboardParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CreateDashboardParams {
-    return new CreateDashboardParams(
-      prepareInit(
-        CreateDashboardParams,
-        raw,
-      ) as unknown as CreateDashboardParamsInit,
-    );
+    return new CreateDashboardParams(prepareInit(CreateDashboardParams, raw));
   }
 }
 
@@ -537,15 +517,15 @@ export interface UpdateDashboardParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateDashboardParams` (types.py:2101;
  * model_config: extra='ignore').
  */
-export class UpdateDashboardParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateDashboardParams extends EntityModel<UpdateDashboardParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateDashboardParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateDashboardParamsInit> = [
     { name: "title", kind: "str", nullable: true },
     { name: "description", kind: "str", nullable: true },
     { name: "is_private", kind: "bool", nullable: true },
@@ -584,10 +564,7 @@ export class UpdateDashboardParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateDashboardParamsInit) {
-    super(
-      UpdateDashboardParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateDashboardParams, fields);
   }
 
   /**
@@ -624,15 +601,15 @@ export interface BlueprintTemplateInit {
  * Mirror of Python `mixpanel_headless.types.BlueprintTemplate` (types.py:2158;
  * model_config: frozen=True, extra='allow').
  */
-export class BlueprintTemplate extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BlueprintTemplate extends EntityModel<BlueprintTemplateInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BlueprintTemplate";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BlueprintTemplateInit> = [
     { name: "title_key", required: true, kind: "str" },
     { name: "description_key", required: true, kind: "str" },
     { name: "alternative_description_key", kind: "str", nullable: true },
@@ -656,10 +633,7 @@ export class BlueprintTemplate extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BlueprintTemplateInit) {
-    super(
-      BlueprintTemplate,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BlueprintTemplate, fields);
   }
 
   /**
@@ -671,9 +645,7 @@ export class BlueprintTemplate extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BlueprintTemplate {
-    return new BlueprintTemplate(
-      prepareInit(BlueprintTemplate, raw) as unknown as BlueprintTemplateInit,
-    );
+    return new BlueprintTemplate(prepareInit(BlueprintTemplate, raw));
   }
 }
 
@@ -692,15 +664,15 @@ export interface BlueprintConfigInit {
  * Mirror of Python `mixpanel_headless.types.BlueprintConfig` (types.py:2190;
  * model_config: frozen=True, extra='allow').
  */
-export class BlueprintConfig extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BlueprintConfig";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BlueprintConfigInit> = [
     { name: "variables", required: true },
   ];
 
@@ -715,10 +687,7 @@ export class BlueprintConfig extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BlueprintConfigInit) {
-    super(
-      BlueprintConfig,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BlueprintConfig, fields);
   }
 
   /**
@@ -730,9 +699,7 @@ export class BlueprintConfig extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BlueprintConfig {
-    return new BlueprintConfig(
-      prepareInit(BlueprintConfig, raw) as unknown as BlueprintConfigInit,
-    );
+    return new BlueprintConfig(prepareInit(BlueprintConfig, raw));
   }
 }
 
@@ -761,15 +728,15 @@ export interface BlueprintCardInit {
  * Mirror of Python `mixpanel_headless.types.BlueprintCard` (types.py:2208;
  * model_config: extra='allow', populate_by_name=True).
  */
-export class BlueprintCard extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BlueprintCard extends EntityModel<BlueprintCardInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BlueprintCard";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BlueprintCardInit> = [
     {
       name: "card_type",
       required: true,
@@ -805,10 +772,7 @@ export class BlueprintCard extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BlueprintCardInit) {
-    super(
-      BlueprintCard,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BlueprintCard, fields);
   }
 
   /**
@@ -820,9 +784,7 @@ export class BlueprintCard extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BlueprintCard {
-    return new BlueprintCard(
-      prepareInit(BlueprintCard, raw) as unknown as BlueprintCardInit,
-    );
+    return new BlueprintCard(prepareInit(BlueprintCard, raw));
   }
 }
 
@@ -845,15 +807,15 @@ export interface BlueprintFinishParamsInit {
  * Mirror of Python `mixpanel_headless.types.BlueprintFinishParams` (types.py:2248;
  * model_config: extra='ignore').
  */
-export class BlueprintFinishParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BlueprintFinishParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BlueprintFinishParamsInit> = [
     { name: "dashboard_id", required: true, kind: "int" },
     {
       name: "cards",
@@ -876,10 +838,7 @@ export class BlueprintFinishParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BlueprintFinishParamsInit) {
-    super(
-      BlueprintFinishParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BlueprintFinishParams, fields);
   }
 
   /**
@@ -891,12 +850,7 @@ export class BlueprintFinishParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BlueprintFinishParams {
-    return new BlueprintFinishParams(
-      prepareInit(
-        BlueprintFinishParams,
-        raw,
-      ) as unknown as BlueprintFinishParamsInit,
-    );
+    return new BlueprintFinishParams(prepareInit(BlueprintFinishParams, raw));
   }
 }
 
@@ -919,15 +873,15 @@ export interface RcaSourceDataInit {
  * Mirror of Python `mixpanel_headless.types.RcaSourceData` (types.py:2271;
  * model_config: extra='allow', populate_by_name=True).
  */
-export class RcaSourceData extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "RcaSourceData";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<RcaSourceDataInit> = [
     {
       name: "source_type",
       required: true,
@@ -954,10 +908,7 @@ export class RcaSourceData extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: RcaSourceDataInit) {
-    super(
-      RcaSourceData,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(RcaSourceData, fields);
   }
 
   /**
@@ -969,9 +920,7 @@ export class RcaSourceData extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): RcaSourceData {
-    return new RcaSourceData(
-      prepareInit(RcaSourceData, raw) as unknown as RcaSourceDataInit,
-    );
+    return new RcaSourceData(prepareInit(RcaSourceData, raw));
   }
 }
 
@@ -992,15 +941,15 @@ export interface CreateRcaDashboardParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateRcaDashboardParams` (types.py:2299;
  * model_config: extra='ignore').
  */
-export class CreateRcaDashboardParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateRcaDashboardParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateRcaDashboardParamsInit> = [
     { name: "rca_source_id", required: true, kind: "int" },
     { name: "rca_source_data", required: true, nested: () => RcaSourceData },
   ];
@@ -1018,10 +967,7 @@ export class CreateRcaDashboardParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateRcaDashboardParamsInit) {
-    super(
-      CreateRcaDashboardParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateRcaDashboardParams, fields);
   }
 
   /**
@@ -1034,10 +980,7 @@ export class CreateRcaDashboardParams extends EntityModel {
    */
   static fromDict(raw: unknown): CreateRcaDashboardParams {
     return new CreateRcaDashboardParams(
-      prepareInit(
-        CreateRcaDashboardParams,
-        raw,
-      ) as unknown as CreateRcaDashboardParamsInit,
+      prepareInit(CreateRcaDashboardParams, raw),
     );
   }
 }
@@ -1057,15 +1000,15 @@ export interface UpdateReportLinkParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateReportLinkParams` (types.py:2322;
  * model_config: extra='allow', populate_by_name=True).
  */
-export class UpdateReportLinkParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateReportLinkParams extends EntityModel<UpdateReportLinkParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateReportLinkParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateReportLinkParamsInit> = [
     {
       name: "link_type",
       required: true,
@@ -1086,10 +1029,7 @@ export class UpdateReportLinkParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateReportLinkParamsInit) {
-    super(
-      UpdateReportLinkParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateReportLinkParams, fields);
   }
 
   /**
@@ -1101,12 +1041,7 @@ export class UpdateReportLinkParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateReportLinkParams {
-    return new UpdateReportLinkParams(
-      prepareInit(
-        UpdateReportLinkParams,
-        raw,
-      ) as unknown as UpdateReportLinkParamsInit,
-    );
+    return new UpdateReportLinkParams(prepareInit(UpdateReportLinkParams, raw));
   }
 }
 
@@ -1125,15 +1060,15 @@ export interface UpdateTextCardParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateTextCardParams` (types.py:2342;
  * model_config: extra='allow').
  */
-export class UpdateTextCardParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateTextCardParams extends EntityModel<UpdateTextCardParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateTextCardParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateTextCardParamsInit> = [
     { name: "markdown", kind: "str", nullable: true },
   ];
 
@@ -1148,10 +1083,7 @@ export class UpdateTextCardParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateTextCardParamsInit) {
-    super(
-      UpdateTextCardParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateTextCardParams, fields);
   }
 
   /**

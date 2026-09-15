@@ -10,7 +10,7 @@
 
 import {
   codepointLength,
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   modelFail,
   prepareInit,
@@ -35,15 +35,15 @@ export interface AnnotationUserInit {
  * Mirror of Python `mixpanel_headless.types.AnnotationUser` (types.py:3751;
  * model_config: frozen=True, extra='allow').
  */
-export class AnnotationUser extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AnnotationUser extends EntityModel<AnnotationUserInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AnnotationUser";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AnnotationUserInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "first_name", required: true, kind: "str" },
     { name: "last_name", required: true, kind: "str" },
@@ -64,10 +64,7 @@ export class AnnotationUser extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AnnotationUserInit) {
-    super(
-      AnnotationUser,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AnnotationUser, fields);
   }
 
   /**
@@ -79,9 +76,7 @@ export class AnnotationUser extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AnnotationUser {
-    return new AnnotationUser(
-      prepareInit(AnnotationUser, raw) as unknown as AnnotationUserInit,
-    );
+    return new AnnotationUser(prepareInit(AnnotationUser, raw));
   }
 }
 
@@ -106,15 +101,15 @@ export interface AnnotationTagInit {
  * Mirror of Python `mixpanel_headless.types.AnnotationTag` (types.py:3777;
  * model_config: frozen=True, extra='allow').
  */
-export class AnnotationTag extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AnnotationTag extends EntityModel<AnnotationTagInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AnnotationTag";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AnnotationTagInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     { name: "project_id", kind: "int", nullable: true },
@@ -138,10 +133,7 @@ export class AnnotationTag extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AnnotationTagInit) {
-    super(
-      AnnotationTag,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AnnotationTag, fields);
   }
 
   /**
@@ -153,9 +145,7 @@ export class AnnotationTag extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AnnotationTag {
-    return new AnnotationTag(
-      prepareInit(AnnotationTag, raw) as unknown as AnnotationTagInit,
-    );
+    return new AnnotationTag(prepareInit(AnnotationTag, raw));
   }
 }
 
@@ -187,15 +177,15 @@ export interface AnnotationInit {
  * Mirror of Python `mixpanel_headless.types.Annotation` (types.py:3807;
  * model_config: frozen=True, extra='allow').
  */
-export class Annotation extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class Annotation extends EntityModel<AnnotationInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "Annotation";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AnnotationInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "project_id", required: true, kind: "int" },
     { name: "date", required: true, kind: "str" },
@@ -230,7 +220,7 @@ export class Annotation extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AnnotationInit) {
-    super(Annotation, fields as unknown as Readonly<Record<string, unknown>>);
+    super(Annotation, fields);
   }
 
   /**
@@ -242,9 +232,7 @@ export class Annotation extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): Annotation {
-    return new Annotation(
-      prepareInit(Annotation, raw) as unknown as AnnotationInit,
-    );
+    return new Annotation(prepareInit(Annotation, raw));
   }
 }
 
@@ -269,15 +257,15 @@ export interface CreateAnnotationParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateAnnotationParams` (types.py:3845;
  * model_config: extra='ignore').
  */
-export class CreateAnnotationParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateAnnotationParams extends EntityModel<CreateAnnotationParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateAnnotationParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateAnnotationParamsInit> = [
     { name: "date", required: true, kind: "str" },
     {
       name: "description",
@@ -311,10 +299,7 @@ export class CreateAnnotationParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateAnnotationParamsInit) {
-    super(
-      CreateAnnotationParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateAnnotationParams, fields);
   }
 
   /**
@@ -326,12 +311,7 @@ export class CreateAnnotationParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CreateAnnotationParams {
-    return new CreateAnnotationParams(
-      prepareInit(
-        CreateAnnotationParams,
-        raw,
-      ) as unknown as CreateAnnotationParamsInit,
-    );
+    return new CreateAnnotationParams(prepareInit(CreateAnnotationParams, raw));
   }
 }
 
@@ -352,15 +332,15 @@ export interface UpdateAnnotationParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateAnnotationParams` (types.py:3875;
  * model_config: extra='ignore').
  */
-export class UpdateAnnotationParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateAnnotationParams extends EntityModel<UpdateAnnotationParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateAnnotationParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateAnnotationParamsInit> = [
     {
       name: "description",
       kind: "str",
@@ -388,10 +368,7 @@ export class UpdateAnnotationParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateAnnotationParamsInit) {
-    super(
-      UpdateAnnotationParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateAnnotationParams, fields);
   }
 
   /**
@@ -422,17 +399,16 @@ export interface CreateAnnotationTagParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateAnnotationTagParams` (types.py:3898;
  * model_config: extra='ignore').
  */
-export class CreateAnnotationTagParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateAnnotationTagParams extends EntityModel<CreateAnnotationTagParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateAnnotationTagParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "name", required: true, kind: "str" },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateAnnotationTagParamsInit> =
+    [{ name: "name", required: true, kind: "str" }];
 
   /** Tag name. */
   declare readonly name: string;
@@ -445,10 +421,7 @@ export class CreateAnnotationTagParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateAnnotationTagParamsInit) {
-    super(
-      CreateAnnotationTagParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateAnnotationTagParams, fields);
   }
 
   /**
@@ -461,10 +434,7 @@ export class CreateAnnotationTagParams extends EntityModel {
    */
   static fromDict(raw: unknown): CreateAnnotationTagParams {
     return new CreateAnnotationTagParams(
-      prepareInit(
-        CreateAnnotationTagParams,
-        raw,
-      ) as unknown as CreateAnnotationTagParamsInit,
+      prepareInit(CreateAnnotationTagParams, raw),
     );
   }
 }

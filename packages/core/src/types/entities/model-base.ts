@@ -82,11 +82,14 @@ export interface ModelDumpOptions {
 /**
  * One declared Python model field, in `model_fields` order.
  *
- * @internal
+ * `K` is the set of attribute names the owning class declares (the keys
+ * of its `XInit` constructor bag), so a spec whose `name` is not a
+ * declared field fails to compile; the unparameterised form is the
+ * class-agnostic view the rig and the response validator walk.
  */
-export interface EntityFieldSpec {
+export interface EntityFieldSpec<K extends string = string> {
   /** The Python attribute name (exact spelling — R3.6/R7.6). */
-  readonly name: string;
+  readonly name: K;
   /** True when the Python field has no default (`is_required()`). */
   readonly required?: boolean;
   /**
@@ -163,12 +166,21 @@ export interface EntityFieldSpec {
 }
 
 /**
+ * The declared field list of a class whose constructor bag is `F`: one
+ * {@link EntityFieldSpec} per Python `model_fields` entry, each named by
+ * a key of `F`. Every concrete class annotates its `fieldSpecs` static
+ * with this so the runtime spec list and the `XInit` type cannot drift
+ * apart on names.
+ */
+export type EntityFieldSpecs<F extends object> = ReadonlyArray<
+  EntityFieldSpec<keyof F & string>
+>;
+
+/**
  * One Pydantic `@computed_field` port: appended to `toJSON()` /
  * `toVectorPayload()` output after the declared fields (the recorder
  * includes computed fields in expect position only), and DROPPED from
  * `fromDict` input (they never reach a constructor at decode time).
- *
- * @internal
  */
 export interface ComputedFieldSpec {
   /** The Python computed-field name. */
@@ -179,20 +191,27 @@ export interface ComputedFieldSpec {
 
 /**
  * The per-class static contract every entity model carries.
+ *
+ * `F` is the class's constructor bag (`XInit`). `EntityModelStatics<XInit>`
+ * is what `super(...)` and {@link prepareInit} take from a concrete class;
+ * the unparameterised form (`F = never`) is the class-agnostic view for
+ * heterogeneous tables (the rig's codec rows, nested-model thunks): its
+ * field names are unconstrained and its constructor is deliberately
+ * uncallable, since no bag type fits every class.
  */
-export interface EntityModelStatics {
+export interface EntityModelStatics<F extends object = never> {
   /** The Python model name (also the `$type` tag where one exists). */
   readonly modelName: string;
   /** Pydantic `model_config.extra` (default `ignore`). */
   readonly extraPolicy: "ignore" | "allow" | "forbid";
   /** Declared fields in Python `model_fields` order. */
-  readonly fieldSpecs: readonly EntityFieldSpec[];
+  readonly fieldSpecs: EntityFieldSpecs<F>;
   /** `@computed_field` ports (empty for all but `BusinessContext`). */
   readonly computedSpecs?: readonly ComputedFieldSpec[];
   /** The strict decode factory (present on every concrete class). */
-  readonly fromDict: (raw: unknown) => EntityModel;
-  /** Constructable (the base processes the already-aliased bag). */
-  new (fields: never): EntityModel;
+  readonly fromDict: (raw: unknown) => EntityModel<F>;
+  /** The public constructor over the attribute-name-keyed bag. */
+  new (fields: F): EntityModel<F>;
 }
 
 /**
@@ -392,6 +411,12 @@ function reconstructNested(
  * follow the class `extra` policy. This is the `fromDict` half —
  * constructors receive attribute-name bags directly.
  *
+ * The result is typed as the class's constructor bag `F` because the
+ * constructor is the validator: this function only canonicalises KEYS,
+ * and every value it forwards is checked (required, nullable, coerced,
+ * reconstructed) by the constructor it feeds — the one place the
+ * unvalidated-to-typed assertion lives.
+ *
  * @param cls - The entity-model statics.
  * @param raw - The raw payload.
  * @returns The canonical bag ready for the constructor.
@@ -399,10 +424,10 @@ function reconstructNested(
  *   an alias collides, or an unknown key hits `extra='forbid'`.
  * @internal
  */
-export function prepareInit(
-  cls: EntityModelStatics,
+export function prepareInit<F extends object>(
+  cls: EntityModelStatics<F>,
   raw: unknown,
-): Record<string, unknown> {
+): F {
   if (!isPlainObject(raw)) {
     return modelFail(cls.modelName, "expected a mapping payload");
   }
@@ -435,16 +460,23 @@ export function prepareInit(
     }
     bag[field] = value;
   }
-  return bag;
+  return bag as F;
 }
 
 /**
  * Base class of every entity-model port. Subclasses `declare` their
  * readonly fields; this constructor validates and assigns them.
  *
+ * `F` is the subclass's constructor bag (`XInit`): it types the
+ * `super(cls, fields)` call and ties the class statics to the same key
+ * set. It does not shape the instance — every subclass declares its
+ * materialised fields explicitly, because the instance type differs
+ * from the bag (defaults applied, nested payloads reconstructed into
+ * model instances).
+ *
  * @remarks Concrete entity classes are public; the base is plumbing.
  */
-export abstract class EntityModel {
+export abstract class EntityModel<F extends object = never> {
   /**
    * Pydantic `extra='allow'` spillover: unknown input keys retained on
    * the instance (mirroring `__pydantic_extra__`) but EXCLUDED from
@@ -466,13 +498,14 @@ export abstract class EntityModel {
    *   unknown keys under `extra='forbid'`, failed coercion, nested
    *   reconstruction failures, or constraint violations.
    */
-  protected constructor(
-    cls: EntityModelStatics,
-    fields: Readonly<Record<string, unknown>>,
-  ) {
-    const known = new Set(cls.fieldSpecs.map((spec) => spec.name));
+  protected constructor(cls: EntityModelStatics<F>, fields: F) {
+    // The bag is walked as a string-keyed record: `F` is an interface
+    // type (no index signature), so this widening is the one place the
+    // typed bag meets the spec-driven walk.
+    const bag = fields as Readonly<Record<string, unknown>>;
+    const known = new Set<string>(cls.fieldSpecs.map((spec) => spec.name));
     const extras: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(fields)) {
+    for (const [key, value] of Object.entries(bag)) {
       if (known.has(key) || value === undefined) {
         continue;
       }
@@ -486,7 +519,7 @@ export abstract class EntityModel {
     for (const spec of cls.fieldSpecs) {
       const path = `${cls.modelName}.${spec.name}`;
       const present =
-        Object.hasOwn(fields, spec.name) && fields[spec.name] !== undefined;
+        Object.hasOwn(bag, spec.name) && bag[spec.name] !== undefined;
       if (!present) {
         if (spec.required === true) {
           modelFail(path, "field required");
@@ -496,7 +529,7 @@ export abstract class EntityModel {
         out[spec.name] = spec.default === undefined ? null : spec.default();
         continue;
       }
-      let value: unknown = fields[spec.name];
+      let value: unknown = bag[spec.name];
       if (spec.before !== undefined) {
         value = spec.before(value);
       }

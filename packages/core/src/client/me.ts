@@ -18,7 +18,7 @@ import { isPythonDict } from "../compat/python-dict.js";
 import { MixpanelHeadlessError } from "../errors.js";
 import type { PublicWorkspace } from "../types/entities/common.js";
 import {
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   prepareInit,
 } from "../types/entities/model-base.js";
@@ -51,15 +51,15 @@ export interface MeOrgInfoInit {
  * Organization information within a `/me` response (Python `MeOrgInfo`,
  * `me.py:40-72`; model_config: `extra='allow'`, `frozen=True`).
  */
-export class MeOrgInfo extends EntityModel {
-  /** @internal The Python model name. */
+export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
+  /** The Python model name. */
   static readonly modelName = "MeOrgInfo";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<MeOrgInfoInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     { name: "role", kind: "str", nullable: true },
@@ -82,7 +82,7 @@ export class MeOrgInfo extends EntityModel {
    * @throws ResponseValidationError - On missing/invalid fields.
    */
   constructor(fields: MeOrgInfoInit) {
-    super(MeOrgInfo, fields as unknown as Readonly<Record<string, unknown>>);
+    super(MeOrgInfo, fields);
   }
 
   /**
@@ -103,9 +103,7 @@ export class MeOrgInfo extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): MeOrgInfo {
-    return new MeOrgInfo(
-      prepareInit(MeOrgInfo, raw) as unknown as MeOrgInfoInit,
-    );
+    return new MeOrgInfo(prepareInit(MeOrgInfo, raw));
   }
 }
 
@@ -132,20 +130,20 @@ export interface MeProjectInfoInit {
  * Project information within a `/me` response (Python `MeProjectInfo`,
  * `me.py:73-116`; model_config: `extra='allow'`, `frozen=True`).
  */
-export class MeProjectInfo extends EntityModel {
-  /** @internal The Python model name. */
+export class MeProjectInfo extends EntityModel<MeProjectInfoInit> {
+  /** The Python model name. */
   static readonly modelName = "MeProjectInfo";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
   /**
-   * @internal Declared fields in Python `model_fields` order. `type` is
+   * Declared fields in Python `model_fields` order. `type` is
    * a `str | int | None` union — no single lax-coercion kind applies,
    * so it passes through unvalidated exactly like Pydantic's
    * left-to-right union would accept both member types.
    */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  static readonly fieldSpecs: EntityFieldSpecs<MeProjectInfoInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "organization_id", required: true, kind: "int" },
     { name: "timezone", kind: "str", nullable: true },
@@ -174,10 +172,7 @@ export class MeProjectInfo extends EntityModel {
    * @throws ResponseValidationError - On missing/invalid fields.
    */
   constructor(fields: MeProjectInfoInit) {
-    super(
-      MeProjectInfo,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(MeProjectInfo, fields);
   }
 
   /**
@@ -197,9 +192,7 @@ export class MeProjectInfo extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): MeProjectInfo {
-    return new MeProjectInfo(
-      prepareInit(MeProjectInfo, raw) as unknown as MeProjectInfoInit,
-    );
+    return new MeProjectInfo(prepareInit(MeProjectInfo, raw));
   }
 }
 
@@ -232,15 +225,15 @@ export interface MeWorkspaceInfoInit {
  * Workspace information within a `/me` response (Python
  * `MeWorkspaceInfo`, `me.py:117-170`; `extra='allow'`, `frozen=True`).
  */
-export class MeWorkspaceInfo extends EntityModel {
-  /** @internal The Python model name. */
+export class MeWorkspaceInfo extends EntityModel<MeWorkspaceInfoInit> {
+  /** The Python model name. */
   static readonly modelName = "MeWorkspaceInfo";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<MeWorkspaceInfoInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     { name: "project_id", required: true, kind: "int" },
@@ -279,10 +272,7 @@ export class MeWorkspaceInfo extends EntityModel {
    * @throws ResponseValidationError - On missing/invalid fields.
    */
   constructor(fields: MeWorkspaceInfoInit) {
-    super(
-      MeWorkspaceInfo,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(MeWorkspaceInfo, fields);
   }
 
   /**
@@ -302,9 +292,7 @@ export class MeWorkspaceInfo extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): MeWorkspaceInfo {
-    return new MeWorkspaceInfo(
-      prepareInit(MeWorkspaceInfo, raw) as unknown as MeWorkspaceInfoInit,
-    );
+    return new MeWorkspaceInfo(prepareInit(MeWorkspaceInfo, raw));
   }
 }
 
@@ -355,15 +343,15 @@ export interface MeResponseInit {
  * `me.py:171-233`; `extra='allow'`, `frozen=True`). All fields optional;
  * the three container maps default to `{}`.
  */
-export class MeResponse extends EntityModel {
-  /** @internal The Python model name. */
+export class MeResponse extends EntityModel<MeResponseInit> {
+  /** The Python model name. */
   static readonly modelName = "MeResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<MeResponseInit> = [
     { name: "user_id", kind: "int", nullable: true },
     { name: "user_email", kind: "str", nullable: true },
     { name: "user_name", kind: "str", nullable: true },
@@ -424,7 +412,7 @@ export class MeResponse extends EntityModel {
    * @throws ResponseValidationError - On invalid fields.
    */
   constructor(fields: MeResponseInit = {}) {
-    super(MeResponse, fields as unknown as Readonly<Record<string, unknown>>);
+    super(MeResponse, fields);
   }
 
   /**

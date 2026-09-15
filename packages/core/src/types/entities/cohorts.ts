@@ -9,7 +9,7 @@
  */
 
 import {
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   type ModelDumpOptions,
   prepareInit,
@@ -67,15 +67,15 @@ export interface CohortCreatorInit {
  * Mirror of Python `mixpanel_headless.types.CohortCreator` (types.py:2753;
  * model_config: frozen=True, extra='allow').
  */
-export class CohortCreator extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CohortCreator extends EntityModel<CohortCreatorInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CohortCreator";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CohortCreatorInit> = [
     { name: "id", kind: "int", nullable: true },
     { name: "name", kind: "str", nullable: true },
     { name: "email", kind: "str", nullable: true },
@@ -96,10 +96,7 @@ export class CohortCreator extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CohortCreatorInit) {
-    super(
-      CohortCreator,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CohortCreator, fields);
   }
 
   /**
@@ -157,15 +154,15 @@ export interface CohortInit {
  * Mirror of Python `mixpanel_headless.types.Cohort` (types.py:2779;
  * model_config: frozen=True, extra='allow').
  */
-export class Cohort extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class Cohort extends EntityModel<CohortInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "Cohort";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CohortInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -219,7 +216,7 @@ export class Cohort extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CohortInit) {
-    super(Cohort, fields as unknown as Readonly<Record<string, unknown>>);
+    super(Cohort, fields);
   }
 
   /**
@@ -231,7 +228,7 @@ export class Cohort extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): Cohort {
-    return new Cohort(prepareInit(Cohort, raw) as unknown as CohortInit);
+    return new Cohort(prepareInit(Cohort, raw));
   }
 }
 
@@ -262,15 +259,15 @@ export interface CreateCohortParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateCohortParams` (types.py:2881;
  * model_config: extra='ignore').
  */
-export class CreateCohortParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateCohortParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateCohortParamsInit> = [
     { name: "definition", nullable: true },
     { name: "name", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -303,10 +300,7 @@ export class CreateCohortParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateCohortParamsInit) {
-    super(
-      CreateCohortParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateCohortParams, fields);
   }
 
   /**
@@ -331,9 +325,7 @@ export class CreateCohortParams extends EntityModel {
   }
 
   static fromDict(raw: unknown): CreateCohortParams {
-    return new CreateCohortParams(
-      prepareInit(CreateCohortParams, raw) as unknown as CreateCohortParamsInit,
-    );
+    return new CreateCohortParams(prepareInit(CreateCohortParams, raw));
   }
 }
 
@@ -364,15 +356,15 @@ export interface UpdateCohortParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateCohortParams` (types.py:2922;
  * model_config: extra='ignore').
  */
-export class UpdateCohortParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateCohortParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateCohortParamsInit> = [
     { name: "definition", nullable: true },
     { name: "name", kind: "str", nullable: true },
     { name: "description", kind: "str", nullable: true },
@@ -405,10 +397,7 @@ export class UpdateCohortParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateCohortParamsInit) {
-    super(
-      UpdateCohortParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateCohortParams, fields);
   }
 
   /**
@@ -458,15 +447,15 @@ export interface BulkUpdateCohortEntryInit {
  * Mirror of Python `mixpanel_headless.types.BulkUpdateCohortEntry` (types.py:2963;
  * model_config: extra='ignore').
  */
-export class BulkUpdateCohortEntry extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BulkUpdateCohortEntry";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BulkUpdateCohortEntryInit> = [
     { name: "definition", nullable: true },
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
@@ -490,10 +479,7 @@ export class BulkUpdateCohortEntry extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdateCohortEntryInit) {
-    super(
-      BulkUpdateCohortEntry,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BulkUpdateCohortEntry, fields);
   }
 
   /**
@@ -518,11 +504,6 @@ export class BulkUpdateCohortEntry extends EntityModel {
   }
 
   static fromDict(raw: unknown): BulkUpdateCohortEntry {
-    return new BulkUpdateCohortEntry(
-      prepareInit(
-        BulkUpdateCohortEntry,
-        raw,
-      ) as unknown as BulkUpdateCohortEntryInit,
-    );
+    return new BulkUpdateCohortEntry(prepareInit(BulkUpdateCohortEntry, raw));
   }
 }
