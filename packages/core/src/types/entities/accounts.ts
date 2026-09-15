@@ -15,7 +15,7 @@ import type {
   WorkspaceId,
 } from "../../auth/account.js";
 import {
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   modelFail,
   oneOf,
@@ -54,15 +54,15 @@ export interface AccountSummaryInit {
  * Mirror of Python `mixpanel_headless.types.AccountSummary` (types.py:12284;
  * model_config: frozen=True, extra='ignore').
  */
-export class AccountSummary extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AccountSummary extends EntityModel<AccountSummaryInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AccountSummary";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AccountSummaryInit> = [
     { name: "name", required: true, kind: "str" },
     {
       name: "type",
@@ -109,10 +109,7 @@ export class AccountSummary extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AccountSummaryInit) {
-    super(
-      AccountSummary,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AccountSummary, fields);
   }
 
   /**
@@ -124,9 +121,7 @@ export class AccountSummary extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AccountSummary {
-    return new AccountSummary(
-      prepareInit(AccountSummary, raw) as unknown as AccountSummaryInit,
-    );
+    return new AccountSummary(prepareInit(AccountSummary, raw));
   }
 }
 
@@ -157,15 +152,15 @@ export interface AccountTestResultInit {
  * Mirror of Python `mixpanel_headless.types.AccountTestResult` (types.py:12364;
  * model_config: frozen=True, extra='ignore').
  */
-export class AccountTestResult extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AccountTestResult extends EntityModel<AccountTestResultInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AccountTestResult";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AccountTestResultInit> = [
     { name: "account_name", required: true, kind: "str" },
     { name: "ok", required: true, kind: "bool" },
     { name: "user", nullable: true },
@@ -198,10 +193,7 @@ export class AccountTestResult extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AccountTestResultInit) {
-    super(
-      AccountTestResult,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AccountTestResult, fields);
   }
 
   /**
@@ -213,9 +205,7 @@ export class AccountTestResult extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AccountTestResult {
-    return new AccountTestResult(
-      prepareInit(AccountTestResult, raw) as unknown as AccountTestResultInit,
-    );
+    return new AccountTestResult(prepareInit(AccountTestResult, raw));
   }
 
   /**
@@ -262,15 +252,15 @@ export interface TargetInit {
  * Mirror of Python `mixpanel_headless.types.Target` (types.py:12434;
  * model_config: frozen=True, extra='forbid').
  */
-export class Target extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class Target extends EntityModel<TargetInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "Target";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "forbid" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<TargetInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "account", required: true, kind: "str" },
     {
@@ -314,7 +304,7 @@ export class Target extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: TargetInit) {
-    super(Target, fields as unknown as Readonly<Record<string, unknown>>);
+    super(Target, fields);
   }
 
   /**
@@ -326,7 +316,7 @@ export class Target extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): Target {
-    return new Target(prepareInit(Target, raw) as unknown as TargetInit);
+    return new Target(prepareInit(Target, raw));
   }
 }
 
@@ -353,15 +343,15 @@ export interface OAuthLoginResultInit {
  * Mirror of Python `mixpanel_headless.types.OAuthLoginResult` (types.py:12461;
  * model_config: frozen=True, extra='ignore').
  */
-export class OAuthLoginResult extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class OAuthLoginResult extends EntityModel<OAuthLoginResultInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "OAuthLoginResult";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<OAuthLoginResultInit> = [
     { name: "account_name", required: true, kind: "str" },
     { name: "user", nullable: true },
     { name: "expires_at", nullable: true, datetime: true },
@@ -388,10 +378,7 @@ export class OAuthLoginResult extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: OAuthLoginResultInit) {
-    super(
-      OAuthLoginResult,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(OAuthLoginResult, fields);
   }
 
   /**
@@ -403,8 +390,6 @@ export class OAuthLoginResult extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): OAuthLoginResult {
-    return new OAuthLoginResult(
-      prepareInit(OAuthLoginResult, raw) as unknown as OAuthLoginResultInit,
-    );
+    return new OAuthLoginResult(prepareInit(OAuthLoginResult, raw));
   }
 }

@@ -12,7 +12,7 @@ import { pythonJsonDumps, pythonStrip } from "../../compat/index.js";
 import type { CustomPropertyResourceType } from "../enums.js";
 import {
   codepointLength,
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   modelFail,
   oneOf,
@@ -34,15 +34,15 @@ export interface CustomEventAlternativeInit {
  * Mirror of Python `mixpanel_headless.types.CustomEventAlternative` (types.py:4820;
  * model_config: frozen=True, extra='allow').
  */
-export class CustomEventAlternative extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CustomEventAlternative extends EntityModel<CustomEventAlternativeInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CustomEventAlternative";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CustomEventAlternativeInit> = [
     {
       name: "event",
       required: true,
@@ -67,10 +67,7 @@ export class CustomEventAlternative extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CustomEventAlternativeInit) {
-    super(
-      CustomEventAlternative,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CustomEventAlternative, fields);
   }
 
   /**
@@ -82,12 +79,7 @@ export class CustomEventAlternative extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CustomEventAlternative {
-    return new CustomEventAlternative(
-      prepareInit(
-        CustomEventAlternative,
-        raw,
-      ) as unknown as CustomEventAlternativeInit,
-    );
+    return new CustomEventAlternative(prepareInit(CustomEventAlternative, raw));
   }
 }
 
@@ -112,15 +104,15 @@ export interface CustomEventInit {
  * Mirror of Python `mixpanel_headless.types.CustomEvent` (types.py:4841;
  * model_config: frozen=True, extra='allow').
  */
-export class CustomEvent extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CustomEvent extends EntityModel<CustomEventInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CustomEvent";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CustomEventInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     {
@@ -146,7 +138,7 @@ export class CustomEvent extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CustomEventInit) {
-    super(CustomEvent, fields as unknown as Readonly<Record<string, unknown>>);
+    super(CustomEvent, fields);
   }
 
   /**
@@ -158,9 +150,7 @@ export class CustomEvent extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CustomEvent {
-    return new CustomEvent(
-      prepareInit(CustomEvent, raw) as unknown as CustomEventInit,
-    );
+    return new CustomEvent(prepareInit(CustomEvent, raw));
   }
 }
 
@@ -181,15 +171,15 @@ export interface CreateCustomEventParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateCustomEventParams` (types.py:4876;
  * model_config: frozen=True, extra='ignore').
  */
-export class CreateCustomEventParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateCustomEventParams extends EntityModel<CreateCustomEventParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateCustomEventParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateCustomEventParamsInit> = [
     {
       name: "name",
       required: true,
@@ -239,10 +229,7 @@ export class CreateCustomEventParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateCustomEventParamsInit) {
-    super(
-      CreateCustomEventParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateCustomEventParams, fields);
   }
 
   /**
@@ -255,10 +242,7 @@ export class CreateCustomEventParams extends EntityModel {
    */
   static fromDict(raw: unknown): CreateCustomEventParams {
     return new CreateCustomEventParams(
-      prepareInit(
-        CreateCustomEventParams,
-        raw,
-      ) as unknown as CreateCustomEventParamsInit,
+      prepareInit(CreateCustomEventParams, raw),
     );
   }
 
@@ -321,15 +305,15 @@ export interface DropFilterInit {
  * Mirror of Python `mixpanel_headless.types.DropFilter` (types.py:5217;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class DropFilter extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class DropFilter extends EntityModel<DropFilterInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "DropFilter";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<DropFilterInit> = [
     { name: "id", required: true, kind: "int" },
     {
       name: "event_name",
@@ -371,7 +355,7 @@ export class DropFilter extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: DropFilterInit) {
-    super(DropFilter, fields as unknown as Readonly<Record<string, unknown>>);
+    super(DropFilter, fields);
   }
 
   /**
@@ -383,9 +367,7 @@ export class DropFilter extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): DropFilter {
-    return new DropFilter(
-      prepareInit(DropFilter, raw) as unknown as DropFilterInit,
-    );
+    return new DropFilter(prepareInit(DropFilter, raw));
   }
 }
 
@@ -406,15 +388,15 @@ export interface CreateDropFilterParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateDropFilterParams` (types.py:5257;
  * model_config: extra='ignore').
  */
-export class CreateDropFilterParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateDropFilterParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateDropFilterParamsInit> = [
     { name: "event_name", required: true, kind: "str" },
     // Python `filters: Any` (`types.py:5276`) — REQUIRED but nullable:
     // a bare `Any` annotation admits `None` in pydantic v2 (probe
@@ -439,10 +421,7 @@ export class CreateDropFilterParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateDropFilterParamsInit) {
-    super(
-      CreateDropFilterParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateDropFilterParams, fields);
   }
 
   /**
@@ -454,12 +433,7 @@ export class CreateDropFilterParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CreateDropFilterParams {
-    return new CreateDropFilterParams(
-      prepareInit(
-        CreateDropFilterParams,
-        raw,
-      ) as unknown as CreateDropFilterParamsInit,
-    );
+    return new CreateDropFilterParams(prepareInit(CreateDropFilterParams, raw));
   }
 }
 
@@ -484,15 +458,15 @@ export interface UpdateDropFilterParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateDropFilterParams` (types.py:5280;
  * model_config: extra='ignore').
  */
-export class UpdateDropFilterParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateDropFilterParams extends EntityModel<UpdateDropFilterParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateDropFilterParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateDropFilterParamsInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "event_name", kind: "str", nullable: true },
     { name: "filters", nullable: true },
@@ -516,10 +490,7 @@ export class UpdateDropFilterParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateDropFilterParamsInit) {
-    super(
-      UpdateDropFilterParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateDropFilterParams, fields);
   }
 
   /**
@@ -531,12 +502,7 @@ export class UpdateDropFilterParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateDropFilterParams {
-    return new UpdateDropFilterParams(
-      prepareInit(
-        UpdateDropFilterParams,
-        raw,
-      ) as unknown as UpdateDropFilterParamsInit,
-    );
+    return new UpdateDropFilterParams(prepareInit(UpdateDropFilterParams, raw));
   }
 }
 
@@ -555,15 +521,15 @@ export interface DropFilterLimitsResponseInit {
  * Mirror of Python `mixpanel_headless.types.DropFilterLimitsResponse` (types.py:5308;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class DropFilterLimitsResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class DropFilterLimitsResponse extends EntityModel<DropFilterLimitsResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "DropFilterLimitsResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<DropFilterLimitsResponseInit> = [
     {
       name: "filter_limit",
       required: true,
@@ -584,10 +550,7 @@ export class DropFilterLimitsResponse extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: DropFilterLimitsResponseInit) {
-    super(
-      DropFilterLimitsResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(DropFilterLimitsResponse, fields);
   }
 
   /**
@@ -600,10 +563,7 @@ export class DropFilterLimitsResponse extends EntityModel {
    */
   static fromDict(raw: unknown): DropFilterLimitsResponse {
     return new DropFilterLimitsResponse(
-      prepareInit(
-        DropFilterLimitsResponse,
-        raw,
-      ) as unknown as DropFilterLimitsResponseInit,
+      prepareInit(DropFilterLimitsResponse, raw),
     );
   }
 }
@@ -638,15 +598,15 @@ export interface ComposedPropertyValueInit {
  * Mirror of Python `mixpanel_headless.types.ComposedPropertyValue` (types.py:5347;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class ComposedPropertyValue extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ComposedPropertyValue extends EntityModel<ComposedPropertyValueInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ComposedPropertyValue";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ComposedPropertyValueInit> = [
     { name: "type", kind: "str", nullable: true },
     {
       name: "type_cast",
@@ -707,10 +667,7 @@ export class ComposedPropertyValue extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: ComposedPropertyValueInit) {
-    super(
-      ComposedPropertyValue,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ComposedPropertyValue, fields);
   }
 
   /**
@@ -722,12 +679,7 @@ export class ComposedPropertyValue extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): ComposedPropertyValue {
-    return new ComposedPropertyValue(
-      prepareInit(
-        ComposedPropertyValue,
-        raw,
-      ) as unknown as ComposedPropertyValueInit,
-    );
+    return new ComposedPropertyValue(prepareInit(ComposedPropertyValue, raw));
   }
 }
 
@@ -778,15 +730,15 @@ export interface CustomPropertyInit {
  * Mirror of Python `mixpanel_headless.types.CustomProperty` (types.py:5396;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class CustomProperty extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CustomProperty extends EntityModel<CustomPropertyInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CustomProperty";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CustomPropertyInit> = [
     {
       name: "custom_property_id",
       required: true,
@@ -894,10 +846,7 @@ export class CustomProperty extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CustomPropertyInit) {
-    super(
-      CustomProperty,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CustomProperty, fields);
   }
 
   /**
@@ -909,9 +858,7 @@ export class CustomProperty extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CustomProperty {
-    return new CustomProperty(
-      prepareInit(CustomProperty, raw) as unknown as CustomPropertyInit,
-    );
+    return new CustomProperty(prepareInit(CustomProperty, raw));
   }
 }
 
@@ -959,76 +906,77 @@ export interface CreateCustomPropertyParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateCustomPropertyParams` (types.py:5466;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class CreateCustomPropertyParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateCustomPropertyParams extends EntityModel<CreateCustomPropertyParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateCustomPropertyParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "name", required: true, kind: "str" },
-    {
-      name: "resource_type",
-      required: true,
-      aliases: ["resourceType"],
-      wire: "resourceType",
-      check: oneOf(["events", "people", "group_profiles"]),
-    },
-    { name: "description", kind: "str", nullable: true },
-    {
-      name: "display_formula",
-      aliases: ["displayFormula"],
-      wire: "displayFormula",
-      kind: "str",
-      nullable: true,
-    },
-    {
-      name: "composed_properties",
-      aliases: ["composedProperties"],
-      wire: "composedProperties",
-      nullable: true,
-      nested: () => ComposedPropertyValue,
-      container: "dict",
-    },
-    {
-      name: "is_locked",
-      aliases: ["isLocked"],
-      wire: "isLocked",
-      kind: "bool",
-      nullable: true,
-    },
-    {
-      name: "is_visible",
-      aliases: ["isVisible"],
-      wire: "isVisible",
-      kind: "bool",
-      nullable: true,
-    },
-    {
-      name: "property_type",
-      aliases: ["propertyType"],
-      wire: "propertyType",
-      nullable: true,
-      check: oneOf(["string", "number", "boolean", "datetime"]),
-    },
-    {
-      name: "example_value",
-      aliases: ["exampleValue"],
-      wire: "exampleValue",
-      kind: "str",
-      nullable: true,
-    },
-    {
-      name: "data_group_id",
-      aliases: ["dataGroupId"],
-      wire: "dataGroupId",
-      kind: "str",
-      nullable: true,
-    },
-    { name: "behavior", nullable: true },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateCustomPropertyParamsInit> =
+    [
+      { name: "name", required: true, kind: "str" },
+      {
+        name: "resource_type",
+        required: true,
+        aliases: ["resourceType"],
+        wire: "resourceType",
+        check: oneOf(["events", "people", "group_profiles"]),
+      },
+      { name: "description", kind: "str", nullable: true },
+      {
+        name: "display_formula",
+        aliases: ["displayFormula"],
+        wire: "displayFormula",
+        kind: "str",
+        nullable: true,
+      },
+      {
+        name: "composed_properties",
+        aliases: ["composedProperties"],
+        wire: "composedProperties",
+        nullable: true,
+        nested: () => ComposedPropertyValue,
+        container: "dict",
+      },
+      {
+        name: "is_locked",
+        aliases: ["isLocked"],
+        wire: "isLocked",
+        kind: "bool",
+        nullable: true,
+      },
+      {
+        name: "is_visible",
+        aliases: ["isVisible"],
+        wire: "isVisible",
+        kind: "bool",
+        nullable: true,
+      },
+      {
+        name: "property_type",
+        aliases: ["propertyType"],
+        wire: "propertyType",
+        nullable: true,
+        check: oneOf(["string", "number", "boolean", "datetime"]),
+      },
+      {
+        name: "example_value",
+        aliases: ["exampleValue"],
+        wire: "exampleValue",
+        kind: "str",
+        nullable: true,
+      },
+      {
+        name: "data_group_id",
+        aliases: ["dataGroupId"],
+        wire: "dataGroupId",
+        kind: "str",
+        nullable: true,
+      },
+      { name: "behavior", nullable: true },
+    ];
 
   /** Property name. */
   declare readonly name: string;
@@ -1064,10 +1012,7 @@ export class CreateCustomPropertyParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateCustomPropertyParamsInit) {
-    super(
-      CreateCustomPropertyParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateCustomPropertyParams, fields);
   }
 
   /**
@@ -1080,10 +1025,7 @@ export class CreateCustomPropertyParams extends EntityModel {
    */
   static fromDict(raw: unknown): CreateCustomPropertyParams {
     return new CreateCustomPropertyParams(
-      prepareInit(
-        CreateCustomPropertyParams,
-        raw,
-      ) as unknown as CreateCustomPropertyParamsInit,
+      prepareInit(CreateCustomPropertyParams, raw),
     );
   }
 
@@ -1158,47 +1100,48 @@ export interface UpdateCustomPropertyParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateCustomPropertyParams` (types.py:5564;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class UpdateCustomPropertyParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateCustomPropertyParams extends EntityModel<UpdateCustomPropertyParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateCustomPropertyParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "name", kind: "str", nullable: true },
-    { name: "description", kind: "str", nullable: true },
-    {
-      name: "display_formula",
-      aliases: ["displayFormula"],
-      wire: "displayFormula",
-      kind: "str",
-      nullable: true,
-    },
-    {
-      name: "composed_properties",
-      aliases: ["composedProperties"],
-      wire: "composedProperties",
-      nullable: true,
-      nested: () => ComposedPropertyValue,
-      container: "dict",
-    },
-    {
-      name: "is_locked",
-      aliases: ["isLocked"],
-      wire: "isLocked",
-      kind: "bool",
-      nullable: true,
-    },
-    {
-      name: "is_visible",
-      aliases: ["isVisible"],
-      wire: "isVisible",
-      kind: "bool",
-      nullable: true,
-    },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateCustomPropertyParamsInit> =
+    [
+      { name: "name", kind: "str", nullable: true },
+      { name: "description", kind: "str", nullable: true },
+      {
+        name: "display_formula",
+        aliases: ["displayFormula"],
+        wire: "displayFormula",
+        kind: "str",
+        nullable: true,
+      },
+      {
+        name: "composed_properties",
+        aliases: ["composedProperties"],
+        wire: "composedProperties",
+        nullable: true,
+        nested: () => ComposedPropertyValue,
+        container: "dict",
+      },
+      {
+        name: "is_locked",
+        aliases: ["isLocked"],
+        wire: "isLocked",
+        kind: "bool",
+        nullable: true,
+      },
+      {
+        name: "is_visible",
+        aliases: ["isVisible"],
+        wire: "isVisible",
+        kind: "bool",
+        nullable: true,
+      },
+    ];
 
   /** Property name. */
   declare readonly name: string | null;
@@ -1223,10 +1166,7 @@ export class UpdateCustomPropertyParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateCustomPropertyParamsInit) {
-    super(
-      UpdateCustomPropertyParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateCustomPropertyParams, fields);
   }
 
   /**
@@ -1275,15 +1215,15 @@ export interface LookupTableInit {
  * Mirror of Python `mixpanel_headless.types.LookupTable` (types.py:5609;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class LookupTable extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class LookupTable extends EntityModel<LookupTableInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "LookupTable";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<LookupTableInit> = [
     // int64, not int: live ids exceed 2^53 (see `LookupTableInit.id`).
     { name: "id", required: true, kind: "int64" },
     { name: "name", required: true, kind: "str" },
@@ -1337,7 +1277,7 @@ export class LookupTable extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: LookupTableInit) {
-    super(LookupTable, fields as unknown as Readonly<Record<string, unknown>>);
+    super(LookupTable, fields);
   }
 
   /**
@@ -1349,9 +1289,7 @@ export class LookupTable extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): LookupTable {
-    return new LookupTable(
-      prepareInit(LookupTable, raw) as unknown as LookupTableInit,
-    );
+    return new LookupTable(prepareInit(LookupTable, raw));
   }
 }
 
@@ -1377,15 +1315,15 @@ export interface UploadLookupTableParamsInit {
  * Mirror of Python `mixpanel_headless.types.UploadLookupTableParams` (types.py:5649;
  * model_config: extra='ignore').
  */
-export class UploadLookupTableParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UploadLookupTableParams extends EntityModel<UploadLookupTableParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UploadLookupTableParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UploadLookupTableParamsInit> = [
     {
       name: "name",
       required: true,
@@ -1419,10 +1357,7 @@ export class UploadLookupTableParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UploadLookupTableParamsInit) {
-    super(
-      UploadLookupTableParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UploadLookupTableParams, fields);
   }
 
   /**
@@ -1435,10 +1370,7 @@ export class UploadLookupTableParams extends EntityModel {
    */
   static fromDict(raw: unknown): UploadLookupTableParams {
     return new UploadLookupTableParams(
-      prepareInit(
-        UploadLookupTableParams,
-        raw,
-      ) as unknown as UploadLookupTableParamsInit,
+      prepareInit(UploadLookupTableParams, raw),
     );
   }
 }
@@ -1465,19 +1397,20 @@ export interface MarkLookupTableReadyParamsInit {
  * Mirror of Python `mixpanel_headless.types.MarkLookupTableReadyParams` (types.py:5680;
  * model_config: extra='ignore').
  */
-export class MarkLookupTableReadyParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class MarkLookupTableReadyParams extends EntityModel<MarkLookupTableReadyParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "MarkLookupTableReadyParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "name", required: true, kind: "str" },
-    { name: "key", required: true, kind: "str" },
-    { name: "data_group_id", kind: "int64", nullable: true },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<MarkLookupTableReadyParamsInit> =
+    [
+      { name: "name", required: true, kind: "str" },
+      { name: "key", required: true, kind: "str" },
+      { name: "data_group_id", kind: "int64", nullable: true },
+    ];
 
   /** Table name. */
   declare readonly name: string;
@@ -1494,10 +1427,7 @@ export class MarkLookupTableReadyParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: MarkLookupTableReadyParamsInit) {
-    super(
-      MarkLookupTableReadyParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(MarkLookupTableReadyParams, fields);
   }
 
   /**
@@ -1510,10 +1440,7 @@ export class MarkLookupTableReadyParams extends EntityModel {
    */
   static fromDict(raw: unknown): MarkLookupTableReadyParams {
     return new MarkLookupTableReadyParams(
-      prepareInit(
-        MarkLookupTableReadyParams,
-        raw,
-      ) as unknown as MarkLookupTableReadyParamsInit,
+      prepareInit(MarkLookupTableReadyParams, raw),
     );
   }
 }
@@ -1537,15 +1464,15 @@ export interface LookupTableUploadUrlInit {
  * Mirror of Python `mixpanel_headless.types.LookupTableUploadUrl` (types.py:5704;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class LookupTableUploadUrl extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class LookupTableUploadUrl extends EntityModel<LookupTableUploadUrlInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "LookupTableUploadUrl";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<LookupTableUploadUrlInit> = [
     { name: "url", required: true, kind: "str" },
     { name: "path", required: true, kind: "str" },
     { name: "key", required: true, kind: "str" },
@@ -1566,10 +1493,7 @@ export class LookupTableUploadUrl extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: LookupTableUploadUrlInit) {
-    super(
-      LookupTableUploadUrl,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(LookupTableUploadUrl, fields);
   }
 
   /**
@@ -1581,12 +1505,7 @@ export class LookupTableUploadUrl extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): LookupTableUploadUrl {
-    return new LookupTableUploadUrl(
-      prepareInit(
-        LookupTableUploadUrl,
-        raw,
-      ) as unknown as LookupTableUploadUrlInit,
-    );
+    return new LookupTableUploadUrl(prepareInit(LookupTableUploadUrl, raw));
   }
 }
 
@@ -1605,15 +1524,15 @@ export interface UpdateLookupTableParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateLookupTableParams` (types.py:5736;
  * model_config: extra='ignore').
  */
-export class UpdateLookupTableParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateLookupTableParams extends EntityModel<UpdateLookupTableParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateLookupTableParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateLookupTableParamsInit> = [
     { name: "name", kind: "str", nullable: true },
   ];
 
@@ -1628,10 +1547,7 @@ export class UpdateLookupTableParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateLookupTableParamsInit) {
-    super(
-      UpdateLookupTableParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateLookupTableParams, fields);
   }
 
   /**

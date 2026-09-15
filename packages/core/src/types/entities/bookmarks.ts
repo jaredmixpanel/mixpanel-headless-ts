@@ -10,7 +10,7 @@
 
 import { isPythonDict } from "../../compat/python-dict.js";
 import {
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   modelFail,
   oneOf,
@@ -44,15 +44,15 @@ export interface BookmarkMetadataInit {
  * Mirror of Python `mixpanel_headless.types.BookmarkMetadata` (types.py:2372;
  * model_config: frozen=True, extra='allow').
  */
-export class BookmarkMetadata extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BookmarkMetadata extends EntityModel<BookmarkMetadataInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BookmarkMetadata";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BookmarkMetadataInit> = [
     { name: "table_display_mode", kind: "str", nullable: true },
     { name: "compare_enabled", kind: "bool", nullable: true },
     { name: "compare_filters", nullable: true },
@@ -85,10 +85,7 @@ export class BookmarkMetadata extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BookmarkMetadataInit) {
-    super(
-      BookmarkMetadata,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BookmarkMetadata, fields);
   }
 
   /**
@@ -174,15 +171,15 @@ export interface BookmarkInit {
  * Mirror of Python `mixpanel_headless.types.Bookmark` (types.py:2420;
  * model_config: frozen=True, extra='allow', populate_by_name=True).
  */
-export class Bookmark extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class Bookmark extends EntityModel<BookmarkInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "Bookmark";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BookmarkInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "project_id", kind: "int", nullable: true },
     { name: "name", required: true, kind: "str" },
@@ -284,7 +281,7 @@ export class Bookmark extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BookmarkInit) {
-    super(Bookmark, fields as unknown as Readonly<Record<string, unknown>>);
+    super(Bookmark, fields);
   }
 
   /**
@@ -296,7 +293,7 @@ export class Bookmark extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): Bookmark {
-    return new Bookmark(prepareInit(Bookmark, raw) as unknown as BookmarkInit);
+    return new Bookmark(prepareInit(Bookmark, raw));
   }
 }
 
@@ -330,15 +327,15 @@ export interface CreateBookmarkParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateBookmarkParams` (types.py:2554;
  * model_config: extra='ignore', populate_by_name=True).
  */
-export class CreateBookmarkParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateBookmarkParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateBookmarkParamsInit> = [
     { name: "name", required: true, kind: "str" },
     {
       name: "bookmark_type",
@@ -381,10 +378,7 @@ export class CreateBookmarkParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateBookmarkParamsInit) {
-    super(
-      CreateBookmarkParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateBookmarkParams, fields);
   }
 
   /**
@@ -396,12 +390,7 @@ export class CreateBookmarkParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CreateBookmarkParams {
-    return new CreateBookmarkParams(
-      prepareInit(
-        CreateBookmarkParams,
-        raw,
-      ) as unknown as CreateBookmarkParamsInit,
-    );
+    return new CreateBookmarkParams(prepareInit(CreateBookmarkParams, raw));
   }
 }
 
@@ -434,15 +423,15 @@ export interface UpdateBookmarkParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateBookmarkParams` (types.py:2612;
  * model_config: extra='ignore').
  */
-export class UpdateBookmarkParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateBookmarkParams extends EntityModel<UpdateBookmarkParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateBookmarkParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateBookmarkParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "params", nullable: true },
     { name: "description", kind: "str", nullable: true },
@@ -478,10 +467,7 @@ export class UpdateBookmarkParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateBookmarkParamsInit) {
-    super(
-      UpdateBookmarkParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateBookmarkParams, fields);
   }
 
   /**
@@ -524,15 +510,15 @@ export interface BulkUpdateBookmarkEntryInit {
  * Mirror of Python `mixpanel_headless.types.BulkUpdateBookmarkEntry` (types.py:2660;
  * model_config: extra='ignore').
  */
-export class BulkUpdateBookmarkEntry extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BulkUpdateBookmarkEntry extends EntityModel<BulkUpdateBookmarkEntryInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BulkUpdateBookmarkEntry";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BulkUpdateBookmarkEntryInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
     { name: "params", nullable: true },
@@ -565,10 +551,7 @@ export class BulkUpdateBookmarkEntry extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdateBookmarkEntryInit) {
-    super(
-      BulkUpdateBookmarkEntry,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BulkUpdateBookmarkEntry, fields);
   }
 
   /**
@@ -581,10 +564,7 @@ export class BulkUpdateBookmarkEntry extends EntityModel {
    */
   static fromDict(raw: unknown): BulkUpdateBookmarkEntry {
     return new BulkUpdateBookmarkEntry(
-      prepareInit(
-        BulkUpdateBookmarkEntry,
-        raw,
-      ) as unknown as BulkUpdateBookmarkEntryInit,
+      prepareInit(BulkUpdateBookmarkEntry, raw),
     );
   }
 }
@@ -608,19 +588,20 @@ export interface BookmarkHistoryPaginationInit {
  * Mirror of Python `mixpanel_headless.types.BookmarkHistoryPagination` (types.py:2700;
  * model_config: frozen=True, extra='allow').
  */
-export class BookmarkHistoryPagination extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BookmarkHistoryPagination extends EntityModel<BookmarkHistoryPaginationInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BookmarkHistoryPagination";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "next_cursor", kind: "str", nullable: true },
-    { name: "previous_cursor", kind: "str", nullable: true },
-    { name: "page_size", default: () => 0, kind: "int" },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BookmarkHistoryPaginationInit> =
+    [
+      { name: "next_cursor", kind: "str", nullable: true },
+      { name: "previous_cursor", kind: "str", nullable: true },
+      { name: "page_size", default: () => 0, kind: "int" },
+    ];
 
   /** Cursor for next page. */
   declare readonly next_cursor: string | null;
@@ -637,10 +618,7 @@ export class BookmarkHistoryPagination extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BookmarkHistoryPaginationInit) {
-    super(
-      BookmarkHistoryPagination,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BookmarkHistoryPagination, fields);
   }
 
   /**
@@ -679,15 +657,15 @@ export interface BookmarkHistoryResponseInit {
  * Mirror of Python `mixpanel_headless.types.BookmarkHistoryResponse` (types.py:2726;
  * model_config: frozen=True, extra='allow').
  */
-export class BookmarkHistoryResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BookmarkHistoryResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BookmarkHistoryResponseInit> = [
     { name: "results", default: () => [] },
     {
       name: "pagination",
@@ -709,10 +687,7 @@ export class BookmarkHistoryResponse extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BookmarkHistoryResponseInit) {
-    super(
-      BookmarkHistoryResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BookmarkHistoryResponse, fields);
   }
 
   /**
@@ -772,15 +747,15 @@ export interface BookmarkUrlInit {
  * Mirror of Python `mixpanel_headless.types.BookmarkUrl` (model_config:
  * frozen=True, extra='allow', populate_by_name=True).
  */
-export class BookmarkUrl extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BookmarkUrl extends EntityModel<BookmarkUrlInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BookmarkUrl";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BookmarkUrlInit> = [
     { name: "slug", required: true, kind: "str" },
     {
       name: "bookmark_type",
@@ -831,7 +806,7 @@ export class BookmarkUrl extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BookmarkUrlInit) {
-    super(BookmarkUrl, fields as unknown as Readonly<Record<string, unknown>>);
+    super(BookmarkUrl, fields);
   }
 
   /**
@@ -861,8 +836,6 @@ export class BookmarkUrl extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BookmarkUrl {
-    return new BookmarkUrl(
-      prepareInit(BookmarkUrl, raw) as unknown as BookmarkUrlInit,
-    );
+    return new BookmarkUrl(prepareInit(BookmarkUrl, raw));
   }
 }

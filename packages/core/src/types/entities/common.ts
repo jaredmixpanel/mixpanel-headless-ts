@@ -9,7 +9,7 @@
  */
 
 import {
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   prepareInit,
 } from "./model-base.js";
@@ -47,15 +47,15 @@ export interface PublicWorkspaceInit {
  * Mirror of Python `mixpanel_headless.types.PublicWorkspace` (types.py:1635;
  * model_config: frozen=True, extra='allow').
  */
-export class PublicWorkspace extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class PublicWorkspace extends EntityModel<PublicWorkspaceInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "PublicWorkspace";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<PublicWorkspaceInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     { name: "project_id", required: true, kind: "int" },
@@ -97,10 +97,7 @@ export class PublicWorkspace extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: PublicWorkspaceInit) {
-    super(
-      PublicWorkspace,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(PublicWorkspace, fields);
   }
 
   /**
@@ -112,9 +109,7 @@ export class PublicWorkspace extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): PublicWorkspace {
-    return new PublicWorkspace(
-      prepareInit(PublicWorkspace, raw) as unknown as PublicWorkspaceInit,
-    );
+    return new PublicWorkspace(prepareInit(PublicWorkspace, raw));
   }
 }
 
@@ -137,15 +132,15 @@ export interface CursorPaginationInit {
  * Mirror of Python `mixpanel_headless.types.CursorPagination` (types.py:1696;
  * model_config: frozen=True, extra='ignore').
  */
-export class CursorPagination extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CursorPagination extends EntityModel<CursorPaginationInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CursorPagination";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CursorPaginationInit> = [
     { name: "page_size", required: true, kind: "int" },
     { name: "next_cursor", kind: "str", nullable: true },
     { name: "previous_cursor", kind: "str", nullable: true },
@@ -166,10 +161,7 @@ export class CursorPagination extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CursorPaginationInit) {
-    super(
-      CursorPagination,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CursorPagination, fields);
   }
 
   /**
@@ -181,9 +173,7 @@ export class CursorPagination extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): CursorPagination {
-    return new CursorPagination(
-      prepareInit(CursorPagination, raw) as unknown as CursorPaginationInit,
-    );
+    return new CursorPagination(prepareInit(CursorPagination, raw));
   }
 }
 
@@ -211,19 +201,22 @@ export interface PaginatedResponseInit<T> {
  * runtime too) — the Phase-3 `paginateAll<T>` binding supplies typed
  * items.
  */
-export class PaginatedResponse<T = unknown> extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class PaginatedResponse<T = unknown> extends EntityModel<
+  PaginatedResponseInit<T>
+> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "PaginatedResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "status", required: true, kind: "str" },
-    { name: "results", required: true },
-    { name: "pagination", nullable: true, nested: () => CursorPagination },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<PaginatedResponseInit<unknown>> =
+    [
+      { name: "status", required: true, kind: "str" },
+      { name: "results", required: true },
+      { name: "pagination", nullable: true, nested: () => CursorPagination },
+    ];
 
   /** Response status (typically "ok"). */
   declare readonly status: string;
@@ -240,10 +233,7 @@ export class PaginatedResponse<T = unknown> extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: PaginatedResponseInit<T>) {
-    super(
-      PaginatedResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(PaginatedResponse, fields);
   }
 
   /**
@@ -256,11 +246,6 @@ export class PaginatedResponse<T = unknown> extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): PaginatedResponse {
-    return new PaginatedResponse(
-      prepareInit(
-        PaginatedResponse,
-        raw,
-      ) as unknown as PaginatedResponseInit<unknown>,
-    );
+    return new PaginatedResponse(prepareInit(PaginatedResponse, raw));
   }
 }

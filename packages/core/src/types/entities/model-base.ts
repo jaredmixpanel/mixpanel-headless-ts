@@ -2,8 +2,9 @@
  * Shared plumbing for the Pydantic entity/param model ports
  * (phase2-design C5, packet P2-7).
  *
- * Each of the 125 exported Pydantic models becomes a hand-written TS
- * class extending {@link EntityModel}. The base implements the exact
+ * Every exported Pydantic model (124 classes across `types/entities/`
+ * and `client/me.ts`) becomes a hand-written TS class extending
+ * {@link EntityModel}. The base implements the exact
  * behavioral mirror of the Python model boundary that Phase 2 locks:
  *
  * - **Construction** (`new Model(fields)`): required-field checks,
@@ -19,7 +20,7 @@
  *   every declared field under its PYTHON attribute name, `null` for
  *   Python `None`, datetimes as iso text, computed fields appended
  *   (the shape entity wire vectors record under `expect.result`).
- * - **`toVectorPayload`** (`@internal`) — same walk but `$type`-tagged
+ * - **`toVectorPayload`** (rig-facing) — same walk but `$type`-tagged
  *   datetime leaves, byte-matching the recorded payloads for the C8(b)
  *   golden diff.
  *
@@ -36,9 +37,11 @@
  * C4) and every Phase-2 construction site is a vector-decode/golden
  * seam; Phase-3 param seams may re-wrap.
  *
- * @internal Everything here is plumbing for the entity classes, the
- * C8 golden tests, and the conformance codecs — none of it is part of
- * the public package surface.
+ * The base class and the spec types are reachable from every public
+ * entity class and so form part of the published declarations; the
+ * decode helpers (`prepareInit`, `oneOf`, the module-private walkers)
+ * are plumbing for the entity classes, the golden tests and the
+ * conformance codecs only.
  */
 
 import { orderedEntries } from "../../client/json-value.js";
@@ -49,9 +52,18 @@ import {
   coerceInt64,
   coerceStr,
 } from "../../coerce.js";
-import { cpLength } from "../../compat/codepoint.js";
-import { isPythonDict } from "../../compat/python-dict.js";
+import { isPythonDict, setOwn } from "../../compat/python-dict.js";
 import { ResponseValidationError } from "../../errors.js";
+import { modelFail, requireIsoText } from "./decode-utils.js";
+
+// The model-boundary failure lives in the leaf `decode-utils.ts` (shared
+// with the result models); entity classes keep importing it from here,
+// next to the base they extend.
+export { modelFail } from "./decode-utils.js";
+// TODO(Ω): shim — `workspace-members/lifecycle.ts` still imports
+// `codepointLength` from here; repoint it to `compat/codepoint.ts` and
+// delete this line.
+export { cpLength as codepointLength } from "../../compat/codepoint.js";
 
 /**
  * Lax scalar coercion kinds (R4.12) applied to non-null present values.
@@ -61,8 +73,6 @@ import { ResponseValidationError } from "../../errors.js";
  * exact value is a safe integer and as a `bigint` otherwise. Reserved
  * for Python `int` fields whose live values exceed
  * `Number.MAX_SAFE_INTEGER` (lookup-table `data_group_id`s).
- *
- * @internal
  */
 export type EntityFieldKind = "int" | "int64" | "str" | "bool" | "float";
 
@@ -82,11 +92,14 @@ export interface ModelDumpOptions {
 /**
  * One declared Python model field, in `model_fields` order.
  *
- * @internal
+ * `K` is the set of attribute names the owning class declares (the keys
+ * of its `XInit` constructor bag), so a spec whose `name` is not a
+ * declared field fails to compile; the unparameterised form is the
+ * class-agnostic view the rig and the response validator walk.
  */
-export interface EntityFieldSpec {
+export interface EntityFieldSpec<K extends string = string> {
   /** The Python attribute name (exact spelling — R3.6/R7.6). */
-  readonly name: string;
+  readonly name: K;
   /** True when the Python field has no default (`is_required()`). */
   readonly required?: boolean;
   /**
@@ -163,12 +176,21 @@ export interface EntityFieldSpec {
 }
 
 /**
+ * The declared field list of a class whose constructor bag is `F`: one
+ * {@link EntityFieldSpec} per Python `model_fields` entry, each named by
+ * a key of `F`. Every concrete class annotates its `fieldSpecs` static
+ * with this so the runtime spec list and the `XInit` type cannot drift
+ * apart on names.
+ */
+export type EntityFieldSpecs<F extends object> = ReadonlyArray<
+  EntityFieldSpec<keyof F & string>
+>;
+
+/**
  * One Pydantic `@computed_field` port: appended to `toJSON()` /
  * `toVectorPayload()` output after the declared fields (the recorder
  * includes computed fields in expect position only), and DROPPED from
  * `fromDict` input (they never reach a constructor at decode time).
- *
- * @internal
  */
 export interface ComputedFieldSpec {
   /** The Python computed-field name. */
@@ -179,100 +201,27 @@ export interface ComputedFieldSpec {
 
 /**
  * The per-class static contract every entity model carries.
+ *
+ * `F` is the class's constructor bag (`XInit`). `EntityModelStatics<XInit>`
+ * is what `super(...)` and {@link prepareInit} take from a concrete class;
+ * the unparameterised form (`F = never`) is the class-agnostic view for
+ * heterogeneous tables (the rig's codec rows, nested-model thunks): its
+ * field names are unconstrained and its constructor is deliberately
+ * uncallable, since no bag type fits every class.
  */
-export interface EntityModelStatics {
+export interface EntityModelStatics<F extends object = never> {
   /** The Python model name (also the `$type` tag where one exists). */
   readonly modelName: string;
   /** Pydantic `model_config.extra` (default `ignore`). */
   readonly extraPolicy: "ignore" | "allow" | "forbid";
   /** Declared fields in Python `model_fields` order. */
-  readonly fieldSpecs: readonly EntityFieldSpec[];
+  readonly fieldSpecs: EntityFieldSpecs<F>;
   /** `@computed_field` ports (empty for all but `BusinessContext`). */
   readonly computedSpecs?: readonly ComputedFieldSpec[];
   /** The strict decode factory (present on every concrete class). */
-  readonly fromDict: (raw: unknown) => EntityModel;
-  /** Constructable (the base processes the already-aliased bag). */
-  new (fields: never): EntityModel;
-}
-
-/**
- * Raise the model-boundary validation error.
- *
- * @param path - `Model.field` style location.
- * @param message - What was violated (message text out of contract,
- *   R5.4).
- * @returns Never returns.
- * @throws ResponseValidationError - Always.
- * @internal
- */
-export function modelFail(path: string, message: string): never {
-  throw new ResponseValidationError(`${path}: ${message}`);
-}
-
-/**
- * Count Unicode codepoints (R11.6 — never UTF-16 units).
- *
- * @param text - The string to measure.
- * @returns The codepoint count.
- * @internal
- */
-export function codepointLength(text: string): number {
-  return cpLength(text);
-}
-
-/**
- * Extract preserved iso text from a datetime-valued input: raw string,
- * or the runner's duck-typed `PyDatetime` wrapper (an object carrying a
- * string `iso` field — this module cannot import the runner class;
- * dependency direction is runner -> core).
- *
- * @param value - The decoded child value.
- * @param path - `Model.field` location for errors.
- * @returns The iso-8601 text.
- * @throws ResponseValidationError - When neither shape matches.
- * @internal
- */
-export function requireIsoText(value: unknown, path: string): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "iso" in value &&
-    typeof value.iso === "string"
-  ) {
-    return (value as { iso: string }).iso;
-  }
-  return modelFail(path, `expected a datetime, got ${describeValue(value)}`);
-}
-
-/**
- * Describe a value's JSON kind for error messages.
- *
- * @param value - Any value.
- * @returns A short kind label.
- * @internal
- */
-function describeValue(value: unknown): string {
-  if (value === null) {
-    return "null";
-  }
-  if (Array.isArray(value)) {
-    return "array";
-  }
-  return typeof value;
-}
-
-/**
- * Whether a value is a plain object (candidate nested-model payload).
- *
- * @param value - Any value.
- * @returns True for non-null non-array objects.
- * @internal
- */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  readonly fromDict: (raw: unknown) => EntityModel<F>;
+  /** The public constructor over the attribute-name-keyed bag. */
+  new (fields: F): EntityModel<F>;
 }
 
 /**
@@ -342,7 +291,7 @@ function reconstructNested(
     if (item instanceof EntityModel) {
       return item;
     }
-    if (isPlainObject(item)) {
+    if (isPythonDict(item)) {
       return nested.fromDict(item);
     }
     return modelFail(where, `expected a ${nested.modelName} payload`);
@@ -354,12 +303,12 @@ function reconstructNested(
     return value.map((item, index) => one(item, `${path}[${String(index)}]`));
   }
   if (spec.container === "dict") {
-    if (!isPlainObject(value)) {
+    if (!isPythonDict(value)) {
       return modelFail(path, "expected an object");
     }
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      out[key] = one(item, `${path}.${key}`);
+      setOwn(out, key, one(item, `${path}.${key}`));
     }
     return out;
   }
@@ -372,7 +321,7 @@ function reconstructNested(
       entries = [...(value as ReadonlyMap<unknown, unknown>)].map(
         ([k, item]) => [String(k), item],
       );
-    } else if (isPlainObject(value)) {
+    } else if (isPythonDict(value)) {
       entries = orderedEntries(value);
     } else {
       modelFail(path, "expected an object");
@@ -387,27 +336,40 @@ function reconstructNested(
 }
 
 /**
- * Resolve a raw input mapping to a canonical field bag: alias keys map
- * to attribute names, computed-field keys are dropped, and unknown keys
- * follow the class `extra` policy. This is the `fromDict` half —
- * constructors receive attribute-name bags directly.
+ * The per-class decode index: the alias-to-attribute map `fromDict`
+ * resolves input keys through, the computed-field names it drops, and
+ * the declared-name set the constructor uses to spot extras.
+ */
+interface ClassIndex {
+  readonly keyToField: ReadonlyMap<string, string>;
+  readonly computed: ReadonlySet<string>;
+  readonly known: ReadonlySet<string>;
+}
+
+/**
+ * {@link ClassIndex} per concrete class, built on first use. The specs
+ * are `static readonly` and never change after module load, so the
+ * index is derived once instead of on every decode/construction; a
+ * WeakMap keyed by the class keeps it off the public statics and lets
+ * ad-hoc test classes be collected.
+ */
+const CLASS_INDEX = new WeakMap<EntityModelStatics, ClassIndex>();
+
+/**
+ * Look up (or build and memoise) the decode index of one class.
  *
  * @param cls - The entity-model statics.
- * @param raw - The raw payload.
- * @returns The canonical bag ready for the constructor.
- * @throws ResponseValidationError - When `raw` is not a plain object,
- *   an alias collides, or an unknown key hits `extra='forbid'`.
- * @internal
+ * @returns The class's index.
  */
-export function prepareInit(
-  cls: EntityModelStatics,
-  raw: unknown,
-): Record<string, unknown> {
-  if (!isPlainObject(raw)) {
-    return modelFail(cls.modelName, "expected a mapping payload");
+function classIndex(cls: EntityModelStatics): ClassIndex {
+  const cached = CLASS_INDEX.get(cls);
+  if (cached !== undefined) {
+    return cached;
   }
   const keyToField = new Map<string, string>();
+  const known = new Set<string>();
   for (const spec of cls.fieldSpecs) {
+    known.add(spec.name);
     if (spec.nameAccepted !== false) {
       keyToField.set(spec.name, spec.name);
     }
@@ -416,6 +378,38 @@ export function prepareInit(
     }
   }
   const computed = new Set((cls.computedSpecs ?? []).map((c) => c.name));
+  const index: ClassIndex = { keyToField, computed, known };
+  CLASS_INDEX.set(cls, index);
+  return index;
+}
+
+/**
+ * Resolve a raw input mapping to a canonical field bag: alias keys map
+ * to attribute names, computed-field keys are dropped, and unknown keys
+ * follow the class `extra` policy. This is the `fromDict` half —
+ * constructors receive attribute-name bags directly.
+ *
+ * The result is typed as the class's constructor bag `F` because the
+ * constructor is the validator: this function only canonicalises KEYS,
+ * and every value it forwards is checked (required, nullable, coerced,
+ * reconstructed) by the constructor it feeds — the one place the
+ * unvalidated-to-typed assertion lives.
+ *
+ * @param cls - The entity-model statics.
+ * @param raw - The raw payload.
+ * @returns The canonical bag ready for the constructor.
+ * @throws ResponseValidationError - When `raw` is not a plain object,
+ *   an alias collides, or an unknown key hits `extra='forbid'`.
+ * @internal
+ */
+export function prepareInit<F extends object>(
+  cls: EntityModelStatics<F>,
+  raw: unknown,
+): F {
+  if (!isPythonDict(raw)) {
+    return modelFail(cls.modelName, "expected a mapping payload");
+  }
+  const { keyToField, computed } = classIndex(cls);
   const bag: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(raw)) {
     if (key === "$type" || computed.has(key)) {
@@ -425,7 +419,7 @@ export function prepareInit(
     if (field === undefined) {
       // Unknown keys flow to the constructor, which applies the
       // per-class extra policy (forbid/allow/ignore) in one place.
-      bag[key] = value;
+      setOwn(bag, key, value);
       continue;
     }
     if (Object.hasOwn(bag, field) && field !== key) {
@@ -433,25 +427,30 @@ export function prepareInit(
       // present; later AliasChoices entries never override earlier hits.
       continue;
     }
-    bag[field] = value;
+    setOwn(bag, field, value);
   }
-  return bag;
+  return bag as F;
 }
 
 /**
  * Base class of every entity-model port. Subclasses `declare` their
  * readonly fields; this constructor validates and assigns them.
  *
+ * `F` is the subclass's constructor bag (`XInit`): it types the
+ * `super(cls, fields)` call and ties the class statics to the same key
+ * set. It does not shape the instance — every subclass declares its
+ * materialised fields explicitly, because the instance type differs
+ * from the bag (defaults applied, nested payloads reconstructed into
+ * model instances).
+ *
  * @remarks Concrete entity classes are public; the base is plumbing.
  */
-export abstract class EntityModel {
+export abstract class EntityModel<F extends object = never> {
   /**
    * Pydantic `extra='allow'` spillover: unknown input keys retained on
    * the instance (mirroring `__pydantic_extra__`) but EXCLUDED from
    * `toJSON()`/`toVectorPayload()` — the recorder walks `model_fields`
    * only, so extras never appear in vector payloads.
-   *
-   * @internal
    */
   readonly __extras: Readonly<Record<string, unknown>>;
 
@@ -466,27 +465,28 @@ export abstract class EntityModel {
    *   unknown keys under `extra='forbid'`, failed coercion, nested
    *   reconstruction failures, or constraint violations.
    */
-  protected constructor(
-    cls: EntityModelStatics,
-    fields: Readonly<Record<string, unknown>>,
-  ) {
-    const known = new Set(cls.fieldSpecs.map((spec) => spec.name));
+  protected constructor(cls: EntityModelStatics<F>, fields: F) {
+    // The bag is walked as a string-keyed record: `F` is an interface
+    // type (no index signature), so this widening is the one place the
+    // typed bag meets the spec-driven walk.
+    const bag = fields as Readonly<Record<string, unknown>>;
+    const { known } = classIndex(cls);
     const extras: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(fields)) {
+    for (const [key, value] of Object.entries(bag)) {
       if (known.has(key) || value === undefined) {
         continue;
       }
       if (cls.extraPolicy === "forbid") {
         modelFail(cls.modelName, `unknown field ${JSON.stringify(key)}`);
       } else if (cls.extraPolicy === "allow") {
-        extras[key] = value;
+        setOwn(extras, key, value);
       }
     }
     const out: Record<string, unknown> = {};
     for (const spec of cls.fieldSpecs) {
       const path = `${cls.modelName}.${spec.name}`;
       const present =
-        Object.hasOwn(fields, spec.name) && fields[spec.name] !== undefined;
+        Object.hasOwn(bag, spec.name) && bag[spec.name] !== undefined;
       if (!present) {
         if (spec.required === true) {
           modelFail(path, "field required");
@@ -496,7 +496,7 @@ export abstract class EntityModel {
         out[spec.name] = spec.default === undefined ? null : spec.default();
         continue;
       }
-      let value: unknown = fields[spec.name];
+      let value: unknown = bag[spec.name];
       if (spec.before !== undefined) {
         value = spec.before(value);
       }
@@ -565,7 +565,6 @@ export abstract class EntityModel {
    * `{$type: "datetime", iso}` exactly as the recorder emits them.
    *
    * @returns The vector-payload shape (C8b golden diff input).
-   * @internal
    */
   toVectorPayload(): Record<string, unknown> {
     return this.walk("vector");
@@ -679,7 +678,7 @@ export abstract class EntityModel {
       if (skip(value)) {
         continue;
       }
-      out[key] = dumpValue(value, byAlias, excludeNone);
+      setOwn(out, key, dumpValue(value, byAlias, excludeNone));
     }
     for (const computed of cls.computedSpecs ?? []) {
       const value = computed.get(this);
@@ -768,8 +767,11 @@ function dumpValue(
     // reaches model fields, not mapping entries) and values recurse.
     const out: Record<string, unknown> = {};
     for (const [key, item] of value as ReadonlyMap<unknown, unknown>) {
-      out[String(key)] =
-        item === undefined ? null : dumpValue(item, byAlias, excludeNone);
+      setOwn(
+        out,
+        String(key),
+        item === undefined ? null : dumpValue(item, byAlias, excludeNone),
+      );
     }
     return out;
   }
@@ -781,8 +783,11 @@ function dumpValue(
     // (measured 2026-08-16) — only model fields are excluded.
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      out[key] =
-        item === undefined ? null : dumpValue(item, byAlias, excludeNone);
+      setOwn(
+        out,
+        key,
+        item === undefined ? null : dumpValue(item, byAlias, excludeNone),
+      );
     }
     return out;
   }
@@ -823,17 +828,17 @@ function serializeValue(value: unknown, mode: "json" | "vector"): unknown {
     // Map keeps the Python order for every consumer (B8-MAPFIX).
     const out: Record<string, unknown> = {};
     for (const [key, item] of value as ReadonlyMap<unknown, unknown>) {
-      out[String(key)] = serializeValue(item, mode);
+      setOwn(out, String(key), serializeValue(item, mode));
     }
     return out;
   }
   if (Array.isArray(value)) {
     return value.map((item) => serializeValue(item, mode));
   }
-  if (isPlainObject(value)) {
+  if (isPythonDict(value)) {
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      out[key] = serializeValue(item, mode);
+      setOwn(out, key, serializeValue(item, mode));
     }
     return out;
   }

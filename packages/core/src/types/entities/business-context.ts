@@ -8,10 +8,10 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
+import { cpLength } from "../../compat/codepoint.js";
 import {
-  codepointLength,
   type ComputedFieldSpec,
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   oneOf,
   prepareInit,
@@ -47,15 +47,15 @@ export interface BusinessContextInit {
  * Mirror of Python `mixpanel_headless.types.BusinessContext` (types.py:12163;
  * model_config: frozen=True, extra='allow').
  */
-export class BusinessContext extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BusinessContext extends EntityModel<BusinessContextInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BusinessContext";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BusinessContextInit> = [
     {
       name: "level",
       required: true,
@@ -67,7 +67,7 @@ export class BusinessContext extends EntityModel {
   ];
 
   /**
-   * @internal Ports of the two Python `@computed_field` properties —
+   * Ports of the two Python `@computed_field` properties —
    * appended to `toJSON()`/`toVectorPayload()` after the declared
    * fields (the recorder includes computed fields in expect position)
    * and dropped from `fromDict` input.
@@ -79,7 +79,7 @@ export class BusinessContext extends EntityModel {
     },
     {
       name: "character_count",
-      get: (instance) => codepointLength((instance as BusinessContext).content),
+      get: (instance) => cpLength((instance as BusinessContext).content),
     },
   ];
 
@@ -108,7 +108,7 @@ export class BusinessContext extends EntityModel {
    * `character_count`); see {@link is_empty} for the accessor note.
    */
   get character_count(): number {
-    return codepointLength(this.content);
+    return cpLength(this.content);
   }
 
   /**
@@ -119,10 +119,7 @@ export class BusinessContext extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BusinessContextInit) {
-    super(
-      BusinessContext,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BusinessContext, fields);
   }
 
   /**
@@ -134,9 +131,7 @@ export class BusinessContext extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BusinessContext {
-    return new BusinessContext(
-      prepareInit(BusinessContext, raw) as unknown as BusinessContextInit,
-    );
+    return new BusinessContext(prepareInit(BusinessContext, raw));
   }
 }
 
@@ -157,15 +152,15 @@ export interface BusinessContextChainInit {
  * Mirror of Python `mixpanel_headless.types.BusinessContextChain` (types.py:12240;
  * model_config: frozen=True, extra='ignore').
  */
-export class BusinessContextChain extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BusinessContextChain extends EntityModel<BusinessContextChainInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BusinessContextChain";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BusinessContextChainInit> = [
     { name: "organization", required: true, nested: () => BusinessContext },
     { name: "project", required: true, nested: () => BusinessContext },
   ];
@@ -183,10 +178,7 @@ export class BusinessContextChain extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BusinessContextChainInit) {
-    super(
-      BusinessContextChain,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BusinessContextChain, fields);
   }
 
   /**
@@ -198,11 +190,6 @@ export class BusinessContextChain extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BusinessContextChain {
-    return new BusinessContextChain(
-      prepareInit(
-        BusinessContextChain,
-        raw,
-      ) as unknown as BusinessContextChainInit,
-    );
+    return new BusinessContextChain(prepareInit(BusinessContextChain, raw));
   }
 }

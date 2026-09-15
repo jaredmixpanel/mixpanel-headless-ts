@@ -9,7 +9,7 @@
  */
 
 import {
-  type EntityFieldSpec,
+  type EntityFieldSpecs,
   EntityModel,
   prepareInit,
 } from "./model-base.js";
@@ -35,15 +35,15 @@ export interface SchemaEntryInit {
  * Mirror of Python `mixpanel_headless.types.SchemaEntry` (types.py:5757;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class SchemaEntry extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class SchemaEntry extends EntityModel<SchemaEntryInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "SchemaEntry";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<SchemaEntryInit> = [
     {
       name: "entity_type",
       required: true,
@@ -78,7 +78,7 @@ export class SchemaEntry extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: SchemaEntryInit) {
-    super(SchemaEntry, fields as unknown as Readonly<Record<string, unknown>>);
+    super(SchemaEntry, fields);
   }
 
   /**
@@ -90,9 +90,7 @@ export class SchemaEntry extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): SchemaEntry {
-    return new SchemaEntry(
-      prepareInit(SchemaEntry, raw) as unknown as SchemaEntryInit,
-    );
+    return new SchemaEntry(prepareInit(SchemaEntry, raw));
   }
 }
 
@@ -117,15 +115,15 @@ export interface BulkCreateSchemasParamsInit {
  * Mirror of Python `mixpanel_headless.types.BulkCreateSchemasParams` (types.py:5802;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class BulkCreateSchemasParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BulkCreateSchemasParams extends EntityModel<BulkCreateSchemasParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BulkCreateSchemasParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BulkCreateSchemasParamsInit> = [
     {
       name: "entries",
       required: true,
@@ -157,10 +155,7 @@ export class BulkCreateSchemasParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BulkCreateSchemasParamsInit) {
-    super(
-      BulkCreateSchemasParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BulkCreateSchemasParams, fields);
   }
 
   /**
@@ -173,10 +168,7 @@ export class BulkCreateSchemasParams extends EntityModel {
    */
   static fromDict(raw: unknown): BulkCreateSchemasParams {
     return new BulkCreateSchemasParams(
-      prepareInit(
-        BulkCreateSchemasParams,
-        raw,
-      ) as unknown as BulkCreateSchemasParamsInit,
+      prepareInit(BulkCreateSchemasParams, raw),
     );
   }
 }
@@ -198,18 +190,19 @@ export interface BulkCreateSchemasResponseInit {
  * Mirror of Python `mixpanel_headless.types.BulkCreateSchemasResponse` (types.py:5836;
  * model_config: frozen=True, extra='allow').
  */
-export class BulkCreateSchemasResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BulkCreateSchemasResponse extends EntityModel<BulkCreateSchemasResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BulkCreateSchemasResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "added", required: true, kind: "int" },
-    { name: "deleted", required: true, kind: "int" },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BulkCreateSchemasResponseInit> =
+    [
+      { name: "added", required: true, kind: "int" },
+      { name: "deleted", required: true, kind: "int" },
+    ];
 
   /** Number of schemas added. */
   declare readonly added: number;
@@ -224,10 +217,7 @@ export class BulkCreateSchemasResponse extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BulkCreateSchemasResponseInit) {
-    super(
-      BulkCreateSchemasResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BulkCreateSchemasResponse, fields);
   }
 
   /**
@@ -240,10 +230,7 @@ export class BulkCreateSchemasResponse extends EntityModel {
    */
   static fromDict(raw: unknown): BulkCreateSchemasResponse {
     return new BulkCreateSchemasResponse(
-      prepareInit(
-        BulkCreateSchemasResponse,
-        raw,
-      ) as unknown as BulkCreateSchemasResponseInit,
+      prepareInit(BulkCreateSchemasResponse, raw),
     );
   }
 }
@@ -269,15 +256,15 @@ export interface BulkPatchResultInit {
  * Mirror of Python `mixpanel_headless.types.BulkPatchResult` (types.py:5858;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class BulkPatchResult extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BulkPatchResult extends EntityModel<BulkPatchResultInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BulkPatchResult";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BulkPatchResultInit> = [
     {
       name: "entity_type",
       required: true,
@@ -307,10 +294,7 @@ export class BulkPatchResult extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BulkPatchResultInit) {
-    super(
-      BulkPatchResult,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BulkPatchResult, fields);
   }
 
   /**
@@ -322,9 +306,7 @@ export class BulkPatchResult extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BulkPatchResult {
-    return new BulkPatchResult(
-      prepareInit(BulkPatchResult, raw) as unknown as BulkPatchResultInit,
-    );
+    return new BulkPatchResult(prepareInit(BulkPatchResult, raw));
   }
 }
 
@@ -343,15 +325,15 @@ export interface DeleteSchemasResponseInit {
  * Mirror of Python `mixpanel_headless.types.DeleteSchemasResponse` (types.py:5892;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class DeleteSchemasResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class DeleteSchemasResponse extends EntityModel<DeleteSchemasResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "DeleteSchemasResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<DeleteSchemasResponseInit> = [
     {
       name: "delete_count",
       required: true,
@@ -372,10 +354,7 @@ export class DeleteSchemasResponse extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: DeleteSchemasResponseInit) {
-    super(
-      DeleteSchemasResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(DeleteSchemasResponse, fields);
   }
 
   /**
@@ -387,12 +366,7 @@ export class DeleteSchemasResponse extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): DeleteSchemasResponse {
-    return new DeleteSchemasResponse(
-      prepareInit(
-        DeleteSchemasResponse,
-        raw,
-      ) as unknown as DeleteSchemasResponseInit,
-    );
+    return new DeleteSchemasResponse(prepareInit(DeleteSchemasResponse, raw));
   }
 }
 
@@ -438,15 +412,15 @@ export interface SchemaEnforcementConfigInit {
  * Mirror of Python `mixpanel_headless.types.SchemaEnforcementConfig` (types.py:5917;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class SchemaEnforcementConfig extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class SchemaEnforcementConfig extends EntityModel<SchemaEnforcementConfigInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "SchemaEnforcementConfig";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<SchemaEnforcementConfigInit> = [
     { name: "id", kind: "int", nullable: true },
     {
       name: "last_modified",
@@ -549,10 +523,7 @@ export class SchemaEnforcementConfig extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: SchemaEnforcementConfigInit) {
-    super(
-      SchemaEnforcementConfig,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(SchemaEnforcementConfig, fields);
   }
 
   /**
@@ -585,23 +556,24 @@ export interface InitSchemaEnforcementParamsInit {
  * Mirror of Python `mixpanel_headless.types.InitSchemaEnforcementParams` (types.py:5986;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class InitSchemaEnforcementParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class InitSchemaEnforcementParams extends EntityModel<InitSchemaEnforcementParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "InitSchemaEnforcementParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "rule_event",
-      required: true,
-      aliases: ["ruleEvent"],
-      wire: "ruleEvent",
-      kind: "str",
-    },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<InitSchemaEnforcementParamsInit> =
+    [
+      {
+        name: "rule_event",
+        required: true,
+        aliases: ["ruleEvent"],
+        wire: "ruleEvent",
+        kind: "str",
+      },
+    ];
 
   /** Enforcement action. */
   declare readonly rule_event: string;
@@ -614,10 +586,7 @@ export class InitSchemaEnforcementParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: InitSchemaEnforcementParamsInit) {
-    super(
-      InitSchemaEnforcementParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(InitSchemaEnforcementParams, fields);
   }
 
   /**
@@ -630,10 +599,7 @@ export class InitSchemaEnforcementParams extends EntityModel {
    */
   static fromDict(raw: unknown): InitSchemaEnforcementParams {
     return new InitSchemaEnforcementParams(
-      prepareInit(
-        InitSchemaEnforcementParams,
-        raw,
-      ) as unknown as InitSchemaEnforcementParamsInit,
+      prepareInit(InitSchemaEnforcementParams, raw),
     );
   }
 }
@@ -660,31 +626,32 @@ export interface UpdateSchemaEnforcementParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateSchemaEnforcementParams` (types.py:6005;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class UpdateSchemaEnforcementParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateSchemaEnforcementParams extends EntityModel<UpdateSchemaEnforcementParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateSchemaEnforcementParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "notification_emails",
-      aliases: ["notificationEmails"],
-      wire: "notificationEmails",
-      nullable: true,
-    },
-    {
-      name: "rule_event",
-      aliases: ["ruleEvent"],
-      wire: "ruleEvent",
-      kind: "str",
-      nullable: true,
-    },
-    { name: "events", nullable: true },
-    { name: "properties", nullable: true },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateSchemaEnforcementParamsInit> =
+    [
+      {
+        name: "notification_emails",
+        aliases: ["notificationEmails"],
+        wire: "notificationEmails",
+        nullable: true,
+      },
+      {
+        name: "rule_event",
+        aliases: ["ruleEvent"],
+        wire: "ruleEvent",
+        kind: "str",
+        nullable: true,
+      },
+      { name: "events", nullable: true },
+      { name: "properties", nullable: true },
+    ];
 
   /** Updated notification recipients. */
   declare readonly notification_emails: readonly string[] | null;
@@ -705,10 +672,7 @@ export class UpdateSchemaEnforcementParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateSchemaEnforcementParamsInit) {
-    super(
-      UpdateSchemaEnforcementParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateSchemaEnforcementParams, fields);
   }
 
   /**
@@ -751,49 +715,50 @@ export interface ReplaceSchemaEnforcementParamsInit {
  * Mirror of Python `mixpanel_headless.types.ReplaceSchemaEnforcementParams` (types.py:6038;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class ReplaceSchemaEnforcementParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ReplaceSchemaEnforcementParams extends EntityModel<ReplaceSchemaEnforcementParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ReplaceSchemaEnforcementParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "common_properties",
-      required: true,
-      aliases: ["commonProperties"],
-      wire: "commonProperties",
-    },
-    {
-      name: "user_properties",
-      required: true,
-      aliases: ["userProperties"],
-      wire: "userProperties",
-    },
-    { name: "events", required: true },
-    {
-      name: "rule_event",
-      required: true,
-      aliases: ["ruleEvent"],
-      wire: "ruleEvent",
-      kind: "str",
-    },
-    {
-      name: "notification_emails",
-      required: true,
-      aliases: ["notificationEmails"],
-      wire: "notificationEmails",
-    },
-    {
-      name: "schema_id",
-      aliases: ["schemaId"],
-      wire: "schemaId",
-      kind: "int",
-      nullable: true,
-    },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ReplaceSchemaEnforcementParamsInit> =
+    [
+      {
+        name: "common_properties",
+        required: true,
+        aliases: ["commonProperties"],
+        wire: "commonProperties",
+      },
+      {
+        name: "user_properties",
+        required: true,
+        aliases: ["userProperties"],
+        wire: "userProperties",
+      },
+      { name: "events", required: true },
+      {
+        name: "rule_event",
+        required: true,
+        aliases: ["ruleEvent"],
+        wire: "ruleEvent",
+        kind: "str",
+      },
+      {
+        name: "notification_emails",
+        required: true,
+        aliases: ["notificationEmails"],
+        wire: "notificationEmails",
+      },
+      {
+        name: "schema_id",
+        aliases: ["schemaId"],
+        wire: "schemaId",
+        kind: "int",
+        nullable: true,
+      },
+    ];
 
   /** Full common property rules. */
   declare readonly common_properties: ReadonlyArray<
@@ -820,10 +785,7 @@ export class ReplaceSchemaEnforcementParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: ReplaceSchemaEnforcementParamsInit) {
-    super(
-      ReplaceSchemaEnforcementParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ReplaceSchemaEnforcementParams, fields);
   }
 
   /**
@@ -836,10 +798,7 @@ export class ReplaceSchemaEnforcementParams extends EntityModel {
    */
   static fromDict(raw: unknown): ReplaceSchemaEnforcementParams {
     return new ReplaceSchemaEnforcementParams(
-      prepareInit(
-        ReplaceSchemaEnforcementParams,
-        raw,
-      ) as unknown as ReplaceSchemaEnforcementParamsInit,
+      prepareInit(ReplaceSchemaEnforcementParams, raw),
     );
   }
 }
@@ -873,15 +832,15 @@ export interface AuditViolationInit {
  * Mirror of Python `mixpanel_headless.types.AuditViolation` (types.py:6089;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class AuditViolation extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AuditViolation extends EntityModel<AuditViolationInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AuditViolation";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AuditViolationInit> = [
     { name: "violation", required: true, kind: "str" },
     { name: "name", required: true, kind: "str" },
     { name: "platform", kind: "str", nullable: true },
@@ -923,10 +882,7 @@ export class AuditViolation extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AuditViolationInit) {
-    super(
-      AuditViolation,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AuditViolation, fields);
   }
 
   /**
@@ -938,9 +894,7 @@ export class AuditViolation extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AuditViolation {
-    return new AuditViolation(
-      prepareInit(AuditViolation, raw) as unknown as AuditViolationInit,
-    );
+    return new AuditViolation(prepareInit(AuditViolation, raw));
   }
 }
 
@@ -963,15 +917,15 @@ export interface AuditResponseInit {
  * Mirror of Python `mixpanel_headless.types.AuditResponse` (types.py:6140;
  * model_config: frozen=True, extra='allow').
  */
-export class AuditResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AuditResponse extends EntityModel<AuditResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AuditResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AuditResponseInit> = [
     {
       name: "violations",
       required: true,
@@ -994,10 +948,7 @@ export class AuditResponse extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: AuditResponseInit) {
-    super(
-      AuditResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AuditResponse, fields);
   }
 
   /**
@@ -1009,9 +960,7 @@ export class AuditResponse extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AuditResponse {
-    return new AuditResponse(
-      prepareInit(AuditResponse, raw) as unknown as AuditResponseInit,
-    );
+    return new AuditResponse(prepareInit(AuditResponse, raw));
   }
 }
 
@@ -1064,15 +1013,15 @@ export interface DataVolumeAnomalyInit {
  * Mirror of Python `mixpanel_headless.types.DataVolumeAnomaly` (types.py:6175;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class DataVolumeAnomaly extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class DataVolumeAnomaly extends EntityModel<DataVolumeAnomalyInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "DataVolumeAnomaly";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<DataVolumeAnomalyInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "timestamp", kind: "str", nullable: true },
     {
@@ -1203,10 +1152,7 @@ export class DataVolumeAnomaly extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: DataVolumeAnomalyInit) {
-    super(
-      DataVolumeAnomaly,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(DataVolumeAnomaly, fields);
   }
 
   /**
@@ -1218,9 +1164,7 @@ export class DataVolumeAnomaly extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): DataVolumeAnomaly {
-    return new DataVolumeAnomaly(
-      prepareInit(DataVolumeAnomaly, raw) as unknown as DataVolumeAnomalyInit,
-    );
+    return new DataVolumeAnomaly(prepareInit(DataVolumeAnomaly, raw));
   }
 }
 
@@ -1243,15 +1187,15 @@ export interface UpdateAnomalyParamsInit {
  * Mirror of Python `mixpanel_headless.types.UpdateAnomalyParams` (types.py:6268;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class UpdateAnomalyParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateAnomalyParams extends EntityModel<UpdateAnomalyParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateAnomalyParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateAnomalyParamsInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "status", required: true, kind: "str" },
     {
@@ -1278,10 +1222,7 @@ export class UpdateAnomalyParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: UpdateAnomalyParamsInit) {
-    super(
-      UpdateAnomalyParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateAnomalyParams, fields);
   }
 
   /**
@@ -1293,12 +1234,7 @@ export class UpdateAnomalyParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateAnomalyParams {
-    return new UpdateAnomalyParams(
-      prepareInit(
-        UpdateAnomalyParams,
-        raw,
-      ) as unknown as UpdateAnomalyParamsInit,
-    );
+    return new UpdateAnomalyParams(prepareInit(UpdateAnomalyParams, raw));
   }
 }
 
@@ -1319,15 +1255,15 @@ export interface BulkAnomalyEntryInit {
  * Mirror of Python `mixpanel_headless.types.BulkAnomalyEntry` (types.py:6296;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class BulkAnomalyEntry extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BulkAnomalyEntry extends EntityModel<BulkAnomalyEntryInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BulkAnomalyEntry";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BulkAnomalyEntryInit> = [
     { name: "id", required: true, kind: "int" },
     {
       name: "anomaly_class",
@@ -1351,10 +1287,7 @@ export class BulkAnomalyEntry extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BulkAnomalyEntryInit) {
-    super(
-      BulkAnomalyEntry,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BulkAnomalyEntry, fields);
   }
 
   /**
@@ -1366,9 +1299,7 @@ export class BulkAnomalyEntry extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BulkAnomalyEntry {
-    return new BulkAnomalyEntry(
-      prepareInit(BulkAnomalyEntry, raw) as unknown as BulkAnomalyEntryInit,
-    );
+    return new BulkAnomalyEntry(prepareInit(BulkAnomalyEntry, raw));
   }
 }
 
@@ -1391,15 +1322,15 @@ export interface BulkUpdateAnomalyParamsInit {
  * Mirror of Python `mixpanel_headless.types.BulkUpdateAnomalyParams` (types.py:6318;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class BulkUpdateAnomalyParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BulkUpdateAnomalyParams extends EntityModel<BulkUpdateAnomalyParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BulkUpdateAnomalyParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BulkUpdateAnomalyParamsInit> = [
     {
       name: "anomalies",
       required: true,
@@ -1422,10 +1353,7 @@ export class BulkUpdateAnomalyParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdateAnomalyParamsInit) {
-    super(
-      BulkUpdateAnomalyParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BulkUpdateAnomalyParams, fields);
   }
 
   /**
@@ -1438,10 +1366,7 @@ export class BulkUpdateAnomalyParams extends EntityModel {
    */
   static fromDict(raw: unknown): BulkUpdateAnomalyParams {
     return new BulkUpdateAnomalyParams(
-      prepareInit(
-        BulkUpdateAnomalyParams,
-        raw,
-      ) as unknown as BulkUpdateAnomalyParamsInit,
+      prepareInit(BulkUpdateAnomalyParams, raw),
     );
   }
 }
@@ -1479,15 +1404,15 @@ export interface EventDeletionRequestInit {
  * Mirror of Python `mixpanel_headless.types.EventDeletionRequest` (types.py:6348;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
-export class EventDeletionRequest extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class EventDeletionRequest extends EntityModel<EventDeletionRequestInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "EventDeletionRequest";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<EventDeletionRequestInit> = [
     { name: "id", required: true, kind: "int" },
     {
       name: "display_name",
@@ -1575,10 +1500,7 @@ export class EventDeletionRequest extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: EventDeletionRequestInit) {
-    super(
-      EventDeletionRequest,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(EventDeletionRequest, fields);
   }
 
   /**
@@ -1590,12 +1512,7 @@ export class EventDeletionRequest extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): EventDeletionRequest {
-    return new EventDeletionRequest(
-      prepareInit(
-        EventDeletionRequest,
-        raw,
-      ) as unknown as EventDeletionRequestInit,
-    );
+    return new EventDeletionRequest(prepareInit(EventDeletionRequest, raw));
   }
 }
 
@@ -1620,38 +1537,39 @@ export interface CreateDeletionRequestParamsInit {
  * Mirror of Python `mixpanel_headless.types.CreateDeletionRequestParams` (types.py:6423;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class CreateDeletionRequestParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateDeletionRequestParams extends EntityModel<CreateDeletionRequestParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateDeletionRequestParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "from_date",
-      required: true,
-      aliases: ["fromDate"],
-      wire: "fromDate",
-      kind: "str",
-    },
-    {
-      name: "to_date",
-      required: true,
-      aliases: ["toDate"],
-      wire: "toDate",
-      kind: "str",
-    },
-    {
-      name: "event_name",
-      required: true,
-      aliases: ["eventName"],
-      wire: "eventName",
-      kind: "str",
-    },
-    { name: "filters", nullable: true },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateDeletionRequestParamsInit> =
+    [
+      {
+        name: "from_date",
+        required: true,
+        aliases: ["fromDate"],
+        wire: "fromDate",
+        kind: "str",
+      },
+      {
+        name: "to_date",
+        required: true,
+        aliases: ["toDate"],
+        wire: "toDate",
+        kind: "str",
+      },
+      {
+        name: "event_name",
+        required: true,
+        aliases: ["eventName"],
+        wire: "eventName",
+        kind: "str",
+      },
+      { name: "filters", nullable: true },
+    ];
 
   /** Start date (YYYY-MM-DD or datetime). */
   declare readonly from_date: string;
@@ -1670,10 +1588,7 @@ export class CreateDeletionRequestParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: CreateDeletionRequestParamsInit) {
-    super(
-      CreateDeletionRequestParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateDeletionRequestParams, fields);
   }
 
   /**
@@ -1686,10 +1601,7 @@ export class CreateDeletionRequestParams extends EntityModel {
    */
   static fromDict(raw: unknown): CreateDeletionRequestParams {
     return new CreateDeletionRequestParams(
-      prepareInit(
-        CreateDeletionRequestParams,
-        raw,
-      ) as unknown as CreateDeletionRequestParamsInit,
+      prepareInit(CreateDeletionRequestParams, raw),
     );
   }
 }
@@ -1715,38 +1627,39 @@ export interface PreviewDeletionFiltersParamsInit {
  * Mirror of Python `mixpanel_headless.types.PreviewDeletionFiltersParams` (types.py:6457;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
-export class PreviewDeletionFiltersParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class PreviewDeletionFiltersParams extends EntityModel<PreviewDeletionFiltersParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "PreviewDeletionFiltersParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "event_name",
-      required: true,
-      aliases: ["eventName"],
-      wire: "eventName",
-      kind: "str",
-    },
-    {
-      name: "from_date",
-      required: true,
-      aliases: ["fromDate"],
-      wire: "fromDate",
-      kind: "str",
-    },
-    {
-      name: "to_date",
-      required: true,
-      aliases: ["toDate"],
-      wire: "toDate",
-      kind: "str",
-    },
-    { name: "filters", nullable: true },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<PreviewDeletionFiltersParamsInit> =
+    [
+      {
+        name: "event_name",
+        required: true,
+        aliases: ["eventName"],
+        wire: "eventName",
+        kind: "str",
+      },
+      {
+        name: "from_date",
+        required: true,
+        aliases: ["fromDate"],
+        wire: "fromDate",
+        kind: "str",
+      },
+      {
+        name: "to_date",
+        required: true,
+        aliases: ["toDate"],
+        wire: "toDate",
+        kind: "str",
+      },
+      { name: "filters", nullable: true },
+    ];
 
   /** Event name. */
   declare readonly event_name: string;
@@ -1765,10 +1678,7 @@ export class PreviewDeletionFiltersParams extends EntityModel {
    *   the Python model's validation.
    */
   constructor(fields: PreviewDeletionFiltersParamsInit) {
-    super(
-      PreviewDeletionFiltersParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(PreviewDeletionFiltersParams, fields);
   }
 
   /**
@@ -1781,10 +1691,7 @@ export class PreviewDeletionFiltersParams extends EntityModel {
    */
   static fromDict(raw: unknown): PreviewDeletionFiltersParams {
     return new PreviewDeletionFiltersParams(
-      prepareInit(
-        PreviewDeletionFiltersParams,
-        raw,
-      ) as unknown as PreviewDeletionFiltersParamsInit,
+      prepareInit(PreviewDeletionFiltersParams, raw),
     );
   }
 }
