@@ -257,6 +257,24 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     });
   });
 
+  it("answers 404 to a stray GET without consuming the one-shot, then accepts /callback (CLEANUP-PLAN 8.2)", async () => {
+    const state = "stray-get";
+    const { serverPromise, port } = await startEphemeral({ state });
+
+    const stray = await getWithRetry(`http://localhost:${port}/favicon.ico`);
+    expect(stray.status).toBe(404);
+    const root = await getWithRetry(`http://localhost:${port}/`);
+    expect(root.status).toBe(404);
+
+    const resp = await getWithRetry(
+      `http://localhost:${port}/callback?code=after-stray&state=${state}`,
+    );
+    expect(resp.status).toBe(200);
+    const [cbResult, boundPort] = await serverPromise;
+    expect(cbResult.code).toBe("after-stray");
+    expect(boundPort).toBe(port);
+  });
+
   it("test_redirect_uri_uses_localhost", async () => {
     // OAuth providers require consistent redirect URIs: `localhost` in
     // the redirect URI while binding 127.0.0.1.
