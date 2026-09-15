@@ -38,7 +38,7 @@ export const OfflineBar = defineComponent({
           " seam — the code on the right is real and runs in your browser; only the data is canned.",
         ]),
         props.liveEnabled
-          ? button("Use my own project ▸", () => emit("live"), {
+          ? button("Use my own project\u00A0▸", () => emit("live"), {
               class: "mp-btn mp-btn-brand",
             })
           : null,
@@ -170,7 +170,7 @@ export const FooterNote = defineComponent({
         h(
           "a",
           { href: withBase("/guide/browser") },
-          "Read the browser guide →",
+          "Read the browser guide\u00A0→",
         ),
       ]);
   },

@@ -15,6 +15,7 @@ import ResultTable from "./result-table.js";
 import RetentionGrid from "./retention-grid.js";
 import type {
   AnyResult,
+  EngineKind,
   FunnelQueryResult,
   QueryResult,
   RetentionQueryResult,
@@ -24,6 +25,13 @@ const MATH_LABEL: Readonly<Record<TrendMath, string>> = {
   total: "events",
   unique: "unique users",
   dau: "daily active users",
+};
+
+/** What stands in for the result before an engine's first run. */
+const EMPTY: Readonly<Record<EngineKind, string>> = {
+  trend: "Pick an event above to run a query.",
+  funnel: "Add two or more steps and run the funnel.",
+  retention: "Pick a born and a return event, then run.",
 };
 
 /**
@@ -60,6 +68,8 @@ function resultTitle(spec: QuerySpec, result: AnyResult | null): string {
 export default defineComponent({
   name: "DemoResultPanel",
   props: {
+    /** The engine on show; picks the empty state while `spec` is `null`. */
+    engine: { type: String as PropType<EngineKind>, required: true },
     spec: { type: Object as PropType<QuerySpec | null>, default: null },
     result: { type: Object as PropType<AnyResult | null>, default: null },
     loading: { type: Boolean, default: false },
@@ -96,11 +106,13 @@ export default defineComponent({
         return h("section", { class: "mp-result" }, [
           h("div", { class: "mp-col-head" }, [h("h2", "Result")]),
           props.error === null
-            ? h(
-                "p",
-                { class: "mp-muted" },
-                "Pick an event above to run a query.",
-              )
+            ? h("div", { class: "mp-result-body mp-chart-empty" }, [
+                h(
+                  "div",
+                  { class: "mp-empty", role: "status" },
+                  EMPTY[props.engine],
+                ),
+              ])
             : h(ErrorBlock, { error: props.error }),
         ]);
       }

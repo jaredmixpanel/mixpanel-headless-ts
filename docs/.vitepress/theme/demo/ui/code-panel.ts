@@ -105,10 +105,20 @@ export default defineComponent({
       default: null,
     },
     resultBinding: { type: String as PropType<string | null>, default: null },
+    /**
+     * A comment line closing the program while the shown engine has no
+     * query to print (its tab is open, nothing has run there yet).
+     */
+    placeholder: { type: String as PropType<string | null>, default: null },
   },
   setup(props) {
     const copied = ref(false);
-    const text = computed(() => programText(props.setup, props.calls));
+    const text = computed(() => {
+      const program = programText(props.setup, props.calls);
+      return props.placeholder === null
+        ? program
+        : `${program}${props.placeholder}\n`;
+    });
     const copy = async (): Promise<void> => {
       await navigator.clipboard.writeText(text.value);
       copied.value = true;

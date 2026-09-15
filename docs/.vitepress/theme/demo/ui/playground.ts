@@ -93,6 +93,8 @@ const RELOAD_NOTICE =
   "Your session ended with the page reload. Tokens are kept in memory only; sign in again to continue.";
 const SIGNED_OUT_NOTICE =
   "Signed out. Tokens and the client registration were deleted from this tab.";
+/** Closes the code panel's program while the shown engine has not run. */
+const RUN_HINT = "// run a query to see the call here";
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => {
@@ -161,7 +163,6 @@ export default defineComponent({
     const state = shallowRef<DemoState>({ mode: "offline", ws: offlineWs });
     const region = ref<Region>(session.region ?? "us");
     const last = ref<TimeRange>(30);
-    const engine = ref<Engine>("trend");
     const linkPending = ref(false);
     const busy = ref(false);
     const expiring = ref(false);
@@ -178,10 +179,15 @@ export default defineComponent({
       }
       return ws;
     }, errorContext);
+    const { engine } = query;
     const offline = computed(() => state.value.mode === "offline");
-    const selectedEvent = computed(() =>
-      query.spec.value?.kind === "trend" ? query.spec.value.event : null,
-    );
+    // The trend tab's own spec: the strip's selection and the seed the
+    // other builders start from, whichever tab is open.
+    const trendSpec = computed(() => {
+      const current = query.runs.value.trend?.spec;
+      return current?.kind === "trend" ? current : null;
+    });
+    const selectedEvent = computed(() => trendSpec.value?.event ?? null);
     const eventNames = computed(
       () => query.allEvents.value ?? query.topEvents.value.map((e) => e.event),
     );
@@ -209,9 +215,9 @@ export default defineComponent({
     // already shown (a new event starts unfiltered); `groupBy` `null` clears
     // the breakdown, `undefined` leaves it alone.
     const trend = (event: string, groupBy?: string | null): void => {
-      const current = query.spec.value;
+      const current = trendSpec.value;
       const base: TrendSpec =
-        current?.kind === "trend" && current.event === event
+        current !== null && current.event === event
           ? current
           : { kind: "trend", event, math: "total", last: last.value };
       const next: TrendSpec = withWhere(
@@ -231,10 +237,20 @@ export default defineComponent({
         run({ ...current, ...patch } as QuerySpec);
       }
     };
+    // Each engine keeps its last result across tab switches; only a run
+    // made under an older time range is repeated, so the result always
+    // matches the range control.
+    const selectEngine = (next: Engine): void => {
+      engine.value = next;
+      const shown = query.runs.value[next]?.spec;
+      if (shown !== undefined && shown.last !== last.value) {
+        run({ ...shown, last: last.value });
+      }
+    };
     const start = async (): Promise<void> => {
       await query.loadTopEvents();
       const first = query.topEvents.value[0];
-      if (first !== undefined && query.spec.value === null) {
+      if (first !== undefined && trendSpec.value === null) {
         trend(first.event);
       }
     };
@@ -467,7 +483,7 @@ export default defineComponent({
     };
 
     const trendTab = (): VNode[] => {
-      const spec = query.spec.value;
+      const spec = trendSpec.value;
       return [
         h(EventStrip, {
           events: query.topEvents.value.map((e) => ({
@@ -482,8 +498,9 @@ export default defineComponent({
           onSelect: (event: string) => trend(event),
           onMoreEvents: () => void query.loadAllEvents(),
         }),
-        spec?.kind === "trend"
-          ? h(TrendControls, {
+        spec === null
+          ? null
+          : h(TrendControls, {
               spec,
               properties: query.properties.value,
               values: query.values.value,
@@ -492,8 +509,7 @@ export default defineComponent({
               onGroupBy: (property) => trend(spec.event, property),
               onValues: (property) => void query.showValues(property),
               onWhere: (where) => run(withWhere(spec, where)),
-            })
-          : null,
+            }),
       ].filter((node): node is VNode => node !== null);
     };
 
@@ -549,9 +565,7 @@ export default defineComponent({
         h(EngineTabs, {
           engine: engine.value,
           last: last.value,
-          onSelect: (next: Engine) => {
-            engine.value = next;
-          },
+          onSelect: selectEngine,
           onRange: (n: TimeRange) => {
             last.value = n;
             rerun({ last: n });
@@ -561,6 +575,7 @@ export default defineComponent({
         h(
           ResultPanel,
           {
+            engine: engine.value,
             spec: query.spec.value,
             result: query.result.value,
             loading: query.loading.value,
@@ -587,6 +602,7 @@ export default defineComponent({
           calls: query.calls.value,
           columns: query.result.value?.rowColumns() ?? null,
           resultBinding: query.specCall.value?.binding ?? null,
+          placeholder: query.spec.value === null ? RUN_HINT : null,
         }),
       ]);
 

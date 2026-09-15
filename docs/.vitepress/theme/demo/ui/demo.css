@@ -199,6 +199,11 @@
   color: var(--vp-c-text-2);
 }
 
+/* The arrow is bound to the link text; the link never breaks across lines. */
+.mp-footnote a {
+  white-space: nowrap;
+}
+
 /* --- Grid ---------------------------------------------------------------- */
 
 .mp-grid {
@@ -392,29 +397,46 @@
   line-height: 1.45;
 }
 
+/*
+ * A segmented control is a row of buttons whose borders overlap by 1 px;
+ * the outer corners are rounded on the end segments only, so the selected
+ * segment's border runs into its neighbours' with no inner radius and the
+ * group needs no border or clipping of its own.
+ */
 .mp-segmented {
   display: inline-flex;
-  border: 1px solid var(--vp-c-border);
-  border-radius: 8px;
-  overflow: hidden;
 }
 
 .mp-seg {
   position: relative;
-  border: 0;
   border-radius: 0;
-  border-right: 1px solid var(--vp-c-border);
+}
+
+.mp-seg + .mp-seg {
+  margin-left: -1px;
+}
+
+.mp-seg:first-child {
+  border-radius: 8px 0 0 8px;
 }
 
 .mp-seg:last-child {
-  border-right: 0;
+  border-radius: 0 8px 8px 0;
 }
 
-.mp-seg[aria-pressed="true"] {
+.mp-seg:hover:not(:disabled) {
+  border-color: var(--vp-c-border);
+  background: var(--vp-c-bg-soft);
+}
+
+/* The selected segment's border sits over the shared edges either side. */
+.mp-seg[aria-pressed="true"],
+.mp-seg[aria-pressed="true"]:hover:not(:disabled) {
+  z-index: 1;
+  border-color: var(--mp-selected-border);
   background: var(--mp-selected-bg);
   color: var(--mp-selected-text);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px var(--mp-selected-border);
 }
 
 .mp-field {
@@ -677,6 +699,10 @@
   gap: 10px;
   align-items: center;
   margin: 16px 0;
+}
+
+.mp-actions .mp-btn {
+  white-space: nowrap;
 }
 
 .mp-tip-anchor {

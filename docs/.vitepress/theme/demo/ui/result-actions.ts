@@ -51,7 +51,7 @@ export default defineComponent({
                 onFocus: prepare,
               },
               [
-                button("Open in Mixpanel ↗", () => undefined, {
+                button("Open in Mixpanel\u00A0↗", () => undefined, {
                   disabled: true,
                   "aria-describedby": "mp-open-tip",
                 }),
@@ -71,7 +71,7 @@ export default defineComponent({
                 ),
               ],
             )
-          : button("Open in Mixpanel ↗", () => emit("open"), {
+          : button("Open in Mixpanel\u00A0↗", () => emit("open"), {
               class: "mp-btn mp-btn-brand",
               disabled: props.linkPending,
             }),
