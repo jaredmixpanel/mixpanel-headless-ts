@@ -70,31 +70,31 @@ async function renderErrorCodesModule(artifact) {
   const body = `// GENERATED FROM conformance-runner/corpus/contract/error-codes.json @ ${generatedFrom} — DO NOT EDIT
 // Regenerate with: npm run generate:error-codes
 //
-// Mirror of the Python-side error-code contract artifact (phase2-design C3):
+// Mirror of the Python-side error-code contract artifact:
 // exception class parent edges, per-class default codes, and the coded-guard
 // registry (\`exceptions.CODED_GUARD_REGISTRY\` / \`CODED_GUARD_TWIN_CODES\`).
-// The C8(c) registry-equality test diffs this module against the artifact
-// AND against the live classes in errors.ts.
+// The registry-equality test diffs this module against the artifact
+// and against the live classes in errors.ts.
 
 /** Python-side commit SHA the source artifact was generated from. */
 export const ERROR_CODES_GENERATED_FROM = ${JSON.stringify(generatedFrom)};
 
 /**
  * Exception class name → parent class name (\`null\` for the hierarchy
- * root \`MixpanelHeadlessError\`). ReadonlyMap per R4.8.
+ * root \`MixpanelHeadlessError\`).
  */
 export const EXCEPTION_CLASS_PARENTS: ReadonlyMap<string, string | null> =
   new Map([
 ${classEntries}
   ]);
 
-/** Exception class name → default machine code. ReadonlyMap per R4.8. */
+/** Exception class name → default machine code. */
 export const DEFAULT_ERROR_CODES: ReadonlyMap<string, string> = new Map([
 ${defaultEntries}
 ]);
 
 /**
- * Every full error code minted by the E2 uncoded-raise coding pass —
+ * Every full error code the coded-guard pass mints —
  * mirror of Python \`exceptions.CODED_GUARD_REGISTRY\` (frozenset).
  */
 export const CODED_GUARD_REGISTRY: ReadonlySet<string> = new Set([

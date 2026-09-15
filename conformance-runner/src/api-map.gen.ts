@@ -2,15 +2,15 @@
 // Regenerate with: npm run generate:api-map
 //
 // Maps every Python dotted call.api in the corpus api-index (plus the
-// authored D13 gate supplement) to its TS home (design D12/D13,
-// naming-map §5). Inputs + sha256 provenance stamps:
+// authored supplement in src/authored-apis.json) to its TS home.
+// Inputs + sha256 provenance stamps:
 //   corpus/typescript-port-api-map.json  5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53
 //   corpus/api-index.json                a01f6ae395fa01870f1ce33180e226b7e17015b24a1b698c110b63cc8a7f798e
 //   src/naming-exceptions.json           ebfec88840aaf874bae4b52fa6f1e0f9bbd08a20fc51a6ddd537193de8c4ce36
 //   src/authored-apis.json               5083c9f957dd8fedbe5e724b0a976739ae33149f57c1b890cb77ce2de774ba53
 import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";
 
-/** sha256 stamps of the four generation inputs (D12 provenance). */
+/** sha256 stamps of the four generation inputs. */
 export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {
   apiMapJson: "5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53",
   apiIndexJson: "a01f6ae395fa01870f1ce33180e226b7e17015b24a1b698c110b63cc8a7f798e",
@@ -20,7 +20,7 @@ export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {
 
 /** Python module prefixes known to the corpus api-index or the
  * authored supplement — the "module known" universe for the
- * UNPORTED verdict (D12/TS-6). */
+ * UNPORTED verdict. */
 export const KNOWN_PYTHON_MODULES: readonly string[] = [
   "api_client",
   "bookmark_builders",

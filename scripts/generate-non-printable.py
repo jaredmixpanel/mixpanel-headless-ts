@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Generate packages/core/src/compat/non-printable.gen.ts (R11.1).
+"""Generate packages/core/src/compat/non-printable.gen.ts.
 
 Emits the closed-form table of codepoint ranges CPython's
 ``str.isprintable()`` reports as NON-printable, generated from CPython's
 own ``unicodedata`` — i.e. the reference implementation itself is the
 oracle. Pinning the table makes ``pythonRepr``'s escape decisions
-independent of the JS engine's Unicode database version (the TS-7
-differential run caught V8 Unicode 17 treating Unicode-17-assigned
+independent of the JS engine's Unicode database version (a
+differential run against CPython caught V8 Unicode 17 treating Unicode-17-assigned
 codepoints as printable while CPython 3.14 / Unicode 16 escapes them).
 
 Usage (the pinned CPython only — see scripts/compat-python.pin.json):

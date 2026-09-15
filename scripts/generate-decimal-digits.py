@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate packages/core/src/compat/decimal-digits.gen.ts (R11.3).
+"""Generate packages/core/src/compat/decimal-digits.gen.ts.
 
 Emits the closed-form table of Unicode decimal-digit codepoints (the
 characters CPython's ``int(str)`` / ``float(str)`` accept as digits via
@@ -11,8 +11,8 @@ accept set of the pinned interpreter.
 
 Pinning the table makes ``pythonInt``/``pythonFloat`` digit acceptance
 independent of the JS engine's Unicode database version (V8 tracks a
-newer Unicode than CPython 3.14's 16.0.0 — the same skew the TS-7
-differential run caught for ``str.isprintable``).
+newer Unicode than CPython 3.14's 16.0.0 — the same skew a
+differential run against CPython caught for ``str.isprintable``).
 
 Usage (the pinned CPython only — see scripts/compat-python.pin.json):
     npm run generate:compat-tables

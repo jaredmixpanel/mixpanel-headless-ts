@@ -15,7 +15,7 @@
     "`normalized: true` means the numeric normalization rule (integral",
     "number -> integer spelling) changed the bytes for this row.",
     "Provenance: CPython 3.14.6, corpus pin 0dde50608a6af026e94cdb75bacbcebe5ce105db, 46 fixtures.",
-    "Generator sha256: bd8fceaa1f3d417317b98c72e5dbb0aeed6a9e35094fc09923fecdbcab720414 (scripts/generate-canonical-fixtures.py)."
+    "Generator sha256: 56cd111c1846b4c52b8688d354fd1eeb8fe11cbd2a645d5a8694f452a40af300 (scripts/generate-canonical-fixtures.py)."
   ],
   "fixtures": [
     {
