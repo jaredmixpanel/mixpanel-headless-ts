@@ -11,8 +11,8 @@
  * `server.handle_request()` one-shot semantics (`callback_server.py:161`):
  * the first `GET /callback` is the one request, the browser gets an
  * HTML page, and the server closes. A GET to any other path is answered
- * 404 and does NOT consume the one-shot (Python's does — see the
- * `// Divergence:` note at the request listener).
+ * 404 and does NOT consume the one-shot (Python's does — a recorded
+ * divergence; see the note at the request listener).
  *
  * Async substitution (documented): Python's blocking
  * `start_callback_server` returns `(CallbackResult, port)`; the node
