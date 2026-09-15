@@ -8,9 +8,8 @@
 // - `get_args(ReportLinkType)` becomes the runtime membership tuple
 //   `REPORT_LINK_TYPE_VALUES` (literals.ts keeps a tuple per Literal
 //   alias). `ReportLinkQueryResult` is a TS type alias with no runtime
-//   members, so `test_query_result_alias_members` is a compile-time
-//   mutual-assignability check (`tsc` enforces it; the runtime `expect`
-//   only pins the constant).
+//   members, so `test_query_result_alias_members` lives in
+//   `report-links.test-d.ts` as an `expectTypeOf` assertion.
 // - Pydantic `model_validate` → `BookmarkUrl.fromDict`; keyword
 //   construction → `new BookmarkUrl({...})`; `model_extra` → the
 //   `__extras` bag on `EntityModel`; `model_dump(by_alias=True)` →
@@ -29,16 +28,9 @@ import { Bookmark, BookmarkUrl } from "../../src/types/entities/bookmarks.js";
 import { REPORT_LINK_TYPE_VALUES } from "../../src/types/literals.js";
 import {
   ReportLink,
-  type ReportLinkQueryResult,
   ResolvedReport,
   type ResolvedReportFields,
 } from "../../src/types/report-links.js";
-import type {
-  FlowQueryResult,
-  FunnelQueryResult,
-  QueryResult,
-  RetentionQueryResult,
-} from "../../src/types/results/query-engine.js";
 
 const SLUG = "EBrV5bW2u9Mw";
 const PARAMS = {
@@ -46,21 +38,11 @@ const PARAMS = {
   displayOptions: { chartType: "line" },
 } as const;
 
-/** Compile-time `A` ≡ `B` (mutual assignability, tuple-wrapped). */
-type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
-
 describe("TestReportLinkType", () => {
   it("test_members", () => {
     expect(new Set(REPORT_LINK_TYPE_VALUES)).toStrictEqual(
       new Set(["insights", "funnels", "retention", "flows"]),
     );
-  });
-
-  it("test_query_result_alias_members", () => {
-    type Expected =
-      QueryResult | FunnelQueryResult | RetentionQueryResult | FlowQueryResult;
-    const same: Same<ReportLinkQueryResult, Expected> = true;
-    expect(same).toBe(true);
   });
 });
 

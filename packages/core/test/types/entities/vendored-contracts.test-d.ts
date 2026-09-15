@@ -1,31 +1,15 @@
-/**
- * Compile-only vendored cross-checks. Bare type aliases rather than
- * `it` blocks, so the file is excluded from vitest's typecheck suite list
- * (vitest.config.ts) — `tsc` alone (`tsc -b`, and the typecheck run's
- * own compile) enforces every assertion here.
- *
- * The hand-written entity models mirror the PYTHON models (R4.1
- * through R10.6 / E4: Python is the arbiter); the byte-frozen
- * schema4api files under `vendor/mixpanel-contracts/` are a TYPE-LEVEL
- * cross-check only, imported `import type` — nothing here reaches the
- * runtime bundle. Where the two disagree, the divergence is DOCUMENTED
- * (alerts: `vendor/mixpanel-contracts/PROVENANCE.json`
- * `verified_divergences.alerts`, recorded by the E4 verification step)
- * and the check asserts the divergence EXACTLY, so silent drift in
- * either direction breaks the build.
- *
- * Key-set comparisons use the `*Init` constructor interfaces (their
- * keys are exactly the Python `model_fields` names); instance types
- * carry methods and are unsuitable for `keyof` comparisons.
- *
- * Areas WITHOUT a usable vendored contract (recorded in PROVENANCE
- * `coverage_holes` + notes): cohorts (no contract exists), dashboards
- * (`projects/dashboards/types.d.ts` covers blueprint REQUEST shapes
- * only), lexicon/data_definitions (history/merge endpoints only —
- * checked below where an overlap exists), schemas / annotations /
- * lookup tables (no schema4api file vendored). Their runtime lock is
- * the C8(a) sweep + C8(b) goldens.
- */
+// Type-level cross-check of the hand-written entity models against the
+// byte-frozen schema4api files under `vendor/mixpanel-contracts/` (imported
+// `import type` only — nothing here reaches a runtime bundle). Python is the
+// arbiter where the two disagree: each documented divergence (recorded in
+// `vendor/mixpanel-contracts/PROVENANCE.json` `verified_divergences`) is
+// asserted exactly, so silent drift in either direction fails the typecheck.
+// Key sets compare the `*Init` constructor interfaces (their keys are the
+// Python `model_fields` names); instance types carry methods. Areas without
+// a usable vendored contract (cohorts, dashboards, schemas, annotations,
+// lookup tables — PROVENANCE `coverage_holes`) are covered by the runtime
+// goldens instead.
+import { describe, expectTypeOf, it } from "vitest";
 
 import type {
   WebhookCreatePayload,
@@ -68,208 +52,127 @@ import type {
   WebhookTestParamsInit,
 } from "../../../src/types/entities/webhooks.js";
 
-/** Compile-time truth assertion. */
-type Expect<T extends true> = T;
+describe("alerts (vendored alerts/custom request + response models)", () => {
+  it("request params carry exactly the vendored request keys", () => {
+    expectTypeOf<keyof CreateAlertParamsInit>().toEqualTypeOf<
+      keyof CreateCustomAlertRequest
+    >();
+    expectTypeOf<keyof UpdateAlertParamsInit>().toEqualTypeOf<
+      keyof UpdateCustomAlertRequest
+    >();
+    expectTypeOf<keyof ValidateAlertsForBookmarkParamsInit>().toEqualTypeOf<
+      keyof ValidateAlertsForBookmarkRequest
+    >();
+  });
 
-/** True when the two key sets are identical. */
-type KeysEqual<A, B> = [
-  Exclude<keyof A, keyof B>,
-  Exclude<keyof B, keyof A>,
-] extends [never, never]
-  ? true
-  : false;
+  it("the unwrapped alert count is assignable to the vendored results model", () => {
+    // Python unwraps the `{status, results}` envelope before modelling.
+    expectTypeOf<
+      Pick<
+        AlertCount,
+        "anomaly_alerts_count" | "alert_limit" | "is_below_limit"
+      >
+    >().toExtend<CustomAlertsCountResults>();
+  });
 
-/** True when `keyof A` minus `keyof B` is exactly `Only`. */
-type ExtraKeysAre<A, B, Only extends PropertyKey> = [
-  Exclude<keyof A, keyof B>,
-] extends [Only]
-  ? [Only] extends [Exclude<keyof A, keyof B>]
-    ? true
-    : false
-  : false;
+  it("CustomAlert differs from the vendored model by exactly the documented keys", () => {
+    // Python-only: nested creator/workspace/project objects plus the trigger
+    // `results`; vendored-only: the flat user/validity/workspace ids. `id` is
+    // an integer in Python (the wire vectors record integers), a string in
+    // the vendored file — Python wins.
+    expectTypeOf<
+      Exclude<keyof CustomAlertInit, keyof VendoredCustomAlert>
+    >().toEqualTypeOf<"creator" | "workspace" | "project" | "results">();
+    expectTypeOf<
+      Exclude<keyof VendoredCustomAlert, keyof CustomAlertInit>
+    >().toEqualTypeOf<"user_id" | "validity_status" | "workspace_id">();
+  });
 
-// ---------------------------------------------------------------------------
-// Alerts (E4 — MANDATORY verification; endpoint diff recorded in
-// PROVENANCE.json `verified_divergences.alerts`). Python's alert CRUD
-// calls exactly the `alerts/custom/...` endpoint family the vendored
-// file describes, so key-level checks are meaningful here.
-// ---------------------------------------------------------------------------
+  it("cursor pagination adds `page_size` over the vendored cursor pair", () => {
+    expectTypeOf<
+      Exclude<keyof CursorPaginationInit, keyof AlertsCursorPaginationResponse>
+    >().toEqualTypeOf<"page_size">();
+  });
+});
 
-// Request params: key sets match the vendored request models exactly.
-type AlertCreateKeys = Expect<
-  KeysEqual<CreateAlertParamsInit, CreateCustomAlertRequest>
->;
-type AlertUpdateKeys = Expect<
-  KeysEqual<UpdateAlertParamsInit, UpdateCustomAlertRequest>
->;
-type AlertValidateKeys = Expect<
-  KeysEqual<
-    ValidateAlertsForBookmarkParamsInit,
-    ValidateAlertsForBookmarkRequest
-  >
->;
+describe("webhooks (iron-only contract)", () => {
+  it("request params carry exactly the vendored payload keys", () => {
+    expectTypeOf<keyof CreateWebhookParamsInit>().toEqualTypeOf<
+      keyof WebhookCreatePayload
+    >();
+    expectTypeOf<keyof UpdateWebhookParamsInit>().toEqualTypeOf<
+      keyof WebhookUpdatePayload
+    >();
+    expectTypeOf<keyof WebhookTestParamsInit>().toEqualTypeOf<
+      keyof WebhookTestPayload
+    >();
+  });
 
-// Alert count: Python unwraps the `{status, results}` envelope; the
-// unwrapped shape is assignable to the vendored results model.
-type AlertCountShape = Expect<
-  Pick<
-    AlertCount,
-    "anomaly_alerts_count" | "alert_limit" | "is_below_limit"
-  > extends CustomAlertsCountResults
-    ? true
-    : false
->;
+  it("ProjectWebhook covers the vendored list item plus `auth_type`", () => {
+    // Python parses `auth_type` from detail responses; the iron list-item
+    // model omits it.
+    expectTypeOf<
+      Exclude<keyof ProjectWebhookInit, keyof WebhookItem>
+    >().toEqualTypeOf<"auth_type">();
+    expectTypeOf<
+      Exclude<keyof WebhookItem, keyof ProjectWebhookInit>
+    >().toBeNever();
+  });
+});
 
-// CustomAlert response: the documented E4 divergences, asserted
-// exactly. Python-only keys (nested creator/workspace/project objects
-// + trigger `results`); vendored-only keys (flat user_id /
-// validity_status / workspace_id). `id` is `int` in Python (wire
-// vectors record integers) vs `string` in the vendored file — Python
-// wins (E4).
-type CustomAlertPythonOnly = Expect<
-  ExtraKeysAre<
-    CustomAlertInit,
-    VendoredCustomAlert,
-    "creator" | "workspace" | "project" | "results"
-  >
->;
-type CustomAlertVendoredOnly = Expect<
-  ExtraKeysAre<
-    VendoredCustomAlert,
-    CustomAlertInit,
-    "user_id" | "validity_status" | "workspace_id"
-  >
->;
+describe("feature flags", () => {
+  it("create params are a key subset of the server payload model", () => {
+    expectTypeOf<
+      Exclude<keyof CreateFeatureFlagParamsInit, keyof FeatureFlagApiPayload>
+    >().toBeNever();
+  });
 
-// Alert history pagination: Python adds `page_size` on top of the
-// vendored cursor pair (checked via the shared CursorPagination model,
-// which the alerts/bookmarks history paginations mirror).
-type CursorPaginationExtra = Expect<
-  ExtraKeysAre<
-    CursorPaginationInit,
-    AlertsCursorPaginationResponse,
-    "page_size"
-  >
->;
+  it("limits are a key subset of the vendored results model", () => {
+    // The vendored startup_block_* / is_startup_blocked fields are not
+    // modelled in Python. The `FeatureFlagStatus` literal set also differs
+    // from the Python enum; the Python enum is the contract and the literal
+    // tables are locked against `literal-aliases.json` instead.
+    expectTypeOf<
+      Exclude<keyof FlagLimitsResponseInit, keyof FeatureFlagLimitsResults>
+    >().toBeNever();
+  });
+});
 
-// ---------------------------------------------------------------------------
-// Webhooks (iron-only contract — PROVENANCE coverage_holes.webhooks).
-// ---------------------------------------------------------------------------
+describe("experiments", () => {
+  // `ExperimentCreatePayload` carries an index signature, which makes a
+  // `keyof`-subset check vacuous — compare against its declared key list.
+  type VendoredExperimentCreateDeclaredKeys =
+    | "description"
+    | "feature_flag"
+    | "feature_flag_id"
+    | "feature_flag_key"
+    | "hypothesis"
+    | "metrics"
+    | "name"
+    | "settings"
+    | "tags"
+    | "variants";
 
-type WebhookCreateKeys = Expect<
-  KeysEqual<CreateWebhookParamsInit, WebhookCreatePayload>
->;
-type WebhookUpdateKeys = Expect<
-  KeysEqual<UpdateWebhookParamsInit, WebhookUpdatePayload>
->;
-type WebhookTestKeys = Expect<
-  KeysEqual<WebhookTestParamsInit, WebhookTestPayload>
->;
-// ProjectWebhook models one Python-only extra over the vendored list
-// item: `auth_type` (Python parses it from detail responses; the iron
-// list-item model omits it).
-type WebhookItemExtras = Expect<
-  ExtraKeysAre<ProjectWebhookInit, WebhookItem, "auth_type">
->;
-type WebhookItemCoversVendored = Expect<
-  Exclude<keyof WebhookItem, keyof ProjectWebhookInit> extends never
-    ? true
-    : false
->;
+  it("the transcribed declared-key list is honest against the vendored type", () => {
+    expectTypeOf<VendoredExperimentCreateDeclaredKeys>().toExtend<
+      keyof ExperimentCreatePayload
+    >();
+  });
 
-// ---------------------------------------------------------------------------
-// Feature flags.
-// ---------------------------------------------------------------------------
+  it("create params add exactly the two wire-legal Python-only keys", () => {
+    expectTypeOf<
+      Exclude<
+        keyof CreateExperimentParamsInit,
+        VendoredExperimentCreateDeclaredKeys
+      >
+    >().toEqualTypeOf<"access_type" | "can_edit">();
+  });
+});
 
-// Create params are a strict key subset of the server payload model.
-type FlagCreateSubset = Expect<
-  Exclude<
-    keyof CreateFeatureFlagParamsInit,
-    keyof FeatureFlagApiPayload
-  > extends never
-    ? true
-    : false
->;
-// Limits: Python subsets the vendored results model (the extra
-// startup_block_* / is_startup_blocked fields are not modeled).
-type FlagLimitsSubset = Expect<
-  Exclude<
-    keyof FlagLimitsResponseInit,
-    keyof FeatureFlagLimitsResults
-  > extends never
-    ? true
-    : false
->;
-// NOTE (documented, not asserted): the vendored `FeatureFlagStatus`
-// literal set is `'enabled' | 'disabled' | 'archived'` while the
-// Python `FeatureFlagStatus` enum carries different member values —
-// the Python enum is the contract (E4 authority order); the literal
-// tables are locked against `literal-aliases.json` instead.
-
-// ---------------------------------------------------------------------------
-// Experiments.
-// ---------------------------------------------------------------------------
-
-// `ExperimentCreatePayload` carries an index signature
-// (`[k: string]: any`), which makes `keyof`-subset checks vacuous —
-// compare against its DECLARED key list instead. Python-only keys
-// (`access_type`, `can_edit`) ride the index signature and are
-// wire-legal; assert they are exactly the documented pair, and that
-// the declared-list transcription stays honest against the vendored
-// type.
-type VendoredExperimentCreateDeclaredKeys =
-  | "description"
-  | "feature_flag"
-  | "feature_flag_id"
-  | "feature_flag_key"
-  | "hypothesis"
-  | "metrics"
-  | "name"
-  | "settings"
-  | "tags"
-  | "variants";
-type ExperimentDeclaredKeysHonest = Expect<
-  VendoredExperimentCreateDeclaredKeys extends keyof ExperimentCreatePayload
-    ? true
-    : false
->;
-type ExperimentCreateExtras = Expect<
-  ExtraKeysAre<
-    CreateExperimentParamsInit,
-    Record<VendoredExperimentCreateDeclaredKeys, unknown>,
-    "access_type" | "can_edit"
-  >
->;
-
-// ---------------------------------------------------------------------------
-// Data governance (drop-filter limits — the one data_definitions
-// overlap with a vendored model).
-// ---------------------------------------------------------------------------
-
-type DropFilterLimitsKeys = Expect<
-  KeysEqual<DropFilterLimitsResponseInit, EventDropFiltersLimitResults>
->;
-
-/**
- * Every assertion above, referenced once so the compile-only file has
- * no unused locals (the tuple itself is never imported anywhere).
- */
-export type VendoredContractChecks = [
-  AlertCreateKeys,
-  AlertUpdateKeys,
-  AlertValidateKeys,
-  AlertCountShape,
-  CustomAlertPythonOnly,
-  CustomAlertVendoredOnly,
-  CursorPaginationExtra,
-  WebhookCreateKeys,
-  WebhookUpdateKeys,
-  WebhookTestKeys,
-  WebhookItemExtras,
-  WebhookItemCoversVendored,
-  FlagCreateSubset,
-  FlagLimitsSubset,
-  ExperimentDeclaredKeysHonest,
-  ExperimentCreateExtras,
-  DropFilterLimitsKeys,
-];
+describe("data governance (drop-filter limits)", () => {
+  it("DropFilterLimitsResponse carries exactly the vendored keys", () => {
+    expectTypeOf<keyof DropFilterLimitsResponseInit>().toEqualTypeOf<
+      keyof EventDropFiltersLimitResults
+    >();
+  });
+});
