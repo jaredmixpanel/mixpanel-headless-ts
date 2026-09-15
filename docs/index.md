@@ -15,6 +15,9 @@ hero:
       text: Quick start
       link: /getting-started/quickstart
     - theme: alt
+      text: Playground
+      link: /demo/
+    - theme: alt
       text: GitHub
       link: https://github.com/jaredmixpanel/mixpanel-headless-ts
 

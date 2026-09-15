@@ -12,6 +12,13 @@
 # SHA and the trailing `# vX.Y.Z` comment together), least-privilege token per
 # job, and no secrets — the build never talks to Mixpanel.
 #
+# The pull-request artifact cannot exercise the playground's live mode: the
+# build bakes the Pages URL in as the OAuth redirect URI (from DOCS_ORIGIN
+# and DOCS_BASE below), so Mixpanel sends the browser back to the deployed
+# site, never to a local copy of the artifact. Offline mode works anywhere;
+# live mode is checked on `npm run docs:dev` (CONTRIBUTING.md
+# "Documentation" → "Playground").
+#
 # Deployment relies on GitHub Pages being enabled on the repository with
 # source "GitHub Actions" (Settings → Pages). Should it ever be disabled, the
 # `build` job still runs on every push and PR and the site is downloadable as
@@ -76,6 +83,13 @@ jobs:
       # "Documentation"); private-repository standard runners have 8 GB.
       - name: Build site
         run: npm run docs:build
+
+      # Assertions that need the rendered HTML (the Content Security Policy
+      # hashes on every page, no third-party loads, the playground chunk's
+      # budget); the test skips itself when there is no build, which is why
+      # it runs here and not only in `npm run check`.
+      - name: Check built site
+        run: npx vitest run tests/demo-dist.test.ts
 
       - name: Upload site (pull request)
         if: github.event_name == 'pull_request'

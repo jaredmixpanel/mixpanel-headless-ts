@@ -1,0 +1,53 @@
+# Weekly probe of the policy the docs playground's live mode depends on
+# (`scripts/demo-canary.mjs`; CONTRIBUTING.md "Documentation" → "Playground"):
+# Mixpanel's query, app and OAuth endpoints must answer CORS preflights
+# from the site's origin, and the Export API must still refuse them.
+#
+# A real login cannot run here: the flow has no client-credentials variant,
+# Mixpanel's sign-in page is interactive, and this repository keeps secrets
+# out of workflows. So the canary checks headers, not a token, with no
+# credentials at all. The run's failure notification is the alert; there is
+# no issue-creation step. The DCR registration probe (`--register`) is
+# opt-in and never run here because it creates a client record per run.
+#
+# GitHub disables scheduled workflows after sixty days without repository
+# activity; `workflow_dispatch` re-arms it.
+#
+# Supply-chain rules as in docs.yml: SHA-pinned actions, least-privilege
+# token, no secrets.
+name: demo-canary
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    name: canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      # The same derivation docs.yml uses, so the `Origin` the probes send
+      # is the one the deployed playground sends.
+      - name: Resolve site origin
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "DOCS_BASE=/${REPOSITORY#*/}/" >> "$GITHUB_ENV"
+          echo "DOCS_ORIGIN=https://${REPOSITORY%%/*}.github.io" >> "$GITHUB_ENV"
+
+      # The script has no dependencies (Node's fetch only), so no install.
+      - name: Probe CORS and OAuth endpoints
+        run: node scripts/demo-canary.mjs
