@@ -23,6 +23,7 @@ import { appRequest } from "../../client/app-request.js";
 import { parseRetryAfter, retryWaitSeconds } from "../../client/backoff.js";
 import type { ClientCore } from "../../client/core.js";
 import {
+  bindFirst,
   errorMessage,
   MixpanelHttpError,
   parseBody,
@@ -167,6 +168,244 @@ function shortLinkTarget(
   }
   return target;
 }
+/**
+ * Send the shortlink GET, with the same 429 backoff as every API call
+ * (`_get_short_link`).
+ *
+ * @param url - The `https://{host}/s/{code}` URL.
+ * @param signal - Optional cancellation signal.
+ * @returns The first response whose status is not 429.
+ * @throws RateLimitError - 429 on every attempt.
+ * @throws MixpanelHeadlessError - `HTTP_ERROR` on a transport failure.
+ */
+async function getShortLink(
+  core: ClientCore,
+  url: string,
+  signal: AbortSignal | undefined,
+): Promise<WireResponse> {
+  const deps = core.executeDeps(signal);
+  const headers = core.requestHeaders({
+    Authorization: await core.getAuthHeader(),
+  });
+  for (let attempt = 0; attempt <= deps.maxRetries; attempt += 1) {
+    let response: WireResponse;
+    try {
+      response = await deps.request({
+        method: "GET",
+        url,
+        params: {},
+        jsonBody: null,
+        formBody: null,
+        headers,
+        timeoutSeconds: DEFAULT_APP_TIMEOUT_S,
+      });
+    } catch (error) {
+      // R2.10: `except httpx.HTTPError` → the instanceof filter.
+      if (!(error instanceof MixpanelHttpError)) {
+        throw error;
+      }
+      throw new MixpanelHeadlessError(
+        `HTTP error: ${error.message}`,
+        "HTTP_ERROR",
+        { error: error.message, request_method: "GET", request_url: url },
+        { cause: error },
+      );
+    }
+    if (response.status !== 429) {
+      return response;
+    }
+    const retryAfter = parseRetryAfter(response);
+    if (attempt >= deps.maxRetries) {
+      throw new RateLimitError("Rate limit exceeded", {
+        retryAfter,
+        statusCode: response.status,
+        requestMethod: "GET",
+        requestUrl: url,
+        projectId: deps.projectId,
+      });
+    }
+    const waitSeconds = retryWaitSeconds(retryAfter, attempt, deps.random);
+    deps.logger?.warning(
+      `Rate limited, retrying in ${waitSeconds.toFixed(1)} seconds ` +
+        `(attempt ${String(attempt + 1)}/${String(deps.maxRetries)})`,
+    );
+    // R2.12: the ONE seconds→milliseconds conversion point.
+    await deps.sleep(waitSeconds * 1000);
+  }
+  // Unreachable (the loop always returns or throws) — mirror Python's
+  // type-checker-satisfying raise.
+  throw new RateLimitError("Rate limit exceeded", {
+    requestMethod: "GET",
+    requestUrl: url,
+    projectId: deps.projectId,
+  });
+}
+
+async function createBookmarkUrl(
+  core: ClientCore,
+  body: Readonly<Record<string, unknown>>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const payload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (key !== "workspace_id") {
+      payload[key] = value;
+    }
+  }
+  const result = await appRequest(
+    core.appDeps(signal),
+    "POST",
+    `/projects/${core.projectId()}/bookmark-urls/`,
+    { jsonBody: payload },
+  );
+  return expectRecordResult(result, "create_bookmark_url");
+}
+
+async function getBookmarkUrl(
+  core: ClientCore,
+  slug: string,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  let result: JsonValue;
+  try {
+    result = await appRequest(
+      core.appDeps(signal),
+      "GET",
+      `/projects/${core.projectId()}/bookmark-urls/${slug}/`,
+    );
+  } catch (error) {
+    if (error instanceof QueryError && error.statusCode === 404) {
+      const projectId = pythonInt(core.projectId());
+      const region = core.region();
+      throw new ReportLinkNotFoundError(
+        `No unsaved report found for slug ${slug} in project ` +
+          `${String(projectId)} (${region}). A slug is only readable in ` +
+          `the project and region that created it.`,
+        {
+          code: "REPORT_LINK_SLUG_NOT_FOUND",
+          details: {
+            kind: "slug",
+            slug,
+            project_id: projectId,
+            region,
+            hint:
+              "Switch to the project and region that created the " +
+              "link (ws.use(project=...); CLI: mp --project ... " +
+              "or mp --account ...) and retry.",
+          },
+          cause: error,
+        },
+      );
+    }
+    throw error;
+  }
+  return expectRecordResult(result, "get_bookmark_url");
+}
+
+async function resolveShortLink(
+  core: ClientCore,
+  code: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const region = core.region();
+  const host = webHost(region);
+  const url = `https://${host}/s/${code}`;
+  const response = await getShortLink(core, url, signal);
+
+  const status = response.status;
+  const baseDetails: Record<string, unknown> = {
+    kind: "short_link",
+    short_code: code,
+    host,
+    region,
+  };
+
+  if (SHORT_LINK_REDIRECT_STATUSES.has(status)) {
+    const location = response.header("Location") ?? "";
+    if (location === "") {
+      throw new ShortLinkResolutionError(
+        `Shortlink /s/${code} returned HTTP ${String(status)} without a ` +
+          `Location header.`,
+        {
+          code: "SHORT_LINK_NO_LOCATION",
+          details: { ...baseDetails, status, hint: SHORT_LINK_HINT },
+        },
+      );
+    }
+    return shortLinkTarget(url, location, code, status);
+  }
+
+  if (status === 200) {
+    const match = SHORT_LINK_HREF_RE.exec(response.text);
+    let decoded: unknown = null;
+    if (match !== null) {
+      try {
+        decoded = JSON.parse(match[1] as string);
+      } catch (error) {
+        // Python: `except json.JSONDecodeError` — the SyntaxError analog.
+        if (!(error instanceof SyntaxError)) {
+          throw error;
+        }
+        decoded = null;
+      }
+    }
+    if (typeof decoded === "string" && decoded !== "") {
+      return shortLinkTarget(url, decoded, code, status);
+    }
+    throw new ShortLinkResolutionError(
+      `Shortlink /s/${code} returned HTTP ${String(status)} with a body ` +
+        `mixpanel-headless does not recognize.`,
+      {
+        code: "SHORT_LINK_UNEXPECTED_RESPONSE",
+        details: { ...baseDetails, status, hint: SHORT_LINK_HINT },
+      },
+    );
+  }
+
+  if (status === 401) {
+    throw new AuthenticationError(
+      "Invalid credentials. Check username, secret, and project_id.",
+      { statusCode: status, requestMethod: "GET", requestUrl: url },
+    );
+  }
+  if (status === 403) {
+    const body = parseBody(response.text);
+    throw new QueryError(errorMessage(body, "Permission denied"), {
+      statusCode: status,
+      responseBody: body,
+      requestMethod: "GET",
+      requestUrl: url,
+    });
+  }
+  if (status === 404) {
+    throw new ReportLinkNotFoundError(
+      `Shortlink /s/${code} does not exist on ${host}.`,
+      {
+        code: "SHORT_LINK_NOT_FOUND",
+        details: {
+          ...baseDetails,
+          hint:
+            "Check the shortlink for typos, or open it in a browser " +
+            "and copy the full URL.",
+        },
+      },
+    );
+  }
+  if (status >= 500) {
+    throw new ServerError(
+      `Server error ${String(status)} while resolving shortlink /s/${code}`,
+      { statusCode: status, requestMethod: "GET", requestUrl: url },
+    );
+  }
+  throw new ShortLinkResolutionError(
+    `Shortlink /s/${code} returned HTTP ${String(status)} with a body ` +
+      `mixpanel-headless does not recognize.`,
+    {
+      code: "SHORT_LINK_UNEXPECTED_RESPONSE",
+      details: { ...baseDetails, status, hint: SHORT_LINK_HINT },
+    },
+  );
+}
 
 /**
  * Build the report-link wire methods over the shared client core.
@@ -175,240 +414,9 @@ function shortLinkTarget(
  * @returns The three methods.
  */
 export function createBookmarkUrlMethods(core: ClientCore): BookmarkUrlMethods {
-  /**
-   * Send the shortlink GET, with the same 429 backoff as every API call
-   * (`_get_short_link`).
-   *
-   * @param url - The `https://{host}/s/{code}` URL.
-   * @param signal - Optional cancellation signal.
-   * @returns The first response whose status is not 429.
-   * @throws RateLimitError - 429 on every attempt.
-   * @throws MixpanelHeadlessError - `HTTP_ERROR` on a transport failure.
-   */
-  const getShortLink = async (
-    url: string,
-    signal: AbortSignal | undefined,
-  ): Promise<WireResponse> => {
-    const deps = core.executeDeps(signal);
-    const headers = core.requestHeaders({
-      Authorization: await core.getAuthHeader(),
-    });
-    for (let attempt = 0; attempt <= deps.maxRetries; attempt += 1) {
-      let response: WireResponse;
-      try {
-        response = await deps.request({
-          method: "GET",
-          url,
-          params: {},
-          jsonBody: null,
-          formBody: null,
-          headers,
-          timeoutSeconds: DEFAULT_APP_TIMEOUT_S,
-        });
-      } catch (error) {
-        // R2.10: `except httpx.HTTPError` → the instanceof filter.
-        if (!(error instanceof MixpanelHttpError)) {
-          throw error;
-        }
-        throw new MixpanelHeadlessError(
-          `HTTP error: ${error.message}`,
-          "HTTP_ERROR",
-          { error: error.message, request_method: "GET", request_url: url },
-          { cause: error },
-        );
-      }
-      if (response.status !== 429) {
-        return response;
-      }
-      const retryAfter = parseRetryAfter(response);
-      if (attempt >= deps.maxRetries) {
-        throw new RateLimitError("Rate limit exceeded", {
-          retryAfter,
-          statusCode: response.status,
-          requestMethod: "GET",
-          requestUrl: url,
-          projectId: deps.projectId,
-        });
-      }
-      const waitSeconds = retryWaitSeconds(retryAfter, attempt, deps.random);
-      deps.logger?.warning(
-        `Rate limited, retrying in ${waitSeconds.toFixed(1)} seconds ` +
-          `(attempt ${String(attempt + 1)}/${String(deps.maxRetries)})`,
-      );
-      // R2.12: the ONE seconds→milliseconds conversion point.
-      await deps.sleep(waitSeconds * 1000);
-    }
-    // Unreachable (the loop always returns or throws) — mirror Python's
-    // type-checker-satisfying raise.
-    throw new RateLimitError("Rate limit exceeded", {
-      requestMethod: "GET",
-      requestUrl: url,
-      projectId: deps.projectId,
-    });
-  };
-
   return {
-    createBookmarkUrl: async (
-      body: Readonly<Record<string, unknown>>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const payload: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(body)) {
-        if (key !== "workspace_id") {
-          payload[key] = value;
-        }
-      }
-      const result = await appRequest(
-        core.appDeps(signal),
-        "POST",
-        `/projects/${core.projectId()}/bookmark-urls/`,
-        { jsonBody: payload },
-      );
-      return expectRecordResult(result, "create_bookmark_url");
-    },
-
-    getBookmarkUrl: async (
-      slug: string,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      let result: JsonValue;
-      try {
-        result = await appRequest(
-          core.appDeps(signal),
-          "GET",
-          `/projects/${core.projectId()}/bookmark-urls/${slug}/`,
-        );
-      } catch (error) {
-        if (error instanceof QueryError && error.statusCode === 404) {
-          const projectId = pythonInt(core.projectId());
-          const region = core.region();
-          throw new ReportLinkNotFoundError(
-            `No unsaved report found for slug ${slug} in project ` +
-              `${String(projectId)} (${region}). A slug is only readable in ` +
-              `the project and region that created it.`,
-            {
-              code: "REPORT_LINK_SLUG_NOT_FOUND",
-              details: {
-                kind: "slug",
-                slug,
-                project_id: projectId,
-                region,
-                hint:
-                  "Switch to the project and region that created the " +
-                  "link (ws.use(project=...); CLI: mp --project ... " +
-                  "or mp --account ...) and retry.",
-              },
-              cause: error,
-            },
-          );
-        }
-        throw error;
-      }
-      return expectRecordResult(result, "get_bookmark_url");
-    },
-
-    resolveShortLink: async (
-      code: string,
-      signal?: AbortSignal,
-    ): Promise<string> => {
-      const region = core.region();
-      const host = webHost(region);
-      const url = `https://${host}/s/${code}`;
-      const response = await getShortLink(url, signal);
-
-      const status = response.status;
-      const baseDetails: Record<string, unknown> = {
-        kind: "short_link",
-        short_code: code,
-        host,
-        region,
-      };
-
-      if (SHORT_LINK_REDIRECT_STATUSES.has(status)) {
-        const location = response.header("Location") ?? "";
-        if (location === "") {
-          throw new ShortLinkResolutionError(
-            `Shortlink /s/${code} returned HTTP ${String(status)} without a ` +
-              `Location header.`,
-            {
-              code: "SHORT_LINK_NO_LOCATION",
-              details: { ...baseDetails, status, hint: SHORT_LINK_HINT },
-            },
-          );
-        }
-        return shortLinkTarget(url, location, code, status);
-      }
-
-      if (status === 200) {
-        const match = SHORT_LINK_HREF_RE.exec(response.text);
-        let decoded: unknown = null;
-        if (match !== null) {
-          try {
-            decoded = JSON.parse(match[1] as string);
-          } catch (error) {
-            // Python: `except json.JSONDecodeError` — the SyntaxError analog.
-            if (!(error instanceof SyntaxError)) {
-              throw error;
-            }
-            decoded = null;
-          }
-        }
-        if (typeof decoded === "string" && decoded !== "") {
-          return shortLinkTarget(url, decoded, code, status);
-        }
-        throw new ShortLinkResolutionError(
-          `Shortlink /s/${code} returned HTTP ${String(status)} with a body ` +
-            `mixpanel-headless does not recognize.`,
-          {
-            code: "SHORT_LINK_UNEXPECTED_RESPONSE",
-            details: { ...baseDetails, status, hint: SHORT_LINK_HINT },
-          },
-        );
-      }
-
-      if (status === 401) {
-        throw new AuthenticationError(
-          "Invalid credentials. Check username, secret, and project_id.",
-          { statusCode: status, requestMethod: "GET", requestUrl: url },
-        );
-      }
-      if (status === 403) {
-        const body = parseBody(response.text);
-        throw new QueryError(errorMessage(body, "Permission denied"), {
-          statusCode: status,
-          responseBody: body,
-          requestMethod: "GET",
-          requestUrl: url,
-        });
-      }
-      if (status === 404) {
-        throw new ReportLinkNotFoundError(
-          `Shortlink /s/${code} does not exist on ${host}.`,
-          {
-            code: "SHORT_LINK_NOT_FOUND",
-            details: {
-              ...baseDetails,
-              hint:
-                "Check the shortlink for typos, or open it in a browser " +
-                "and copy the full URL.",
-            },
-          },
-        );
-      }
-      if (status >= 500) {
-        throw new ServerError(
-          `Server error ${String(status)} while resolving shortlink /s/${code}`,
-          { statusCode: status, requestMethod: "GET", requestUrl: url },
-        );
-      }
-      throw new ShortLinkResolutionError(
-        `Shortlink /s/${code} returned HTTP ${String(status)} with a body ` +
-          `mixpanel-headless does not recognize.`,
-        {
-          code: "SHORT_LINK_UNEXPECTED_RESPONSE",
-          details: { ...baseDetails, status, hint: SHORT_LINK_HINT },
-        },
-      );
-    },
+    createBookmarkUrl: bindFirst(core, createBookmarkUrl),
+    getBookmarkUrl: bindFirst(core, getBookmarkUrl),
+    resolveShortLink: bindFirst(core, resolveShortLink),
   };
 }
