@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Codemod: rename declared identifiers repo-wide through the TypeScript
 // language service (CLEANUP-PLAN §8.2 naming-convention, D1; Phase 4 lane L6).
 //
