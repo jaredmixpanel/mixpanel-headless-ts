@@ -21,14 +21,28 @@ import type { Row } from "./result-base.js";
 type FlowDict = Readonly<Record<string, unknown>>;
 
 /**
- * Parse a value to int, returning `default_` on failure — mirror of
- * `types._safe_int` (the flows API returns `totalCount` as a string).
- * Python's `warnings.warn` side channel is not ported (out of
- * contract).
+ * Parse a value to an integer, returning `default_` when it does not
+ * parse (the flows API returns `totalCount` as a string).
  *
+ * @remarks
+ * Python's `warnings.warn` side channel is not ported. String parsing
+ * goes through `pythonInt`, which is the CPython `int(str)` grammar
+ * (underscores, non-ASCII decimal digits, CPython's numeric-whitespace
+ * surround); a `\s`-regex plus `parseInt` diverged on all three and on
+ * U+FEFF.
  * @param value - Value to parse (typically a numeric string).
- * @param default_ - Fallback when parsing fails. Default: `0`.
+ * @param default_ - Fallback when parsing fails.
+ * @defaultValue `default_` is `0`
  * @returns Parsed integer, or `default_`.
+ * @throws Rethrows anything from `pythonInt` that is not a coded parse
+ *   rejection (the `ValueError` analogue); such errors are bugs, not
+ *   unparsable input.
+ * @example
+ * ```ts
+ * safeInt("1_024"); // 1024
+ * safeInt("abc", -1); // -1
+ * ```
+ * @see mixpanel_headless.types._safe_int
  * @internal
  */
 export function safeInt(value: unknown, default_ = 0): number {
@@ -36,25 +50,18 @@ export function safeInt(value: unknown, default_ = 0): number {
     return value;
   }
   if (typeof value === "boolean") {
-    // Python: bool is excluded from the int fast path and warned on.
+    // Python excludes bool from the int fast path and warns on it.
     return default_;
   }
   if (typeof value === "string") {
-    // Python: try int(value) except ValueError -> default. `pythonInt`
-    // IS the CPython int(str) grammar (underscores, non-ASCII Nd
-    // digits, the CPython numeric-whitespace surround) — the previous
-    // `\s`-regex + parseInt pair diverged on all three plus U+FEFF
-    // (B0-gate RUN.md 2026-08-15). PY_INT_UNSAFE_INTEGER (>2^53-1,
-    // where CPython returns the exact big int) also maps to the
-    // default: R4.5 leaves no faithful numeric representation (the
-    // playbook Discrepancy #6 pattern; the old parseInt path returned
-    // an IMPRECISE number there, which was no more faithful).
+    // Divergence: an integer beyond 2^53 - 1 (PY_INT_UNSAFE_INTEGER)
+    // also maps to the default; CPython returns the exact big int, and
+    // JS has no faithful numeric representation for it.
     try {
       return pythonInt(value);
     } catch (error) {
-      // Guarded catch (b0-review-resolution F3/A2 pattern): only the
-      // coded parse rejections are the ValueError analog; anything
-      // else propagates.
+      // Only the coded parse rejections are the ValueError analogue;
+      // anything else propagates.
       if (error instanceof MixpanelHeadlessError) {
         return default_;
       }
@@ -94,8 +101,7 @@ interface FlowGraphEdge {
 
 /**
  * The plain adjacency object {@link buildFlowGraph} emits — the
- * stand-in for `networkx.DiGraph` (B5-S2 closure of the Phase-2
- * TODO(port)).
+ * stand-in for `networkx.DiGraph`.
  */
 export interface FlowGraph {
   /** Nodes, in Python's `add_node` order. */
@@ -127,16 +133,27 @@ function nodeEdges(node: FlowDict): readonly FlowDict[] {
 }
 
 /**
- * The directed flow graph — body of Python's `FlowQueryResult.graph`
- * property. Node ids are `"{event}@{step}"`, node attributes are
- * `step` / `event` / `type` / `count` / `anchor_type`, and edge
- * attributes are `count` / `type` with the `step_idx + 1` target-step
- * fallback. Pure and deterministic, so the result class leaves its
- * codec-visible `_graph_cache` slot `null`.
+ * Build the directed flow graph — the body of Python's
+ * `FlowQueryResult.graph` property.
  *
+ * @remarks
+ * Node ids are `"{event}@{step}"`, node attributes are `step` / `event`
+ * / `type` / `count` / `anchor_type`, and edge attributes are `count` /
+ * `type` with the `step_idx + 1` target-step fallback. Pure and
+ * deterministic, so the result class leaves its codec-visible
+ * `_graph_cache` slot `null`.
  * @param steps - The sankey step dicts.
  * @returns The `{nodes, edges}` adjacency object (empty arrays when
  *   `steps` is empty).
+ * @example
+ * ```ts
+ * const graph = buildFlowGraph([
+ *   { nodes: [{ event: "Signup", totalCount: "10", edges: [{ event: "Buy", totalCount: "4" }] }] },
+ * ]);
+ * graph.nodes[0]?.id; // "Signup@0"
+ * graph.edges[0]?.target; // "Buy@1"
+ * ```
+ * @see mixpanel_headless.types.FlowQueryResult.graph
  */
 export function buildFlowGraph(steps: readonly FlowDict[]): FlowGraph {
   const nodes: FlowGraphNode[] = [];
@@ -167,12 +184,19 @@ export function buildFlowGraph(steps: readonly FlowDict[]): FlowGraph {
 }
 
 /**
- * Pre-pandas rows of the Python `nodes_df` body: one row per sankey
- * node with Python's per-key defaults (`totalCount` string parsed via
- * `_safe_int`).
+ * Build the pre-pandas rows of Python's `nodes_df`: one row per sankey
+ * node with Python's per-key defaults (`totalCount` parsed via
+ * {@link safeInt}).
  *
  * @param steps - The sankey step dicts.
  * @returns The rows list.
+ * @example
+ * ```ts
+ * flowNodesRows([{ nodes: [{ event: "Signup", totalCount: "10" }] }]);
+ * // [{ step: 0, event: "Signup", type: "", count: 10, anchor_type: "",
+ * //    is_custom_event: false, conversion_rate_change: 0 }]
+ * ```
+ * @see mixpanel_headless.types.FlowQueryResult.nodes_df
  */
 export function flowNodesRows(steps: readonly FlowDict[]): readonly Row[] {
   const rows: Row[] = [];
@@ -193,11 +217,20 @@ export function flowNodesRows(steps: readonly FlowDict[]): readonly Row[] {
 }
 
 /**
- * Pre-pandas rows of the Python `edges_df` body: one row per
+ * Build the pre-pandas rows of Python's `edges_df`: one row per
  * (node, edge) pair.
  *
  * @param steps - The sankey step dicts.
  * @returns The rows list.
+ * @example
+ * ```ts
+ * flowEdgesRows([
+ *   { nodes: [{ event: "Signup", edges: [{ event: "Buy", totalCount: "4" }] }] },
+ * ]);
+ * // [{ source_step: 0, source_event: "Signup", target_step: 1,
+ * //    target_event: "Buy", count: 4, target_type: "" }]
+ * ```
+ * @see mixpanel_headless.types.FlowQueryResult.edges_df
  */
 export function flowEdgesRows(steps: readonly FlowDict[]): readonly Row[] {
   const rows: Row[] = [];
@@ -251,12 +284,18 @@ function flattenTreeNode(
 }
 
 /**
- * Pre-pandas rows of the Python `_build_tree_df` body: preorder
- * flattening of every tree with `tree_index`/`depth`/`" > "`-joined
- * `path`.
+ * Build the pre-pandas rows of Python's `trees_df`: a preorder
+ * flattening of every tree with `tree_index`, `depth` and a
+ * `" > "`-joined `path`.
  *
  * @param trees - The tree-mode roots.
  * @returns The rows list.
+ * @example
+ * ```ts
+ * flowTreesRows([root]).map((row) => row["path"]);
+ * // ["Signup", "Signup > Buy"]
+ * ```
+ * @see mixpanel_headless.types.FlowQueryResult._build_tree_df
  */
 export function flowTreesRows(trees: readonly FlowTreeNode[]): readonly Row[] {
   const rows: Row[] = [];
@@ -267,11 +306,18 @@ export function flowTreesRows(trees: readonly FlowTreeNode[]): readonly Row[] {
 }
 
 /**
- * Per-step drop-off totals — body of Python `drop_off_summary()`.
+ * Compute per-step drop-off totals — the body of Python's
+ * `drop_off_summary()`.
  *
  * @param steps - The sankey step dicts.
  * @returns `{step_N: {total, dropoff, rate}}` (empty when there are no
  *   steps).
+ * @example
+ * ```ts
+ * flowDropOffSummary(steps);
+ * // { step_0: { total: 10, dropoff: 6, rate: 0.6 }, step_1: { … } }
+ * ```
+ * @see mixpanel_headless.types.FlowQueryResult.drop_off_summary
  */
 export function flowDropOffSummary(
   steps: readonly FlowDict[],

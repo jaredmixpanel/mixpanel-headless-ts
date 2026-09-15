@@ -1,17 +1,14 @@
 /**
- * Query-engine result dataclasses (phase2-design C6-c, packet P2-6) —
- * TS ports of `QueryResult`, `FunnelQueryResult`,
- * `RetentionQueryResult`, `FlowTreeNode`, `FlowQueryResult`, and
- * `UserQueryResult` from `mixpanel_headless/types.py`.
+ * Query-engine result dataclasses: `QueryResult`, `FunnelQueryResult`,
+ * `RetentionQueryResult`, `FlowQueryResult` and `UserQueryResult`.
+ * These are the results whose `.df` is not the uniform rows pattern:
+ * `QueryResult` picks one of four column layouts, `UserQueryResult` has
+ * five branches plus a post-frame column reorder, and `FlowQueryResult`
+ * is mode-aware with auxiliary `nodes_df` / `edges_df` / `trees_df`.
+ * `FlowTreeNode` lives in `flow-tree.ts` and the flow frame builders in
+ * `flow-graph.ts`; `FlowQueryResult` delegates to them.
  *
- * These carry the four DIVERGENT `.df` row contracts called out in the
- * phase2-design C6 per-class row specs (`QueryResult` four column
- * layouts; `UserQueryResult` five branches + post-frame column
- * reorder; `FlowQueryResult` mode-aware frames + auxiliary
- * `nodes_df`/`edges_df`/`trees_df`).
- *
- * `FlowTreeNode` lives in `./flow-tree.ts` and the flow frame builders
- * in `./flow-graph.ts`; `FlowQueryResult` delegates to them.
+ * @see mixpanel_headless.types.QueryResult
  */
 
 import { compareCodeUnits, pythonFloatCoerce } from "../../compat/index.js";
@@ -90,25 +87,50 @@ export interface QueryResultFields {
   readonly from_date: string;
   /** Effective end date from the response. */
   readonly to_date: string;
-  /** Column headers from the insights response. Default: `[]`. */
+  /**
+   * Column headers from the insights response.
+   *
+   * @defaultValue `[]`
+   */
   readonly headers?: readonly string[];
-  /** Query result data (structure varies by mode). Default: `{}`. */
+  /**
+   * Query result data (structure varies by mode).
+   *
+   * @defaultValue `{}`
+   */
   readonly series?: Readonly<Record<string, unknown>>;
-  /** Generated bookmark params sent to the API. Default: `{}`. */
+  /**
+   * Generated bookmark params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Structured output of a `Workspace.query()` execution — TS port of
- * `types.QueryResult`.
+ * Structured output of a `Workspace.query()` execution.
  *
- * `.df` picks among FOUR column layouts (timeseries / total /
+ * @remarks
+ * `.df` picks among four column layouts (timeseries / total /
  * segmented timeseries / segmented total) with an explicit per-branch
- * column list — phase2-design C6 per-class row spec.
+ * column list; `rowColumns()` reports the active layout.
+ * @example
+ * ```ts
+ * const result = await ws.query({ event: "Signup", from_date: "2026-01-01", to_date: "2026-01-02" });
+ * result.toRows();
+ * // [{ date: "2026-01-01", event: "Signup", count: 42 },
+ * //  { date: "2026-01-02", event: "Signup", count: 37 }]
+ * result.rowColumns(); // ["date", "event", "count"]
+ * ```
+ * @see mixpanel_headless.types.QueryResult
  */
 export class QueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -214,8 +236,8 @@ export class QueryResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body (mode-dependent row key
-   * sets; see the class doc).
+   * Build the pre-pandas rows of Python's `.df` (layout-dependent row
+   * key sets; see the class doc).
    *
    * @returns The rows list.
    */
@@ -273,7 +295,7 @@ export class QueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): QueryResult {
@@ -326,21 +348,48 @@ export interface FunnelQueryResultFields {
   readonly from_date: string;
   /** Effective end date from the response. */
   readonly to_date: string;
-  /** Per-step aggregate dicts from the funnels response. Default: `[]`. */
+  /**
+   * Per-step aggregate dicts from the funnels response.
+   *
+   * @defaultValue `[]`
+   */
   readonly steps_data?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Raw series payload. Default: `{}`. */
+  /**
+   * Raw series payload.
+   *
+   * @defaultValue `{}`
+   */
   readonly series?: Readonly<Record<string, unknown>>;
-  /** Generated bookmark params sent to the API. Default: `{}`. */
+  /**
+   * Generated bookmark params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Structured output of a `Workspace.query_funnel()` execution — TS
- * port of `types.FunnelQueryResult`.
+ * Structured output of a `Workspace.queryFunnel()` execution: one row
+ * per step with counts, conversion ratios and timings.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ step: 1, event: "Signup", count: 200, step_conv_ratio: 1,
+ * //    overall_conv_ratio: 1, avg_time: 0, avg_time_from_start: 0 },
+ * //  { step: 2, event: "Purchase", count: 120, step_conv_ratio: 0.6,
+ * //    overall_conv_ratio: 0.6, avg_time: 3600, avg_time_from_start: 3600 }]
+ * result.overall_conversion_rate; // 0.6
+ * ```
+ * @see mixpanel_headless.types.FunnelQueryResult
  */
 export class FunnelQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -398,17 +447,14 @@ export class FunnelQueryResult {
     const value = Object.hasOwn(last ?? {}, "overall_conv_ratio")
       ? last?.["overall_conv_ratio"]
       : 0.0;
-    // Python applies float(...) to the looked-up value: the full R11.7
-    // CPython coercion ladder (string grammar via pythonFloat inside;
-    // bool -> 1.0/0.0; None/list/dict -> TypeError twins). B5-ARB
-    // ASR-F6b fixed the string arm; the non-string ladder landed at the
-    // B6 gate via the `pythonFloatCoerce` compat twin (B5-notes.md
-    // outbound ledger item 5).
+    // Python applies float(...) to the looked-up value, so the full
+    // CPython coercion ladder applies: the float string grammar, bool
+    // to 1.0/0.0, and TypeError twins for None/list/dict.
     return pythonFloatCoerce(value);
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: one row per step with
+   * Build the pre-pandas rows of Python's `.df`: one row per step with
    * the seven fixed columns and Python's per-key defaults (`event` →
    * `"Step {i}"` with 1-based `i`, `count` → `0`, ratios/times →
    * `0.0`).
@@ -432,7 +478,7 @@ export class FunnelQueryResult {
 
   /**
    * Column contract of the `.df` frame (explicit `columns=cols` in
-   * Python for empty AND non-empty).
+   * Python for empty and non-empty).
    *
    * @returns The column list.
    */
@@ -470,7 +516,7 @@ export class FunnelQueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FunnelQueryResult {
@@ -523,21 +569,45 @@ export interface RetentionQueryResultFields {
   readonly from_date: string;
   /** Effective end date from the response. */
   readonly to_date: string;
-  /** Unsegmented cohorts: `{date: {first, counts, rates, ...}}`. Default: `{}`. */
+  /**
+   * Unsegmented cohorts: `{date: {first, counts, rates, ...}}`.
+   *
+   * @defaultValue `{}`
+   */
   readonly cohorts?: Readonly<
     Record<string, Readonly<Record<string, unknown>>>
   >;
-  /** Average retention payload. Default: `{}`. */
+  /**
+   * Average retention payload.
+   *
+   * @defaultValue `{}`
+   */
   readonly average?: Readonly<Record<string, unknown>>;
-  /** Generated bookmark params sent to the API. Default: `{}`. */
+  /**
+   * Generated bookmark params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
-  /** Segmented cohorts: `{segment: {date: cohort}}`. Default: `{}`. */
+  /**
+   * Segmented cohorts: `{segment: {date: cohort}}`.
+   *
+   * @defaultValue `{}`
+   */
   readonly segments?: Readonly<
     Record<string, Readonly<Record<string, Readonly<Record<string, unknown>>>>>
   >;
-  /** Per-segment averages. Default: `{}`. */
+  /**
+   * Per-segment averages.
+   *
+   * @defaultValue `{}`
+   */
   readonly segment_averages?: Readonly<
     Record<string, Readonly<Record<string, unknown>>>
   >;
@@ -546,8 +616,17 @@ export interface RetentionQueryResultFields {
 }
 
 /**
- * Structured output of a `Workspace.query_retention()` execution — TS
- * port of `types.RetentionQueryResult`.
+ * Structured output of a `Workspace.queryRetention()` execution: one
+ * row per (cohort, bucket), segmented when the query was.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ cohort_date: "2026-01-01", bucket: 0, count: 500, rate: 1 },
+ * //  { cohort_date: "2026-01-01", bucket: 1, count: 210, rate: 0.42 }]
+ * result.rowColumns(); // ["cohort_date", "bucket", "count", "rate"]
+ * ```
+ * @see mixpanel_headless.types.RetentionQueryResult
  */
 export class RetentionQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -630,10 +709,10 @@ export class RetentionQueryResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: segmented rows
-   * (`segment, cohort_date, bucket, count, rate`) when `segments` is
-   * non-empty, else unsegmented rows (`cohort_date, bucket, count,
-   * rate`); keys iterated in sorted order.
+   * Build the pre-pandas rows of Python's `.df`: segmented rows
+   * (`segment`, `cohort_date`, `bucket`, `count`, `rate`) when
+   * `segments` is non-empty, else unsegmented rows (`cohort_date`,
+   * `bucket`, `count`, `rate`); keys iterated in sorted order.
    *
    * @returns The rows list.
    */
@@ -679,7 +758,7 @@ export class RetentionQueryResult {
 
   /**
    * Serialize for JSON output — byte-shape of Python `to_dict()`
-   * (`segments`/`segment_averages` emitted ONLY when non-empty).
+   * (`segments` / `segment_averages` emitted only when non-empty).
    *
    * @returns The plain dict shape.
    */
@@ -707,7 +786,7 @@ export class RetentionQueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): RetentionQueryResult {
@@ -781,21 +860,53 @@ export class RetentionQueryResult {
 export interface FlowQueryResultFields {
   /** When the query was computed (ISO text). */
   readonly computed_at: string;
-  /** Sankey step dicts (`{nodes: [...]}` per step). Default: `[]`. */
+  /**
+   * Sankey step dicts (`{nodes: [...]}` per step).
+   *
+   * @defaultValue `[]`
+   */
   readonly steps?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Paths-mode flow dicts (`{flowSteps: [...]}`). Default: `[]`. */
+  /**
+   * Paths-mode flow dicts (`{flowSteps: [...]}`).
+   *
+   * @defaultValue `[]`
+   */
   readonly flows?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Breakdown dicts. Default: `[]`. */
+  /**
+   * Breakdown dicts.
+   *
+   * @defaultValue `[]`
+   */
   readonly breakdowns?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Overall conversion rate. Default: `0.0`. */
+  /**
+   * Overall conversion rate.
+   *
+   * @defaultValue `0.0`
+   */
   readonly overall_conversion_rate?: number;
-  /** Generated bookmark params sent to the API. Default: `{}`. */
+  /**
+   * Generated bookmark params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
-  /** Flow chart mode. Default: `"sankey"`. */
+  /**
+   * Flow chart mode.
+   *
+   * @defaultValue `"sankey"`
+   */
   readonly mode?: FlowChartType;
-  /** Tree-mode roots. Default: `[]`. */
+  /**
+   * Tree-mode roots.
+   *
+   * @defaultValue `[]`
+   */
   readonly trees?: readonly FlowTreeNode[];
   /** Codec-visible DataFrame cache slots — always `null` in TS. */
   readonly _df_cache?: null | undefined;
@@ -812,19 +923,29 @@ export interface FlowQueryResultFields {
 }
 
 /**
- * Structured output of a `Workspace.query_flow()` execution — TS port
- * of `types.FlowQueryResult`.
+ * Structured output of a `Workspace.queryFlow()` execution.
  *
- * A multi-DataFrame surface (phase2-design C6): `nodes_df`/`edges_df`
- * (+ `trees_df`) become `toNodesRows()`/`toEdgesRows()`
- * (+ `toTreesRows()`), and the main `.df` is MODE-AWARE (sankey →
- * nodes frame, tree → trees frame, paths → its own row shape).
- *
- * `graph` (networkx) and `anytree` are ported at B5-S2 as the plain
- * {@link FlowQueryResult.graph} adjacency object and the
+ * @remarks
+ * Python's `nodes_df` / `edges_df` / `trees_df` become `toNodesRows()`
+ * / `toEdgesRows()` / `toTreesRows()`, and the main `toRows()` is
+ * mode-aware: sankey → nodes frame, tree → trees frame, paths → its own
+ * row shape. Python's `graph` (networkx) and `anytree` properties are
+ * the plain {@link FlowQueryResult.graph} adjacency object and the
  * {@link FlowQueryResult.anytree} parent-linked roots; their
  * codec-visible cache slots (`_graph_cache`, `_anytree_cache`) exist
  * and stay `null` because both builds are pure.
+ * @example
+ * ```ts
+ * const result = await ws.queryFlow({ … }); // sankey mode
+ * result.toRows();
+ * // [{ step: 0, event: "Signup", type: "NORMAL", count: 120, anchor_type: "ANCHOR",
+ * //    is_custom_event: false, conversion_rate_change: 0 }]
+ * result.toEdgesRows();
+ * // [{ source_step: 0, source_event: "Signup", target_step: 1,
+ * //    target_event: "Purchase", count: 48, target_type: "NORMAL" }]
+ * result.dropOffSummary(); // { step_0: { total: 120, dropoff: 72, rate: 0.6 } }
+ * ```
+ * @see mixpanel_headless.types.FlowQueryResult
  */
 export class FlowQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -891,44 +1012,45 @@ export class FlowQueryResult {
   }
 
   /**
-   * The directed flow graph — TS twin of Python's `graph` property, as
-   * the plain `{nodes, edges}` adjacency object {@link buildFlowGraph}
+   * Build the directed flow graph — Python's `graph` property — as the
+   * plain `{nodes, edges}` adjacency object {@link buildFlowGraph}
    * emits in place of `networkx.DiGraph`.
    *
+   * @remarks
    * Python caches into `_graph_cache`; the TS build is pure and
    * deterministic, so the codec-visible slot stays `null` (repeated
    * calls are equal).
-   *
    * @returns The `{nodes, edges}` adjacency object (empty arrays when
    *   `steps` is empty).
    * @example
-   * ```typescript
+   * ```ts
    * const g = result.graph();
    * g.nodes.find((n) => n.id === "Login@0")?.count; // 100
    * ```
+   * @see mixpanel_headless.types.FlowQueryResult.graph
    */
   graph(): FlowGraph {
     return buildFlowGraph(this.steps);
   }
 
   /**
-   * The parent-linked roots of the tree-mode data — TS twin of
-   * Python's `anytree` property, closed at
-   * B5-S2 alongside {@link FlowTreeNode.toAnytree}.
+   * Build the parent-linked roots of the tree-mode data — Python's
+   * `anytree` property — via {@link FlowTreeNode.toAnytree}.
    *
+   * @remarks
    * Python caches into `_anytree_cache`; the TS build is pure, so the
    * codec-visible slot stays `null`.
-   *
    * @returns One {@link AnyTreeNode} root per member of `trees`.
+   * @see mixpanel_headless.types.FlowQueryResult.anytree
    */
   anytree(): AnyTreeNode[] {
     return this.trees.map((t) => t.toAnytree());
   }
 
   /**
-   * Pre-pandas rows of the Python `nodes_df` body: one row per sankey
-   * node with Python's per-key defaults (`totalCount` string parsed
-   * via `_safe_int`).
+   * Build the pre-pandas rows of Python's `nodes_df`: one row per
+   * sankey node with Python's per-key defaults (`totalCount` string
+   * parsed via `safeInt`).
    *
    * @returns The rows list.
    */
@@ -954,7 +1076,7 @@ export class FlowQueryResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `edges_df` body: one row per
+   * Build the pre-pandas rows of Python's `edges_df`: one row per
    * (node, edge) pair.
    *
    * @returns The rows list.
@@ -980,9 +1102,9 @@ export class FlowQueryResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `_build_tree_df` body: preorder
-   * flattening of every tree with `tree_index`/`depth`/`" > "`-joined
-   * `path`.
+   * Build the pre-pandas rows of Python's `trees_df`: a preorder
+   * flattening of every tree with `tree_index`, `depth` and a
+   * `" > "`-joined `path`.
    *
    * @returns The rows list.
    */
@@ -1010,8 +1132,9 @@ export class FlowQueryResult {
   }
 
   /**
-   * Pre-pandas rows of the MODE-AWARE Python `.df`: sankey → nodes
-   * frame; tree → trees frame; paths → one row per (flow, flowStep).
+   * Build the pre-pandas rows of Python's mode-aware `.df`: sankey →
+   * nodes frame; tree → trees frame; paths → one row per (flow,
+   * flowStep).
    *
    * @returns The rows list.
    */
@@ -1062,7 +1185,8 @@ export class FlowQueryResult {
    * `top_transitions()` (which sorts `edges_df` by `count`
    * descending and formats `event@step` labels).
    *
-   * @param n - Max transitions to return. Default: `10`.
+   * @param n - Maximum transitions to return.
+   * @defaultValue `n` is `10`
    * @returns `[source, target, count]` triples.
    */
   topTransitions(n = 10): ReadonlyArray<readonly [string, string, number]> {
@@ -1115,7 +1239,7 @@ export class FlowQueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FlowQueryResult {
@@ -1205,28 +1329,57 @@ export interface UserQueryResultFields {
   readonly computed_at: string;
   /** Total matching users. */
   readonly total: number;
-  /** Profile dicts (profiles mode). Default: `[]`. */
+  /**
+   * Profile dicts (profiles mode).
+   *
+   * @defaultValue `[]`
+   */
   readonly profiles?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Generated engage params sent to the API. Default: `{}`. */
+  /**
+   * Generated engage params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
-  /** Result mode. Default: `"aggregate"`. */
+  /**
+   * Result mode.
+   *
+   * @defaultValue `"aggregate"`
+   */
   readonly mode?: UserQueryMode;
-  /** Aggregate payload (dict, scalar, or `null`). Default: `null`. */
+  /**
+   * Aggregate payload (dict, scalar, or `null`).
+   *
+   * @defaultValue `null`
+   */
   readonly aggregate_data?: Readonly<Record<string, unknown>> | number | null;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Structured output of a `Workspace.query_user()` execution — TS port
- * of `types.UserQueryResult`.
+ * Structured output of a `Workspace.queryUser()` execution: profiles,
+ * or an aggregate (optionally segmented) depending on the mode.
  *
- * `.df` has FIVE branches plus a post-frame column reorder in profiles
+ * @remarks
+ * `.df` has five branches plus a post-frame column reorder in profiles
  * mode (`distinct_id` first, `last_seen` second, remaining
- * alphabetical) — the reorder IS part of the column contract
- * (phase2-design C6 per-class row spec).
+ * alphabetical); the reorder is part of the column contract.
+ * @example
+ * ```ts
+ * result.toRows(); // profiles mode
+ * // [{ distinct_id: "u1", last_seen: "2026-01-15T12:00:00", plan: "pro" }]
+ * result.rowColumns(); // ["distinct_id", "last_seen", "plan"]
+ * result.toRows(); // aggregate mode
+ * // [{ metric: "count", value: 1200 }]
+ * ```
+ * @see mixpanel_headless.types.UserQueryResult
  */
 export class UserQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1313,7 +1466,7 @@ export class UserQueryResult {
   }
 
   /**
-   * Pre-pandas rows of the FIVE-branch Python `.df` body.
+   * Build the pre-pandas rows of Python's five-branch `.df`.
    *
    * @returns The rows list.
    */
@@ -1342,7 +1495,7 @@ export class UserQueryResult {
   }
 
   /**
-   * Column contract of the `.df` frame per branch, INCLUDING the
+   * Column contract of the `.df` frame per branch, including the
    * profiles-mode post-frame reorder (`distinct_id`, `last_seen`,
    * remaining alphabetical).
    *
@@ -1425,7 +1578,7 @@ export class UserQueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): UserQueryResult {

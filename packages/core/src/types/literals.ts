@@ -1,31 +1,24 @@
 /**
- * The 37 distinct public Python `Literal` aliases as string-literal
- * union types (phase2-design C2, rulebook R4.3), each with a sibling
- * runtime tuple for membership checks.
+ * The public Python `Literal` aliases as string-literal union types,
+ * each with a sibling `as const` tuple for runtime membership checks.
  *
- * Sources (Python, branch ts-port/phase2-contract-support):
- * - `src/mixpanel_headless/_literal_types.py` — 32 aliases
- * - `src/mixpanel_headless/types.py` module level — `BookmarkType`,
- *   `SavedReportType`, `EntityType` (`BookmarkTypeLiteral` is NOT in
- *   `__all__` and gets no TS surface)
- * - `src/mixpanel_headless/_internal/auth/account.py` (via
- *   `auth_types`) — `Region`, `AccountType`; this module is their
- *   canonical TS definition and `auth/account.ts` re-exports
- *   them rather than redeclaring
+ * Sources: `mixpanel_headless._literal_types` (32 aliases), the module
+ * level of `mixpanel_headless.types` (`BookmarkType`, `SavedReportType`,
+ * `EntityType`; `BookmarkTypeLiteral` is not in `__all__` and gets no TS
+ * surface) and `mixpanel_headless._internal.auth.account` (`Region`,
+ * `AccountType` — defined here, re-exported by `auth/account.ts`).
  *
- * Hand-written source, machine-verified sync: the C8(d) lock test
- * (`conformance-runner/test/literal-alias-lock.test.ts`) asserts
- * set-equality per alias against the generated contract artifact
- * `conformance-runner/corpus/contract/literal-aliases.json`. Member
- * order below mirrors Python declaration order (contractual for
- * nothing, kept stable so diffs are readable).
+ * Hand-written, machine-verified: `conformance-runner/test/literal-alias-lock.test.ts`
+ * asserts set-equality per alias against
+ * `conformance-runner/corpus/contract/literal-aliases.json`. Member order
+ * mirrors Python declaration order (not contractual, kept stable so diffs
+ * read well). Each union is derived from its tuple as
+ * `(typeof X_VALUES)[number]` so the two cannot drift; the tuples stay
+ * free of `satisfies` so declaration emit is inferable under
+ * `isolatedDeclarations`. The one exception is {@link FilterOperatorInput},
+ * a constructor-input widening with no runtime table of its own.
  *
- * Every alias is a plain `as const` tuple — the runtime membership
- * table, kept free of `satisfies` so declaration emit stays inferable
- * under `isolatedDeclarations` — and a union type derived from it as
- * `(typeof X_VALUES)[number]`, so the two cannot drift. The one
- * exception is {@link FilterOperatorInput}, a constructor-input
- * widening with no runtime table of its own.
+ * @see mixpanel_headless._literal_types
  */
 
 // =============================================================================
@@ -545,10 +538,9 @@ export const FILTERS_COMBINATOR_VALUES = ["all", "any"] as const;
 // =============================================================================
 
 /**
- * Bookmark type values from the Mixpanel Bookmarks API. Per the C2
- * source-kind-wins ruling (phase2-design Discrepancy Log #3) this is a
- * literal union, not a TS enum — the Python source defines it as a
- * `Literal` alias.
+ * Bookmark type values from the Mixpanel Bookmarks API. A literal union
+ * rather than an `as const` enum object because the Python source
+ * defines it as a `Literal` alias (the source kind wins).
  */
 export type BookmarkType = (typeof BOOKMARK_TYPE_VALUES)[number];
 
@@ -626,10 +618,9 @@ export const ACCOUNT_TYPE_VALUES = [
 // =============================================================================
 
 /**
- * Serialization view of every literal alias for the C8(d) lock test:
- * alias name → its runtime membership tuple. `ReadonlyMap` per R4.8
- * (name-keyed lookup table). Keyed on the 274-distinct-name surface —
- * the 10 `__all__` duplicate strings (Discrepancy Log #9) key once.
+ * Serialization view of every literal alias for the lock test: alias
+ * name → its runtime membership tuple. Names that Python's `__all__`
+ * lists twice key once.
  */
 export const LITERAL_ALIAS_VALUES: ReadonlyMap<string, readonly string[]> =
   new Map<string, readonly string[]>([

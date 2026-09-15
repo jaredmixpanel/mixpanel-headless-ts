@@ -29,26 +29,53 @@ export interface FlowTreeNodeFields {
   readonly step_number: number;
   /** Users reaching this node. */
   readonly total_count: number;
-  /** Users dropping off at this node. Default: `0`. */
+  /**
+   * Users dropping off at this node.
+   *
+   * @defaultValue `0`
+   */
   readonly drop_off_count?: number;
-  /** Users converting from this node. Default: `0`. */
+  /**
+   * Users converting from this node.
+   *
+   * @defaultValue `0`
+   */
   readonly converted_count?: number;
-  /** Anchor type. Default: `"NORMAL"`. */
+  /**
+   * Anchor type.
+   *
+   * @defaultValue `"NORMAL"`
+   */
   readonly anchor_type?: FlowAnchorType;
-  /** Whether the node was computed (vs observed). Default: `false`. */
+  /**
+   * Whether the node was computed (vs observed).
+   *
+   * @defaultValue `false`
+   */
   readonly is_computed?: boolean;
-  /** Child nodes (Python tuple → ReadonlyArray). Default: `[]`. */
+  /**
+   * Child nodes (Python tuple → ReadonlyArray).
+   *
+   * @defaultValue `[]`
+   */
   readonly children?: readonly FlowTreeNode[];
-  /** Time percentiles from flow start. Default: `{}`. */
+  /**
+   * Time percentiles from flow start.
+   *
+   * @defaultValue `{}`
+   */
   readonly time_percentiles_from_start?: Readonly<Record<string, unknown>>;
-  /** Time percentiles from the previous step. Default: `{}`. */
+  /**
+   * Time percentiles from the previous step.
+   *
+   * @defaultValue `{}`
+   */
   readonly time_percentiles_from_prev?: Readonly<Record<string, unknown>>;
 }
 
 /**
  * The parent-linked node {@link FlowTreeNode.toAnytree} emits — the
- * plain-object stand-in for `anytree.AnyNode` (B5-S2 closure of the
- * Phase-2 TODO(port)).
+ * plain-object stand-in for `anytree.AnyNode`.
  */
 export interface AnyTreeNode {
   /** Parent node, or `null` at the root. */
@@ -74,10 +101,28 @@ export interface AnyTreeNode {
 }
 
 /**
- * One node of a tree-mode flow query — TS port of
- * `types.FlowTreeNode`. `to_anytree()` IS ported as
- * {@link FlowTreeNode.toAnytree}, emitting the plain
- * {@link AnyTreeNode} tree rather than `anytree.AnyNode` objects.
+ * One node of a tree-mode flow query.
+ *
+ * @remarks
+ * `to_anytree()` is ported as {@link FlowTreeNode.toAnytree}, emitting
+ * the plain {@link AnyTreeNode} tree rather than `anytree.AnyNode`
+ * objects.
+ * @example
+ * ```ts
+ * const root = new FlowTreeNode({
+ *   event: "Signup",
+ *   type: "NORMAL",
+ *   step_number: 0,
+ *   total_count: 10,
+ *   converted_count: 4,
+ *   children: [
+ *     new FlowTreeNode({ event: "Buy", type: "NORMAL", step_number: 1, total_count: 4 }),
+ *   ],
+ * });
+ * root.conversion_rate; // 0.4
+ * root.render(); // "Signup (10)\n└── Buy (4)\n"
+ * ```
+ * @see mixpanel_headless.types.FlowTreeNode
  */
 export class FlowTreeNode {
   /** Event name at this node. */
@@ -167,33 +212,31 @@ export class FlowTreeNode {
   }
 
   /**
-   * The parent-linked tree view — TS twin of Python `to_anytree()`
-   * (`types.py`), closed at B5-S2 per the packet §3
-   * instruction ("implement `FlowTreeNode.toAnytree()`-equivalent as a
-   * PLAIN nested-object tree").
+   * Build the parent-linked tree view — the twin of Python's
+   * `to_anytree()`.
    *
+   * @remarks
    * `anytree.AnyNode` has no vendored TS library, so the port emits
-   * {@link AnyTreeNode}: the SAME eight attributes Python copies onto
+   * {@link AnyTreeNode}: the same eight attributes Python copies onto
    * each `AnyNode`, plus the `parent` back-reference and `children`
    * array that make the anytree navigation surface (`node.parent`,
    * `node.children`, `node.path`) reproducible in plain TS.
    * `RenderTree` and `findall` are library helpers, not data, and have
    * no twin.
-   *
    * @returns The root of the parallel tree (`parent === null`).
    * @example
-   * ```typescript
+   * ```ts
    * const at = root.toAnytree();
    * at.children[0]?.parent === at; // true
    * ```
+   * @see mixpanel_headless.types.FlowTreeNode.to_anytree
    */
   toAnytree(): AnyTreeNode {
     return this.#buildAnytreeNode(null);
   }
 
   /**
-   * Recursively build the parallel tree (`_build_anytree_node`,
-   * `types.py`).
+   * Recursively build the parallel tree.
    *
    * @param parent - The parent node, or `null` for the root.
    * @returns The node with its children attached.
@@ -345,7 +388,7 @@ export class FlowTreeNode {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FlowTreeNode {

@@ -1,11 +1,11 @@
 /**
- * Discovery + lexicon result dataclasses (phase2-design C6-b, packet
- * P2-6) — TS ports of the corresponding frozen dataclasses in
- * `mixpanel_headless/types.py`.
+ * Discovery and lexicon result dataclasses: saved funnels, cohorts and
+ * bookmarks, top events, lexicon schemas, profile pages and the schema
+ * graph. Same conventions as `live-query.ts`: exact Python field names,
+ * `toRows()` / `rowColumns()` for `.df` classes, `toJSON()` only where
+ * Python defines `to_dict()`, strict `@internal` `fromDict()`.
  *
- * Same conventions as `live-query.ts` (exact Python field names,
- * `toRows()`/`rowColumns()` for `.df` classes, `toJSON()` only where
- * Python defines `to_dict()`, strict `@internal` `fromDict()`).
+ * @see mixpanel_headless.types.SchemaGraphResult
  */
 
 import { pythonStrOf } from "../../compat/index.js";
@@ -39,7 +39,7 @@ import {
  * @param cls - Class name for error messages.
  * @returns The string or `null` (absent keys yield `null` here only
  *   when the Python default is `None`; callers spread conditionally).
- * @throws ResponseValidationError - On wrong JSON type.
+ * @throws {@link ResponseValidationError} - On wrong JSON type.
  */
 function strOrNull(
   raw: Readonly<Record<string, unknown>>,
@@ -63,7 +63,7 @@ function strOrNull(
  * @param field - Field name.
  * @param cls - Class name for error messages.
  * @returns The integer or `null`.
- * @throws ResponseValidationError - On wrong JSON type.
+ * @throws {@link ResponseValidationError} - On wrong JSON type.
  */
 function intOrNull(
   raw: Readonly<Record<string, unknown>>,
@@ -92,7 +92,16 @@ export interface FunnelInfoFields {
   readonly name: string;
 }
 
-/** A saved funnel definition — TS port of `types.FunnelInfo`. */
+/**
+ * A saved funnel definition, as listed by funnel discovery.
+ *
+ * @example
+ * ```ts
+ * const funnel = new FunnelInfo({ funnel_id: 42, name: "Signup funnel" });
+ * funnel.toJSON(); // { funnel_id: 42, name: "Signup funnel" }
+ * ```
+ * @see mixpanel_headless.types.FunnelInfo
+ */
 export class FunnelInfo {
   /** Unique identifier for funnel queries. */
   readonly funnel_id: number;
@@ -124,7 +133,7 @@ export class FunnelInfo {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FunnelInfo {
@@ -154,7 +163,23 @@ export interface SavedCohortFields {
   readonly is_visible: boolean;
 }
 
-/** A saved cohort summary — TS port of `types.SavedCohort`. */
+/**
+ * A saved cohort summary, as listed by cohort discovery.
+ *
+ * @example
+ * ```ts
+ * const cohort = new SavedCohort({
+ *   id: 7,
+ *   name: "Power users",
+ *   count: 1200,
+ *   description: "Ten or more sessions a week",
+ *   created: "2026-01-15T12:00:00",
+ *   is_visible: true,
+ * });
+ * cohort.name; // "Power users"
+ * ```
+ * @see mixpanel_headless.types.SavedCohort
+ */
 export class SavedCohort {
   /** Cohort ID. */
   readonly id: number;
@@ -209,7 +234,7 @@ export class SavedCohort {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): SavedCohort {
@@ -245,19 +270,55 @@ export interface BookmarkInfoFields {
   readonly created: string;
   /** Last-modified timestamp text. */
   readonly modified: string;
-  /** Owning workspace ID. Default: `null`. */
+  /**
+   * Owning workspace ID.
+   *
+   * @defaultValue `null`
+   */
   readonly workspace_id?: number | null;
-  /** Containing dashboard ID. Default: `null`. */
+  /**
+   * Containing dashboard ID.
+   *
+   * @defaultValue `null`
+   */
   readonly dashboard_id?: number | null;
-  /** Bookmark description. Default: `null`. */
+  /**
+   * Bookmark description.
+   *
+   * @defaultValue `null`
+   */
   readonly description?: string | null;
-  /** Creator user ID. Default: `null`. */
+  /**
+   * Creator user ID.
+   *
+   * @defaultValue `null`
+   */
   readonly creator_id?: number | null;
-  /** Creator display name. Default: `null`. */
+  /**
+   * Creator display name.
+   *
+   * @defaultValue `null`
+   */
   readonly creator_name?: string | null;
 }
 
-/** A saved report (bookmark) summary — TS port of `types.BookmarkInfo`. */
+/**
+ * A saved report (bookmark) summary, as listed by report discovery.
+ *
+ * @example
+ * ```ts
+ * const report = new BookmarkInfo({
+ *   id: 87176748,
+ *   name: "Weekly signups",
+ *   type: "insights",
+ *   project_id: 123,
+ *   created: "2026-01-15T12:00:00",
+ *   modified: "2026-02-01T09:30:00",
+ * });
+ * report.type; // "insights"
+ * ```
+ * @see mixpanel_headless.types.BookmarkInfo
+ */
 export class BookmarkInfo {
   /** Bookmark ID. */
   readonly id: number;
@@ -314,7 +375,7 @@ export class BookmarkInfo {
 
   /**
    * Serialize for JSON output — byte-shape of Python `to_dict()`:
-   * every optional field is emitted ONLY when non-`null`, in Python's
+   * every optional field is emitted only when non-`null`, in Python's
    * conditional order.
    *
    * @returns The plain dict shape.
@@ -351,7 +412,7 @@ export class BookmarkInfo {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): BookmarkInfo {
@@ -411,9 +472,18 @@ export interface SubPropertyInfoFields {
 }
 
 /**
- * One discovered sub-property of an object-valued property — TS port
- * of `types.SubPropertyInfo` (the Python `sample_values` tuple becomes
- * a `ReadonlyArray`, R4.7).
+ * One discovered sub-property of an object-valued property (the Python
+ * `sample_values` tuple becomes a `ReadonlyArray`).
+ *
+ * @example
+ * ```ts
+ * const sub = new SubPropertyInfo({
+ *   name: "plan.tier",
+ *   type: "string",
+ *   sample_values: ["free", "pro"],
+ * });
+ * ```
+ * @see mixpanel_headless.types.SubPropertyInfo
  */
 export class SubPropertyInfo {
   /** Sub-property key. */
@@ -455,7 +525,7 @@ export class SubPropertyInfo {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): SubPropertyInfo {
@@ -499,7 +569,16 @@ export interface TopEventFields {
   readonly percent_change: number;
 }
 
-/** A top event with its recent volume — TS port of `types.TopEvent`. */
+/**
+ * A top event with its recent volume.
+ *
+ * @example
+ * ```ts
+ * const top = new TopEvent({ event: "Signup", count: 4210, percent_change: 0.12 });
+ * top.toJSON(); // { event: "Signup", count: 4210, percent_change: 0.12 }
+ * ```
+ * @see mixpanel_headless.types.TopEvent
+ */
 export class TopEvent {
   /** Event name. */
   readonly event: string;
@@ -539,7 +618,7 @@ export class TopEvent {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): TopEvent {
@@ -580,7 +659,23 @@ export interface LexiconMetadataFields {
   readonly team_contacts: readonly string[];
 }
 
-/** Lexicon entity metadata — TS port of `types.LexiconMetadata`. */
+/**
+ * Lexicon entity metadata: display name, tags, visibility and owners.
+ *
+ * @example
+ * ```ts
+ * const meta = new LexiconMetadata({
+ *   source: "lexicon",
+ *   display_name: "Sign Up",
+ *   tags: ["growth"],
+ *   hidden: false,
+ *   dropped: false,
+ *   contacts: ["ana@example.com"],
+ *   team_contacts: [],
+ * });
+ * ```
+ * @see mixpanel_headless.types.LexiconMetadata
+ */
 export class LexiconMetadata {
   /** Definition source system. */
   readonly source: string | null;
@@ -640,7 +735,7 @@ export class LexiconMetadata {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): LexiconMetadata {
@@ -683,7 +778,15 @@ export interface LexiconPropertyFields {
   readonly metadata: LexiconMetadata | null;
 }
 
-/** One property in a lexicon schema — TS port of `types.LexiconProperty`. */
+/**
+ * One property in a lexicon schema.
+ *
+ * @example
+ * ```ts
+ * const prop = new LexiconProperty({ type: "string", description: "Plan tier", metadata: null });
+ * ```
+ * @see mixpanel_headless.types.LexiconProperty
+ */
 export class LexiconProperty {
   /** JSON-schema type of the property. */
   readonly type: string;
@@ -707,7 +810,7 @@ export class LexiconProperty {
 
   /**
    * Serialize for JSON output — byte-shape of Python `to_dict()`:
-   * `description`/`metadata` emitted ONLY when non-`null`.
+   * `description` / `metadata` emitted only when non-`null`.
    *
    * @returns The plain dict shape.
    */
@@ -727,7 +830,7 @@ export class LexiconProperty {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): LexiconProperty {
@@ -759,7 +862,19 @@ export interface LexiconDefinitionFields {
   readonly metadata: LexiconMetadata | null;
 }
 
-/** A lexicon schema definition — TS port of `types.LexiconDefinition`. */
+/**
+ * A lexicon schema definition: a description plus its named properties.
+ *
+ * @example
+ * ```ts
+ * const definition = new LexiconDefinition({
+ *   description: "Fired when a user signs up",
+ *   properties: { plan: new LexiconProperty({ type: "string", description: null, metadata: null }) },
+ *   metadata: null,
+ * });
+ * ```
+ * @see mixpanel_headless.types.LexiconDefinition
+ */
 export class LexiconDefinition {
   /** Entity description. */
   readonly description: string | null;
@@ -810,7 +925,7 @@ export class LexiconDefinition {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): LexiconDefinition {
@@ -848,7 +963,20 @@ export interface LexiconSchemaFields {
   readonly schema_json: LexiconDefinition;
 }
 
-/** One lexicon schema entry — TS port of `types.LexiconSchema`. */
+/**
+ * One lexicon schema entry: an entity type and name with its definition.
+ *
+ * @example
+ * ```ts
+ * const schema = new LexiconSchema({
+ *   entity_type: "event",
+ *   name: "Signup",
+ *   schema_json: definition,
+ * });
+ * schema.toJSON().name; // "Signup"
+ * ```
+ * @see mixpanel_headless.types.LexiconSchema
+ */
 export class LexiconSchema {
   /** Entity type (`"event"`, `"profile"`, ...). */
   readonly entity_type: string;
@@ -888,7 +1016,7 @@ export class LexiconSchema {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): LexiconSchema {
@@ -929,8 +1057,21 @@ export interface ProfilePageResultFields {
 }
 
 /**
- * One page of an engage profile export — TS port of
- * `types.ProfilePageResult`.
+ * One page of an engage profile export.
+ *
+ * @example
+ * ```ts
+ * const page = new ProfilePageResult({
+ *   profiles: [{ $distinct_id: "u1", $properties: { plan: "pro" } }],
+ *   session_id: "abc",
+ *   page: 0,
+ *   has_more: true,
+ *   total: 1200,
+ *   page_size: 1000,
+ * });
+ * page.has_more; // true
+ * ```
+ * @see mixpanel_headless.types.ProfilePageResult
  */
 export class ProfilePageResult {
   /** Profile dicts on this page. */
@@ -1020,7 +1161,7 @@ export class ProfilePageResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): ProfilePageResult {
@@ -1091,40 +1232,65 @@ export interface SchemaGraph {
 export interface SchemaGraphResultFields {
   /** When the graph was computed (ISO text). */
   readonly computed_at: string;
-  /** Raw lexicon event dicts. Default: `[]`. */
+  /**
+   * Raw lexicon event dicts.
+   *
+   * @defaultValue `[]`
+   */
   readonly events?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Raw lexicon event-property dicts. Default: `[]`. */
+  /**
+   * Raw lexicon event-property dicts.
+   *
+   * @defaultValue `[]`
+   */
   readonly properties?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Raw lexicon user-property dicts. Default: `[]`. */
+  /**
+   * Raw lexicon user-property dicts.
+   *
+   * @defaultValue `[]`
+   */
   readonly user_properties?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Whether local densities were requested. Default: `false`. */
+  /**
+   * Whether local densities were requested.
+   *
+   * @defaultValue `false`
+   */
   readonly include_density?: boolean;
-  /** Request parameters used to build the graph. Default: `{}`. */
+  /**
+   * Request parameters used to build the graph.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
 }
 
 /**
- * Result of a schema-graph discovery call — TS port of
- * `types.SchemaGraphResult`.
+ * Result of a schema-graph discovery call: events, properties and the
+ * event↔property adjacency between them.
  *
- * The event↔property adjacency comes from the query API's per-event
- * properties gather (`data_definitions/events?
- * fetch_per_event_properties=true`, inverted client-side onto each
- * property by the discovery service — Python PR #215), so for any
- * event you can list the properties that travel with it.
- *
- * A multi-DataFrame surface (phase2-design C6): `events_df` /
- * `properties_df` / `relationships_df` become `toEventsRows()` /
- * `toPropertiesRows()` / `toRelationshipsRows()`; the main `.df`
- * delegates to the relationships frame. The derived
+ * @remarks
+ * The adjacency comes from the query API's per-event properties gather
+ * (`data_definitions/events?fetch_per_event_properties=true`, inverted
+ * client-side onto each property by the discovery service), so for any
+ * event you can list the properties that travel with it. Python's
+ * `events_df` / `properties_df` / `relationships_df` become
+ * `toEventsRows()` / `toPropertiesRows()` / `toRelationshipsRows()`;
+ * the main `toRows()` delegates to the relationships frame. The derived
  * `event_to_properties` / `property_to_events` / `meta` fields are
  * computed in the constructor exactly as Python's `__post_init__`.
- *
- * `to_graph()` lands at B5-S1 as {@link SchemaGraphResult.toGraph} — a
- * plain adjacency object (node list + edge list) carrying exactly the
- * sets Python hands `networkx`. The codec-visible `_graph_cache` slot
- * stays `null` (Python caches the graph object; the TS twin rebuilds it
- * deterministically, the Phase-2 frame-cache convention).
+ * `to_graph()` is {@link SchemaGraphResult.toGraph}, a plain adjacency
+ * object carrying exactly the sets Python hands `networkx`; the
+ * codec-visible `_graph_cache` slot stays `null` because the TS build
+ * is pure.
+ * @example
+ * ```ts
+ * const graph = await ws.schemaGraph();
+ * graph.toRows();
+ * // [{ event: "Signup", property: "plan", density_local: 0.98 },
+ * //  { event: "Purchase", property: "plan", density_local: 0.41 }]
+ * graph.event_to_properties["Signup"]; // ["plan", "utm_source"]
+ * ```
+ * @see mixpanel_headless.types.SchemaGraphResult
  */
 export class SchemaGraphResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1229,16 +1395,14 @@ export class SchemaGraphResult {
         );
       }
     }
-    // TODO(port): these two plain objects hold Python DICTS whose
-    // insertion order is contract for anything that iterates them —
-    // and JS hoists integer-like keys ("1", "0") to the front, so an
-    // event or property named with digits changes `Object.keys()`
-    // order (watchlist #10). No vector sees it (the conformance
-    // canonicalizer sorts object keys, `canonical.ts:13`) and
-    // `toGraph()` now rebuilds the order it needs from `events` /
-    // `properties` directly (B5-S1 R10.9 finding 3), but a `Map`-valued
-    // surface would be the complete fix. Phase-2 field-shape decision —
-    // escalated in `B5-S1-notes.md` §3, not changed unilaterally here.
+    // Divergence: these two plain objects hold Python dicts whose
+    // insertion order is contract for anything that iterates them, and
+    // JS hoists integer-like keys ("1", "0") to the front, so an event or
+    // property named with digits changes `Object.keys()` order. No
+    // vector sees it (the conformance canonicalizer sorts object keys)
+    // and `toGraph()` rebuilds the order it needs from `events` /
+    // `properties` directly; a `Map`-valued surface would be the
+    // complete fix.
     this.event_to_properties = eventToProperties;
     this.property_to_events = propertyToEvents;
     this.meta = {
@@ -1253,11 +1417,12 @@ export class SchemaGraphResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `events_df` body: one row per raw
+   * Build the pre-pandas rows of Python's `events_df`: one row per raw
    * event with the seven projected columns (missing attributes are
    * `null`, mirroring `e.get(...)`).
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.SchemaGraphResult.events_df
    */
   toEventsRows(): readonly Row[] {
     return this.events.map((event) => ({
@@ -1273,7 +1438,7 @@ export class SchemaGraphResult {
 
   /**
    * Column contract of the `events_df` frame (Python passes an
-   * explicit `columns=cols` list — constant for empty AND non-empty).
+   * explicit `columns=cols` list — constant for empty and non-empty).
    *
    * @returns The column list.
    */
@@ -1290,11 +1455,12 @@ export class SchemaGraphResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `properties_df` body: event
-   * properties (default resource `"event"`) followed by user
-   * properties (default resource `"user"`).
+   * Build the pre-pandas rows of Python's `properties_df`: event
+   * properties (default resource `"event"`) followed by user properties
+   * (default resource `"user"`).
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.SchemaGraphResult.properties_df
    */
   toPropertiesRows(): readonly Row[] {
     return [
@@ -1323,11 +1489,12 @@ export class SchemaGraphResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `relationships_df` body: one
+   * Build the pre-pandas rows of Python's `relationships_df`: one
    * `{event, property, density_local}` edge per (property, attached
-   * event) pair, skipping nameless properties/entries.
+   * event) pair, skipping nameless properties and entries.
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.SchemaGraphResult.relationships_df
    */
   toRelationshipsRows(): readonly Row[] {
     const rows: Row[] = [];
@@ -1367,10 +1534,10 @@ export class SchemaGraphResult {
   }
 
   /**
-   * The main `.df` contract — Python's `df` property returns
+   * Build the main `.df` rows — Python's `df` property returns
    * `relationships_df`.
    *
-   * @returns.
+   * @returns The relationships rows.
    */
   toRows(): readonly Row[] {
     return this.toRelationshipsRows();
@@ -1379,7 +1546,7 @@ export class SchemaGraphResult {
   /**
    * Column contract of the main `.df` frame.
    *
-   * @returns.
+   * @returns The relationships column list.
    */
   rowColumns(): readonly string[] {
     return this.relationshipsRowColumns();
@@ -1452,10 +1619,11 @@ export class SchemaGraphResult {
    * @returns The adjacency object. Empty when there are no events or
    *   properties.
    * @example
-   * ```typescript
+   * ```ts
    * const graph = (await ws.schemaGraph()).toGraph();
    * graph.nodes.find((n) => n.name === "Purchase")?.kind; // "event"
    * ```
+   * @see mixpanel_headless.types.SchemaGraphResult.to_graph
    */
   // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   toGraph(): SchemaGraph {
@@ -1468,16 +1636,17 @@ export class SchemaGraphResult {
         nodes.push({ name, kind });
         return;
       }
-      // networkx `add_node` on an existing node UPDATES the attributes
+      // networkx `add_node` on an existing node updates the attributes
       // and leaves the insertion position alone.
       (nodes[existing] as { name: string; kind: SchemaGraphNodeKind }).kind =
         kind;
     };
     // `networkx` stores edges in a per-source adjacency dict, so
-    // `G.edges` yields them grouped by SOURCE NODE in node-insertion
-    // order, then by adjacency-insertion order inside each source —
-    // not in global edge-insertion order (R10.9 differential finding 2,
-    // 88/500 cases). The same two-level Map reproduces that iteration.
+    // `G.edges` yields them grouped by source node in node-insertion
+    // order, then by adjacency-insertion order inside each source — not
+    // in global edge-insertion order (the differential oracle caught the
+    // difference in 88 of 500 cases). The same two-level Map reproduces
+    // that iteration.
     const adjacency = new Map<string, Map<string, unknown>>();
     const addEdge = (
       source: string,
@@ -1497,9 +1666,9 @@ export class SchemaGraphResult {
     // Python's first loop walks `self.event_to_properties`, whose key
     // order is: seeded event names (in `events` order) followed by
     // attached event names (in property/entry order). `Object.keys()`
-    // CANNOT reproduce that — JS hoists integer-like keys ("1") to the
-    // front (watchlist #10; R10.9 differential finding 3) — so the same
-    // sequence is rebuilt from the two sources directly.
+    // cannot reproduce that — JS hoists integer-like keys ("1") to the
+    // front — so the same sequence is rebuilt from the two sources
+    // directly.
     for (const event of this.events) {
       const seeded = event["name"];
       if (pyTruthy(seeded)) {
@@ -1583,7 +1752,7 @@ export class SchemaGraphResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): SchemaGraphResult {
