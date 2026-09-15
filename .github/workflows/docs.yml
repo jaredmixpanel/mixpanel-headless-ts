@@ -13,10 +13,13 @@
 # job, and no secrets — the build never talks to Mixpanel.
 #
 # Deployment needs GitHub Pages enabled on the repository (Settings → Pages →
-# Source "GitHub Actions"). On a private repository that requires a paid plan;
-# until it is enabled the `build` job still runs on every push and PR and the
-# site is downloadable as an artifact, while `deploy` fails at
-# actions/deploy-pages.
+# Source "GitHub Actions"); on a private repository that requires a paid plan.
+# Until it is enabled the `build` job still runs on every push and PR and the
+# site is downloadable as an artifact (the Pages upload is a plain artifact
+# upload and succeeds), while `deploy` fails at actions/deploy-pages. There
+# is no configure-pages step: the base path is derived from the repository
+# name below, and that action would need `pages` permission and an enabled
+# site just to read metadata nothing here uses.
 name: docs
 
 on:
@@ -30,8 +33,8 @@ permissions:
 
 concurrency:
   group: pages-${{ github.ref }}
-  # A newer push to the same ref supersedes a running build; a deployment in
-  # flight is never cancelled.
+  # One run per ref at a time: a newer push queues behind the running one
+  # rather than cancelling it, so a deployment in flight always completes.
   cancel-in-progress: false
 
 env:
@@ -75,12 +78,6 @@ jobs:
       - name: Build site
         run: npm run docs:build
 
-      - name: Configure Pages
-        # Only needed for the metadata Pages deployments read; skipped on PRs
-        # so a fork or a repository without Pages still builds.
-        if: github.event_name != 'pull_request'
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
       - name: Upload site (pull request)
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -119,7 +116,11 @@ jobs:
           node-version: 24
 
       # Every URL the deployed llms.txt lists must resolve on the live site.
+      # Advisory until the site is public: a private Pages site sits behind
+      # GitHub authentication, so the unauthenticated checker cannot reach
+      # it. Pinned because this job holds the Pages deployment token.
       - name: Check llms.txt
+        continue-on-error: true
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: npx --yes llms-txt-check "${PAGE_URL%/}/llms.txt"
+        run: npx --yes llms-txt-check@0.1.5 "${PAGE_URL%/}/llms.txt"
