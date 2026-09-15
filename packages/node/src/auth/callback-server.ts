@@ -201,6 +201,10 @@ async function handleCallbackRequest(
   }
 
   const receivedState = stateList[0] as string;
+  // Plain `!==` on purpose (not constant-time): the server is one-shot
+  // — a mismatch ends the login — so an attacker gets at most one
+  // comparison per nonce and no repeated-guess timing oracle exists.
+  // Matches Python's `!=` (`callback_server.py:252`). CLEANUP-PLAN 8.12.
   if (receivedState !== expectedState) {
     // Don't leak the expected state to the browser — nor into the
     // server-side exception (`callback_server.py:251-267`): hosts log

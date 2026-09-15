@@ -114,6 +114,10 @@ export function parsePastedRedirect(
   }
   const code = codeList[0] as string;
   const state = stateList[0] as string;
+  // Plain `!==` on purpose (not constant-time): one paste attempt per
+  // login session (a mismatch fails the login), so there is no
+  // repeated-guess timing oracle. Matches Python's `!=`
+  // (`flow.py` `_parse_pasted_redirect`). CLEANUP-PLAN 8.12.
   if (state !== options.expectedState) {
     throw new OAuthError(
       "State mismatch — the pasted text does not belong to this login session.",
