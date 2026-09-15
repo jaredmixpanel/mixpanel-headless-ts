@@ -2,7 +2,7 @@
  * Transform functions for Mixpanel data — whole-file TS twin of
  * `src/mixpanel_headless/_internal/transforms.py` (130 LOC; Python
  * revision: `ts-port/phase2-contract-support` HEAD). Batch B3, shard K3
- * (`context/phase3/design/b3-packets.md` §"Packet K3").
+ * (`docs/history/phase3/design/b3-packets.md` §"Packet K3").
  *
  * Shared normalization of raw Mixpanel API responses (export-API events,
  * engage-API profiles) for downstream processing.
@@ -20,7 +20,7 @@
  * - **µs rounding is CPython's round-HALF-EVEN**, matching
  *   `datetime._fromtimestamp`'s `us = round(frac * 1e6)`. `Math.round`
  *   is half-UP and rounds `-0.5` toward `+0`; the probe transcript in
- *   `context/phase3/notes/B3-K3-notes.md` pins the divergent cases
+ *   `docs/history/phase3/notes/B3-K3-notes.md` pins the divergent cases
  *   (`1.5e-6 → 2µs`, `2.5e-6 → 2µs`, `5e-7 → 0µs`).
  * - **The `uuid` seam is injectable** ({@link TransformEventOptions});
  *   the library default is `crypto.randomUUID()` and the conformance

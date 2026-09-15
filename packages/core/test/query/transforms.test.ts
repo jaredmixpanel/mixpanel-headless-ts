@@ -26,7 +26,7 @@
  * the cases below are NEW, locked by the module docstring example
  * (`transforms.py:36-55`) and by the mandatory CPython
  * `datetime.fromtimestamp` probe recorded in
- * `context/phase3/notes/B3-K3-notes.md` §probe (CPython 3.14.6). Each
+ * `docs/history/phase3/notes/B3-K3-notes.md` §probe (CPython 3.14.6). Each
  * such case is marked `// NEW`.
  */
 

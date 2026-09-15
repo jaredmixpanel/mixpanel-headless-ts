@@ -2,7 +2,7 @@
 // b5-review-resolution.md ASR-F6b): tests written FIRST from CPython
 // `float(x)` non-string semantics. Every expected value/message below was
 // produced by CPython 3.14.6 (the oracle) on 2026-08-16 — probe record in
-// context/phase3/notes/B6-notes.md (Python repo). The string arm is
+// docs/history/phase3/notes/B6-notes.md (Python repo). The string arm is
 // `pythonFloat` (R11.3, already locked by python-float.test.ts); this
 // suite locks the coercion LADDER around it.
 import fc from "fast-check";

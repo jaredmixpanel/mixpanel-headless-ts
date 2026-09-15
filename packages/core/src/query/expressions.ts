@@ -3,7 +3,7 @@
  * whole-file TS twin of
  * `src/mixpanel_headless/_internal/expressions.py` (52 LOC; Python
  * revision: `ts-port/phase2-contract-support` HEAD). Batch B3, shard K3
- * (`context/phase3/design/b3-packets.md` §"Packet K3").
+ * (`docs/history/phase3/design/b3-packets.md` §"Packet K3").
  *
  * **Watchlist #2 — escaping is char-for-char contract.** The escape
  * order is backslash FIRST, then double quote (`expressions.py:51`);

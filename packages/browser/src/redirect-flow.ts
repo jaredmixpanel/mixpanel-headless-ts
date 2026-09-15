@@ -49,7 +49,7 @@
  * URI, consent-screen code issuance to that redirect, and the token
  * endpoint's cross-origin CORS posture. Nothing here claims e2e
  * verification. Evidence of record:
- * `context/phase3/notes/B9-spike.md` (Python repo).
+ * `docs/history/phase3/notes/B9-spike.md` (Python repo).
  */
 
 import {

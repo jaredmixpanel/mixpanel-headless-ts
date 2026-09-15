@@ -764,8 +764,8 @@ describe("buildFrequencyGroupEntry", () => {
 // FIX-1 (bug (a)): the old R10.7 customProperty-nested bug-compat lock
 // retired with the Python-first fix — this suite now locks the
 // platform-native clause (fix-of-record
-// `context/phase1/addendum/frequency-filter-probe.md` +
-// `context/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`).
+// `docs/history/phase1/addendum/frequency-filter-probe.md` +
+// `docs/history/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`).
 // =============================================================================
 
 describe("buildFrequencyFilterEntry (platform-native clause)", () => {

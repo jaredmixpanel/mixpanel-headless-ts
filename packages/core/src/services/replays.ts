@@ -2,7 +2,7 @@
  * ReplaysService — TS port of
  * `mixpanel_headless/_internal/services/replays.py` (971 lines, whole
  * file) for Phase-3 batch B5, shard S3
- * (`context/phase3/design/b5-packets.md` §5).
+ * (`docs/history/phase3/design/b5-packets.md` §5).
  *
  * Orchestrates the discovery → sign → fetch pipeline against the
  * Mixpanel App API and the signed CDN. Owned by `Workspace`; not part

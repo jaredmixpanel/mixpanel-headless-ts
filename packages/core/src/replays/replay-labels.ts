@@ -1,7 +1,7 @@
 /**
  * Activity labels for the rrweb action stream — TS port of
  * `mixpanel_headless/replay_labels.py` (145 lines, whole file) for
- * Phase-3 batch B5, shard S3 (`context/phase3/design/b5-packets.md`
+ * Phase-3 batch B5, shard S3 (`docs/history/phase3/design/b5-packets.md`
  * §5). Closes three of the phase2-audit A1 public-export deferrals
  * ({@link urlNormalizer}, {@link defaultLabelFn},
  * {@link selectorLabelFn}).

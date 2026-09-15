@@ -12,7 +12,7 @@
  * `Infinity`). The wire body-parse sites (`parseBody`, the
  * `_handle_response` tail, the 422 branch) opt into that grammar via
  * {@link ParseLosslessOptions.pythonConstants} — arbiter fix F1,
- * `context/phase3/design/b0-review-resolution.md`. The DEFAULT stays
+ * `docs/history/phase3/design/b0-review-resolution.md`. The DEFAULT stays
  * strict so vector/selftest JSON keeps D6 rule 5 enforcement (non-finite
  * tokens are barred from vector files).
  */

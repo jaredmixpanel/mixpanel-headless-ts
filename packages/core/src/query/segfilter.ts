@@ -2,7 +2,7 @@
  * Filter-to-segfilter conversion for flows step filters — whole-file TS
  * twin of `src/mixpanel_headless/_internal/segfilter.py` (323 LOC;
  * Python revision: `ts-port/phase2-contract-support` HEAD). Batch B3,
- * shard K3 (`context/phase3/design/b3-packets.md` §"Packet K3").
+ * shard K3 (`docs/history/phase3/design/b3-packets.md` §"Packet K3").
  *
  * Converts `Filter` objects into the legacy segfilter dict format
  * consumed by the Mixpanel flows API. The segfilter format differs from

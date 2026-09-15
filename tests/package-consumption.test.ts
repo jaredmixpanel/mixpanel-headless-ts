@@ -1,4 +1,4 @@
-// Consumption gate (CLEANUP-PLAN §7.5): the three packages are consumed the
+// Consumption gate (docs/history/cleanup-plan-2026-09.md §7.5): the three packages are consumed the
 // way a user would — `npm pack` each workspace, `npm install` the tarballs
 // into a scratch project, then
 //

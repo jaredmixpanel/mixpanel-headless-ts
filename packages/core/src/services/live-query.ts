@@ -2,7 +2,7 @@
  * Live query service — TS port of the `LiveQueryService` class of
  * `mixpanel_headless/_internal/services/live_query.py` (`:677-1565`)
  * for Phase-3 batch B5, shard S2
- * (`context/phase3/design/b5-packets.md` §3).
+ * (`docs/history/phase3/design/b5-packets.md` §3).
  *
  * The module-level transforms this class delegates to live in the
  * sibling `live-query-transforms.ts` (R7.2 split — the Python file is

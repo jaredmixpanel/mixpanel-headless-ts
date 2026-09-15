@@ -126,7 +126,7 @@ record: `conformance/differential/phase2-gate.json` (Python repo).
 Oracle-infrastructure gaps fixed during bring-up (not library bugs):
 expect-vs-tagged output encoding, integral-float token fidelity, and the
 unregistered-replay-tag encode path — see the Python repo P2-9 notes
-(`context/phase2/notes/p2-9-notes.md`) triage log.
+(`docs/history/phase2/notes/p2-9-notes.md`) triage log.
 
 # PR #215 follow gate run (2026-08-21, inbound-ledger row 2a)
 
@@ -196,7 +196,7 @@ run exercised, so the run stands. Both bridges now report
 
 ## 2026-09-14 — corpus re-pin `c9991d1` → `0dde506` (Python PRs #225 / #235 / #236) + `Filter` constructor twin
 
-Inbound ledger row 2c (`context/phase4/inbound-ledger.md`). The TS change
+Inbound ledger row 2c (`docs/history/phase4/inbound-ledger.md`). The TS change
 ports Python PR #236 (`Filter.__post_init__` operator validation + alias
 normalization, `_filter_unchecked` for the codec); PRs #225 and #235 are
 open feature ports (not oracle- or corpus-locked). Corpus after re-pin:

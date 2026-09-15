@@ -205,7 +205,7 @@ export interface PostTokenRequestContext {
  * `details.response_body` — those are IdP error documents, not token
  * grants, and their shapes are vector-locked. Twin of the Python FIX-2
  * change (+ ARB-B hardening); fix-of-record:
- * context/phase3/bug-reports/python-oauth-error-details-token-payload.md.
+ * docs/history/phase3/bug-reports/python-oauth-error-details-token-payload.md.
  */
 export async function postTokenRequest(
   fetchImpl: typeof fetch,

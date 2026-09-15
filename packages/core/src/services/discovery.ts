@@ -2,7 +2,7 @@
  * Discovery service — TS port of
  * `mixpanel_headless/_internal/services/discovery.py` (920 lines,
  * whole file) for Phase-3 batch B5, shard S1
- * (`context/phase3/design/b5-packets.md` §4).
+ * (`docs/history/phase3/design/b5-packets.md` §4).
  *
  * Contents, in Python source order: the five Lexicon/bookmark parser
  * functions (`:43-142`), the subproperty-inference helpers

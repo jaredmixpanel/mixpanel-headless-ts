@@ -467,7 +467,7 @@ describe("TestOAuthFlowTokenExchange (test_auth_flow.py:385)", () => {
 
 describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::TestTokenPayloadRedaction)", () => {
   // Twin of the Python FIX-2 suite (fix-of-record:
-  // context/phase3/bug-reports/python-oauth-error-details-token-payload.md):
+  // docs/history/phase3/bug-reports/python-oauth-error-details-token-payload.md):
   // a malformed-200 token response must not leak token material into
   // OAuthError details. The refresh member lives in
   // `oauth-flow-refresh.test.ts` (header-cited split, same as the

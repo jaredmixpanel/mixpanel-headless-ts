@@ -5,7 +5,7 @@
 // TestSensitiveData403BodyShapes (FIX-2, bug (c)), and
 // TestOtherHttpErrors lock the B0 `handleResponse` 403 branch
 // and were translated at B0 against `client/internals.ts` — see
-// `context/phase3/design/b0-review-assertions.md`; the C5 R10.9
+// `docs/history/phase3/design/b0-review-assertions.md`; the C5 R10.9
 // harness re-exercises that matrix through the REAL method.
 import { describe, expect, it } from "vitest";
 

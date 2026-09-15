@@ -18,7 +18,7 @@
  * `strict=True`) — NOT CPython's `int()`/`str.strip()` and NOT JS's
  * `parseInt`/`String.trim()`. Every acceptance decision below is pinned to
  * measured probe evidence recorded in
- * `context/phase3/notes/B2-M2-notes.md` §"CPython pydantic probe"
+ * `docs/history/phase3/notes/B2-M2-notes.md` §"CPython pydantic probe"
  * (scripts `throwaway/b2-m2/probe-sorting{,2}.py`,
  * `probe-int-grammar.py`, run 2026-08-15 against the support-branch
  * pydantic pin). The three load-bearing findings:
@@ -52,7 +52,7 @@
  * `str` / `int` / `json` + `nullable`; the sorting specs below were
  * rewritten onto them with identical semantics.
  *
- * B3-K1 probe evidence: `context/phase3/notes/B3-K1-notes.md` §Probe
+ * B3-K1 probe evidence: `docs/history/phase3/notes/B3-K1-notes.md` §Probe
  * (`throwaway/b3-k1/probe-{schema,grammar,detail,order,bool}.py`,
  * CPython + pydantic pin, run 2026-08-15).
  *

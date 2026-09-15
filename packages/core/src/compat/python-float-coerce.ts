@@ -14,7 +14,7 @@
  * are in-annotation, so their raises are contract).
  *
  * Every expected behavior was probed against CPython 3.14.6 on
- * 2026-08-16 (probe record: `context/phase3/notes/B6-notes.md`):
+ * 2026-08-16 (probe record: `docs/history/phase3/notes/B6-notes.md`):
  * `float(True)` → `1.0`; `float(None)` → `TypeError "float() argument
  * must be a string or a real number, not 'NoneType'"` (list/dict spell
  * `'list'`/`'dict'`); `float(10**400)` → `OverflowError "int too large

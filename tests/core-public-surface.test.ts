@@ -1,4 +1,4 @@
-// Public-surface boundary of @mixpanel-headless/core (CLEANUP-PLAN §7.4).
+// Public-surface boundary of @mixpanel-headless/core (docs/history/cleanup-plan-2026-09.md §7.4).
 //
 // The plan's invariant is "anything tagged `@internal` must not be reachable
 // from the package's `"."` entry". `stripInternal` would enforce that by

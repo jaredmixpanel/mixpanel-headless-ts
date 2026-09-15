@@ -2,7 +2,7 @@
  * The `Workspace` facade — TS port of `mixpanel_headless/workspace.py`.
  *
  * Phase-3 batch B5 splits this file three ways
- * (`context/phase3/design/b5-packets.md` §2): the class skeleton plus
+ * (`docs/history/phase3/design/b5-packets.md` §2): the class skeleton plus
  * the 22 query members (S2), the 12 discovery/lexicon members (S1) and
  * the 10 session-replay members (S3). Each shard owns ONE marked,
  * append-only section; B6 appends its own below them.

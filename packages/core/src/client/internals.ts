@@ -404,7 +404,7 @@ export function handleResponse(
     // non-str JSON body for the sniff (None → ""), giving uniform
     // SUBSTRING semantics across dict/list/scalar bodies — no TypeError
     // possible (fix-of-record:
-    // context/phase3/bug-reports/python-handle-response-403-typeerror.md;
+    // docs/history/phase3/bug-reports/python-handle-response-403-typeerror.md;
     // the R10.7 element-membership / TypeError twin retired with it).
     const flag = "SESSION_RECORDING_SENSITIVE_DATA";
     let bodyText: string;

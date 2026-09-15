@@ -10,8 +10,8 @@
  * `build_frequency_filter_entry` (Phase-3 batch B3) serializes a
  * `FrequencyFilter` into a `customProperty`-nested clause that the live
  * Mixpanel query engine REJECTS with an HTTP 500 (probe record
- * `context/phase1/addendum/frequency-filter-probe.md`; bug filed as
- * `context/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`).
+ * `docs/history/phase1/addendum/frequency-filter-probe.md`; bug filed as
+ * `docs/history/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`).
  * The TS port replicates the current Python behavior byte-for-byte —
  * `FrequencyFilter` accepts exactly what Python accepts and the Phase-3
  * builder will reproduce the server-500 shape unchanged. DO NOT FIX.

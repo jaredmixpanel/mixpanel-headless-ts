@@ -2,7 +2,7 @@
  * Response-model validation seam for App API payloads — TS port of
  * `mixpanel_headless/_internal/response_validation.py` (whole module).
  *
- * Ownership note (recorded in `context/phase3/notes/B4-C1-notes.md`):
+ * Ownership note (recorded in `docs/history/phase3/notes/B4-C1-notes.md`):
  * the playbook's B5 row lists `response_validation.py`, but B4-C1's
  * `list_workspaces` is the first consumer, so the module ports HERE and
  * B5 imports it (R10.8 — one implementation, by name).

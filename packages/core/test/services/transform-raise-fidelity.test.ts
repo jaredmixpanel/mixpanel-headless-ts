@@ -1,5 +1,5 @@
 // B5-ARB regression locks (arbiter-directed remediation of the B5 review
-// pair, `context/phase3/design/b5-review-resolution.md` findings FID-F1,
+// pair, `docs/history/phase3/design/b5-review-resolution.md` findings FID-F1,
 // FID-F2, FID-F4 and ASR-F6b — ADDITIVE, substitutes for no Python file;
 // every expectation below is a live-CPython probe result recorded in the
 // resolution document):

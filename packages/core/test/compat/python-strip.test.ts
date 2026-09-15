@@ -1,6 +1,6 @@
 // B0-1 (P3-4): tests written FIRST from the CPython `str.strip()`
 // whitespace table (the oracle, CPython 3.14.6 / Unicode 16.0.0 — probes
-// 2026-08-15, recorded in context/phase3/notes/B0-notes.md).
+// 2026-08-15, recorded in docs/history/phase3/notes/B0-notes.md).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 

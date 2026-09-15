@@ -1,5 +1,5 @@
 // NEW Layer-3 lock for the user-ratified org-ordering fix
-// (`context/phase3/design/user-ratifications.md:14-22`, 2026-08-16;
+// (`docs/history/phase3/design/user-ratifications.md:14-22`, 2026-08-16;
 // executed as the early-B8 task B8-MAPFIX per `b8-packets.md` §0.3.1 /
 // §2.3): `MeResponse` container maps parse into an insertion-order-
 // preserving `ReadonlyMap` sourced from the lossless JSON layer, so

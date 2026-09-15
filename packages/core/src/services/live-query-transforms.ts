@@ -2,7 +2,7 @@
  * Live-query response transforms — TS port of the module-level
  * functions of `mixpanel_headless/_internal/services/live_query.py`
  * (`:51-674` head block and `:1567-2042` tail block) for Phase-3 batch
- * B5, shard S2 (`context/phase3/design/b5-packets.md` §3).
+ * B5, shard S2 (`docs/history/phase3/design/b5-packets.md` §3).
  *
  * The service class itself lives in the sibling `live-query.ts`
  * (R7.2 split — the Python file is 2,042 lines).
