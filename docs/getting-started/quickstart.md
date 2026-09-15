@@ -1,6 +1,6 @@
 ---
 title: Quick Start
-description: Set up credentials, explore your project and run your first typed queries in about five minutes.
+description: "Set up credentials, explore your project and run your first typed queries in about five minutes."
 ---
 
 # Quick Start
@@ -28,7 +28,7 @@ const summary = await loginUnified({ region: "us" });
 console.log(`Logged in as ${summary.user_email ?? summary.name}`);
 ```
 
-`loginUnified` is the engine behind the Python CLI's `mp login`. It auto-detects the auth type from the environment:
+[`loginUnified`](/reference/node/functions/loginUnified) is the engine behind the Python CLI's `mp login`. It auto-detects the auth type from the environment:
 
 | Env vars set                | Auth type used         | Region behaviour                                 | Persistence                                                                                           |
 | --------------------------- | ---------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -85,7 +85,7 @@ import { createNodeWorkspace } from "@mixpanel-headless/node";
 const ws = createNodeWorkspace(); // env vars, ~/.mp/config.toml, or bridge file
 ```
 
-`createNodeWorkspace()` is the twin of Python's bare `Workspace()`: it wires the resolver sources (env → config file → bridge), the on-disk OAuth token refresh and the `/me` cache in one call.
+[`createNodeWorkspace()`](/reference/node/functions/createNodeWorkspace) is the twin of Python's bare `Workspace()`: it wires the resolver sources (env → config file → bridge), the on-disk OAuth token refresh and the `/me` cache in one call.
 
 ## Step 2: Switch projects (optional)
 
@@ -110,7 +110,7 @@ await ws.use({ project: "3018488", persist: true });
 
 ## Step 3: Test your connection
 
-Verify credentials are working. `accounts.test()` never throws — check `ok` and `error`:
+Verify credentials are working. [`accounts.test()`](/reference/node/variables/accounts) never throws — check `ok` and `error`:
 
 ```ts twoslash
 import { accounts } from "@mixpanel-headless/node";
@@ -195,7 +195,7 @@ This discovery workflow ensures your queries reference real event names, valid p
 
 ### Insights queries (recommended)
 
-Use `query()` for typed, composable analytics — DAU/WAU/MAU, formulas, filters, breakdowns, and more. Options mirror the Python keyword arguments and keep their `snake_case` keys:
+Use [`query()`](/reference/core/classes/Workspace#query) for typed, composable analytics — DAU/WAU/MAU, formulas, filters, breakdowns, and more. Options mirror the Python keyword arguments and keep their `snake_case` keys:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -406,7 +406,7 @@ See [Live analytics](/guide/live-analytics).
 
 ## Step 6: Switch accounts and projects in-session
 
-`ws.use()` swaps any axis without rebuilding the underlying HTTP client, so cross-project iteration is cheap:
+[`ws.use()`](/reference/core/classes/Workspace#use) swaps any axis without rebuilding the underlying HTTP client, so cross-project iteration is cheap:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -496,4 +496,5 @@ See the [Streaming guide](/guide/streaming).
 - [Insights](/guide/query) — typed analytics with DAU, formulas, filters, and breakdowns
 - [Funnels](/guide/query-funnels), [Retention](/guide/query-retention), [Flows](/guide/query-flows), [User profiles](/guide/query-users)
 - [Error handling](/guide/error-handling) — the class hierarchy and stable `code`s
+- [`Workspace`](/reference/core/classes/Workspace) — every method on the facade, in the generated reference
 - [In the browser](/guide/browser) — bearer tokens and redirect PKCE

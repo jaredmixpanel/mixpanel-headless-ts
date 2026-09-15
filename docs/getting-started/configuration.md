@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Accounts, projects and workspaces — environment variables, the shared ~/.mp/config.toml, the credential resolution chain, saved targets, bridge files and the alternate API host.
+description: "Accounts, projects and workspaces — environment variables, the shared ~/.mp/config.toml, the credential resolution chain, saved targets, bridge files and the alternate API host."
 ---
 
 # Configuration
@@ -15,7 +15,7 @@ In-session switching is one line: `ws.use({ account, project, workspace, target 
 
 ## Quick start: `loginUnified()`
 
-The fastest way to authenticate is `loginUnified` from `@mixpanel-headless/node`. It runs the right auth flow for your environment, derives an account name from `/me`, and pins a default project — all in one call:
+The fastest way to authenticate is [`loginUnified`](/reference/node/functions/loginUnified) from `@mixpanel-headless/node`. It runs the right auth flow for your environment, derives an account name from `/me`, and pins a default project — all in one call:
 
 ```ts twoslash
 import { loginUnified } from "@mixpanel-headless/node";
@@ -119,7 +119,7 @@ With neither variable set, behaviour is byte-identical to the per-region default
 
 ## Setting up an account
 
-The `accounts` namespace from `@mixpanel-headless/node` is the programmatic twin of the CLI's `mp account …` commands; the [Accounts, sessions and targets](/guide/accounts-sessions-targets) guide covers the whole namespace.
+The [`accounts`](/reference/node/variables/accounts) namespace from `@mixpanel-headless/node` is the programmatic twin of the CLI's `mp account …` commands; the [Accounts, sessions and targets](/guide/accounts-sessions-targets) guide covers the whole namespace.
 
 ### Service account (Basic Auth)
 
@@ -224,7 +224,7 @@ workspace = 3448414
 
 The `[active]` block stores only `account` and (optionally) `workspace` — the project lives on the active account as `default_project`. Targets are saved cursor positions (see [Saved targets](#saved-targets) below).
 
-Config and token files are written atomically with owner-only permissions, and symlinked credential paths are refused (`CredentialPathError`). The default `~/.mp` directory is tightened to `0o700` on write; the parent of a custom `configPath` is left alone.
+Config and token files are written atomically with owner-only permissions, and symlinked credential paths are refused ([`CredentialPathError`](/reference/node/classes/CredentialPathError)). The default `~/.mp` directory is tightened to `0o700` on write; the parent of a custom `configPath` is left alone.
 
 ## OAuth (browser) — token storage
 
@@ -245,7 +245,7 @@ OAuth browser tokens are stored per account; OAuth client metadata (Dynamic Clie
     └── client_in.json
 ```
 
-Tokens auto-refresh on expiry. If the refresh token is rejected (for example revoked at the identity provider), the next call raises `OAuthError` with code `OAUTH_REFRESH_REVOKED` — re-run `loginUnified({ name })` to recover.
+Tokens auto-refresh on expiry. If the refresh token is rejected (for example revoked at the identity provider), the next call raises [`OAuthError`](/reference/core/classes/OAuthError) with code `OAUTH_REFRESH_REVOKED` — re-run `loginUnified({ name })` to recover.
 
 `accounts.token()` returns the current bearer for the active account (refreshing it if needed), for piping into another tool:
 
@@ -275,7 +275,7 @@ Per-axis details:
 - **Project** — `MP_PROJECT_ID` is read directly (env layer), then the `project` option, then target, bridge, and finally the active account's `default_project`.
 - **Workspace** — `MP_WORKSPACE_ID` is read directly (env layer), then the `workspace` option, then target, bridge, and `[active].workspace`.
 
-There is **no silent cross-axis fallback**: switching the active account clears the workspace (workspaces are project-scoped), and a project does not carry forward to a new account. If an axis cannot be resolved, the resolver throws `ConfigError` listing every fix path rather than silently falling back to a default.
+There is **no silent cross-axis fallback**: switching the active account clears the workspace (workspaces are project-scoped), and a project does not carry forward to a new account. If an axis cannot be resolved, the resolver throws [`ConfigError`](/reference/core/classes/ConfigError) listing every fix path rather than silently falling back to a default.
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -288,7 +288,7 @@ const team = createNodeWorkspace({ account: "team", project: "3713224" });
 const ecom = createNodeWorkspace({ target: "ecom" });
 ```
 
-`target` is mutually exclusive with `account` / `project` / `workspace`; combining them throws `ParamValidationError` with code `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
+`target` is mutually exclusive with `account` / `project` / `workspace`; combining them throws [`ParamValidationError`](/reference/core/classes/ParamValidationError) with code `WS1_TARGET_MUTUALLY_EXCLUSIVE`. The option bags are [`NodeWorkspaceOptions`](/reference/node/interfaces/NodeWorkspaceOptions) at construction and [`WorkspaceUseOptions`](/reference/core/interfaces/WorkspaceUseOptions) for `ws.use()`.
 
 ## Workspace axis (in-session switching)
 
@@ -310,7 +310,7 @@ If no workspace is specified, workspace-scoped endpoints lazy-resolve to the pro
 
 ## Saved targets
 
-A **target** is a saved (account, project, optional workspace) bundle — a named cursor position you can apply in one call:
+A **target** is a saved (account, project, optional workspace) bundle — a named cursor position you can apply in one call through the [`targets`](/reference/node/variables/targets) namespace:
 
 ```ts twoslash
 import { createNodeWorkspace, targets } from "@mixpanel-headless/node";

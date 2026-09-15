@@ -1,6 +1,6 @@
 ---
 title: Coming from the Python library?
-description: How the TypeScript port maps onto mixpanel_headless — three naming rules, results without pandas, and what is verified to behave identically.
+description: "How the TypeScript port maps onto mixpanel_headless — three naming rules, results without pandas, and what is verified to behave identically."
 ---
 
 # Coming from the Python library?
@@ -49,7 +49,7 @@ const ecom = createNodeWorkspace({ target: "ecom" });
 
 :::
 
-`createNodeWorkspace()` wires the resolver sources (env → config file → bridge), the on-disk OAuth token refresh and the `/me` cache in one call — exactly what `Workspace.__init__` does. In a browser, construction goes through `createBrowserWorkspace` / `createBrowserWorkspaceFromStore` from `@mixpanel-headless/browser` ([In the browser](/guide/browser)); `new Workspace({ session })` from `@mixpanel-headless/core` is for callers who already hold a resolved session.
+[`createNodeWorkspace()`](/reference/node/functions/createNodeWorkspace) wires the resolver sources (env → config file → bridge), the on-disk OAuth token refresh and the `/me` cache in one call — exactly what `Workspace.__init__` does. In a browser, construction goes through `createBrowserWorkspace` / `createBrowserWorkspaceFromStore` from `@mixpanel-headless/browser` ([In the browser](/guide/browser)); [`new Workspace({ session })`](/reference/core/classes/Workspace) from `@mixpanel-headless/core` is for callers who already hold a resolved session.
 
 ## Queries and the vocabulary
 
@@ -181,7 +181,7 @@ Streaming (`streamEvents`, `streamProfiles`) and session replay fetching are Nod
 
 ## Exceptions become error classes
 
-Every Python exception class ports as an `Error` subclass with the same name, the same parent, and the same machine `code`. `except` clauses become `instanceof` checks, `e.code` and `e.details` are unchanged, and `to_dict()` is `toDict()`:
+Every Python exception class ports as an `Error` subclass (rooted at [`MixpanelHeadlessError`](/reference/core/classes/MixpanelHeadlessError)) with the same name, the same parent, and the same machine `code`. `except` clauses become `instanceof` checks, `e.code` and `e.details` are unchanged, and `to_dict()` is `toDict()`:
 
 ::: code-group
 
@@ -220,7 +220,7 @@ Python-specific attribute names on the error object follow the camelCase rule (`
 
 ## Module namespaces
 
-The `mp.accounts`, `mp.session` and `mp.targets` namespaces are named exports of `@mixpanel-headless/node`, with the same methods:
+The `mp.accounts`, `mp.session` and `mp.targets` namespaces are named exports of `@mixpanel-headless/node` — [`accounts`](/reference/node/variables/accounts), [`session`](/reference/node/variables/session), [`targets`](/reference/node/variables/targets) — with the same methods:
 
 ::: code-group
 

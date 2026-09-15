@@ -1,6 +1,6 @@
 ---
 title: In the browser
-description: The same Workspace facade from a web page — server-minted bearer tokens or a redirect PKCE login with no backend, injectable credential storage, and the guardrails the browser build enforces.
+description: "The same Workspace facade from a web page — server-minted bearer tokens or a redirect PKCE login with no backend, injectable credential storage, and the guardrails the browser build enforces."
 ---
 
 # In the browser
@@ -30,7 +30,7 @@ const result = await ws.query("Login", { math: "dau", last: 30 });
 console.table(result.toRows());
 ```
 
-`createBrowserWorkspace` accepts an optional `workspaceId` pin, an `accountName` (default `"browser"`), a `store`, an injectable `fetch`, and `clientOptions` for the core client (`maxRetries`, `timeoutSeconds`, `endpointOverrides`, …). `browserSession({ token, projectId, region })` builds the underlying `Session` on its own when you want to hand it to something else.
+[`createBrowserWorkspace`](/reference/browser/functions/createBrowserWorkspace) ([`BrowserWorkspaceOptions`](/reference/browser/interfaces/BrowserWorkspaceOptions)) accepts an optional `workspaceId` pin, an `accountName` (default `"browser"`), a `store`, an injectable `fetch`, and `clientOptions` for the core client (`maxRetries`, `timeoutSeconds`, `endpointOverrides`, …). [`browserSession({ token, projectId, region })`](/reference/browser/functions/browserSession) builds the underlying `Session` on its own when you want to hand it to something else.
 
 ## Redirect PKCE flow
 
@@ -73,23 +73,23 @@ const ws = await createBrowserWorkspaceFromStore({
 console.log(await ws.events());
 ```
 
-`completeLogin` returns the obtained `OAuthTokens` and writes them to the store under `CREDENTIAL_KEYS.tokens(region)`; `createBrowserWorkspaceFromStore` re-reads the store on every request, so a token that expires mid-session fails the next call rather than the whole page.
+[`completeLogin`](/reference/browser/functions/completeLogin) returns the obtained `OAuthTokens` and writes them to the store under `CREDENTIAL_KEYS.tokens(region)`; [`createBrowserWorkspaceFromStore`](/reference/browser/functions/createBrowserWorkspaceFromStore) re-reads the store on every request, so a token that expires mid-session fails the next call rather than the whole page.
 
 Rules for the redirect flow:
 
-- **`redirectUri` must be a compile-time constant of your application.** Never derive it from user input or query parameters: client registration accepts arbitrary `https:` origins, so an attacker-influenced value delivers the authorization code elsewhere. `beginLogin` rejects non-absolute and non-`https:` values (`http:` only on loopback) with `OAUTH_CONFIG_ERROR`, but cannot detect a hostile `https:` origin.
+- **`redirectUri` must be a compile-time constant of your application.** Never derive it from user input or query parameters: client registration accepts arbitrary `https:` origins, so an attacker-influenced value delivers the authorization code elsewhere. [`beginLogin`](/reference/browser/functions/beginLogin) rejects non-absolute and non-`https:` values (`http:` only on loopback) with `OAUTH_CONFIG_ERROR`, but cannot detect a hostile `https:` origin.
 - **The store must survive the redirect.** `completeLogin` runs on a fresh page load; the default in-memory store cannot carry the pending login across it (`BROWSER_NO_PENDING_LOGIN`). Back `LocalStorageCredentialStore` with `sessionStorage` for the login hop — tab-scoped and cleared on close.
 - **Pending logins are single-use and expire** — 30 minutes by default (`DEFAULT_MAX_PENDING_AGE_MS`; override with `maxPendingAgeMs` on `completeLogin`). Start a fresh `beginLogin` after that.
 - **The provider's refusal is typed.** A user who declines consent comes back as `OAuthError` / `OAUTH_AUTH_DENIED`; a tampered or replayed return URL as `OAUTH_STATE_MISMATCH`; a malformed one as `OAUTH_PASTE_ERROR`.
 
 ## Credential storage
 
-Storage is injected through the `CredentialStore` interface (`get`, `set`, `delete`, sync or async) and defaults to memory:
+Storage is injected through the [`CredentialStore`](/reference/core/interfaces/CredentialStore) interface (`get`, `set`, `delete`, sync or async) and defaults to memory:
 
-- **`InMemoryCredentialStore`** (the default) keeps tokens out of persistent storage entirely — users re-login on reload. This is the recommended posture.
-- **`LocalStorageCredentialStore`** takes any `Storage`-shaped object (`localStorage`, `sessionStorage`, or your own `StorageLike`) and persists across navigations, which the redirect flow requires. Anything kept in Web Storage is readable by any script on your origin — a single XSS hole exfiltrates it, and that is three payload families per region (the tokens, the pending-login record with its PKCE verifier, and the client registration). Treat persistence as a deliberate trade-off and keep token lifetimes short.
+- **[`InMemoryCredentialStore`](/reference/browser/classes/InMemoryCredentialStore)** (the default) keeps tokens out of persistent storage entirely — users re-login on reload. This is the recommended posture.
+- **[`LocalStorageCredentialStore`](/reference/browser/classes/LocalStorageCredentialStore)** takes any `Storage`-shaped object (`localStorage`, `sessionStorage`, or your own `StorageLike`) and persists across navigations, which the redirect flow requires. Anything kept in Web Storage is readable by any script on your origin — a single XSS hole exfiltrates it, and that is three payload families per region (the tokens, the pending-login record with its PKCE verifier, and the client registration). Treat persistence as a deliberate trade-off and keep token lifetimes short.
 
-On logout, delete every key the library wrote for each region you used:
+On logout, delete every key the library wrote for each region you used ([`CREDENTIAL_KEYS`](/reference/core/variables/CREDENTIAL_KEYS)):
 
 ```ts twoslash
 import {
@@ -138,7 +138,7 @@ Two identity helpers ride along for pages that name what they just built: `pytho
 
 ## Guardrails
 
-The browser build enforces its boundaries with typed errors rather than silent failures — every one is a `BrowserUnsupportedError` (a `MixpanelHeadlessError` subclass) you can `instanceof` and whose `code` you can key on:
+The browser build enforces its boundaries with typed errors rather than silent failures — every one is a [`BrowserUnsupportedError`](/reference/browser/classes/BrowserUnsupportedError) (a `MixpanelHeadlessError` subclass) you can `instanceof` and whose `code` you can key on:
 
 | Code                              | When                                                                                                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |

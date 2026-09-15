@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Install Mixpanel Headless for TypeScript, pick the package for your runtime, and verify the import.
+description: "Install Mixpanel Headless for TypeScript, pick the package for your runtime, and verify the import."
 ---
 
 # Installation
@@ -24,7 +24,7 @@ These packages are not yet published to npm and APIs may change before 1.0. Impo
 | `@mixpanel-headless/browser` | Browsers        | Bearer-token and redirect-PKCE auth, injectable credential storage, and a `Workspace` factory gated to browser-safe capabilities.                                                                      |
 | `@mixpanel-headless/core`    | Both            | The isomorphic engine: the `Workspace` facade, query builders, result types, and the error hierarchy. Zero Node dependencies — the platform packages wire it up for you.                               |
 
-All three share the same `Workspace` API — code written against core runs in either environment. `@mixpanel-headless/core` is a dependency of both platform packages, so one install brings it along; you still import from both specifiers. `@mixpanel-headless/node` exports the Node wiring (`createNodeWorkspace`, `loginUnified`, `accounts` / `session` / `targets`, the config and OAuth classes) plus `Workspace`; the query vocabulary (`Filter`, `Metric`, `FunnelStep`, …), the entity and result models and the error classes come from `@mixpanel-headless/core`. The browser entry re-exports the vocabulary and the errors itself, so a page needs one import. Construct `Workspace` through core directly only when you already hold a resolved credential or are building your own platform layer.
+All three share the same `Workspace` API — code written against core runs in either environment. `@mixpanel-headless/core` is a dependency of both platform packages, so one install brings it along; you still import from both specifiers. `@mixpanel-headless/node` exports the Node wiring ([`createNodeWorkspace`](/reference/node/functions/createNodeWorkspace), [`loginUnified`](/reference/node/functions/loginUnified), `accounts` / `session` / `targets`, the config and OAuth classes) plus [`Workspace`](/reference/core/classes/Workspace); the query vocabulary (`Filter`, `Metric`, `FunnelStep`, …), the entity and result models and the error classes come from `@mixpanel-headless/core`. The browser entry re-exports the vocabulary and the errors itself, so a page needs one import. Construct `Workspace` through core directly only when you already hold a resolved credential or are building your own platform layer.
 
 ## Install
 
@@ -102,3 +102,4 @@ If your editor resolves the types and `node script.mjs` prints the three lines, 
 - [Quick start](/getting-started/quickstart) — set up credentials and run your first query
 - [Configuration](/getting-started/configuration) — environment variables, the config file and the resolution chain
 - [Coming from the Python library?](/guide/coming-from-python) — the three naming rules
+- [API reference](/api/) — every exported class, function and option bag, generated from the sources

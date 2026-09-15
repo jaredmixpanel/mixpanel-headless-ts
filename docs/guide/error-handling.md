@@ -1,11 +1,11 @@
 ---
 title: Error handling
-description: The coded error hierarchy — instanceof versus .code, what the wire raises, retries and transport failures, and the full table of classes and codes.
+description: "The coded error hierarchy — instanceof versus .code, what the wire raises, retries and transport failures, and the full table of classes and codes."
 ---
 
 # Error handling
 
-Every error the library throws extends `MixpanelHeadlessError` and carries a stable, machine-readable `code` plus a structured `details` bag. Branch on classes and codes, never on message text:
+Every error the library throws extends [`MixpanelHeadlessError`](/reference/core/classes/MixpanelHeadlessError) and carries a stable, machine-readable `code` plus a structured `details` bag. Branch on classes and codes, never on message text:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -77,17 +77,17 @@ function explain(err: unknown): string {
 
 Builders and facade methods validate their arguments client-side and throw **before a request is made**:
 
-- `ParamValidationError` — a value guard failed (empty event name, non-positive window, malformed date, mutually exclusive options). The `code` is the guard's registry code — see [the registry](#coded-guard-registry).
+- [`ParamValidationError`](/reference/core/classes/ParamValidationError) — a value guard failed (empty event name, non-positive window, malformed date, mutually exclusive options). The `code` is the guard's registry code — see [the registry](#coded-guard-registry).
 - `ParamTypeError` — a type guard failed (`code` `VALIDATION_ERROR`).
-- `BookmarkValidationError` — the assembled bookmark params failed schema validation. `errors` is a list of `ValidationError` findings (a plain record, not an exception: `path`, `message`, `code`, `severity`, `suggestion`, `fix`), so a UI can point at the exact field.
+- [`BookmarkValidationError`](/reference/core/classes/BookmarkValidationError) — the assembled bookmark params failed schema validation. `errors` is a list of [`ValidationError`](/reference/core/classes/ValidationError) findings (a plain record, not an exception: `path`, `message`, `code`, `severity`, `suggestion`, `fix`), so a UI can point at the exact field.
 - `DateRangeTooLargeError`, `EventNotFoundError`, `BusinessContextValidationError`, `WorkspaceScopeError` — domain guards with their own codes.
 
 ### Configuration and login
 
-- `ConfigError` — an axis could not be resolved, the config or bridge file is malformed, or an account operation was invalid. Subclasses: `AccountNotFoundError`, `AccountExistsError`, `AccountInUseError`, `ProjectNotFoundError`, `InvalidArgumentError`.
-- `OAuthError` — anything in the PKCE flow, token refresh or static-token resolution. Codes include `OAUTH_TOKEN_ERROR` (default), `OAUTH_REFRESH_ERROR`, `OAUTH_REFRESH_REVOKED`, `OAUTH_REGISTRATION_ERROR`, `OAUTH_TIMEOUT`, `OAUTH_PORT_ERROR`, `OAUTH_BROWSER_ERROR`, `OAUTH_AUTH_DENIED`, `OAUTH_STATE_MISMATCH`, `OAUTH_CONFIG_ERROR`, `OAUTH_PASTE_ERROR`. `RegionProbeError` (`OAUTH_REGION_PROBE_FAILED`) and `RegionProbeNetworkError` (`OAUTH_NETWORK_UNREACHABLE`) come from the `us → eu → in` probe during login and carry the per-region `attempts`.
+- [`ConfigError`](/reference/core/classes/ConfigError) — an axis could not be resolved, the config or bridge file is malformed, or an account operation was invalid. Subclasses: `AccountNotFoundError`, `AccountExistsError`, `AccountInUseError`, `ProjectNotFoundError`, `InvalidArgumentError`.
+- [`OAuthError`](/reference/core/classes/OAuthError) — anything in the PKCE flow, token refresh or static-token resolution. Codes include `OAUTH_TOKEN_ERROR` (default), `OAUTH_REFRESH_ERROR`, `OAUTH_REFRESH_REVOKED`, `OAUTH_REGISTRATION_ERROR`, `OAUTH_TIMEOUT`, `OAUTH_PORT_ERROR`, `OAUTH_BROWSER_ERROR`, `OAUTH_AUTH_DENIED`, `OAUTH_STATE_MISMATCH`, `OAUTH_CONFIG_ERROR`, `OAUTH_PASTE_ERROR`. `RegionProbeError` (`OAUTH_REGION_PROBE_FAILED`) and `RegionProbeNetworkError` (`OAUTH_NETWORK_UNREACHABLE`) come from the `us → eu → in` probe during login and carry the per-region `attempts`.
 
-### The wire: `APIError` and its children
+### The wire: [`APIError`](/reference/core/classes/APIError) and its children
 
 An HTTP response outside `2xx` is mapped by status:
 
@@ -111,18 +111,18 @@ import { createNodeWorkspace } from "@mixpanel-headless/node";
 const ws = createNodeWorkspace({ clientOptions: { maxRetries: 5 } });
 ```
 
-Once the budget is spent you get a `RateLimitError`; `retryAfter` tells you how long the server asked you to wait and `rateLimitFormUrl` links the rate-limit-increase form. Other statuses are not retried — a `ServerError` reaches you on the first `5xx`.
+Once the budget is spent you get a [`RateLimitError`](/reference/core/classes/RateLimitError); `retryAfter` tells you how long the server asked you to wait and `rateLimitFormUrl` links the rate-limit-increase form. Other statuses are not retried — a `ServerError` reaches you on the first `5xx`.
 
 Network-level failures — DNS, connection refused, TLS, the wall-clock timeout — surface as a plain `MixpanelHeadlessError` with code `HTTP_ERROR` and the underlying exception in `cause`. Timeouts are route-aware by default (sized to outlast the server's own deadline) and can be pinned with `clientOptions.timeoutSeconds`. Cancelling a call through an `AbortSignal` is not an error of the library's: it rejects with a standard `AbortError` `DOMException`, which passes through untouched.
 
 ### Report links and session replay
 
-- The report-link family (`ReportLinkError` and its subclasses `ReportLinkParseError`, `UnsupportedReportLinkError`, `ReportLinkNotFoundError`, `ReportLinkScopeMismatchError`, `ShortLinkResolutionError`) is raised by `resolveReportLink` / `queryReportLink`; `details.hint` says what to do, and the `code` narrows the cause (for example `REPORT_LINK_REGION_MISMATCH`, `UNSUPPORTED_DASHBOARD_LINK`, `SHORT_LINK_NO_LOCATION`). See [Report links](/guide/report-links).
-- The session-replay family (`SessionReplayError` and its subclasses `ReplayNotFoundError`, `SessionReplayAccessError`, `SignedURLExpiredError`, `UnsupportedReplayFormatError`) extends `APIError`, so `statusCode` is available. See [Session replay](/guide/session-replay).
+- The report-link family ([`ReportLinkError`](/reference/core/classes/ReportLinkError) and its subclasses `ReportLinkParseError`, `UnsupportedReportLinkError`, `ReportLinkNotFoundError`, `ReportLinkScopeMismatchError`, `ShortLinkResolutionError`) is raised by `resolveReportLink` / `queryReportLink`; `details.hint` says what to do, and the `code` narrows the cause (for example `REPORT_LINK_REGION_MISMATCH`, `UNSUPPORTED_DASHBOARD_LINK`, `SHORT_LINK_NO_LOCATION`). See [Report links](/guide/report-links).
+- The session-replay family ([`SessionReplayError`](/reference/core/classes/SessionReplayError) and its subclasses `ReplayNotFoundError`, `SessionReplayAccessError`, `SignedURLExpiredError`, `UnsupportedReplayFormatError`) extends `APIError`, so `statusCode` is available. See [Session replay](/guide/session-replay).
 
 ### Browser-only refusals
 
-`@mixpanel-headless/browser` adds one class, `BrowserUnsupportedError` (extends `MixpanelHeadlessError`), for capabilities the browser build refuses on policy or platform grounds: `BROWSER_SERVICE_ACCOUNT_REFUSED` (a service-account credential reached a page), `BROWSER_EXPORT_UNSUPPORTED` (the Export API serves no CORS headers) and `BROWSER_NO_PENDING_LOGIN` (`completeLogin` ran with no pending login in the store). See [In the browser](/guide/browser).
+`@mixpanel-headless/browser` adds one class, [`BrowserUnsupportedError`](/reference/browser/classes/BrowserUnsupportedError) (extends `MixpanelHeadlessError`), for capabilities the browser build refuses on policy or platform grounds: `BROWSER_SERVICE_ACCOUNT_REFUSED` (a service-account credential reached a page), `BROWSER_EXPORT_UNSUPPORTED` (the Export API serves no CORS headers) and `BROWSER_NO_PENDING_LOGIN` (`completeLogin` ran with no pending login in the store). See [In the browser](/guide/browser).
 
 ## The hierarchy
 
@@ -163,7 +163,7 @@ MixpanelHeadlessError                 UNKNOWN_ERROR
 └── WorkspaceScopeError               NO_WORKSPACES
 ```
 
-Every class is exported from `@mixpanel-headless/core` and re-exported from `@mixpanel-headless/browser` (so a page needs one import); `@mixpanel-headless/node` does not re-export them — import the error classes from `@mixpanel-headless/core` alongside `createNodeWorkspace`, as the examples on this page do. The classes are the same objects everywhere, so `instanceof` works whichever entry point constructed the workspace.
+Every class is exported from `@mixpanel-headless/core` and re-exported from `@mixpanel-headless/browser` (so a page needs one import); `@mixpanel-headless/node` does not re-export them — import the error classes from `@mixpanel-headless/core` alongside `createNodeWorkspace`, as the examples on this page do. The classes are the same objects everywhere, so `instanceof` works whichever entry point constructed the workspace. Each class has its own page in the [API reference](/api/) with the accessors it adds.
 
 ## Code reference
 

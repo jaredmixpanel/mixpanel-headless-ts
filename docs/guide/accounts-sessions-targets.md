@@ -1,6 +1,6 @@
 ---
 title: Accounts, sessions and targets
-description: The Node.js management namespaces — accounts, session and targets — over the ~/.mp/config.toml shared with the Python mp CLI, plus per-instance axis switching with ws.use().
+description: "The Node.js management namespaces — accounts, session and targets — over the ~/.mp/config.toml shared with the Python mp CLI, plus per-instance axis switching with ws.use()."
 ---
 
 # Accounts, sessions and targets
@@ -9,7 +9,7 @@ description: The Node.js management namespaces — accounts, session and targets
 The `accounts`, `session` and `targets` namespaces read and write `~/.mp/config.toml` and the token files under `~/.mp`, so they live in `@mixpanel-headless/node`. The browser package has no config file; see [In the browser](/guide/browser).
 :::
 
-`@mixpanel-headless/node` ships three ready-made management namespaces backed by `~/.mp/config.toml` — the same file the Python library's `mp` CLI uses, so `mp account list` and `accounts.list()` see the same accounts. They are the twins of Python's `mp.accounts`, `mp.session` and `mp.targets`:
+`@mixpanel-headless/node` ships three ready-made management namespaces backed by `~/.mp/config.toml` — the same file the Python library's `mp` CLI uses, so `mp account list` and `accounts.list()` see the same accounts. They are the twins of Python's `mp.accounts`, `mp.session` and `mp.targets` — [`accounts`](/reference/node/variables/accounts), [`session`](/reference/node/variables/session) and [`targets`](/reference/node/variables/targets):
 
 ```ts twoslash
 import { accounts, session, targets } from "@mixpanel-headless/node";
@@ -28,7 +28,7 @@ targets.use("prod"); // apply all three axes atomically
 
 Methods that only touch the config file are synchronous. Methods that reach the network (`test`, `login`, `loginUnified`) or the token store (`token`, `exportBridge`) return a `Promise`.
 
-Every call reads `MP_CONFIG_PATH`, `MP_OAUTH_STORAGE_DIR` and `MP_AUTH_FILE` when it happens rather than when the module loads, so switching the config path mid-process takes effect on the next call. Callers who want one pinned configuration build their own effect bag with `createNodeAuthEffects({ configPath })` and the core namespace factories (`createAccountsNamespace`, `createSessionNamespace`, `createTargetsNamespace`).
+Every call reads `MP_CONFIG_PATH`, `MP_OAUTH_STORAGE_DIR` and `MP_AUTH_FILE` when it happens rather than when the module loads, so switching the config path mid-process takes effect on the next call. Callers who want one pinned configuration build their own effect bag with [`createNodeAuthEffects({ configPath })`](/reference/node/functions/createNodeAuthEffects) and the core namespace factories ([`createAccountsNamespace`](/reference/core/functions/createAccountsNamespace), [`createSessionNamespace`](/reference/core/functions/createSessionNamespace), [`createTargetsNamespace`](/reference/core/functions/createTargetsNamespace)).
 
 ## The account model
 
@@ -73,7 +73,7 @@ await accounts.add("ci", {
 });
 ```
 
-`add` returns the new account's `AccountSummary`. The first account added auto-promotes to active. `region` is required for non-browser types; pass `derive_name: true` with `name: null` to have the name derived from `/me` instead of choosing one. Adding a name that already exists throws `AccountExistsError` (`ACCOUNT_EXISTS`).
+`add` returns the new account's [`AccountSummary`](/reference/core/classes/AccountSummary). The full method list is the [`AccountsNamespace`](/reference/core/interfaces/AccountsNamespace) interface. The first account added auto-promotes to active. `region` is required for non-browser types; pass `derive_name: true` with `name: null` to have the name derived from `/me` instead of choosing one. Adding a name that already exists throws `AccountExistsError` (`ACCOUNT_EXISTS`).
 
 The one-call alternative for interactive use is `loginUnified`, which detects the auth type from the environment, probes the region, derives the name and pins a project — see [Configuration → Quick start](/getting-started/configuration#quick-start-loginunified). It is also reachable as `accounts.loginUnified()`.
 
@@ -108,7 +108,7 @@ if (probe.ok) {
 const bearer = await accounts.token("personal"); // string | null
 ```
 
-`test` hits `/me` and reports rather than throws: `ok`, `user`, `accessible_project_count`, and on failure `error`, `error_code` and `error_details` — the same shape as a serialized library error. `token` returns a valid bearer for OAuth accounts (refreshing an `oauth_browser` token first when it is about to expire) and `null` for a service account, which has no bearer.
+`test` hits `/me` and reports rather than throws ([`AccountTestResult`](/reference/core/classes/AccountTestResult)): `ok`, `user`, `accessible_project_count`, and on failure `error`, `error_code` and `error_details` — the same shape as a serialized library error. `token` returns a valid bearer for OAuth accounts (refreshing an `oauth_browser` token first when it is about to expire) and `null` for a service account, which has no bearer.
 
 ### Updating, logging out and removing
 
@@ -128,7 +128,7 @@ const orphaned = accounts.remove("ci", { force: true }); // targets that referen
 
 ## `session`
 
-The session namespace is the persisted `[active]` block:
+The session namespace ([`SessionNamespace`](/reference/core/interfaces/SessionNamespace)) is the persisted `[active]` block:
 
 ```ts twoslash
 import { session } from "@mixpanel-headless/node";
@@ -143,7 +143,7 @@ session.use({ target: "ecom" }); // all three axes from [targets.ecom]
 
 ## `targets`
 
-A **target** is a saved (account, project, optional workspace) triple — a named cursor position you can apply in one call:
+A **target** is a saved (account, project, optional workspace) triple — a named cursor position you can apply in one call ([`TargetsNamespace`](/reference/core/interfaces/TargetsNamespace)):
 
 ```ts twoslash
 import { targets } from "@mixpanel-headless/node";
@@ -168,7 +168,7 @@ targets.remove("ecom");
 
 ## Per-instance axes: `ws.use()`
 
-Workspaces pin axes per instance, without touching the persisted session. `ws.use()` swaps any axis in place, keeps the HTTP client (and its connection pool), and returns `this` for chaining:
+Workspaces pin axes per instance, without touching the persisted session. [`ws.use()`](/reference/core/classes/Workspace#use) ([`WorkspaceUseOptions`](/reference/core/interfaces/WorkspaceUseOptions)) swaps any axis in place, keeps the HTTP client (and its connection pool), and returns `this` for chaining:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -234,7 +234,7 @@ const targets = createTargetsNamespace(effects);
 const ws = createNodeWorkspace({ configPath: "/srv/app/mp/config.toml" });
 ```
 
-`ConfigManager` (the TOML file), `OAuthFlow` (the loopback-callback PKCE flow), `OAuthStorage` (per-account token files) and `MeCache` (the on-disk `/me` cache) are exported too, for callers who assemble the pieces themselves.
+[`ConfigManager`](/reference/node/classes/ConfigManager) (the TOML file), [`OAuthFlow`](/reference/node/classes/OAuthFlow) (the loopback-callback PKCE flow), [`OAuthStorage`](/reference/node/classes/OAuthStorage) (per-account token files) and [`MeCache`](/reference/node/classes/MeCache) (the on-disk `/me` cache) are exported too, for callers who assemble the pieces themselves.
 
 ## Next steps
 
