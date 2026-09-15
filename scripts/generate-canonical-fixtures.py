@@ -57,21 +57,23 @@ corpus's own encoding for non-JSON Python values (datetime, bytes,
 callables), so they are not params data at all. The skip is counted and
 printed.
 
-Usage (any CPython 3.11+):
+Usage (the pinned CPython only — see scripts/compat-python.pin.json):
 
-    python3 scripts/generate-canonical-fixtures.py
-    npm run fmt
+    npm run generate:canonical-fixtures
 
-**The `npm run fmt` step is required**, not optional: Prettier owns
-formatting for every file in this repo including the emitted JSON, and it
-reflows the arrays and rewrites number literals in the ``params`` field
-(``1e-07`` -> ``1e-7``). Both spellings parse to the same double, so the
-fixtures are unaffected — but skipping the step leaves ``npm run check``
-red on ``prettier --check``. The ``canonical`` field is a JSON *string*
-and is never touched.
+That npm script runs this generator through ``uv run --python <pin>`` and
+then Prettier on the output. **The Prettier step is required**, not
+optional: Prettier owns formatting for every file in this repo including
+the emitted JSON, and it reflows the arrays and rewrites number literals in
+the ``params`` field (``1e-07`` -> ``1e-7``). Both spellings parse to the
+same double, so the fixtures are unaffected — but skipping the step leaves
+``npm run check`` red on ``prettier --check``. The ``canonical`` field is a
+JSON *string* and is never touched.
 
 Re-run + commit whenever the hand table changes or the corpus pin in
-``conformance-runner/corpus.config.json`` moves.
+``conformance-runner/corpus.config.json`` moves;
+tests/generated-tables-provenance.test.ts fails on a stale pin or on an
+edited generator whose output was not re-emitted.
 """
 
 from __future__ import annotations
@@ -82,6 +84,8 @@ import math
 import sys
 from pathlib import Path
 from typing import Any
+
+from gen_provenance import generator_sha256, require_pinned_interpreter
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CORPUS_DIR = REPO_ROOT / "conformance-runner" / "corpus"
@@ -461,6 +465,7 @@ def main() -> int:
     Returns:
         Process exit code (0 on success).
     """
+    require_pinned_interpreter()
     fixtures: list[dict[str, Any]] = []
 
     def emit(name: str, source: str, raw: Any) -> None:
@@ -503,10 +508,10 @@ def main() -> int:
         "$comment": [
             "GENERATED FILE - do not hand-edit.",
             "Source: scripts/generate-canonical-fixtures.py (CPython is the oracle).",
-            "Reproduce with:  python3 scripts/generate-canonical-fixtures.py "
-            "&& npm run fmt",
-            "The `npm run fmt` step is REQUIRED - Prettier owns formatting for",
-            "this file and rewrites number literals in `params` (1e-07 -> 1e-7);",
+            "Reproduce with:  npm run generate:canonical-fixtures",
+            "(the pinned CPython via uv, then Prettier). The Prettier step is",
+            "REQUIRED - Prettier owns formatting for this file and rewrites",
+            "number literals in `params` (1e-07 -> 1e-7);",
             "both parse to the same double, and the `canonical` field is a",
             "string Prettier never touches. Skipping it leaves the gate red.",
             "",
@@ -516,6 +521,8 @@ def main() -> int:
             "`normalized: true` means the numeric normalization rule (integral",
             "number -> integer spelling) changed the bytes for this row.",
             f"Provenance: CPython {py}, corpus pin {pin}, {len(fixtures)} fixtures.",
+            f"Generator sha256: {generator_sha256(__file__)} "
+            "(scripts/generate-canonical-fixtures.py).",
         ],
         "fixtures": fixtures,
     }
@@ -533,7 +540,7 @@ def main() -> int:
         f"({changed} exercise the normalization rule) "
         f"(CPython {py}, corpus pin {pin})"
     )
-    print("NEXT: run `npm run fmt` — Prettier owns this file's formatting.")
+    print("NEXT: Prettier must rewrite this file (the npm script does it).")
     return 0
 
 

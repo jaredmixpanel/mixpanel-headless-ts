@@ -49,7 +49,8 @@
     "oracle": "node scripts/run-oracle.mjs",
     "generate:api-map": "node scripts/generate-api-map.mjs",
     "generate:bridge-allowlist": "node scripts/generate-bridge-allowlist.mjs",
-    "generate:compat-tables": "uv run --no-project python scripts/generate-non-printable.py && uv run --no-project python scripts/generate-decimal-digits.py && uv run --no-project python scripts/generate-whitespace.py",
+    "generate:compat-tables": "uv run --python 3.14.6 --no-project python scripts/generate-non-printable.py && uv run --python 3.14.6 --no-project python scripts/generate-decimal-digits.py && uv run --python 3.14.6 --no-project python scripts/generate-whitespace.py",
+    "generate:canonical-fixtures": "uv run --python 3.14.6 --no-project python scripts/generate-canonical-fixtures.py && prettier --write packages/core/test/compat/fixtures/canonical-fixtures.json",
     "generate:all": "npm run generate:error-codes && npm run generate:api-map && npm run generate:bridge-allowlist",
     "audit:comments": "node scripts/audit/comment-archaeology.mjs",
     "audit:comments:fix": "node scripts/audit/comment-archaeology.mjs --fix"

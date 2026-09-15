@@ -68,8 +68,11 @@ the packages themselves run on >= 22.12. Install with `npm ci` (lockfile-exact).
 - `npm run sync:corpus` (`MP_PYTHON_REPO`, `MP_RIG_BRANCH`) — re-snapshot the
   corpus; `npm run vendor:drift` (`ANALYTICS_ROOT`) — vendored-contract
   integrity; `npm run audit:comments` — comment-archaeology scan.
-- Generators: `npm run generate:all` (error-codes, api-map, bridge-allowlist),
-  `npm run generate:compat-tables` (the three CPython-pinned tables, needs `uv`).
+- Generators: `npm run generate:all` (error-codes, api-map, bridge-allowlist);
+  `npm run generate:compat-tables` (the three compat tables) and
+  `npm run generate:canonical-fixtures` run their Python generators through
+  `uv run --python <pin>` — the pin is `scripts/compat-python.pin.json`, and
+  the generators refuse any other interpreter.
 
 ## Layout (npm workspaces)
 
@@ -124,8 +127,12 @@ Regenerate instead (full table with inputs and freshness tests in CONTRIBUTING.m
 - `packages/core/src/errors-codes.gen.ts` ← `npm run generate:error-codes` (byte-exact test)
 - `conformance-runner/bridge-allowlist.gen.json` ← `npm run generate:bridge-allowlist` (byte-exact test)
 - `packages/core/src/compat/{non-printable,decimal-digits,whitespace}.gen.ts` ←
-  `npm run generate:compat-tables` (no freshness test yet; parity tests only)
-- `packages/core/test/compat/fixtures/canonical-fixtures.json` ← `scripts/generate-canonical-fixtures.py` + `npm run fmt`
+  `npm run generate:compat-tables` (provenance test
+  `tests/generated-tables-provenance.test.ts`: interpreter pin, generator
+  sha256, header counts; parity tests cover the bodies)
+- `packages/core/test/compat/fixtures/canonical-fixtures.json` ←
+  `npm run generate:canonical-fixtures` (generator + Prettier; the same
+  provenance test also pins it to the corpus `sourceCommit`)
 - `vendor/**` — vendored verbatim with sha256 provenance (`PROVENANCE.json`); re-vendor, don't patch.
 
 ## Conventions
