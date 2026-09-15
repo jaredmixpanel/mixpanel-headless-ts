@@ -434,6 +434,7 @@ export async function runVector(
  * @returns The vector result.
  * @throws Error - Infrastructure failures (caught by {@link runVector}).
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 async function replayVector(
   vector: ConformanceVector,
   capability: string,

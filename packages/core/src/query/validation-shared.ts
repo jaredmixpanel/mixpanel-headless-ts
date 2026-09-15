@@ -444,6 +444,22 @@ export function suggest(
   return matches.length > 0 ? matches : null;
 }
 
+/** Arguments of {@link enumError} (the Python positional parameters, named). */
+export interface EnumErrorArgs {
+  /** JSONPath-like location. */
+  readonly path: string;
+  /** Human-readable field name. */
+  readonly field: string;
+  /** The invalid value. */
+  readonly value: string;
+  /** Set of valid values. */
+  readonly valid: ReadonlySet<string>;
+  /** Machine-readable error code. */
+  readonly code: string;
+  /** Error severity level (default `"error"`). */
+  readonly severity?: "error" | "warning" | undefined;
+}
+
 /**
  * Build a validation error for an invalid enum value with suggestions.
  *
@@ -451,22 +467,14 @@ export function suggest(
  * display-only (R5.4) but ported faithfully, including the
  * `sorted(valid)[:5]` sample list repr in the no-suggestion branch.
  *
- * @param path - JSONPath-like location.
- * @param field - Human-readable field name.
- * @param value - The invalid value.
- * @param valid - Set of valid values.
- * @param code - Machine-readable error code.
- * @param severity - Error severity level (default `"error"`).
+ * @param args - The finding: `path` (JSONPath-like location), `field`
+ *   (human-readable name), `value` (the invalid text), `valid` (the
+ *   accepted set), `code` and the optional `severity` (default
+ *   `"error"`).
  * @returns ValidationError with fuzzy-matched suggestions.
  */
-export function enumError(
-  path: string,
-  field: string,
-  value: string,
-  valid: ReadonlySet<string>,
-  code: string,
-  severity: "error" | "warning" = "error",
-): ValidationError {
+export function enumError(args: EnumErrorArgs): ValidationError {
+  const { path, field, value, valid, code, severity = "error" } = args;
   const suggestion = suggest(value, valid);
   let msg: string;
   if (suggestion !== null && suggestion.length > 0) {

@@ -332,6 +332,7 @@ export interface AccountsAddOptions {
  *   `region` omitted for a non-browser type, or `derive_name` for
  *   `oauth_browser`.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function accountsAdd(
   effects: AuthEffects,
   name: string | null | undefined,

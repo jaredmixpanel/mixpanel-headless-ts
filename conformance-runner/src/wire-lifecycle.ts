@@ -44,6 +44,7 @@ function optionalBody(
  *
  * @param implementations - The registry to extend.
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerLifecycleWireBindings(
   implementations: ImplementationRegistry,
 ): void {

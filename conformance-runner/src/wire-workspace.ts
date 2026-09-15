@@ -248,6 +248,7 @@ function stripRichTags(value: JsonValue): JsonValue {
  * @returns The expect-encoded vector-JSON tree.
  * @throws Error - When a value has no encoding (a binding bug).
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function encodeFacadeValue(
   codecs: CodecRegistry,
   value: unknown,
@@ -299,6 +300,7 @@ export function encodeFacadeValue(
       if (isPlainObject(current)) {
         const out: Record<string, JsonValue> = {};
         for (const [key, member] of Object.entries(current)) {
+          // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
           if (member === undefined) {
             continue; // absent, not null (R3.5)
           }
@@ -499,6 +501,7 @@ export function optionsBag<T>(
  * @param implementations - The registry to extend.
  * @param codecs - The codec registry (output encoding + rich inputs).
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerWorkspaceBindings(
   implementations: ImplementationRegistry,
   codecs: CodecRegistry,

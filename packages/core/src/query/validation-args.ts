@@ -621,13 +621,13 @@ function checkFunnelConversionWindow(
   // F7: Conversion window unit validation
   if (!VALID_CONVERSION_WINDOW_UNITS.has(unit)) {
     push(
-      enumError(
-        "conversion_window_unit",
-        "conversion_window_unit",
-        unit,
-        VALID_CONVERSION_WINDOW_UNITS,
-        "F7_INVALID_WINDOW_UNIT",
-      ),
+      enumError({
+        path: "conversion_window_unit",
+        field: "conversion_window_unit",
+        value: unit,
+        valid: VALID_CONVERSION_WINDOW_UNITS,
+        code: "F7_INVALID_WINDOW_UNIT",
+      }),
     );
   }
 
@@ -1005,65 +1005,65 @@ function checkRetentionEnums(push: PushError, args: RetentionEnumArgs): void {
   // R7: retention_unit validation
   if (!VALID_RETENTION_UNITS.has(retentionUnit)) {
     push(
-      enumError(
-        "retention_unit",
-        "retention_unit",
-        retentionUnit,
-        VALID_RETENTION_UNITS,
-        "R7_INVALID_RETENTION_UNIT",
-      ),
+      enumError({
+        path: "retention_unit",
+        field: "retention_unit",
+        value: retentionUnit,
+        valid: VALID_RETENTION_UNITS,
+        code: "R7_INVALID_RETENTION_UNIT",
+      }),
     );
   }
 
   // R8: alignment validation
   if (!VALID_RETENTION_ALIGNMENT.has(alignment)) {
     push(
-      enumError(
-        "alignment",
-        "alignment",
-        alignment,
-        VALID_RETENTION_ALIGNMENT,
-        "R8_INVALID_ALIGNMENT",
-      ),
+      enumError({
+        path: "alignment",
+        field: "alignment",
+        value: alignment,
+        valid: VALID_RETENTION_ALIGNMENT,
+        code: "R8_INVALID_ALIGNMENT",
+      }),
     );
   }
 
   // R9: math validation (public-facing subset)
   if (!VALID_RETENTION_MATH_PUBLIC.has(math)) {
     push(
-      enumError(
-        "math",
-        "math",
-        math,
-        VALID_RETENTION_MATH_PUBLIC,
-        "R9_INVALID_MATH",
-      ),
+      enumError({
+        path: "math",
+        field: "math",
+        value: math,
+        valid: VALID_RETENTION_MATH_PUBLIC,
+        code: "R9_INVALID_MATH",
+      }),
     );
   }
 
   // R10: mode validation
   if (mode === null || !VALID_RETENTION_MODES.has(mode)) {
     push(
-      enumError(
-        "mode",
-        "mode",
-        pythonStrLoose(mode),
-        VALID_RETENTION_MODES,
-        "R10_INVALID_MODE",
-      ),
+      enumError({
+        path: "mode",
+        field: "mode",
+        value: pythonStrLoose(mode),
+        valid: VALID_RETENTION_MODES,
+        code: "R10_INVALID_MODE",
+      }),
     );
   }
 
   // R11: unit must be valid for retention context (day, week, month only)
   if (unit === null || !VALID_RETENTION_UNITS.has(unit)) {
     push(
-      enumError(
-        "unit",
-        "unit",
-        pythonStrLoose(unit),
-        VALID_RETENTION_UNITS,
-        "R11_INVALID_UNIT",
-      ),
+      enumError({
+        path: "unit",
+        field: "unit",
+        value: pythonStrLoose(unit),
+        valid: VALID_RETENTION_UNITS,
+        code: "R11_INVALID_UNIT",
+      }),
     );
   }
 }
@@ -1356,31 +1356,39 @@ function checkFlowEnums(
   // Enum: count_type validation
   if (!VALID_FLOWS_COUNT_TYPES.has(countType)) {
     push(
-      enumError(
-        "count_type",
-        "count_type",
-        countType,
-        VALID_FLOWS_COUNT_TYPES,
-        "FL_INVALID_COUNT_TYPE",
-      ),
+      enumError({
+        path: "count_type",
+        field: "count_type",
+        value: countType,
+        valid: VALID_FLOWS_COUNT_TYPES,
+        code: "FL_INVALID_COUNT_TYPE",
+      }),
     );
   }
 
   // Enum: mode validation
   if (!VALID_FLOWS_MODES.has(mode)) {
-    push(enumError("mode", "mode", mode, VALID_FLOWS_MODES, "FL_INVALID_MODE"));
+    push(
+      enumError({
+        path: "mode",
+        field: "mode",
+        value: mode,
+        valid: VALID_FLOWS_MODES,
+        code: "FL_INVALID_MODE",
+      }),
+    );
   }
 
   // Enum: conversion_window_unit validation
   if (!VALID_FLOWS_CONVERSION_WINDOW_UNITS.has(unit)) {
     push(
-      enumError(
-        "conversion_window_unit",
-        "conversion_window_unit",
-        unit,
-        VALID_FLOWS_CONVERSION_WINDOW_UNITS,
-        "FL_INVALID_WINDOW_UNIT",
-      ),
+      enumError({
+        path: "conversion_window_unit",
+        field: "conversion_window_unit",
+        value: unit,
+        valid: VALID_FLOWS_CONVERSION_WINDOW_UNITS,
+        code: "FL_INVALID_WINDOW_UNIT",
+      }),
     );
   }
 }

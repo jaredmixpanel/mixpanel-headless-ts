@@ -254,6 +254,7 @@ export interface PaginateAllOptions {
  * }
  * ```
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function* paginateAll(
   client: PaginationClient,
   path: string,

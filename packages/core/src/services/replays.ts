@@ -377,6 +377,7 @@ export class ReplaysService {
    * @throws UnsupportedReplayFormatError - First event isn't rrweb.
    * @throws MixpanelHeadlessError - Underlying CDN HTTP error.
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   async *walkCdnAsync(
     signed: SignedReplay,
     options: WalkCdnOptions,
@@ -855,6 +856,7 @@ export class ReplaysService {
    * @throws MixpanelHeadlessError - Code `REPLAYS_QUERY_FN_REQUIRED`
    *   when the service was constructed without a `queryFn`.
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   async eventsFor(
     replayIds: readonly string[],
     options: EventsForOptions = {},

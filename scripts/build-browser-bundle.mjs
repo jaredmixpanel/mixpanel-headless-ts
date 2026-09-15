@@ -68,6 +68,7 @@ const BUILD_ARGS = [
   "--platform=browser",
   "--target=chrome148",
   "--minify",
+  "--keep-names",
   "--legal-comments=inline",
   // The workspace aliases (source, not dist) as the equivalent CLI flags,
   // so the recorded recipe reproduces the same bytes.
@@ -145,6 +146,11 @@ async function bundleOne(format, globalName) {
     platform: "browser",
     target: "chrome148",
     minify: true,
+    // Runtime names are load-bearing: `MixpanelHeadlessError` sets
+    // `this.name` from `constructor.name` and `pythonTypeName` prints
+    // `constructor.name` as the Python class name; minified identifiers
+    // would turn both into single letters.
+    keepNames: true,
     sourcemap: false,
     legalComments: "inline",
     banner: { js: LICENSE_BANNER },

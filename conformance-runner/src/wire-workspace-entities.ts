@@ -278,6 +278,7 @@ function bindFacade(
  * @param implementations - The registry to extend.
  * @param codecs - The codec registry (output encoding + rich inputs).
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerWorkspaceEntityBindings(
   implementations: ImplementationRegistry,
   codecs: CodecRegistry,

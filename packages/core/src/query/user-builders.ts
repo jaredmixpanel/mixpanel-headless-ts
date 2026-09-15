@@ -275,6 +275,7 @@ export function isCohortFilter(f: Filter): boolean {
  * // 'properties["plan"] == "premium"'
  * ```
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function filterToSelector(f: Filter): string {
   const op: string = f._operator;
   // `_prop_ref` runs BEFORE the operator dispatch (`:117`) — ES1 wins

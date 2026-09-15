@@ -354,9 +354,8 @@ const config = defineConfig([
       ],
       "simple-import-sort/exports": "error",
       // import-x's no-cycle skips type-only imports unconditionally (there
-      // is no `ignoreTypeImports` option in 4.x), so this already is the
-      // "types ignored" form; the remaining hits are the real cycles Phase 6
-      // §10.4 breaks (lane L7).
+      // is no `ignoreTypeImports` option in 4.x), so this is the "types
+      // ignored" form; the value-level graph is acyclic (madge agrees).
       "import-x/no-cycle": "error",
       // tsc (NodeNext) already rejects unresolved specifiers and invalid
       // default imports; import-x's second pass cannot see `export =`
@@ -487,9 +486,20 @@ const config = defineConfig([
       "no-useless-assignment": "error",
       // Library sources re-enable it below; scripts, rig CLIs and tests log.
       "no-console": "off",
+      // Library, rig and oracle sources only: the one-off generators and
+      // codemods under scripts/ and the test fixtures are exempt below.
       complexity: ["error", 20],
       "max-depth": ["error", 4],
       "max-params": ["error", 5],
+    },
+  },
+  {
+    name: "repo/scripts-and-tests/no-size-rules",
+    files: ["scripts/**", ...TEST_FILES],
+    rules: {
+      complexity: "off", // one-off generators, codemods and test bodies
+      "max-depth": "off",
+      "max-params": "off",
     },
   },
 
@@ -610,7 +620,7 @@ const config = defineConfig([
       // --- typescript-eslint: off ------------------------------------------
       // 603 hits, purely stylistic, and it fights `require-await` here.
       "@typescript-eslint/promise-function-async": "off",
-      // 361 hits, low value; a light config may land after Phase 6 (lane L7).
+      // 361 hits, low value; a light config is a possible follow-up.
       "@typescript-eslint/member-ordering": "off",
       // High noise in an `unknown`-heavy port; `no-unnecessary-condition`
       // covers the useful part.
@@ -679,6 +689,57 @@ const config = defineConfig([
       "jsdoc/require-returns": "error",
     },
   },
+  // Size caps for the rig and the oracle (the library block above covers
+  // packages/*/src; tests are exempt in the test block).
+  {
+    name: "repo/rig/size",
+    files: ["conformance-runner/src/**/*.ts", "differential/**/*.ts"],
+    ignores: [...TEST_FILES],
+    rules: {
+      "max-lines": [
+        "error",
+        { max: 800, skipBlankLines: true, skipComments: true },
+      ],
+      "max-lines-per-function": [
+        "error",
+        { max: 120, skipBlankLines: true, skipComments: true },
+      ],
+    },
+  },
+  // `max-lines` ratchet — files over the 800-line cap, each pinned at its
+  // current size (rounded up) so none can grow; delete an entry once its
+  // file drops below 800. Splitting these is a per-file decision recorded
+  // in the Phase 6 Ω report: the data-table modules (entity/result/param
+  // models, the pydantic schema mirrors) mirror Python module boundaries
+  // and share one 1000-line ceiling; the rest are listed singly.
+  ...[
+    [
+      [
+        "packages/core/src/types/entities/**/*.ts",
+        "packages/core/src/types/results/**/*.ts",
+        "packages/core/src/types/query-params/**/*.ts",
+        "packages/core/src/bookmarks/schema.ts",
+        "packages/core/src/bookmarks/schema-sorting.ts",
+      ],
+      1000,
+    ],
+    [["packages/core/src/types/results/live-query.ts"], 1400],
+    [["packages/core/src/index.ts"], 1000], // the explicit public export list
+    [["packages/core/src/client/client.ts"], 900],
+    [["packages/core/src/services/queries/query-host.ts"], 900],
+    [["packages/core/src/services/live-query-transforms.ts"], 950],
+    [["packages/core/src/replays/rrweb-analyzer.ts"], 950],
+    [["packages/core/src/query/validation-args.ts"], 1300],
+    [["packages/core/src/workspace-query-params.ts"], 1700],
+    [["packages/core/src/workspace.ts"], 2000], // the facade: ~140 one-line delegations with their docblocks
+    [["conformance-runner/src/wire-workspace.ts"], 850],
+  ].map(([files, max]) => ({
+    name: `repo/max-lines-ratchet/${max}`,
+    files,
+    rules: {
+      "max-lines": ["error", { max, skipBlankLines: true, skipComments: true }],
+    },
+  })),
   {
     // D1: files whose declared property names mirror Python data 1:1 keep
     // snake_case — entity/result/param models, bookmark params, error
@@ -980,18 +1041,6 @@ const config = defineConfig([
       "jsdoc/valid-types": "off",
       "jsdoc/escape-inline-tags": "off",
       "tsdoc/syntax": "off",
-    },
-  }),
-
-  // --- Phase 4 lane L7: size / complexity / real import cycles — lands after Phase 6 ---
-  ...lane("L7", {
-    rules: {
-      complexity: "off",
-      "max-depth": "off",
-      "max-params": "off",
-      "max-lines": "off",
-      "max-lines-per-function": "off",
-      "import-x/no-cycle": "off",
     },
   }),
 

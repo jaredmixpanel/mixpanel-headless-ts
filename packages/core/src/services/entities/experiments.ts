@@ -208,6 +208,7 @@ export interface ExperimentMethods {
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createExperimentMethods(core: ClientCore): ExperimentMethods {
   /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
   const scopedPath = (domainPath: string): string =>

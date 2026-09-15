@@ -943,6 +943,7 @@ export const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
  * @param loc - `loc` prefix for emitted errors (includes the field key).
  * @param out - Error sink, appended in emission order.
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 function validateFieldValue(
   value: unknown,
   type: FieldType,

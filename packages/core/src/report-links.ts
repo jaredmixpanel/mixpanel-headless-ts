@@ -521,6 +521,7 @@ const NO_PATH: ParsedPath = {
  * @param segments - Non-empty path segments.
  * @returns The parsed path.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 function parsePath(segments: readonly string[]): ParsedPath {
   const n = segments.length;
   if (
@@ -643,6 +644,7 @@ function trimFragment(fragment: string): string {
  * parsed.slug;       // "EBrV5bW2u9Mw"
  * ```
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function parseReportLink(value: string): ParsedReportLink {
   // Python `value.strip()` — the CPython whitespace set (R11.3), not JS `trim()`.
   const raw = pythonStrip(value);

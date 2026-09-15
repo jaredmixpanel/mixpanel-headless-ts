@@ -1197,6 +1197,7 @@ export class ValidationError {
     path: string,
     message: string,
     code: string = "VALIDATION_ERROR",
+  // eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
     severity: ValidationSeverity = "error",
     suggestion: readonly string[] | null = null,
     fix: Readonly<Record<string, unknown>> | null = null,

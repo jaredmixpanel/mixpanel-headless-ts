@@ -1473,6 +1473,7 @@ export class Workspace {
    * @returns The validated engage params dict.
    * @throws BookmarkValidationError - Any validation layer.
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   #resolveUserParams(options: WorkspaceUserQueryOptions): ParamsDict {
     return resolveAndBuildUserParams({
       where: options.where ?? null,

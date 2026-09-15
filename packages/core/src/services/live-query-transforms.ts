@@ -526,6 +526,7 @@ export function transformFunnel(
  * @param unit - Retention period unit.
  * @returns The typed result with cohorts sorted by date (ascending).
  */
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 export function transformRetention(
   raw: Readonly<Record<string, unknown>>,
   bornEvent: string,
@@ -583,6 +584,7 @@ export function transformRetention(
  * @param on - Property used for segmentation (or `null`).
  * @returns The typed result with the calculated total.
  */
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 export function transformSegmentation(
   raw: Readonly<Record<string, unknown>>,
   event: string,
@@ -693,6 +695,7 @@ function stepSortKey(name: string): [number, string] {
  * @returns Step dicts with `event`, `count`, `step_conv_ratio`,
  *   `overall_conv_ratio`, `avg_time` and `avg_time_from_start` keys.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function extractFunnelStepsFromSeries(
   series: unknown,
   warn: WarningSink,
@@ -1440,6 +1443,7 @@ export function transformFlows(
  * @param addictionUnit - Measurement granularity.
  * @returns The typed result.
  */
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 export function transformFrequency(
   raw: Readonly<Record<string, unknown>>,
   event: string | null,
@@ -1471,6 +1475,7 @@ export function transformFrequency(
  * @param unit - Time aggregation unit.
  * @returns The typed result.
  */
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 export function transformNumericBucket(
   raw: Readonly<Record<string, unknown>>,
   event: string,
@@ -1504,6 +1509,7 @@ export function transformNumericBucket(
  * @param unit - Time aggregation unit.
  * @returns The typed result.
  */
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 export function transformNumericSum(
   raw: Readonly<Record<string, unknown>>,
   event: string,
@@ -1539,6 +1545,7 @@ export function transformNumericSum(
  * @param unit - Time aggregation unit.
  * @returns The typed result.
  */
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 export function transformNumericAverage(
   raw: Readonly<Record<string, unknown>>,
   event: string,

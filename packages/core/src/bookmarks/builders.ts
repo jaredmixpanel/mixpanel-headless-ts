@@ -354,6 +354,7 @@ export function patchCustomPropertyFiltersForTransform(
  * // [{ value: ["Power Users", "Not In Power Users"], resourceType: "events", … }]
  * ```
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildGroupSection(
   groupBy: GroupByElement | readonly GroupByElement[] | null,
   options?: { readonly data_group_id?: number | null },

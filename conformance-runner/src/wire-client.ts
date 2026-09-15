@@ -117,6 +117,7 @@ function sessionScalar(
  *   (D5.2), when the account is `oauth_browser`.
  * @throws Error - On an unknown account type or unreplayable shape.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildReplaySession(raw: JsonValue): {
   session: Session;
   browserToken: string | null;
@@ -492,6 +493,7 @@ function encodeWorkspaceRef(ref: WorkspaceRef): JsonValue {
  *
  * @param implementations - The registry to extend.
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerApiClientCoreBindings(
   implementations: ImplementationRegistry,
 ): void {

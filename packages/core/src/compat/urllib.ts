@@ -292,6 +292,7 @@ function hostnameOf(netloc: string): string | null {
  * @throws UrlSplitError - The `ValueError` cases (unbalanced `[`/`]`,
  *   invalid bracketed host, NFKC-injected delimiter).
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function urlsplit(input: string): SplitResult {
   let url = input;
   // `url.lstrip(_WHATWG_C0_CONTROL_OR_SPACE)`.

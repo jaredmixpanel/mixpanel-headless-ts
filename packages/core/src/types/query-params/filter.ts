@@ -555,6 +555,7 @@ export class Filter {
    *   the corresponding list-contains field is `null` (construct via
    *   {@link listContains}).
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   constructor(fields: FilterFields) {
     this._property = fields._property;
     this._property_type = fields._property_type ?? "string";

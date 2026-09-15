@@ -365,6 +365,7 @@ export interface BuildQueryParamsOptions {
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
   const {
     events,
@@ -650,6 +651,7 @@ export interface ResolveAndBuildParamsOptions {
  *   `V0_NO_EVENTS`, `V4_FORMULA_CONFLICT`, then the `V*` and `B*`
  *   sets).
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildParams(
   options: ResolveAndBuildParamsOptions,
 ): ParamsDict {
@@ -1398,6 +1400,7 @@ export interface BuildFlowParamsOptions {
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The flat bookmark params dict.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
   const {
     steps,
@@ -1547,6 +1550,7 @@ export interface ResolveAndBuildFlowParamsOptions {
  *   findings (`FL_TYPE_*`, `FL3`/`FL4`, `FL_INVALID_*`, then the FL*
  *   argument and bookmark sets).
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildFlowParams(
   options: ResolveAndBuildFlowParamsOptions,
 ): ParamsDict {
@@ -1972,6 +1976,7 @@ export interface ResolveAndBuildUserParamsOptions {
  *   param-level (UP1-UP4) findings, plus the `U9` / `U_FILTER` /
  *   `U_COHORT` guards raised here.
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildUserParams(
   options: ResolveAndBuildUserParamsOptions = {},
 ): ParamsDict {

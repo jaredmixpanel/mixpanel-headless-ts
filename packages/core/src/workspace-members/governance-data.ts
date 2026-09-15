@@ -577,6 +577,7 @@ export async function listLookupTables(
  *   non-dict `result`), `UPLOAD_FAILED` (FAILURE/REVOKED),
  *   `UPLOAD_NOT_FOUND` (NOTFOUND) or `UPLOAD_TIMEOUT` (deadline).
  */
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function pollLookupUpload(
   client: MixpanelClient,
   uploadId: string,

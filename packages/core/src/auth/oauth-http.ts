@@ -208,6 +208,7 @@ export interface PostTokenRequestContext {
  * change (+ ARB-B hardening); fix-of-record:
  * docs/history/phase3/bug-reports/python-oauth-error-details-token-payload.md.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function postTokenRequest(
   fetchImpl: typeof fetch,
   baseUrl: string,

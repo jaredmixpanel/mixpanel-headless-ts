@@ -142,6 +142,7 @@ function toCount(value: JsonValue): number {
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createEngageMethods(core: ClientCore): EngageMethods {
   return {
     engageStats: async (

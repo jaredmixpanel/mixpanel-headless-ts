@@ -271,6 +271,27 @@ function toPythonValue(value: JsonValue): PythonValue {
 }
 
 /**
+ * Read an error response body the way the Python client does
+ * (`response.json()` with the JSONDecodeError fallback
+ * `body.decode()[:500] if body else None`): the lossless parse with
+ * json.loads' non-finite constants accepted, else the first 500 code
+ * points of the text, else `null` for an empty body.
+ *
+ * @param text - The response body text.
+ * @returns The parsed body, its 500-code-point prefix, or `null`.
+ */
+export function parseErrorBody(text: string): JsonValue | null {
+  try {
+    return parseLossless(text, { pythonConstants: true });
+  } catch (error) {
+    if (!(error instanceof LosslessJsonError)) {
+      throw error;
+    }
+    return text === "" ? null : cpSlice(text, 0, 500);
+  }
+}
+
+/**
  * Extract a human-readable error message from a parsed error body — TS
  * port of `_error_message` (`api_client.py:81-106`).
  *
@@ -391,6 +412,7 @@ function raiseForStatus(
  * @throws MixpanelHeadlessError - Code `INVALID_RESPONSE` for a 2xx
  *   non-JSON body.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function handleResponse(
   response: WireResponse,
   context: ResponseContext,

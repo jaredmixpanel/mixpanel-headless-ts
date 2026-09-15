@@ -286,6 +286,7 @@ export function flowDropOffSummary(
       total += count;
       if (nodeType !== "DROPOFF") {
         for (const edge of nodeEdges(node)) {
+          // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
           if (edge["type"] === "DROPOFF") {
             dropoff += safeInt(edge["totalCount"] ?? "0");
           }

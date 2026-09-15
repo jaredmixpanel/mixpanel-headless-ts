@@ -311,6 +311,7 @@ export class CohortCriteria {
    *   `CD5_FROM_REQUIRES_TO`, `CD5_TO_REQUIRES_FROM`, `CD6_DATE_FORMAT`,
    *   `CD6_DATE_INVALID`, `CD6_DATE_ORDER` — first failing guard wins.
    */
+  // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   static didEvent(event: string, options?: DidEventOptions): CohortCriteria {
     const opts = options ?? {};
     const atLeast = opts.at_least ?? null;

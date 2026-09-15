@@ -298,6 +298,7 @@ async function withProgress<T>(
  * @throws OAuthError - PKCE failure; `RegionProbeError` /
  *   `RegionProbeNetworkError` propagate from the probe.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function loginUnified(
   effects: AuthEffects,
   options: LoginUnifiedOptions = {},
@@ -437,6 +438,7 @@ interface ReloginArgs {
  * @throws ConfigError - Region change (E-3), auth-type change (E-4),
  *   or missing env/stdin credentials.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 async function loginUnifiedRelogin(
   effects: AuthEffects,
   args: ReloginArgs,
@@ -679,6 +681,7 @@ interface NewCredentialArgs {
  * @throws ConfigError - Missing env credentials, or picker failures.
  * @throws RegionProbeError - No region accepted the credential.
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 async function loginUnifiedNewCredential(
   effects: AuthEffects,
   args: NewCredentialArgs,

@@ -21,7 +21,6 @@
  *   (`Object.hasOwn`, R4.8/watchlist §8 item 7).
  */
 
-import { cpSlice } from "../compat/index.js";
 import {
   MixpanelHeadlessError,
   ParamValidationError,
@@ -39,12 +38,12 @@ import {
   isPlainRecord,
   MixpanelHttpError,
   parseBody,
+  parseErrorBody,
   type RequestExecutor,
   type RetryLogger,
   type TransportRequestOptions,
 } from "./internals.js";
 import type { JsonValue } from "./json-value.js";
-import { LosslessJsonError, parseLossless } from "./lossless-json.js";
 import { buildUrl, type EndpointOverrides, type Region } from "./url.js";
 
 /** Dependencies of {@link appRequest} (the B4 client wires these). */
@@ -151,6 +150,7 @@ export interface AppRequestOptions {
  * });
  * ```
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function appRequest(
   deps: AppRequestDeps,
   method: string,
@@ -233,16 +233,7 @@ export async function appRequest(
       // non-finite constants accepted (arbiter fix F1), catch scope is
       // the JSONDecodeError analog only (arbiter fix F3/A2).
       if (response.status === 422) {
-        let errBody: JsonValue | null;
-        try {
-          errBody = parseLossless(response.text, { pythonConstants: true });
-        } catch (error) {
-          if (!(error instanceof LosslessJsonError)) {
-            throw error;
-          }
-          errBody =
-            response.text === "" ? null : cpSlice(response.text, 0, 500);
-        }
+        const errBody = parseErrorBody(response.text);
         throw new QueryError(errorMessage(errBody, "Unprocessable entity"), {
           statusCode: 422,
           responseBody: errBody,

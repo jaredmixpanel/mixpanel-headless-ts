@@ -534,6 +534,7 @@ const BUILTIN_TAGS: ReadonlySet<string> = new Set([
  * @throws UnencodableValueError - If the value has no encoding (functions,
  *   symbols, unknown class instances) or violates D6 rules 2/5.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function encodeExpectValue(
   value: unknown,
   encodeRich?: (value: object) => JsonValue | undefined,

@@ -317,6 +317,7 @@ export class DOMTracker {
     // stands in for `shift()`, which is O(n) per pop and made the walk
     // quadratic on 50k-node snapshots.
     let head = 0;
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
     while (head < queue.length) {
       const [currentNode, currentParentId] = defined(
         queue[head],
@@ -371,6 +372,7 @@ export class DOMTracker {
         }
         const descriptiveAttrs = new Map<string, unknown>();
         for (const attr of DOMTracker.DESCRIPTIVE_ATTRS) {
+            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
           if (sanitizedAttrs.has(attr)) {
             descriptiveAttrs.set(attr, sanitizedAttrs.get(attr));
           }
@@ -595,6 +597,7 @@ export class DOMTracker {
     }
 
     const tag = nodeData.tag ?? "element";
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
     const attrs = nodeData.attributes ?? new Map<string, unknown>();
     const text = nodeData.text ?? "";
     const parts: string[] = [tag];
@@ -1167,6 +1170,7 @@ class EventAnalyzer {
         }
       }
 
+            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
       const description =
         selectedTexts.length > 0
           ? `Selected '${selectedTexts.join(" ... ")}'`

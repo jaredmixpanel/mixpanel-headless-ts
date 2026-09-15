@@ -13,10 +13,16 @@
     // `@module … @internal` file headers (which sit above the first import
     // and would strip it from the .d.ts) included — and ~170 member-level
     // tags are exercised by the rig, browser src and the white-box tests
-    // (571 errors). Enabling it is a Phase-5/6 follow-up: reword the
-    // mentions, untag members outsiders use, then flip. The boundary the
-    // plan actually wants — nothing tagged `@internal` reachable from the
-    // public barrel — is enforced by tests/core-public-surface.test.ts.
+    // (571 errors). Re-measured after the Phase 6 sweep: `tsc -b` itself
+    // fails because the white-box test projects consume core's emitted
+    // .d.ts through project references and read `@internal` members
+    // (`Filter._property`, `MixpanelClient.core`, …), and a
+    // `skipLibCheck: false` pass over `packages/*/dist/**/*.d.ts` reports
+    // 46 dangling references in 27 files (41 × TS2305, 5 in internal.d.ts).
+    // Flipping it needs the docstring pass to untag those members first.
+    // The boundary the plan actually wants — nothing tagged `@internal`
+    // reachable from the public barrel — is enforced by
+    // tests/core-public-surface.test.ts.
     "declarationMap": true,
     "sourceMap": true
   }

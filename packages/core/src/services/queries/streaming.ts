@@ -27,6 +27,7 @@ import {
   errorMessage,
   isPlainRecord,
   MixpanelHttpError,
+  parseErrorBody,
 } from "../../client/internals.js";
 import {
   JsonNumber,
@@ -40,7 +41,7 @@ import {
 } from "../../client/lossless-json.js";
 import { normalizedAbortError } from "../../client/transport.js";
 import { codepoints } from "../../compat/codepoint.js";
-import { cpSlice, pythonJsonDumps } from "../../compat/index.js";
+import { pythonJsonDumps } from "../../compat/index.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
@@ -312,6 +313,7 @@ function pyIterate(results: JsonValue): readonly JsonValue[] {
   // Numbers / booleans / tokens: `'int' object is not iterable`.
   throw new TypeError("'object' is not iterable");
 }
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 async function* exportEvents(
   core: ClientCore,
   fromDate: string,
@@ -411,18 +413,7 @@ async function* exportEvents(
         );
       }
       if (response.status === 400) {
-        const bodyText = await response.text();
-        let responseBody: JsonValue | null;
-        try {
-          responseBody = parseLossless(bodyText, { pythonConstants: true });
-        } catch (error) {
-          if (!(error instanceof LosslessJsonError)) {
-            throw error;
-          }
-          // Python: `body.decode()[:500] if body else None` (codepoint
-          // slice, R11.6).
-          responseBody = bodyText === "" ? null : cpSlice(bodyText, 0, 500);
-        }
+        const responseBody = parseErrorBody(await response.text());
         throw new QueryError(errorMessage(responseBody, "Unknown error"), {
           statusCode: response.status,
           responseBody,
@@ -444,6 +435,7 @@ async function* exportEvents(
         try {
           event = parseLossless(line, { pythonConstants: true });
         } catch (error) {
+          // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
           if (!(error instanceof LosslessJsonError)) {
             throw error;
           }
@@ -484,6 +476,7 @@ async function* exportEvents(
   }
 }
 
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 async function* exportProfiles(
   core: ClientCore,
   options: ExportProfilesOptions = {},

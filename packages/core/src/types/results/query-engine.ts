@@ -177,6 +177,7 @@ export class QueryResult {
             continue;
           }
           for (const [dateKey, value] of Object.entries(segmentData)) {
+            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
             if (dateKey === "all") {
               rows.push({
                 event: metricName,

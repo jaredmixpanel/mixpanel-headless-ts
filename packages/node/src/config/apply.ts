@@ -125,6 +125,7 @@ export function applyClearActive(
  * @throws ConfigError - Account not found, type-incompatible field,
  *   token/token_env both supplied, or validation failure.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function applyUpdateAccount(
   raw: RawConfig,
   name: string,

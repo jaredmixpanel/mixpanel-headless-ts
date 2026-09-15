@@ -107,6 +107,7 @@ export function defaultBridgeSearchPaths(): readonly string[] {
  * @throws ParamValidationError - Any schema violation (the Pydantic
  *   `ValidationError` twin; `loadBridge` wraps it in `ConfigError`).
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function parseBridgeFile(raw: unknown): BridgeFile {
   if (!isPythonDict(raw)) {
     throw new ParamValidationError("BridgeFile payload must be an object");

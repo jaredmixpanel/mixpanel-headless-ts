@@ -1005,6 +1005,7 @@ async function eventCounts(
   });
 }
 
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function propertyCounts(
   core: ClientCore,
   event: string,
@@ -1095,6 +1096,7 @@ async function funnel(
   });
 }
 
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function retention(
   core: ClientCore,
   bornEvent: string,
@@ -1187,6 +1189,7 @@ async function arbFunnelsQuery(
   });
 }
 
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function frequency(
   core: ClientCore,
   fromDate: string,
@@ -1220,6 +1223,7 @@ async function frequency(
   });
 }
 
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function segmentationNumeric(
   core: ClientCore,
   event: string,
@@ -1246,6 +1250,7 @@ async function segmentationNumeric(
   });
 }
 
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function segmentationSum(
   core: ClientCore,
   event: string,
@@ -1271,6 +1276,7 @@ async function segmentationSum(
   });
 }
 
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function segmentationAverage(
   core: ClientCore,
   event: string,

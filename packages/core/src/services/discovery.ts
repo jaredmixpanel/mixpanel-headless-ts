@@ -307,6 +307,7 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
  * @returns Whether it represents a real calendar date/datetime.
  * @internal
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 function isValidIso(s: string): boolean {
   const match = DATE_PATTERN.exec(s);
   if (match === null) {

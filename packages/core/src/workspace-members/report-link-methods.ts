@@ -411,6 +411,7 @@ async function expandShortLink(
  * (await ws.queryReportLink(r)).toRows();
  * ```
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function resolveReportLink(
   host: ReportLinkHost,
   link: string,

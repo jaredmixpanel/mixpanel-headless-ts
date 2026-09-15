@@ -1457,6 +1457,7 @@ export class SchemaGraphResult {
    * graph.nodes.find((n) => n.name === "Purchase")?.kind; // "event"
    * ```
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   toGraph(): SchemaGraph {
     const nodeIndex = new Map<string, number>();
     const nodes: Array<{ name: string; kind: SchemaGraphNodeKind }> = [];

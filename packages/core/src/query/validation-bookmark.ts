@@ -241,14 +241,14 @@ function enumKeyErrors(value: unknown, rule: EnumKeyRule): ValidationError[] {
   requireHashable(value);
   if (!isNone(value) && !(typeof value === "string" && rule.valid.has(value))) {
     return [
-      enumError(
-        rule.path,
-        rule.label,
-        pythonStrLoose(value),
-        rule.valid,
-        rule.code,
-        rule.severity,
-      ),
+      enumError({
+        path: rule.path,
+        field: rule.label,
+        value: pythonStrLoose(value),
+        valid: rule.valid,
+        code: rule.code,
+        severity: rule.severity,
+      }),
     ];
   }
   return [];
@@ -843,13 +843,13 @@ function validateDisplayOptions(display: Dict): ValidationError[] {
     typeof chartType === "string" && VALID_CHART_TYPES.has(chartType)
   )) {
     errors.push(
-      enumError(
-        "displayOptions.chartType",
-        "chartType",
-        pythonStrLoose(chartType),
-        VALID_CHART_TYPES,
-        "B5_INVALID_CHART_TYPE",
-      ),
+      enumError({
+        path: "displayOptions.chartType",
+        field: "chartType",
+        value: pythonStrLoose(chartType),
+        valid: VALID_CHART_TYPES,
+        code: "B5_INVALID_CHART_TYPE",
+      }),
     );
   }
 
@@ -1230,14 +1230,14 @@ export function validateSortingBlock(sorting: unknown): ValidationError[] {
       known[chartType] = config;
     } else {
       errors.push(
-        enumError(
-          `sorting.${chartType}`,
-          "chart type",
-          chartType,
-          VALID_CHART_TYPES,
-          "S4_UNKNOWN_CHART_TYPE",
-          "warning",
-        ),
+        enumError({
+          path: `sorting.${chartType}`,
+          field: "chart type",
+          value: chartType,
+          valid: VALID_CHART_TYPES,
+          code: "S4_UNKNOWN_CHART_TYPE",
+          severity: "warning",
+        }),
       );
     }
   }
