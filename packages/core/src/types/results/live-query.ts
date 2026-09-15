@@ -1,24 +1,24 @@
 /**
- * Live-query result dataclasses (phase2-design C6-a, packet P2-6) — TS
- * ports of the corresponding frozen dataclasses in
- * `mixpanel_headless/types.py`.
+ * Live-query result dataclasses: segmentation, funnels, retention,
+ * event and property counts, activity feeds, saved reports, flows,
+ * frequency and the numeric aggregations.
  *
- * Conventions (C6):
- * - Fields keep their EXACT Python names (R3.4), `readonly` (R4.7).
- * - `toRows()` returns the rows list Python builds before pandas;
- *   `rowColumns()` is the frame's column contract (the Python
- *   empty-frame constant when there are no rows; pandas'
- *   first-occurrence inference when Python passes no `columns=`).
- * - `toJSON()` mirrors the Python `to_dict()` key set and insertion
- *   order byte-for-byte; classes without a Python `to_dict` get none.
- * - `fromDict()` (`@internal`) is the strict golden-test inverse:
- *   wrong JSON type → `ResponseValidationError` (dataclasses don't
- *   coerce).
- * - `toVectorPayload()` (`@internal`, golden-locked classes only)
- *   re-encodes the FULL declared field walk exactly as recorded wire
- *   vectors carry it (`_df_cache: null` included, datetimes re-tagged).
+ * Conventions shared by every result class: fields keep their exact
+ * Python names and are `readonly`; `toRows()` returns the rows list
+ * Python builds before pandas and `rowColumns()` the frame's column
+ * contract (the Python empty-frame constant when there are no rows,
+ * pandas' first-occurrence inference when Python passes no
+ * `columns=`); `toJSON()` mirrors the Python `to_dict()` key set and
+ * insertion order byte-for-byte, and classes without a Python `to_dict`
+ * get none; `fromDict()` (`@internal`) is the strict inverse (a wrong
+ * JSON type raises `ResponseValidationError`); `toVectorPayload()`
+ * (`@internal`) re-encodes the full declared field walk exactly as
+ * recorded wire vectors carry it.
+ *
+ * @see mixpanel_headless.types.SegmentationResult
  */
 
+import { setOwn } from "../../compat/python-dict.js";
 import type {
   CountType,
   HourDayUnit,
@@ -26,6 +26,7 @@ import type {
   TimeUnit,
 } from "../literals.js";
 import {
+  decodeFail,
   expectArray,
   expectFloat,
   expectInt,
@@ -36,7 +37,6 @@ import {
   expectRecordArray,
   expectStr,
   expectStrArray,
-  decodeFail,
   firstOccurrenceColumns,
   floatValue,
   isPlainRecord,
@@ -54,7 +54,7 @@ import {
  * @param field - Field name.
  * @param cls - Class name for error messages.
  * @returns The string or `null`.
- * @throws ResponseValidationError - On wrong JSON type.
+ * @throws {@link ResponseValidationError} - On wrong JSON type.
  */
 function expectStrOrNull(
   raw: Readonly<Record<string, unknown>>,
@@ -96,8 +96,18 @@ export interface SegmentationResultFields {
 }
 
 /**
- * Result of a segmentation query — TS port of
- * `types.SegmentationResult`.
+ * Result of a segmentation query: per-segment daily counts for one
+ * event.
+ *
+ * @example
+ * ```ts
+ * const result = await ws.segmentation("Signup", { from_date: "2026-01-01", to_date: "2026-01-02" });
+ * result.toRows();
+ * // [{ date: "2026-01-01", segment: "Signup", count: 42 },
+ * //  { date: "2026-01-02", segment: "Signup", count: 37 }]
+ * result.rowColumns(); // ["date", "segment", "count"]
+ * ```
+ * @see mixpanel_headless.types.SegmentationResult
  */
 export class SegmentationResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -148,9 +158,9 @@ export class SegmentationResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [segment_name, date_counts] of Object.entries(this.series)) {
-      for (const [date_str, count] of Object.entries(date_counts)) {
-        rows.push({ date: date_str, segment: segment_name, count });
+    for (const [segmentName, dateCounts] of Object.entries(this.series)) {
+      for (const [dateStr, count] of Object.entries(dateCounts)) {
+        rows.push({ date: dateStr, segment: segmentName, count });
       }
     }
     return rows;
@@ -188,7 +198,7 @@ export class SegmentationResult {
    *
    * @param raw - The payload (all declared fields, `_df_cache: null`).
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): SegmentationResult {
@@ -243,8 +253,14 @@ export interface FunnelResultStepFields {
 }
 
 /**
- * Single step result in a legacy funnel query response — TS port of
- * `types.FunnelResultStep`.
+ * One step of a legacy funnel query response.
+ *
+ * @example
+ * ```ts
+ * const step = new FunnelResultStep({ event: "Signup", count: 120, conversion_rate: 0.6 });
+ * step.toJSON(); // { event: "Signup", count: 120, conversion_rate: 0.6 }
+ * ```
+ * @see mixpanel_headless.types.FunnelResultStep
  */
 export class FunnelResultStep {
   /** Event name for this step. */
@@ -299,7 +315,7 @@ export class FunnelResultStep {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FunnelResultStep {
@@ -330,14 +346,27 @@ export interface FunnelResultFields {
   readonly to_date: string;
   /** Overall conversion rate (0.0 to 1.0). */
   readonly conversion_rate: number;
-  /** Step-by-step breakdown. Default: `[]`. */
+  /**
+   * Step-by-step breakdown.
+   *
+   * @defaultValue `[]`
+   */
   readonly steps?: readonly FunnelResultStep[];
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of a funnel query — TS port of `types.FunnelResult`.
+ * Result of a legacy funnel query: the ordered steps with their counts
+ * and conversion rates.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ step: 1, event: "Signup", count: 200, conversion_rate: 1 },
+ * //  { step: 2, event: "Purchase", count: 120, conversion_rate: 0.6 }]
+ * ```
+ * @see mixpanel_headless.types.FunnelResult
  */
 export class FunnelResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -439,7 +468,7 @@ export class FunnelResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FunnelResult {
@@ -486,12 +515,23 @@ export interface CohortInfoFields {
   readonly date: string;
   /** Number of users in the cohort. */
   readonly size: number;
-  /** Retention percentages by period (0.0 to 1.0). Default: `[]`. */
+  /**
+   * Retention percentages by period (0.0 to 1.0).
+   *
+   * @defaultValue `[]`
+   */
   readonly retention?: readonly number[];
 }
 
 /**
- * Retention data for a single cohort — TS port of `types.CohortInfo`.
+ * Retention data for a single cohort: its birth date, size and the
+ * per-period retention counts.
+ *
+ * @example
+ * ```ts
+ * const cohort = new CohortInfo({ date: "2026-01-01", size: 500, retention: [500, 210, 90] });
+ * ```
+ * @see mixpanel_headless.types.CohortInfo
  */
 export class CohortInfo {
   /** Cohort date (when users were "born"). */
@@ -547,7 +587,7 @@ export class CohortInfo {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): CohortInfo {
@@ -591,14 +631,27 @@ export interface RetentionResultFields {
   readonly to_date: string;
   /** Time unit for retention periods. */
   readonly unit: TimeUnit;
-  /** Cohort retention data. Default: `[]`. */
+  /**
+   * Cohort retention data.
+   *
+   * @defaultValue `[]`
+   */
   readonly cohorts?: readonly CohortInfo[];
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of a retention query — TS port of `types.RetentionResult`.
+ * Result of a legacy retention query: one cohort per birth interval.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ cohort_date: "2026-01-01", cohort_size: 500, period_0: 500, period_1: 210 },
+ * //  { cohort_date: "2026-01-02", cohort_size: 480, period_0: 480 }]
+ * result.rowColumns(); // ["cohort_date", "cohort_size", "period_0", "period_1"]
+ * ```
+ * @see mixpanel_headless.types.RetentionResult
  */
 export class RetentionResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -637,10 +690,10 @@ export class RetentionResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: one row per cohort with
-   * `cohort_date`, `cohort_size`, and RAGGED `period_N` keys (one per
-   * retention entry — pandas' NaN fill for shorter cohorts is a pandas
-   * artifact and explicitly OUT of the TS contract, phase2-design C6).
+   * Build the pre-pandas rows of Python's `.df`: one row per cohort
+   * with `cohort_date`, `cohort_size` and ragged `period_N` keys (one
+   * per retention entry). pandas' NaN fill for shorter cohorts is a
+   * pandas artifact and outside the TS contract.
    *
    * @returns The rows list.
    */
@@ -650,9 +703,9 @@ export class RetentionResult {
         cohort_date: cohort.date,
         cohort_size: cohort.size,
       };
-      cohort.retention.forEach((retention_value, i) => {
-        row[`period_${String(i)}`] = retention_value;
-      });
+      for (const [i, retentionValue] of cohort.retention.entries()) {
+        row[`period_${String(i)}`] = retentionValue;
+      }
       return row;
     });
   }
@@ -710,7 +763,7 @@ export class RetentionResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): RetentionResult {
@@ -770,8 +823,15 @@ export interface EventCountsResultFields {
 }
 
 /**
- * Result of a multi-event counts query — TS port of
- * `types.EventCountsResult`.
+ * Result of a multi-event counts query: daily counts per event.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ date: "2026-01-01", event: "Signup", count: 42 },
+ * //  { date: "2026-01-01", event: "Purchase", count: 9 }]
+ * ```
+ * @see mixpanel_headless.types.EventCountsResult
  */
 export class EventCountsResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -817,9 +877,9 @@ export class EventCountsResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [event_name, date_counts] of Object.entries(this.series)) {
-      for (const [date_str, count] of Object.entries(date_counts)) {
-        rows.push({ date: date_str, event: event_name, count });
+    for (const [eventName, dateCounts] of Object.entries(this.series)) {
+      for (const [dateStr, count] of Object.entries(dateCounts)) {
+        rows.push({ date: dateStr, event: eventName, count });
       }
     }
     return rows;
@@ -855,7 +915,7 @@ export class EventCountsResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): EventCountsResult {
@@ -909,8 +969,16 @@ export interface PropertyCountsResultFields {
 }
 
 /**
- * Result of a property-values counts query — TS port of
- * `types.PropertyCountsResult`.
+ * Result of a property-values counts query: daily counts per property
+ * value for one event.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ date: "2026-01-01", value: "US", count: 30 },
+ * //  { date: "2026-01-01", value: "DE", count: 12 }]
+ * ```
+ * @see mixpanel_headless.types.PropertyCountsResult
  */
 export class PropertyCountsResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -960,9 +1028,9 @@ export class PropertyCountsResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [value, date_counts] of Object.entries(this.series)) {
-      for (const [date_str, count] of Object.entries(date_counts)) {
-        rows.push({ date: date_str, value, count });
+    for (const [value, dateCounts] of Object.entries(this.series)) {
+      for (const [dateStr, count] of Object.entries(dateCounts)) {
+        rows.push({ date: dateStr, value, count });
       }
     }
     return rows;
@@ -999,7 +1067,7 @@ export class PropertyCountsResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): PropertyCountsResult {
@@ -1043,21 +1111,34 @@ export interface UserEventFields {
   /** Event name. */
   readonly event: string;
   /**
-   * Event time as ISO-8601 text (the Python field is a `datetime`;
-   * the TS port stores the preserved ISO text — watchlist #5).
+   * Event time as ISO-8601 text (the Python field is a `datetime`; the
+   * TS port stores the preserved ISO text).
    */
   readonly time: string;
-  /** Event properties. Default: `{}`. */
+  /**
+   * Event properties.
+   *
+   * @defaultValue `{}`
+   */
   readonly properties?: Readonly<Record<string, unknown>>;
 }
 
 /**
- * One event in a user's activity feed — TS port of `types.UserEvent`.
+ * One event in a user's activity feed.
  *
+ * @remarks
  * Python's `time` field is a `datetime`; the TS port stores the
- * preserved ISO-8601 text (dates stay strings — phase2-design
- * watchlist #5) and `toJSON()` emits it where Python emits
+ * preserved ISO-8601 text and `toJSON()` emits it where Python emits
  * `time.isoformat()`.
+ * @example
+ * ```ts
+ * const event = new UserEvent({
+ *   event: "Purchase",
+ *   time: "2026-01-15T12:00:00",
+ *   properties: { $distinct_id: "u1", amount: 12.5 },
+ * });
+ * ```
+ * @see mixpanel_headless.types.UserEvent
  */
 export class UserEvent {
   /** Event name. */
@@ -1117,7 +1198,7 @@ export class UserEvent {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): UserEvent {
@@ -1143,17 +1224,33 @@ export interface ActivityFeedResultFields {
   readonly from_date: string | null;
   /** Query end date (`null` when unbounded). */
   readonly to_date: string | null;
-  /** Chronological events across the queried users. Default: `[]`. */
+  /**
+   * Chronological events across the queried users.
+   *
+   * @defaultValue `[]`
+   */
   readonly events?: readonly UserEvent[];
-  /** Raw sentinel event dict, if the API returned one. Default: `null`. */
+  /**
+   * Raw sentinel event dict, if the API returned one.
+   *
+   * @defaultValue `null`
+   */
   readonly sentinel_event?: Readonly<Record<string, unknown>> | null;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of an activity-feed query — TS port of
- * `types.ActivityFeedResult`.
+ * Result of an activity-feed query: the events of one or more users in
+ * time order.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ event: "Purchase", time: "2026-01-15T12:00:00", distinct_id: "u1", amount: 12.5 }]
+ * result.rowColumns(); // ["event", "time", "distinct_id", "amount"]
+ * ```
+ * @see mixpanel_headless.types.ActivityFeedResult
  */
 export class ActivityFeedResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1189,24 +1286,24 @@ export class ActivityFeedResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: one row per event with
+   * Build the pre-pandas rows of Python's `.df`: one row per event with
    * `event`, `time`, `distinct_id` (from `$distinct_id`, `""` when
-   * missing) plus every other property key spread into the row
-   * (ragged — pandas' NaN fill is OUT of the TS contract).
+   * missing) plus every other property key spread into the row (ragged;
+   * pandas' NaN fill is outside the TS contract).
    *
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
-    return this.events.map((user_event) => {
-      const distinctId = user_event.properties["$distinct_id"];
+    return this.events.map((userEvent) => {
+      const distinctId = userEvent.properties["$distinct_id"];
       const row: Row = {
-        event: user_event.event,
-        time: user_event.time,
+        event: userEvent.event,
+        time: userEvent.time,
         distinct_id: distinctId === undefined ? "" : distinctId,
       };
-      for (const [key, value] of Object.entries(user_event.properties)) {
+      for (const [key, value] of Object.entries(userEvent.properties)) {
         if (key !== "$distinct_id") {
-          row[key] = value;
+          setOwn(row, key, value);
         }
       }
       return row;
@@ -1265,7 +1362,7 @@ export class ActivityFeedResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): ActivityFeedResult {
@@ -1330,22 +1427,39 @@ export interface SavedReportResultFields {
   readonly from_date: string;
   /** Effective end date from the response. */
   readonly to_date: string;
-  /** Header markers from the response. Default: `[]`. */
+  /**
+   * Header markers from the response.
+   *
+   * @defaultValue `[]`
+   */
   readonly headers?: readonly string[];
-  /** Report series payload (shape varies by report type). Default: `{}`. */
+  /**
+   * Report series payload (shape varies by report type).
+   *
+   * @defaultValue `{}`
+   */
   readonly series?: Readonly<Record<string, unknown>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of querying a saved report — TS port of
- * `types.SavedReportResult`.
+ * Result of querying a saved report by bookmark id.
  *
- * NOT a `ResultWithDataFrame` subclass in Python (it declares its own
- * `_df_cache`), and its `.df` DIVERGES from the uniform rows pattern:
- * the non-insights branch returns a SINGLE row whose one `series` cell
- * is the nested dict (phase2-design C6 per-class row spec).
+ * @remarks
+ * Not a `ResultWithDataFrame` subclass in Python (it declares its own
+ * `_df_cache`), and its `.df` departs from the uniform rows pattern:
+ * the non-insights branch returns a single row whose one `series` cell
+ * is the nested dict.
+ * @example
+ * ```ts
+ * const report = await ws.querySavedReport(87176748);
+ * report.toRows(); // insights report
+ * // [{ date: "2026-01-01", event: "Signup", count: 42 }]
+ * report.toRows(); // any other report type
+ * // [{ series: { … } }]
+ * ```
+ * @see mixpanel_headless.types.SavedReportResult
  */
 export class SavedReportResult {
   /** Bookmark (saved report) ID. */
@@ -1408,20 +1522,20 @@ export class SavedReportResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body — BOTH branches mirrored
+   * Build the pre-pandas rows of Python's `.df`, both branches mirrored
    * exactly: the insights branch builds `{date, event, count}` rows
    * from dict-valued series entries; every other report type returns
-   * ONE row whose single `series` cell is the nested dict.
+   * one row whose single `series` cell is the nested dict.
    *
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
     if (this.report_type === "insights") {
       const rows: Row[] = [];
-      for (const [event_name, date_counts] of Object.entries(this.series)) {
-        if (isPlainRecord(date_counts)) {
-          for (const [date_str, count] of Object.entries(date_counts)) {
-            rows.push({ date: date_str, event: event_name, count });
+      for (const [eventName, dateCounts] of Object.entries(this.series)) {
+        if (isPlainRecord(dateCounts)) {
+          for (const [dateStr, count] of Object.entries(dateCounts)) {
+            rows.push({ date: dateStr, event: eventName, count });
           }
         }
       }
@@ -1485,7 +1599,7 @@ export class SavedReportResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): SavedReportResult {
@@ -1530,26 +1644,49 @@ export interface FlowsResultFields {
   readonly bookmark_id: number;
   /** When the report was computed (ISO text from the API). */
   readonly computed_at: string;
-  /** Raw step dicts from the flows response. Default: `[]`. */
+  /**
+   * Raw step dicts from the flows response.
+   *
+   * @defaultValue `[]`
+   */
   readonly steps?: readonly Row[];
-  /** Raw breakdown dicts. Default: `[]`. */
+  /**
+   * Raw breakdown dicts.
+   *
+   * @defaultValue `[]`
+   */
   readonly breakdowns?: readonly Row[];
-  /** Overall conversion rate. Default: `0.0`. */
+  /**
+   * Overall conversion rate.
+   *
+   * @defaultValue `0.0`
+   */
   readonly overall_conversion_rate?: number;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly metadata?: Readonly<Record<string, unknown>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of querying a saved flows report — TS port of
- * `types.FlowsResult`.
+ * Result of querying a saved flows report.
  *
- * Its `.df` DIVERGES from the uniform pattern: rows are the RAW step
- * dicts (`pd.DataFrame(self.steps)`), and the empty case has NO column
- * list (`rowColumns()` returns `[]` — phase2-design C6 per-class row
- * spec).
+ * @remarks
+ * Its `.df` departs from the uniform pattern: rows are the raw step
+ * dicts (`pd.DataFrame(self.steps)`), and the empty case has no column
+ * list (`rowColumns()` returns `[]`).
+ * @example
+ * ```ts
+ * const flows = await ws.querySavedFlows(87176748);
+ * flows.toRows(); // the raw step dicts, e.g.
+ * // [{ event: "Signup", stepIndex: 0, totalCount: "120" }]
+ * flows.overall_conversion_rate; // 0.35
+ * ```
+ * @see mixpanel_headless.types.FlowsResult
  */
 export class FlowsResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1589,8 +1726,8 @@ export class FlowsResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: the raw step dicts
-   * themselves (`pd.DataFrame(self.steps)`), NOT hand-named keys.
+   * Build the pre-pandas rows of Python's `.df`: the raw step dicts
+   * themselves (`pd.DataFrame(self.steps)`), not hand-named keys.
    *
    * @returns The rows list (empty when there are no steps).
    */
@@ -1601,7 +1738,7 @@ export class FlowsResult {
   /**
    * Column contract of the `.df` frame: pandas' first-occurrence
    * inference over the raw step dicts; the Python empty case is a bare
-   * `pd.DataFrame()` with NO columns → `[]`.
+   * `pd.DataFrame()` with no columns, so `[]`.
    *
    * @returns The column list.
    */
@@ -1648,7 +1785,7 @@ export class FlowsResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FlowsResult {
@@ -1672,24 +1809,19 @@ export class FlowsResult {
       bookmark_id: expectInt(payload, "bookmark_id", cls),
       computed_at: expectStr(payload, "computed_at", cls),
       ...(Object.hasOwn(payload, "steps")
-        ? { steps: expectRecordArray(payload, "steps", cls) as readonly Row[] }
+        ? { steps: expectRecordArray(payload, "steps", cls) }
         : {}),
       ...(Object.hasOwn(payload, "breakdowns")
         ? {
-            breakdowns: expectRecordArray(
-              payload,
-              "breakdowns",
-              cls,
-            ) as readonly Row[],
+            breakdowns: expectRecordArray(payload, "breakdowns", cls),
           }
         : {}),
       ...(Object.hasOwn(payload, "overall_conversion_rate")
         ? {
-            // R10.7 bug-compat: the Python field is ANNOTATED float but
+            // Bug-compat: the Python field is annotated `float` but
             // dataclasses don't validate — the arb_funnels response
             // carries the literal string "NaN" and Python stores it
-            // verbatim (recorded: parse/workspace.query_saved_flows/
-            // authored-storybook-query-arb-funnels-bookmark-87176748).
+            // verbatim (a recorded `query_saved_flows` vector pins it).
             // Accept number or string, store verbatim.
             overall_conversion_rate: decodeFlowsConversionRate(payload, cls),
           }
@@ -1706,16 +1838,16 @@ export class FlowsResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Decode `FlowsResult.overall_conversion_rate` with the R10.7
- * bug-compat tolerance (see the `fromDict` call site): Python's
- * dataclass performs no validation and the recorded corpus carries a
- * literal `"NaN"` string in this float-annotated slot.
+ * Decode `FlowsResult.overall_conversion_rate` with the bug-compat
+ * tolerance described at the `fromDict` call site: Python's dataclass
+ * performs no validation and the recorded corpus carries a literal
+ * `"NaN"` string in this float-annotated slot.
  *
  * @param raw - The payload.
  * @param cls - Class name for error messages.
  * @returns The number, or the verbatim string cast into the declared
  *   numeric slot (matching Python's runtime reality).
- * @throws ResponseValidationError - On any other JSON type.
+ * @throws {@link ResponseValidationError} - On any other JSON type.
  */
 function decodeFlowsConversionRate(
   raw: Readonly<Record<string, unknown>>,
@@ -1740,15 +1872,26 @@ export interface FrequencyResultFields {
   readonly unit: TimeUnit;
   /** Addiction (sub-period) unit. */
   readonly addiction_unit: HourDayUnit;
-  /** Per-date frequency counts: `{date: [count, ...]}`. Default: `{}`. */
+  /**
+   * Per-date frequency counts: `{date: [count, ...]}`.
+   *
+   * @defaultValue `{}`
+   */
   readonly data?: Readonly<Record<string, readonly number[]>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of a frequency (addiction) query — TS port of
- * `types.FrequencyResult`.
+ * Result of a frequency (addiction) query: per-date counts of users
+ * active in 1, 2, … periods.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ date: "2026-01-01", period_1: 900, period_2: 410, period_3: 120 }]
+ * ```
+ * @see mixpanel_headless.types.FrequencyResult
  */
 export class FrequencyResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1787,18 +1930,18 @@ export class FrequencyResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: one row per date with
-   * RAGGED `period_N` keys starting at 1.
+   * Build the pre-pandas rows of Python's `.df`: one row per date with
+   * ragged `period_N` keys starting at 1.
    *
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [date_str, counts] of Object.entries(this.data)) {
-      const row: Row = { date: date_str };
-      counts.forEach((count, index) => {
+    for (const [dateStr, counts] of Object.entries(this.data)) {
+      const row: Row = { date: dateStr };
+      for (const [index, count] of counts.entries()) {
         row[`period_${String(index + 1)}`] = count;
-      });
+      }
       rows.push(row);
     }
     return rows;
@@ -1855,7 +1998,7 @@ export class FrequencyResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FrequencyResult {
@@ -1909,15 +2052,27 @@ export interface NumericBucketResultFields {
   readonly property_expr: string;
   /** Time unit for aggregation. */
   readonly unit: HourDayUnit;
-  /** Bucketed series: `{bucket_label: {date: count}}`. Default: `{}`. */
+  /**
+   * Bucketed series: `{bucket_label: {date: count}}`.
+   *
+   * @defaultValue `{}`
+   */
   readonly series?: Readonly<Record<string, Readonly<Record<string, number>>>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of a bucketed numeric segmentation query — TS port of
- * `types.NumericBucketResult`.
+ * Result of a bucketed numeric segmentation query: daily counts per
+ * value bucket.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ date: "2026-01-01", bucket: "0 - 10", count: 30 },
+ * //  { date: "2026-01-01", bucket: "10 - 20", count: 12 }]
+ * ```
+ * @see mixpanel_headless.types.NumericBucketResult
  */
 export class NumericBucketResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1963,9 +2118,9 @@ export class NumericBucketResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [bucket, date_counts] of Object.entries(this.series)) {
-      for (const [date_str, count] of Object.entries(date_counts)) {
-        rows.push({ date: date_str, bucket, count });
+    for (const [bucket, dateCounts] of Object.entries(this.series)) {
+      for (const [dateStr, count] of Object.entries(dateCounts)) {
+        rows.push({ date: dateStr, bucket, count });
       }
     }
     return rows;
@@ -2019,7 +2174,7 @@ export class NumericBucketResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): NumericBucketResult {
@@ -2068,17 +2223,32 @@ export interface NumericSumResultFields {
   readonly property_expr: string;
   /** Time unit for aggregation. */
   readonly unit: HourDayUnit;
-  /** Per-date sums: `{date: sum}`. Default: `{}`. */
+  /**
+   * Per-date sums: `{date: sum}`.
+   *
+   * @defaultValue `{}`
+   */
   readonly results?: Readonly<Record<string, number>>;
-  /** When the result was computed (ISO text), if provided. Default: `null`. */
+  /**
+   * When the result was computed (ISO text), if provided.
+   *
+   * @defaultValue `null`
+   */
   readonly computed_at?: string | null;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of a numeric-sum segmentation query — TS port of
- * `types.NumericSumResult`.
+ * Result of a numeric-sum segmentation query: one summed value per
+ * date.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ date: "2026-01-01", sum: 1250.5 }, { date: "2026-01-02", sum: 980 }]
+ * ```
+ * @see mixpanel_headless.types.NumericSumResult
  */
 export class NumericSumResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -2128,8 +2298,8 @@ export class NumericSumResult {
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
-    return Object.entries(this.results).map(([date_str, value]) => ({
-      date: date_str,
+    return Object.entries(this.results).map(([dateStr, value]) => ({
+      date: dateStr,
       sum: value,
     }));
   }
@@ -2145,7 +2315,7 @@ export class NumericSumResult {
 
   /**
    * Serialize for JSON output — byte-shape of Python `to_dict()`
-   * (`computed_at` emitted ONLY when non-`null`, exactly as Python
+   * (`computed_at` emitted only when non-`null`, exactly as Python
    * conditionally adds it).
    *
    * @returns The plain dict shape.
@@ -2191,7 +2361,7 @@ export class NumericSumResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): NumericSumResult {
@@ -2238,7 +2408,7 @@ export class NumericSumResult {
  * @param field - Field name.
  * @param cls - Class name for error messages.
  * @returns The numeric record.
- * @throws ResponseValidationError - On wrong JSON types.
+ * @throws {@link ResponseValidationError} - On wrong JSON types.
  */
 function decodeNumberRecord(
   raw: Readonly<Record<string, unknown>>,
@@ -2252,7 +2422,7 @@ function decodeNumberRecord(
     if (value === undefined) {
       decodeFail(cls, `${field}[${JSON.stringify(key)}]`, "number", item);
     }
-    out[key] = value;
+    setOwn(out, key, value);
   }
   return out;
 }
@@ -2269,15 +2439,26 @@ export interface NumericAverageResultFields {
   readonly property_expr: string;
   /** Time unit for aggregation. */
   readonly unit: HourDayUnit;
-  /** Per-date averages: `{date: average}`. Default: `{}`. */
+  /**
+   * Per-date averages: `{date: average}`.
+   *
+   * @defaultValue `{}`
+   */
   readonly results?: Readonly<Record<string, number>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Result of a numeric-average segmentation query — TS port of
- * `types.NumericAverageResult`.
+ * Result of a numeric-average segmentation query: one averaged value
+ * per date.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ date: "2026-01-01", average: 12.5 }, { date: "2026-01-02", average: 9.8 }]
+ * ```
+ * @see mixpanel_headless.types.NumericAverageResult
  */
 export class NumericAverageResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -2322,8 +2503,8 @@ export class NumericAverageResult {
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
-    return Object.entries(this.results).map(([date_str, value]) => ({
-      date: date_str,
+    return Object.entries(this.results).map(([dateStr, value]) => ({
+      date: dateStr,
       average: value,
     }));
   }
@@ -2376,7 +2557,7 @@ export class NumericAverageResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): NumericAverageResult {

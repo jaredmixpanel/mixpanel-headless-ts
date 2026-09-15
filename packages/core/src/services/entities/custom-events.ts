@@ -1,99 +1,109 @@
 /**
- * Custom-event wire methods (App API) — Phase-3 packet B4-C5 port of
- * the `MixpanelAPIClient` custom-events range
- * (`api_client.py:7988-8164`, incl. the index-absent
- * `list_custom_events` `:8038` — R10.5, Layer-3-locked only).
+ * Custom-event wire methods on the App API (`custom_events/` and
+ * `data-definitions/events/`, workspace-scoped through
+ * `maybe_scoped_path`). `create_custom_event` posts a form body and peels
+ * the `{custom_event: ...}` inner envelope; `update_custom_event` keeps
+ * Python's defence-in-depth `UPDATE_TARGET_MISMATCH` echo check, because
+ * the data-definitions endpoint has silently created instead of updated
+ * in the past. `list_custom_events` is not corpus-locked.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). `create_custom_event` posts a FORM body and peels the
- * `{custom_event: ...}` inner envelope; `update_custom_event` carries
- * the defense-in-depth `UPDATE_TARGET_MISMATCH` echo check (the
- * data-definitions endpoint has a silent-write history upstream).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_custom_event
  */
 
 import { appRequest } from "../../client/app-request.js";
-import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
+import type { ClientCore } from "../../client/core.js";
 import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
-import { MixpanelHeadlessError } from "../../errors.js";
+import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
-import {
-  expectListResult,
-  expectRecordResult,
-  pyIntEquals,
-  pythonTypeNameOf,
-} from "./shared.js";
+import { MixpanelHeadlessError } from "../../errors.js";
+import { pythonTypeNameOf } from "../shared.js";
+import { expectListResult, expectRecordResult, pyIntEquals } from "./shared.js";
 
-/** The C5 custom-event method surface (mixed into `MixpanelClient`). */
+/** Custom-event methods mixed into `MixpanelClient`. */
 export interface CustomEventMethods {
   /**
-   * Create a custom event (`create_custom_event`,
-   * `api_client.py:7988-8036` — POST `custom_events/` with a
-   * form-encoded body; unwraps the `{custom_event: ...}` inner
-   * envelope after `appRequest`'s `results` unwrap).
+   * Create a custom event. Sends POST `custom_events/` with a form-encoded body;
+   * unwraps the `{custom_event: ...}` inner envelope after `appRequest`'s
+   * `results` unwrap.
    *
    * @param body - Form fields: `name` + JSON-encoded `alternatives`.
    * @param signal - Optional cancellation signal.
    * @returns The created custom-event dict.
-   * @throws MixpanelHeadlessError - Non-dict payload after unwrapping.
-   * @throws QueryError - Validation errors (400/422; the form body
-   *   rides in `details.request_body`).
+   * @throws {@link MixpanelHeadlessError} - Non-dict payload after unwrapping.
+   * @throws {@link QueryError} - Validation errors (400/422; the form body rides
+   *   in `details.request_body`).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_custom_event
    */
-  createCustomEvent(
+  createCustomEvent: (
     body: Record<string, string>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * List custom events (`list_custom_events`, `:8038-8066` — GET
-   * `data-definitions/events/` with `custom_event=true`; index-absent,
-   * ports for the B6 W6b consumer).
+   * List custom events. Sends GET `data-definitions/events/` with
+   * `custom_event=true`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The custom-event definition list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_custom_events
    */
-  listCustomEvents(signal?: AbortSignal): Promise<JsonValue[]>;
+  listCustomEvents: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Update a custom event's lexicon entry (`update_custom_event`,
-   * `:8068-8131` — PATCH `data-definitions/events/` with
-   * `{**body, customEventId}`; raises `UPDATE_TARGET_MISMATCH` when
-   * the server echoes a different `customEventId`).
+   * Update a custom event's lexicon entry. Sends PATCH `data-definitions/events/`
+   * with `{**body, customEventId}`; raises `UPDATE_TARGET_MISMATCH` when the
+   * server echoes a different `customEventId`.
    *
    * @param customEventId - Server-assigned custom-event ID (int).
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated lexicon entry dict.
-   * @throws MixpanelHeadlessError - Non-dict response, or the echoed
-   *   id differs from the requested one (`UPDATE_TARGET_MISMATCH`).
+   * @throws {@link MixpanelHeadlessError} - Non-dict response, or the echoed id
+   *   differs from the requested one (`UPDATE_TARGET_MISMATCH`).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_custom_event
    */
-  updateCustomEvent(
+  updateCustomEvent: (
     customEventId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a custom event (`delete_custom_event`, `:8133-8164` —
-   * DELETE `data-definitions/events/` with `{customEventId}`; id, not
-   * name — a name-only DELETE is ambiguous upstream).
+   * Delete a custom event. Sends DELETE `data-definitions/events/` with
+   * `{customEventId}`; id, not name — a name-only DELETE is ambiguous upstream.
    *
    * @param customEventId - Server-assigned custom-event ID (int).
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_custom_event
    */
-  deleteCustomEvent(customEventId: number, signal?: AbortSignal): Promise<void>;
+  deleteCustomEvent: (
+    customEventId: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 }
 
 /**
- * Build the C5 custom-event methods over the C1 core seam.
+ * Build the custom-event methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const customEvents = createCustomEventMethods(core);
+ * await customEvents.updateCustomEvent(88, { description: "Any purchase" });
+ * // { customEventId: 88, name: "Purchase", description: "Any purchase", ... }
+ * ```
  */
 export function createCustomEventMethods(core: ClientCore): CustomEventMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -112,7 +122,7 @@ export function createCustomEventMethods(core: ClientCore): CustomEventMethods {
       // The /custom_events/ endpoint nests the entity under
       // {custom_event: ...} inside the standard {results: ...}
       // envelope appRequest already unwrapped — peel the inner
-      // wrapper here (`:8029-8030`).
+      // wrapper here.
       if (isPlainRecord(payload) && Object.hasOwn(payload, "custom_event")) {
         payload = payload["custom_event"] as JsonValue;
       }
@@ -144,8 +154,8 @@ export function createCustomEventMethods(core: ClientCore): CustomEventMethods {
         jsonBody: payload,
       });
       const record = expectRecordResult(result, "update_custom_event");
-      // Defense-in-depth (`:8117-8130`): if the server echoes back a
-      // DIFFERENT customEventId, the lexicon entry may have been
+      // Defence in depth: if the server echoes back a different
+      // customEventId, the lexicon entry may have been
       // created instead of updated — fail rather than return an
       // unrelated entity. Python `!=` here is numeric cross-type
       // equality ({@link pyIntEquals}).
@@ -181,9 +191,9 @@ export function createCustomEventMethods(core: ClientCore): CustomEventMethods {
 }
 
 /**
- * Python `{value!r}` over a parsed wire member (message text only —
- * out of contract per R5.4; strings gain quotes, everything else uses
- * the `str()` spelling).
+ * Python `{value!r}` over a parsed wire member (message text only, which
+ * is out of contract; strings gain quotes, everything else uses the
+ * `str()` spelling).
  *
  * @param value - The echoed member.
  * @returns The repr-ish spelling for the mismatch message.

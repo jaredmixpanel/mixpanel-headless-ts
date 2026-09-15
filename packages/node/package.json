@@ -1,12 +1,53 @@
 {
   "name": "@mixpanel-headless/node",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
+  "description": "Node.js surface of Mixpanel Headless: config-file and env-var accounts, OAuth login, streaming export, and a ready-wired Workspace factory.",
+  "keywords": [
+    "mixpanel",
+    "analytics",
+    "typescript",
+    "headless",
+    "nodejs",
+    "oauth",
+    "api-client"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",
+    "directory": "packages/node"
+  },
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "NOTICE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -b",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json"
   },
   "dependencies": {
-    "smol-toml": "1.7.1"
+    "@mixpanel-headless/core": "^0.1.0",
+    "smol-toml": "^1.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

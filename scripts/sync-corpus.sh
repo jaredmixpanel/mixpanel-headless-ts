@@ -1,44 +1,41 @@
 #!/usr/bin/env bash
-# sync-corpus.sh — snapshot the Python conformance corpus into this repo
-# (design D12 / task TS-4).
+# sync-corpus.sh — snapshot the Python conformance corpus into this repo.
 #
-# Copies, from the Python repo's rig branch:
-#   conformance/vectors/**                    -> conformance-runner/corpus/
+# Usage:
+#   MP_PYTHON_REPO=/path/to/mixpanel-headless npm run sync:corpus
+#   MP_PYTHON_REPO=... MP_RIG_BRANCH=<branch> npm run sync:corpus
+#
+# Environment:
+#   MP_PYTHON_REPO  (required) path to the Python mixpanel-headless checkout
+#   MP_RIG_BRANCH   (optional) branch used for the read-only worktree when
+#                   the Python working tree is dirty in a copied path
+#                   (default: main)
+#
+# Copies, from the Python repo:
+#   conformance/vectors/**                     -> conformance-runner/corpus/
 #   conformance/schema/canonical-selftest.json -> conformance-runner/corpus/
-#   context/typescript-port-api-map.json       -> conformance-runner/corpus/
 #   conformance/contract/*.json                -> conformance-runner/corpus/contract/
+# and, from this repo:
+#   docs/history/typescript-port-api-map.json  -> conformance-runner/corpus/
 #
-# The contract/*.json copies are the Phase-2 P2-1 extension (phase2-design
-# C3): the generated contract artifacts (error-codes, literal-aliases,
-# tag-universe, model-coverage) ride the same snapshot pipeline as the
-# vectors. They carry their own generated_from SHA for provenance; the
-# corpus provenance gate below stays keyed on manifest.source_commit.
-#
-# The api-map.json copy is a deliberate extension over the D12 minimum list:
-# scripts/generate-api-map.mjs consumes it alongside corpus/api-index.json,
-# and snapshotting it keeps api-map generation hermetic (no live dependency
-# on the mutable Python checkout).
-#
-# Clean-source rule (TS-4): the copy source must be CLEAN. If the Python
-# working tree is dirty in any copied path (the Python track may still be
-# committing later work), the script copies from a temporary read-only git
-# worktree of the rig branch HEAD instead, then removes it.
-#
-# Provenance gate (D12): the source manifest's source_commit must equal the
-# sourceCommit pinned in conformance-runner/corpus.config.json BEFORE any
-# bytes are written; mismatch aborts. Corpus refresh = update the pin,
-# re-run this script, commit.
-#
-# Environment overrides:
-#   MP_PYTHON_REPO  path to the Python repo checkout
-#   MP_RIG_BRANCH   rig branch name for the dirty-tree worktree fallback
+# Rules:
+# - Clean-source: if the Python working tree is dirty in any copied path,
+#   the copy is taken from a temporary read-only worktree of
+#   MP_RIG_BRANCH's HEAD instead, then the worktree is removed.
+# - Provenance gate: the source manifest's source_commit must equal the
+#   sourceCommit pinned in conformance-runner/corpus.config.json BEFORE any
+#   bytes are written; a mismatch aborts. Corpus refresh = update the pin,
+#   re-run this script, commit.
 set -euo pipefail
 
-PY_REPO="${MP_PYTHON_REPO:-/Users/jaredmcfarland/Developer/mixpanel-headless}"
-# Phase 2: the corpus + contract artifacts live on the Phase-2 support
-# branch (phase2-design C3 branch discipline); the rig branch remains
-# overridable via MP_RIG_BRANCH for historical re-syncs.
-RIG_BRANCH="${MP_RIG_BRANCH:-ts-port/phase2-contract-support}"
+if [[ -z "${MP_PYTHON_REPO:-}" ]]; then
+  echo "sync-corpus: MP_PYTHON_REPO is not set." >&2
+  echo "  Point it at your Python mixpanel-headless checkout, e.g." >&2
+  echo "    MP_PYTHON_REPO=../mixpanel-headless npm run sync:corpus" >&2
+  exit 1
+fi
+PY_REPO="${MP_PYTHON_REPO}"
+RIG_BRANCH="${MP_RIG_BRANCH:-main}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="${REPO_ROOT}/conformance-runner/corpus"
@@ -47,11 +44,10 @@ CONFIG="${REPO_ROOT}/conformance-runner/corpus.config.json"
 # Repo-relative paths this script snapshots (also the dirty-check scope).
 VECTORS_REL="conformance/vectors"
 SELFTEST_REL="conformance/schema/canonical-selftest.json"
-# The api-map moved INTO this repo with the 2026-08-17 context
-# relocation (the port's spec of record lives at context/ here now; the
-# Python repo keeps only conformance/ + bug reports). It is sourced
-# locally, not from the Python checkout.
-API_MAP_LOCAL="${REPO_ROOT}/context/typescript-port-api-map.json"
+# The api-map lives in this repo (under docs/history/, the port's archived
+# process record; the Python repo keeps only conformance/ + bug reports).
+# It is sourced locally, not from the Python checkout.
+API_MAP_LOCAL="${REPO_ROOT}/docs/history/typescript-port-api-map.json"
 CONTRACT_REL="conformance/contract"
 CONTRACT_GLOB="${CONTRACT_REL}/*.json"
 

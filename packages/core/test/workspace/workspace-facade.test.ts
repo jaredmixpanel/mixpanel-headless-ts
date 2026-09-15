@@ -1,70 +1,23 @@
-// B6-W1 Layer-3 translation of `tests/unit/test_workspace.py` — the
-// classes the packet assigns to W1 (`b6-packets.md` §3 table):
-// `TestLiveQueries` (:118), `TestDiscovery` (:439), `TestContextManager`
-// (:712), `TestLimitValidation` (:754), `TestWorkspacesMethod` (:808),
-// `TestProjectsMethod` (:861), `TestCodedWorkspaceGuardCodes` (:919).
-//
-// B7-A1 resolutions (`b7-packets.md` §3.4 — this header now lists ZERO
-// B7 deferrals):
-//
-// - `TestCredentialResolution` (:96): the class body is EMPTY in
-//   Python (every case was removed in B1 "Fix 10"); nothing to port —
-//   decision recorded here, no translation exists by construction.
-// - `TestCodedWorkspaceGuardCodes::test_ws1_init_target_with_account`
-//   (:969), `…_with_workspace` (:975) and
-//   `test_ws_guards_stay_catchable_as_value_error` (:1021): the
-//   CONSTRUCTOR-guard trio is translated in `workspace-init.test.ts`
-//   (B7 constructor section). The `use()` twin (:981, :993) stays here.
-// - `TestFacadeResolverWiring` (test_workspace_resolution.py:611) is
-//   translated at the BOTTOM of this file (the stale B4-C1 header in
-//   `client-workspace.test.ts` mis-assigned it — packet Caution #17).
-//
-// COVERED BY EQUAL-OR-STRONGER B5/B6 TWINS (exclusion citations added at
-// B6-ARB, `b6-review-resolution.md` Finding B — the original header
-// claimed the classes whole while translating a subset, an R10.2
-// misclaim):
-//
-// - `TestLiveQueries::test_query_saved_report_delegation` (:293) →
-//   `workspace-bookmarks.test.ts` `TestQuerySavedReport
-//   (test_workspace_bookmarks.py:210)` (8 tests, delegation + kwargs).
-// - `TestDiscovery` (:439): 9 of 11 cases have twins in the B5
-//   translation `discovery-facade.test.ts` — `property_values` (:478) →
-//   :99, `subproperties` (:498) → :112/:127, `funnels` (:523) → :137,
-//   `cohorts` (:544) → :147, `top_events` (:572) → :191,
-//   `clear_discovery_cache` (:594) → :210/:224, `lexicon_schemas`
-//   (:610) + `…_with_entity_type_filter` (:649) → :233, `lexicon_schema`
-//   (:678) → :255. The `events`/`properties` delegation pair (:442,
-//   :460) is translated below.
-// - The remaining 7 `TestLiveQueries` delegation cases (:210-:431) had
-//   NO Layer-3 twin anywhere and are translated below (B6-ARB fix).
-//
-// Python's `Workspace(session=…, _api_client=…)` factory becomes
-// `new Workspace({session, client})`; the `try/finally: ws.close()`
-// wrapper is kept (B6-W1 ports `close()`), unlike the B5 translations
-// which had to drop it (`workspace-test-helpers.ts:6-10`).
+// Workspace facade: delegation to LiveQueryService / DiscoveryService, the
+// context-manager close(), limit validation, workspaces() / projects(), the coded
+// workspace-guard codes on use(), MeService construction and resolver wiring.
+// Mirrors those classes of tests/unit/test_workspace.py; constructor-guard cases
+// live in workspace-init.test.ts, most TestDiscovery cases in discovery-facade.test.ts.
 
 import { describe, expect, it, vi } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
-import type { MixpanelClient } from "../../src/client/client.js";
-import { ParamValidationError } from "../../src/errors.js";
-import { validateLimit } from "../../src/services/queries/streaming.js";
-import { validateBusinessContextLevel } from "../../src/workspace-members/lifecycle.js";
-import {
-  MeProjectInfo,
-  MeWorkspaceInfo,
-  MeResponse,
-} from "../../src/client/me.js";
-import { MeService, inMemoryMeCache } from "../../src/services/me.js";
-import { Secret } from "../../src/secret.js";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { resolverSeamsFromEffects } from "../../src/accounts/resolver-seams.js";
-import { makeEffects } from "../accounts/fake-auth-effects.js";
+import type { MixpanelClient } from "../../src/client/client.js";
+import {
+  MeProjectInfo,
+  MeResponse,
+  MeWorkspaceInfo,
+} from "../../src/client/me.js";
+import { ParamValidationError } from "../../src/errors.js";
+import { Secret } from "../../src/secret.js";
+import { inMemoryMeCache, MeService } from "../../src/services/me.js";
+import { validateLimit } from "../../src/services/queries/streaming.js";
 import {
   ActivityFeedResult,
   EventCountsResult,
@@ -77,8 +30,19 @@ import {
   RetentionResult,
   SegmentationResult,
 } from "../../src/types/results/live-query.js";
+import { Workspace } from "../../src/workspace.js";
+import { validateBusinessContextLevel } from "../../src/workspace-members/lifecycle.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  drain,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
+import { expectRejects, expectThrows } from "../../test-support/raises.js";
+import { makeEffects } from "../accounts/fake-auth-effects.js";
 
-/** The `_TEST_SESSION` twin (`test_workspace.py:38-46`). */
+/** The `_TEST_SESSION` twin. */
 const TEST_SESSION = makeSession({
   name: "test_account",
   projectId: "12345",
@@ -103,7 +67,8 @@ function makeWorkspace(
   return { ws: new Workspace({ session: TEST_SESSION, client }), client };
 }
 
-describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", () => {
+describe("Live queries — live-query delegation", () => {
+  // python: TestLiveQueries
   it("segmentation() delegates to the live-query service (T043)", async () => {
     const { ws } = makeWorkspace();
     const result = new SegmentationResult({
@@ -182,9 +147,6 @@ describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", ()
     await ws.close();
   });
 
-  // The 7 cases below were translated at B6-ARB (Finding B) — they had
-  // no Layer-3 twin anywhere before.
-
   it("eventCounts() delegates to the live-query service (T047)", async () => {
     const { ws } = makeWorkspace();
     const result = new EventCountsResult({
@@ -205,7 +167,7 @@ describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", ()
       to_date: "2024-01-31",
     });
 
-    expect(got.events).toEqual(["A", "B"]);
+    expect(got.events).toStrictEqual(["A", "B"]);
     expect(eventCounts).toHaveBeenCalledTimes(1);
     await ws.close();
   });
@@ -251,7 +213,7 @@ describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", ()
 
     const got = await ws.activityFeed(["user1"]);
 
-    expect(got.distinct_ids).toEqual(["user1"]);
+    expect(got.distinct_ids).toStrictEqual(["user1"]);
     expect(activityFeed).toHaveBeenCalledTimes(1);
     await ws.close();
   });
@@ -360,7 +322,8 @@ describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", ()
   });
 });
 
-describe("TestDiscovery (test_workspace.py:439) — discovery delegation", () => {
+describe("Discovery — discovery delegation", () => {
+  // python: TestDiscovery
   it("events() delegates to the discovery service", async () => {
     const { ws } = makeWorkspace();
     const listEvents = vi.fn().mockResolvedValue(["Login", "Purchase"]);
@@ -370,7 +333,7 @@ describe("TestDiscovery (test_workspace.py:439) — discovery delegation", () =>
 
     const events = await ws.events();
 
-    expect(events).toEqual(["Login", "Purchase"]);
+    expect(events).toStrictEqual(["Login", "Purchase"]);
     expect(listEvents).toHaveBeenCalledTimes(1);
     await ws.close();
   });
@@ -384,17 +347,18 @@ describe("TestDiscovery (test_workspace.py:439) — discovery delegation", () =>
 
     const properties = await ws.properties("Login");
 
-    expect(properties).toEqual(["plan", "country"]);
+    expect(properties).toStrictEqual(["plan", "country"]);
     expect(listProperties).toHaveBeenCalledWith("Login");
     await ws.close();
   });
 });
 
-describe("TestContextManager (test_workspace.py:712)", () => {
+describe("Context manager", () => {
+  // python: TestContextManager
   it("`await using` disposal closes the facade (the __enter__ twin)", async () => {
     // Python's `with ws as entered: assert entered is ws` locks that the
     // context manager hands back the SAME object. The TS twin is
-    // `Symbol.asyncDispose` (R6.2) — there is no `__enter__` return
+    // `Symbol.asyncDispose` — there is no `__enter__` return
     // value, so the invariant that survives translation is that
     // disposal runs `close()` on this instance.
     const { ws, client } = makeWorkspace();
@@ -424,32 +388,33 @@ describe("TestContextManager (test_workspace.py:712)", () => {
   });
 });
 
-describe("TestLimitValidation (test_workspace.py:754)", () => {
+describe("Limit validation", () => {
+  // python: TestLimitValidation
   it("streamEvents rejects a limit over 100000", async () => {
     const { ws } = makeWorkspace();
-    await expect(async () => {
-      for await (const _event of ws.streamEvents({
-        from_date: "2024-01-01",
-        to_date: "2024-01-31",
-        limit: 100001,
-      })) {
-        void _event;
-      }
-    }).rejects.toThrow(/limit must be at most 100000/);
+    await expect(
+      drain(
+        ws.streamEvents({
+          from_date: "2024-01-01",
+          to_date: "2024-01-31",
+          limit: 100001,
+        }),
+      ),
+    ).rejects.toThrow(/limit must be at most 100000/);
     await ws.close();
   });
 
   it("streamEvents rejects a zero or negative limit", async () => {
     const { ws } = makeWorkspace();
-    await expect(async () => {
-      for await (const _event of ws.streamEvents({
-        from_date: "2024-01-01",
-        to_date: "2024-01-31",
-        limit: 0,
-      })) {
-        void _event;
-      }
-    }).rejects.toThrow(/limit must be at least 1/);
+    await expect(
+      drain(
+        ws.streamEvents({
+          from_date: "2024-01-01",
+          to_date: "2024-01-31",
+          limit: 0,
+        }),
+      ),
+    ).rejects.toThrow(/limit must be at least 1/);
     await ws.close();
   });
 });
@@ -465,7 +430,8 @@ function stubMeService(ws: Workspace, stub: Partial<MeService>): void {
   vi.spyOn(ws, "meService", "get").mockReturnValue(stub as MeService);
 }
 
-describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
+describe("Workspaces method", () => {
+  // python: TestWorkspacesMethod
   it("workspaces() returns WorkspaceRefs built from MeWorkspaceInfo", async () => {
     const { ws } = makeWorkspace();
     const listWorkspaces = vi.fn().mockResolvedValue([
@@ -482,13 +448,13 @@ describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
         is_default: false,
       }),
     ]);
-    stubMeService(ws, { listWorkspaces } as unknown as Partial<MeService>);
+    stubMeService(ws, { listWorkspaces });
 
     const result = await ws.workspaces();
 
     // Defaults to the current project's id from the session.
     expect(listWorkspaces).toHaveBeenCalledWith({ project_id: "12345" });
-    expect(result.map((w) => [w.id, w.name, w.is_default])).toEqual([
+    expect(result.map((w) => [w.id, w.name, w.is_default])).toStrictEqual([
       [1, "Default", true],
       [2, "Staging", false],
     ]);
@@ -497,7 +463,7 @@ describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
   it("workspaces({project_id}) passes the override through", async () => {
     const { ws } = makeWorkspace();
     const listWorkspaces = vi.fn().mockResolvedValue([]);
-    stubMeService(ws, { listWorkspaces } as unknown as Partial<MeService>);
+    stubMeService(ws, { listWorkspaces });
 
     await ws.workspaces({ project_id: "9999999" });
 
@@ -505,7 +471,8 @@ describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
   });
 });
 
-describe("TestProjectsMethod (test_workspace.py:861)", () => {
+describe("Projects method", () => {
+  // python: TestProjectsMethod
   it("projects() returns Project records built from MeProjectInfo tuples", async () => {
     const { ws } = makeWorkspace();
     const listProjects = vi.fn().mockResolvedValue([
@@ -519,14 +486,14 @@ describe("TestProjectsMethod (test_workspace.py:861)", () => {
       ],
       ["200", new MeProjectInfo({ name: "Beta", organization_id: 43 })],
     ]);
-    stubMeService(ws, { listProjects } as unknown as Partial<MeService>);
+    stubMeService(ws, { listProjects });
 
     const result = await ws.projects();
 
     expect(listProjects).toHaveBeenCalledWith();
     expect(
       result.map((p) => [p.id, p.name, p.organization_id, p.timezone]),
-    ).toEqual([
+    ).toStrictEqual([
       ["100", "Alpha", 42, "US/Pacific"],
       ["200", "Beta", 43, null],
     ]);
@@ -536,7 +503,7 @@ describe("TestProjectsMethod (test_workspace.py:861)", () => {
     const { ws } = makeWorkspace();
     const fetch = vi.fn().mockResolvedValue(new MeResponse());
     const listProjects = vi.fn().mockResolvedValue([]);
-    stubMeService(ws, { fetch, listProjects } as unknown as Partial<MeService>);
+    stubMeService(ws, { fetch, listProjects });
 
     await ws.projects({ refresh: true });
 
@@ -544,58 +511,57 @@ describe("TestProjectsMethod (test_workspace.py:861)", () => {
   });
 });
 
-describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
+describe("Coded workspace guard codes", () => {
+  // python: TestCodedWorkspaceGuardCodes
   it("WR2: validateLimit below the minimum raises the coded error", () => {
-    try {
-      validateLimit(0);
-      expect.unreachable("validateLimit(0) must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
-    }
+    const error = expectThrows(
+      () => validateLimit(0),
+      "validateLimit(0) must throw",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
   });
 
   it("WR2: streamEvents surfaces the code for a negative limit", async () => {
     const { ws } = makeWorkspace();
-    try {
-      for await (const _event of ws.streamEvents({
-        from_date: "2024-01-01",
-        to_date: "2024-01-31",
-        limit: -5,
-      })) {
-        void _event;
-      }
-      expect.unreachable("stream must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
-    }
+    const error = await expectRejects(
+      () =>
+        drain(
+          ws.streamEvents({
+            from_date: "2024-01-01",
+            to_date: "2024-01-31",
+            limit: -5,
+          }),
+        ),
+      "stream must throw",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
     await ws.close();
   });
 
   it("WR3: validateLimit above the maximum raises the coded error", () => {
-    try {
-      validateLimit(100_001);
-      expect.unreachable("validateLimit(100001) must throw");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
-    }
+    const error = expectThrows(
+      () => validateLimit(100_001),
+      "validateLimit(100001) must throw",
+    );
+    expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
   });
 
   it("WR3: streamEvents surfaces the code for an oversized limit", async () => {
     const { ws } = makeWorkspace();
-    try {
-      for await (const _event of ws.streamEvents({
-        from_date: "2024-01-01",
-        to_date: "2024-01-31",
-        limit: 200_000,
-      })) {
-        void _event;
-      }
-      expect.unreachable("stream must throw");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
-    }
+    const error = await expectRejects(
+      () =>
+        drain(
+          ws.streamEvents({
+            from_date: "2024-01-01",
+            to_date: "2024-01-31",
+            limit: 200_000,
+          }),
+        ),
+      "stream must throw",
+    );
+    expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
     await ws.close();
   });
 
@@ -616,13 +582,12 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
   });
 
   it("WS2: the level validator rejects a non-literal level", () => {
-    try {
-      validateBusinessContextLevel("org");
-      expect.unreachable("validateBusinessContextLevel('org') must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe("WS2_INVALID_LEVEL");
-    }
+    const error = expectThrows(
+      () => validateBusinessContextLevel("org"),
+      "validateBusinessContextLevel('org') must throw",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe("WS2_INVALID_LEVEL");
   });
 
   it("WS2: getBusinessContext surfaces the code before any client call", async () => {
@@ -639,7 +604,7 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
   });
 });
 
-describe("MeService construction (workspace.py:866-885)", () => {
+describe("MeService construction", () => {
   it("the lazy accessor builds one service bound to the session", () => {
     const { ws } = makeWorkspace();
 
@@ -651,6 +616,8 @@ describe("MeService construction (workspace.py:866-885)", () => {
   });
 
   it("the in-memory cache store round-trips a response", async () => {
+    /* eslint-disable vitest/prefer-expect-resolves -- MeCacheStore.get is a
+       MaybePromise seam; `.resolves` would throw on a synchronous store. */
     const cache = inMemoryMeCache("team");
     expect(cache.accountName).toBe("team");
     expect(await cache.get()).toBeNull();
@@ -659,22 +626,17 @@ describe("MeService construction (workspace.py:866-885)", () => {
     expect(await cache.get()).toBe(response);
     await cache.invalidate();
     expect(await cache.get()).toBeNull();
+    /* eslint-enable vitest/prefer-expect-resolves */
   });
 });
 
-// ---------------------------------------------------------------------------
-// B7-A1: `TestFacadeResolverWiring` (test_workspace_resolution.py:611)
-// — the dagger vector's Layer-3 twin, landed here per `b7-packets.md`
-// §3.4 (the stale B4-C1 header orphaned it — Caution #17).
-//
-// Mechanism substitutions (R10.2, header-cited): the httpx
-// MockTransport handler becomes the `createMockClient` canned handler;
-// the tmp-`$HOME` MeCache isolation is inherent (in-memory cache
-// factory); the account-swap case's ConfigManager becomes the
-// in-memory effects fake + real `resolverSeamsFromEffects`.
-// ---------------------------------------------------------------------------
+// --- Facade resolver wiring ---
+// The httpx MockTransport handler becomes the `createMockClient` canned
+// handler; the tmp-`$HOME` MeCache isolation is inherent (in-memory cache
+// factory); the account-swap case's ConfigManager becomes the in-memory
+// effects fake plus the real `resolverSeamsFromEffects`.
 
-/** `_me_dict` twin (test_workspace_resolution.py:46-61). */
+/** `_me_dict` twin. */
 function meDict(
   workspaces: Record<string, unknown>,
   projects: Record<string, unknown>,
@@ -687,7 +649,7 @@ function meDict(
   };
 }
 
-/** `_ws` twin (test_workspace_resolution.py:64-93). */
+/** `_ws` twin. */
 function wsEntry(
   wid: number,
   overrides: Record<string, unknown> = {},
@@ -703,7 +665,8 @@ function wsEntry(
   };
 }
 
-describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
+describe("Facade resolver wiring", () => {
+  // python: TestFacadeResolverWiring
   it("a warm /me resolves without hitting /workspaces/public", async () => {
     const calls: string[] = [];
     const session = makeSession({
@@ -736,7 +699,7 @@ describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
     const ws = new Workspace({ session, client });
 
     await ws.me(); // warm the per-account /me cache (as `mp login` would)
-    expect(await ws.api.resolveWorkspaceId()).toBe(2);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(2);
     expect(calls.some((p) => p.includes("workspaces/public"))).toBe(false);
     await ws.close();
   });
@@ -771,9 +734,9 @@ describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
     const ws = new Workspace({ session, client });
 
     await ws.me();
-    expect(await ws.api.resolveWorkspaceId()).toBe(2);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(2);
     await ws.use({ project: "777" });
-    expect(await ws.api.resolveWorkspaceId()).toBe(3);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(3);
     await ws.close();
   });
 
@@ -840,9 +803,9 @@ describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
     });
 
     await ws.me(); // warm acct_a's /me cache
-    expect(await ws.api.resolveWorkspaceId()).toBe(11);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(11);
     await ws.use({ account: "acct_b" }); // acct_b's /me cache is cold
-    expect(await ws.api.resolveWorkspaceId()).toBe(22);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(22);
     await ws.close();
   });
 
@@ -863,7 +826,7 @@ describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
     new Workspace({ session, client });
 
     // Facade left the caller's resolver in place.
-    expect(await client.resolveWorkspaceId()).toBe(99);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(99);
     expect(custom).toHaveBeenCalledTimes(1);
   });
 });

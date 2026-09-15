@@ -1,4 +1,5 @@
-"""Generate packages/core/src/compat/decimal-digits.gen.ts (R11.3).
+#!/usr/bin/env python3
+"""Generate packages/core/src/compat/decimal-digits.gen.ts.
 
 Emits the closed-form table of Unicode decimal-digit codepoints (the
 characters CPython's ``int(str)`` / ``float(str)`` accept as digits via
@@ -10,14 +11,16 @@ accept set of the pinned interpreter.
 
 Pinning the table makes ``pythonInt``/``pythonFloat`` digit acceptance
 independent of the JS engine's Unicode database version (V8 tracks a
-newer Unicode than CPython 3.14's 16.0.0 — the same skew the TS-7
-differential run caught for ``str.isprintable``).
+newer Unicode than CPython 3.14's 16.0.0 — the same skew a
+differential run against CPython caught for ``str.isprintable``).
 
-Usage (any CPython matching the port's pinned target):
-    uv run --no-project python scripts/generate-decimal-digits.py
+Usage (the pinned CPython only — see scripts/compat-python.pin.json):
+    npm run generate:compat-tables
 
 Re-run + commit when the port's target CPython (and thus its Unicode
-database) is upgraded; the provenance header records both versions.
+database) is upgraded; the provenance header records both versions and
+the sha256 of this script (checked by
+tests/generated-tables-provenance.test.ts).
 """
 
 from __future__ import annotations
@@ -25,6 +28,8 @@ from __future__ import annotations
 import sys
 import unicodedata
 from pathlib import Path
+
+from gen_provenance import generator_sha256, require_pinned_interpreter
 
 OUT_PATH = (
     Path(__file__).resolve().parents[1]
@@ -76,14 +81,17 @@ def main() -> int:
     Returns:
         Process exit code (0 on success).
     """
+    require_pinned_interpreter()
     runs = build_runs()
     total = sum(length for _, _, length in runs)
     py_version = ".".join(str(part) for part in sys.version_info[:3])
     lines = [
         "// GENERATED FILE — do not edit by hand.",
         "// Source: scripts/generate-decimal-digits.py (CPython int() is the oracle).",
+        "// Regenerate with: npm run generate:compat-tables",
         f"// Provenance: CPython {py_version}, Unicode database "
         f"{unicodedata.unidata_version}, {len(runs)} runs / {total} codepoints.",
+        f"// Generator sha256: {generator_sha256(__file__)} (scripts/generate-decimal-digits.py).",
         "//",
         "// Codepoints CPython int(str)/float(str) accept as decimal digits",
         "// (the Unicode decimal-digit property consulted by",

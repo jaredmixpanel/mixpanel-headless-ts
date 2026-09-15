@@ -1,77 +1,57 @@
 /**
- * rrweb event-stream analyzer — TS port of
- * `mixpanel_headless/_internal/replays/rrweb_analyzer.py` (969 lines,
- * whole file, pure stdlib) for Phase-3 batch B5, shard S3
- * (`context/phase3/design/b5-packets.md` §5).
+ * rrweb event-stream analyzer: walks the raw event stream once,
+ * maintains DOM state, and emits both a list of `UserAction` records
+ * (what `ReplayBundle` aggregations consume) and a plain-text markdown
+ * timeline (`{timestamp_seconds}: {description}` per line).
  *
- * Walks the raw rrweb event stream, maintains DOM state, and emits two
- * parallel outputs from a single pass: a list of `UserAction` records
- * (the structured surface `ReplayBundle` aggregations consume) and a
- * plain-text markdown timeline (`{timestamp_seconds}: {description}`
- * per line).
+ * Parity rules that shape the code: the Python `IntEnum`s are frozen
+ * `const` objects with the same numeric values; `int(...)` goes through
+ * {@link pythonIntCoerce} (truncation toward zero, CPython string
+ * grammar); text slicing through {@link cpSlice} (code points, not
+ * UTF-16 units); integer-keyed `dict`s are `Map`s so insertion order
+ * survives; guard order is Python's source order throughout. Logging is
+ * an injected {@link AnalyzerLogger} — core never touches `console`.
+ * `Workspace.fetchReplay` runs the analyzer one layer above.
  *
- * Port-wide conventions applied here:
- *
- * - R4.3 — the four Python `IntEnum`s (`EventType`,
- *   `IncrementalSource`, `MouseInteractionType`, `NodeType`) port as
- *   frozen `const` objects plus literal unions, preserving the numeric
- *   values so the wire comparisons stay identical.
- * - R11.7 — `value.strip()` routes through {@link pythonStrip};
- *   `int(event.get("timestamp", 0))` through {@link pythonIntCoerce}
- *   (packet §9 Caution #3: CPython `int()` TRUNCATES floats toward zero
- *   and parses strings with the CPython grammar, never `Number()`).
- * - R11.6 — `text_content[start:end]` is a CODE-POINT slice
- *   ({@link cpSlice}); `len(text)` is {@link cpLength}.
- * - Watchlist #13 — `isinstance(x, dict)` is {@link isPythonDict}.
- * - R9.5 — the two `log.debug` / `log.info` sites are an injected sink
- *   ({@link AnalyzerLogger}); `core` never touches `console`.
- * - R4.8 — the `dict[int, ...]` node map and description cache become
- *   `Map`s (prototype-safe; integer keys keep insertion order, which a
- *   plain JS object would NOT — integer-like object keys sort
- *   numerically first).
- * - Guard order is SOURCE order throughout (`_build_node_description`'s
- *   aria-label → title → alt → text → placeholder ladder is
- *   order-sensitive, packet §9 Caution #11).
- *
- * The analyzer is intentionally free of `Workspace` / client
- * dependencies: `Workspace.fetch_replay` runs it a layer above
- * (`replays.py:129-133`).
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer
  */
 
-import { cpLength, cpSlice } from "../compat/codepoint.js";
+import { codepoints, cpLength, cpSlice } from "../compat/codepoint.js";
+import { ValueError } from "../compat/python-builtins.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
-import { pythonStrip } from "../compat/python-strip.js";
-import { pythonStr, type PythonValue } from "../compat/python-str.js";
-import { ValueError } from "../query/python-builtins.js";
-import { isPythonDict } from "../query/validation-shared.js";
 import {
-  UserAction,
-  type ReplayActionLabel,
-} from "../types/results/replays.js";
+  pythonStr,
+  pythonStrOf,
+  type PythonValue,
+} from "../compat/python-str.js";
+import { pythonStrip } from "../compat/python-strip.js";
+import { defined } from "../invariant.js";
+import { type ReplayActionLabel, UserAction } from "./user-action.js";
 
 /** Any JSON-shaped mapping the analyzer reads off the event stream. */
 type Dict = Readonly<Record<string, unknown>>;
 
-// =============================================================================
-// rrweb event-shape enums (R4.3 — const objects, numeric values preserved)
-// =============================================================================
+// --- rrweb event-shape enums (const objects; numeric values preserved) ---
 
-/** RRWeb event types (`EventType`, `rrweb_analyzer.py:52-59`). */
-export const EventType = {
+/**
+ * RRWeb event types.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventType
+ */
+const EventType = {
   FULL_SNAPSHOT: 2,
   INCREMENTAL_SNAPSHOT: 3,
   META: 4,
   PLUGIN: 6,
 } as const;
 
-/** The numeric domain of {@link EventType}. */
-export type EventTypeValue = (typeof EventType)[keyof typeof EventType];
-
 /**
- * RRWeb `IncrementalSnapshot.data.source` discriminators we handle
- * (`IncrementalSource`, `rrweb_analyzer.py:61-69`).
+ * RRWeb `IncrementalSnapshot.data.source` discriminators we handle.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.IncrementalSource
  */
-export const IncrementalSource = {
+const IncrementalSource = {
   MUTATION: 0,
   MOUSE_INTERACTION: 2,
   SCROLL: 3,
@@ -79,15 +59,12 @@ export const IncrementalSource = {
   SELECTION: 14,
 } as const;
 
-/** The numeric domain of {@link IncrementalSource}. */
-export type IncrementalSourceValue =
-  (typeof IncrementalSource)[keyof typeof IncrementalSource];
-
 /**
- * `MouseInteraction.data.type` values we emit actions for
- * (`MouseInteractionType`, `rrweb_analyzer.py:71-79`).
+ * `MouseInteraction.data.type` values we emit actions for.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.MouseInteractionType
  */
-export const MouseInteractionType = {
+const MouseInteractionType = {
   CLICK: 2,
   CONTEXT_MENU: 3,
   DBL_CLICK: 4,
@@ -95,28 +72,24 @@ export const MouseInteractionType = {
   TOUCH_START: 7,
 } as const;
 
-/** The numeric domain of {@link MouseInteractionType}. */
-export type MouseInteractionTypeValue =
-  (typeof MouseInteractionType)[keyof typeof MouseInteractionType];
-
-/** rrweb DOM node types (`NodeType`, `rrweb_analyzer.py:81-86`). */
-export const NodeType = {
+/**
+ * rrweb DOM node types.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.NodeType
+ */
+const NodeType = {
   ELEMENT: 2,
   TEXT: 3,
 } as const;
 
-/** The numeric domain of {@link NodeType}. */
-export type NodeTypeValue = (typeof NodeType)[keyof typeof NodeType];
-
-// =============================================================================
-// Public result types
-// =============================================================================
+// --- Public result types ---
 
 /**
- * A single page navigation extracted from Meta events (`PageVisit`,
- * `rrweb_analyzer.py:94-105`).
+ * A single page navigation extracted from Meta events.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.PageVisit
  */
-export interface PageVisit {
+interface PageVisit {
   /** Unix ms timestamp of the Meta event. */
   readonly timestamp: number;
   /** The navigated-to URL. */
@@ -124,10 +97,11 @@ export interface PageVisit {
 }
 
 /**
- * A console-error log entry extracted from the rrweb console plugin
- * (`ConsoleError`, `rrweb_analyzer.py:107-120`).
+ * A console-error log entry extracted from the rrweb console plugin.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.ConsoleError
  */
-export interface ConsoleError {
+interface ConsoleError {
   /** Unix ms timestamp. */
   readonly timestamp: number;
   /** Joined message text. */
@@ -137,8 +111,9 @@ export interface ConsoleError {
 }
 
 /**
- * The full bundle returned by {@link RrwebAnalyzer.analyze}
- * (`AnalyzerResult`, `rrweb_analyzer.py:122-138`).
+ * The full bundle returned by {@link RrwebAnalyzer.analyze}.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.AnalyzerResult
  */
 export interface AnalyzerResult {
   /** Structured `UserAction` records in timestamp order. */
@@ -151,29 +126,26 @@ export interface AnalyzerResult {
   readonly errors: readonly ConsoleError[];
 }
 
-/** Debug/info log seam for the module's two `log.*` sites (R9.5). */
+/** Debug/info log seam for the module's two `log.*` sites. */
 export interface AnalyzerLogger {
   /**
    * Record a debug message (the `DOMTracker` max-nodes site).
    *
    * @param message - The formatted text (never vector-compared).
    */
-  debug?(message: string): void;
+  debug?: (message: string) => void;
   /**
    * Record an info message (the two `analyze` / `analyze_events` sites).
    *
    * @param message - The formatted text (never vector-compared).
    */
-  info?(message: string): void;
+  info?: (message: string) => void;
 }
 
-// =============================================================================
-// DOMTracker
-// =============================================================================
+// --- DOMTracker ---
 
 /**
- * Pick the stable `data-*` selector attributes from a node's attrs
- * (`_selector_attrs`, `rrweb_analyzer.py:145-165`).
+ * Pick the stable `data-*` selector attributes from a node's attrs.
  *
  * These are the test-id-style hooks (`data-testid`, `data-cy`, …) that
  * `selectorLabelFn` reads off `UserAction.metadata`. Capturing every
@@ -184,8 +156,9 @@ export interface AnalyzerLogger {
  * @param sanitizedAttrs - A node's already-sanitized `{attr: value}` map.
  * @returns The subset whose keys start with `data-` and whose values are
  *   non-empty strings. Empty when the node carries no such attribute.
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer._selector_attrs
  */
-export function selectorAttrs(
+function selectorAttrs(
   sanitizedAttrs: ReadonlyMap<string, unknown>,
 ): Map<string, string> {
   const out = new Map<string, string>();
@@ -213,14 +186,34 @@ export interface TrackedNode {
   text?: unknown;
 }
 
+/** Constructor options of {@link DOMTracker}. */
+export interface DOMTrackerOptions {
+  /** Optional debug sink for the max-nodes site. */
+  readonly logger?: AnalyzerLogger | undefined;
+  /** Node-map cap; defaults to {@link DOMTracker.DEFAULT_MAX_NODES}. */
+  readonly maxNodes?: number | undefined;
+  /**
+   * Ancestor-traversal bound; defaults to
+   * {@link DOMTracker.DEFAULT_MAX_ANCESTOR_DEPTH}.
+   */
+  readonly maxAncestorDepth?: number | undefined;
+}
+
 /**
- * Lightweight DOM state tracker (`DOMTracker`,
- * `rrweb_analyzer.py:168-518`).
+ * Lightweight DOM state tracker.
  *
  * Tracks all nodes with metadata needed for user-action descriptions.
  * Walks `FullSnapshot` roots, applies `Mutation.adds` / removes /
  * text-changes / attribute-changes, and exposes
  * {@link getNodeDescription} for human-readable element labels.
+ *
+ * @example
+ * ```ts
+ * const tracker = new DOMTracker({ maxNodes: 10_000 });
+ * tracker.addNode(fullSnapshotEvent.data.node);
+ * tracker.getNodeDescription(42); // 'button "Sign in"'
+ * ```
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker
  */
 export class DOMTracker {
   /** Tags whose direct text children feed the description (`INTERACTIVE_TAGS`). */
@@ -249,44 +242,50 @@ export class DOMTracker {
     "type",
   ];
 
-  /** Ancestor-traversal bound (`MAX_ANCESTOR_DEPTH`). */
-  static readonly MAX_ANCESTOR_DEPTH = 3;
+  /** Default ancestor-traversal bound (Python `MAX_ANCESTOR_DEPTH`). */
+  static readonly DEFAULT_MAX_ANCESTOR_DEPTH = 3;
 
-  /** Node-map cap (`MAX_NODES`) — per-instance so tests can lower it. */
-  MAX_NODES = 50000;
+  /** Default node-map cap (Python `MAX_NODES`). */
+  static readonly DEFAULT_MAX_NODES = 50000;
 
-  /** Ancestor-traversal bound (per-instance mirror of the class attr). */
-  MAX_ANCESTOR_DEPTH = DOMTracker.MAX_ANCESTOR_DEPTH;
+  /** Node-map cap of this tracker (`MAX_NODES`; a constructor option). */
+  readonly maxNodes: number;
+
+  /** Ancestor-traversal bound of this tracker (`MAX_ANCESTOR_DEPTH`; a constructor option). */
+  readonly maxAncestorDepth: number;
 
   /** The node map (`self.nodes`). */
-  readonly nodes = new Map<number, TrackedNode>();
+  readonly nodes: Map<number, TrackedNode> = new Map();
 
   /** Memoized descriptions (`self._description_cache`). */
-  readonly descriptionCache = new Map<number, string>();
+  readonly descriptionCache: Map<number, string> = new Map();
 
   /** Whether the node cap has been hit at least once. */
   reachedMaxNodes = false;
 
-  /** The `log.debug` sink (R9.5). */
+  /** The `log.debug` sink. */
   readonly #logger: AnalyzerLogger | undefined;
 
   /**
-   * Initialize an empty node map + description cache (`__init__`,
-   * `rrweb_analyzer.py:203-207`).
+   * Initialize an empty node map + description cache.
    *
-   * @param logger - Optional debug sink for the max-nodes site.
+   * @param options - Optional debug sink, node-map cap and ancestor bound.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker.__init__
    */
-  constructor(logger?: AnalyzerLogger) {
-    this.#logger = logger;
+  constructor(options: DOMTrackerOptions = {}) {
+    this.#logger = options.logger;
+    this.maxNodes = options.maxNodes ?? DOMTracker.DEFAULT_MAX_NODES;
+    this.maxAncestorDepth =
+      options.maxAncestorDepth ?? DOMTracker.DEFAULT_MAX_ANCESTOR_DEPTH;
   }
 
   /**
-   * Strip / drop trivially uninformative string values (empty, `'none'`)
-   * — `_sanitize_value`, `rrweb_analyzer.py:209-217`.
+   * Strip / drop trivially uninformative string values (empty, `'none'`).
    *
    * @param value - The raw attribute / text value.
    * @returns `""` for blank or `"none"`-ish strings, the stripped string
    *   for other strings, the value unchanged for non-strings.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker._sanitize_value
    */
   static sanitizeValue(value: unknown): unknown {
     if (typeof value === "string") {
@@ -303,34 +302,38 @@ export class DOMTracker {
   }
 
   /**
-   * Walk a FullSnapshot / mutation-add root and record element nodes
-   * (`add_node`, `rrweb_analyzer.py:219-296`).
+   * Walk a FullSnapshot / mutation-add root and record element nodes.
    *
    * @param node - The rrweb node dict to ingest.
    * @param parentId - Optional parent rrweb node id for ancestor
    *   traversal.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker.add_node
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   addNode(node: Dict, parentId: number | null = null): void {
-    const queue: Array<[Dict, number | null]> = [[node, parentId]];
+    const queue: Array<readonly [Dict, number | null]> = [[node, parentId]];
 
-    while (queue.length > 0) {
-      // Python `queue.pop(0)` — FIFO breadth-first order.
-      const [currentNode, currentParentId] = queue.shift() as [
-        Dict,
-        number | null,
-      ];
-
+    // Python `queue.pop(0)` — FIFO breadth-first order. A read cursor
+    // stands in for `shift()`, which is O(n) per pop and made the walk
+    // quadratic on 50k-node snapshots.
+    let head = 0;
+    while (head < queue.length) {
+      const [currentNode, currentParentId] = defined(
+        queue[head],
+        "DOMTracker BFS queue entry",
+      );
+      head += 1;
       const rawNodeId = currentNode["id"];
       if (rawNodeId === undefined || rawNodeId === null) {
         continue;
       }
       const nodeId = rawNodeId as number;
 
-      if (!this.nodes.has(nodeId) && this.nodes.size >= this.MAX_NODES) {
+      if (!this.nodes.has(nodeId) && this.nodes.size >= this.maxNodes) {
         // Skip every new node once at the cap — and stop descending into
         // its subtree. `reachedMaxNodes` only de-dupes the log; it must
-        // NOT gate the skip itself (regression locked by
-        // TestDOMTrackerDirect::test_max_nodes_caps_growth_after_trip).
+        // not gate the skip itself, or the cap stops holding after the
+        // first trip.
         if (!this.reachedMaxNodes) {
           this.#logger?.debug?.(
             "DOMTracker reached maximum node limit; skipping new nodes",
@@ -361,6 +364,7 @@ export class DOMTracker {
         const sanitizedAttrs = new Map<string, unknown>();
         if (isPythonDict(attributes)) {
           for (const [k, v] of Object.entries(attributes)) {
+            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
             if (pyTruthyValue(DOMTracker.sanitizeValue(v))) {
               sanitizedAttrs.set(k, v);
             }
@@ -414,11 +418,11 @@ export class DOMTracker {
   }
 
   /**
-   * Concatenate direct text-child content for an interactive element
-   * (`_extract_text`, `rrweb_analyzer.py:298-305`).
+   * Concatenate direct text-child content for an interactive element.
    *
    * @param node - The element node dict.
    * @returns The space-joined text of its direct text children.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker._extract_text
    */
   #extractText(node: Dict): string {
     const texts: string[] = [];
@@ -439,7 +443,7 @@ export class DOMTracker {
 
   /**
    * Drop a node + its cached description (mutation remove —
-   * `remove_node`, `rrweb_analyzer.py:307-310`).
+   * `remove_node`, `rrweb_analyzer.py`).
    *
    * @param nodeId - The rrweb node id.
    */
@@ -449,11 +453,11 @@ export class DOMTracker {
   }
 
   /**
-   * Update the text of a node + its interactive ancestor, if any
-   * (`update_text`, `rrweb_analyzer.py:312-328`).
+   * Update the text of a node + its interactive ancestor, if any.
    *
    * @param nodeId - The rrweb node id.
    * @param text - The new text value.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker.update_text
    */
   updateText(nodeId: number, text: string): void {
     const sanitizedText = DOMTracker.sanitizeValue(text);
@@ -485,11 +489,11 @@ export class DOMTracker {
   }
 
   /**
-   * Merge new descriptive attributes onto an existing node
-   * (`update_attributes`, `rrweb_analyzer.py:330-346`).
+   * Merge new descriptive attributes onto an existing node.
    *
    * @param nodeId - The rrweb node id.
    * @param attributes - The mutation's `{attr: value}` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker.update_attributes
    */
   updateAttributes(nodeId: number, attributes: Dict): void {
     const sanitizedAttrs = new Map<string, unknown>();
@@ -506,17 +510,13 @@ export class DOMTracker {
     }
     const record = this.nodes.get(nodeId);
     if (record !== undefined) {
-      if (record.attributes === undefined) {
-        record.attributes = new Map<string, unknown>();
-      }
+      record.attributes ??= new Map<string, unknown>();
       for (const [k, v] of descriptiveAttrs) {
         record.attributes.set(k, v);
       }
       const selectors = selectorAttrs(sanitizedAttrs);
       if (selectors.size > 0) {
-        if (record.selectors === undefined) {
-          record.selectors = new Map<string, string>();
-        }
+        record.selectors ??= new Map<string, string>();
         for (const [k, v] of selectors) {
           record.selectors.set(k, v);
         }
@@ -526,13 +526,13 @@ export class DOMTracker {
   }
 
   /**
-   * Return the node's captured `data-*` selector attributes
-   * (`get_node_selectors`, `rrweb_analyzer.py:348-365`).
+   * Return the node's captured `data-*` selector attributes.
    *
    * @param nodeId - The rrweb node id.
    * @returns A fresh `{attr: value}` map of the node's `data-*`
    *   attributes; empty when the node was never recorded or carried
    *   none.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker.get_node_selectors
    */
   getNodeSelectors(nodeId: number): Map<string, string> {
     const node = this.nodes.get(nodeId);
@@ -543,21 +543,18 @@ export class DOMTracker {
     if (selectors === undefined || selectors.size === 0) {
       return new Map();
     }
-    const out = new Map<string, string>();
-    for (const [k, v] of selectors) {
-      out.set(String(k), String(v));
-    }
+    const out = new Map<string, string>(selectors);
     return out;
   }
 
   /**
-   * Best-effort human-readable description of a node
-   * (`get_node_description`, `rrweb_analyzer.py:367-390`).
+   * Best-effort human-readable description of a node.
    *
    * @param nodeId - The rrweb node id.
    * @returns A description built from the node's own tag / attributes /
    *   text, falling back to ancestor context, then to the literal
    *   `"element"` sentinel.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker.get_node_description
    */
   getNodeDescription(nodeId: number): string {
     const cached = this.descriptionCache.get(nodeId);
@@ -583,15 +580,18 @@ export class DOMTracker {
   }
 
   /**
-   * Build a description from the node's own metadata, if any
-   * (`_build_node_description`, `rrweb_analyzer.py:392-451`). The
-   * attribute ladder is ORDER-SENSITIVE (packet §9 Caution #11).
+   * Build a description from the node's own metadata, if any.
+   *
+   * The attribute ladder (aria-label, title, alt, text, placeholder) is
+   * order-sensitive: the first present entry wins.
    *
    * @param nodeId - The rrweb node id.
    * @returns The description string, or `null` when the node carries no
    *   meaningful descriptive info (caller falls back to ancestor
    *   traversal).
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker._build_node_description
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   buildNodeDescription(nodeId: number): string | null {
     const nodeData = this.nodes.get(nodeId);
     if (nodeData === undefined) {
@@ -611,25 +611,25 @@ export class DOMTracker {
     const alt = attrs.get("alt");
     const placeholder = attrs.get("placeholder");
     if (ariaLabel !== undefined && ariaLabel !== null) {
-      parts.push(`"${String(ariaLabel)}"`);
+      parts.push(`"${pythonStrOf(ariaLabel)}"`);
       hasMeaningfulInfo = true;
     } else if (title !== undefined && title !== null) {
-      parts.push(`"${String(title)}"`);
+      parts.push(`"${pythonStrOf(title)}"`);
       hasMeaningfulInfo = true;
     } else if (alt !== undefined && alt !== null) {
-      parts.push(`alt="${String(alt)}"`);
+      parts.push(`alt="${pythonStrOf(alt)}"`);
       hasMeaningfulInfo = true;
     } else if (pyTruthyValue(text)) {
-      parts.push(`"${String(text)}"`);
+      parts.push(`"${pythonStrOf(text)}"`);
       hasMeaningfulInfo = true;
     } else if (placeholder !== undefined && placeholder !== null) {
-      parts.push(`placeholder="${String(placeholder)}"`);
+      parts.push(`placeholder="${pythonStrOf(placeholder)}"`);
       hasMeaningfulInfo = true;
     }
 
     const href = attrs.get("href");
     if (href !== undefined && href !== null && tag === "a") {
-      const hrefStr = String(href);
+      const hrefStr = pythonStrOf(href);
       if (hrefStr.startsWith("http")) {
         const path = urlParsePath(hrefStr);
         if (path !== "" && path !== "/") {
@@ -641,13 +641,13 @@ export class DOMTracker {
 
     const id = attrs.get("id");
     if (id !== undefined && id !== null && !hasMeaningfulInfo) {
-      parts.push(`#${String(id)}`);
+      parts.push(`#${pythonStrOf(id)}`);
       hasMeaningfulInfo = true;
     }
 
     const type_ = attrs.get("type");
     if (tag === "input" && type_ !== undefined && type_ !== null) {
-      parts.push(`type=${String(type_)}`);
+      parts.push(`type=${pythonStrOf(type_)}`);
       hasMeaningfulInfo = true;
     }
 
@@ -658,12 +658,13 @@ export class DOMTracker {
   }
 
   /**
-   * Walk up to {@link MAX_ANCESTOR_DEPTH} parents for descriptive
-   * context (`_get_ancestor_context`, `rrweb_analyzer.py:453-487`).
+   * Walk up to {@link maxAncestorDepth} parents for descriptive
+   * context.
    *
    * @param nodeId - The rrweb node id.
    * @returns `"{tag} in {parent_description}"` when a describable
    *   ancestor is reachable; `null` otherwise.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.DOMTracker._get_ancestor_context
    */
   getAncestorContext(nodeId: number): string | null {
     const nodeData = this.nodes.get(nodeId);
@@ -682,7 +683,7 @@ export class DOMTracker {
     while (
       parentId !== null &&
       parentId !== 0 &&
-      depth < this.MAX_ANCESTOR_DEPTH
+      depth < this.maxAncestorDepth
     ) {
       if (visited.has(parentId)) {
         break;
@@ -692,35 +693,29 @@ export class DOMTracker {
       const parentDesc =
         this.descriptionCache.get(parentId) ??
         this.buildNodeDescription(parentId);
-      if (
-        parentDesc !== null &&
-        parentDesc !== undefined &&
-        parentDesc !== ""
-      ) {
+      if (parentDesc !== null && parentDesc !== "") {
         return `${tag} in ${parentDesc}`;
       }
 
       const parentRecord = this.nodes.get(parentId);
-      if (parentRecord !== undefined) {
-        parentId = parentRecord.parent_id;
-        depth += 1;
-      } else {
+      if (parentRecord === undefined) {
         break;
       }
+      parentId = parentRecord.parent_id;
+      depth += 1;
     }
 
     return null;
   }
 }
 
-// =============================================================================
-// EventAnalyzer — emits structured public UserAction + description lines
-// =============================================================================
+// --- EventAnalyzer — structured UserAction records plus description lines ---
 
 /**
  * Maps `MouseInteractionType` to the human-readable verb used in
- * description strings (`_MOUSE_INTERACTION_NAMES`,
- * `rrweb_analyzer.py:496-502`).
+ * description strings.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer._MOUSE_INTERACTION_NAMES
  */
 const MOUSE_INTERACTION_NAMES: ReadonlyMap<number, string> = new Map([
   [MouseInteractionType.CLICK, "clicked"],
@@ -732,10 +727,12 @@ const MOUSE_INTERACTION_NAMES: ReadonlyMap<number, string> = new Map([
 
 /**
  * Maps the human-readable verb to the public `UserAction.action`
- * literal (`_INTERACTION_TO_ACTION`, `rrweb_analyzer.py:504-514`). All
+ * literal. All
  * click-family interactions collapse to `"click"` so `ReplayBundle`
  * aggregations work uniformly; the original interaction is preserved in
  * `metadata["interaction"]`.
+ *
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer._INTERACTION_TO_ACTION
  */
 const INTERACTION_TO_ACTION: ReadonlyMap<string, string> = new Map([
   ["clicked", "click"],
@@ -746,13 +743,20 @@ const INTERACTION_TO_ACTION: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
- * Single-pass rrweb event walker emitting structured + textual actions
- * (`EventAnalyzer`, `rrweb_analyzer.py:517-819`).
+ * Single-pass rrweb event walker emitting structured + textual actions.
  *
  * Applies per-source debouncing (scroll / input / selection at 1s each)
  * and plugin-event filtering for `rrweb/console@*` console errors.
+ *
+ * @example
+ * ```ts
+ * const analyzer = new EventAnalyzer();
+ * for (const event of sortedEvents) analyzer.processEvent(event);
+ * analyzer.userActions; // UserAction[]
+ * ```
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer
  */
-export class EventAnalyzer {
+class EventAnalyzer {
   /** Scroll debounce window in ms (`SCROLL_DEBOUNCE_MS`). */
   static readonly SCROLL_DEBOUNCE_MS = 1000;
 
@@ -792,13 +796,13 @@ export class EventAnalyzer {
   lastSelectionTime = 0;
 
   /** Per-node last-input timestamps (`self.last_input_time`). */
-  readonly lastInputTime = new Map<number, number>();
+  readonly lastInputTime: Map<number, number> = new Map();
 
   /**
-   * Initialize the analyzer with an optional pre-seeded DOM tracker
-   * (`__init__`, `rrweb_analyzer.py:532-546`).
+   * Initialize the analyzer with an optional pre-seeded DOM tracker.
    *
    * @param domTracker - Optional pre-seeded tracker.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer.__init__
    */
   constructor(domTracker?: DOMTracker) {
     this.domTracker = domTracker ?? new DOMTracker();
@@ -806,13 +810,17 @@ export class EventAnalyzer {
 
   /**
    * Append both a structured `UserAction` and a
-   * `(timestamp, description)` line (`_emit`,
-   * `rrweb_analyzer.py:548-582`).
+   * `(timestamp, description)` line.
    *
    * @param timestamp - Unix ms.
    * @param action - One of the public `UserAction.action` literals.
    * @param description - Human-readable text for the markdown line.
-   * @param options - Node id / target label / url / metadata extras.
+   * @param options - Per-action extras: `targetNodeId`, the rrweb node
+   *   id the action targeted (`null` when unknown); `targetDesc`, the
+   *   element label (falls back to `description` when empty); `url`
+   *   (falls back to the current page); and `metadata`, analyzer-specific
+   *   extras (default `{}`).
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._emit
    */
   emit(
     timestamp: number,
@@ -839,7 +847,7 @@ export class EventAnalyzer {
           targetDesc === undefined || targetDesc === null || targetDesc === ""
             ? description
             : targetDesc,
-        url: url !== undefined && url !== null ? url : this.currentUrl,
+        url: url ?? this.currentUrl,
         metadata: metadata ?? {},
         description,
       }),
@@ -847,39 +855,53 @@ export class EventAnalyzer {
   }
 
   /**
-   * Dispatch a single rrweb event to its type-specific handler
-   * (`process_event`, `rrweb_analyzer.py:584-597`).
+   * Dispatch a single rrweb event to its type-specific handler.
    *
    * @param event - The raw rrweb event dict.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer.process_event
    */
   processEvent(event: Dict): void {
     const eventType = event["type"];
-    // `int(event.get("timestamp", 0))` — the default applies ONLY when
-    // the key is ABSENT; an explicit `null` reaches `int(None)` and
-    // raises `TypeError` (B5-ARB FID-F3).
+    // `int(event.get("timestamp", 0))` — the default applies only when
+    // the key is absent; an explicit `null` reaches `int(None)` and
+    // raises `TypeError`.
     const timestamp = pythonIntCoerce(
       Object.hasOwn(event, "timestamp") ? event["timestamp"] : 0,
     );
     const rawData = event["data"];
     const data: Dict = isPythonDict(rawData) ? rawData : {};
 
-    if (eventType === EventType.META) {
-      this.#processMeta(timestamp, data);
-    } else if (eventType === EventType.FULL_SNAPSHOT) {
-      this.#processFullSnapshot(data);
-    } else if (eventType === EventType.INCREMENTAL_SNAPSHOT) {
-      this.#processIncrementalSnapshot(timestamp, data);
-    } else if (eventType === EventType.PLUGIN) {
-      this.#processPluginEvent(timestamp, data);
+    switch (eventType) {
+      case EventType.META: {
+        this.#processMeta(timestamp, data);
+
+        break;
+      }
+      case EventType.FULL_SNAPSHOT: {
+        this.#processFullSnapshot(data);
+
+        break;
+      }
+      case EventType.INCREMENTAL_SNAPSHOT: {
+        this.#processIncrementalSnapshot(timestamp, data);
+
+        break;
+      }
+      case EventType.PLUGIN: {
+        this.#processPluginEvent(timestamp, data);
+
+        break;
+      }
+      // No default
     }
   }
 
   /**
-   * Handle navigations (Meta events) — update current URL + emit
-   * (`_process_meta`, `rrweb_analyzer.py:599-611`).
+   * Handle navigations (Meta events) — update current URL + emit.
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_meta
    */
   #processMeta(timestamp: number, data: Dict): void {
     const url = data["href"];
@@ -895,10 +917,10 @@ export class EventAnalyzer {
   }
 
   /**
-   * Ingest a FullSnapshot root into the DOM tracker; emit no action
-   * (`_process_full_snapshot`, `rrweb_analyzer.py:613-618`).
+   * Ingest a FullSnapshot root into the DOM tracker; emit no action.
    *
    * @param data - The event's `data` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_full_snapshot
    */
   #processFullSnapshot(data: Dict): void {
     const node = data["node"];
@@ -908,32 +930,50 @@ export class EventAnalyzer {
   }
 
   /**
-   * Route incremental snapshots by their `data.source` discriminator
-   * (`_process_incremental_snapshot`, `rrweb_analyzer.py:620-633`).
+   * Route incremental snapshots by their `data.source` discriminator.
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_incremental_snapshot
    */
   #processIncrementalSnapshot(timestamp: number, data: Dict): void {
     const source = data["source"];
-    if (source === IncrementalSource.MUTATION) {
-      this.#processMutation(data);
-    } else if (source === IncrementalSource.MOUSE_INTERACTION) {
-      this.#processMouseInteraction(timestamp, data);
-    } else if (source === IncrementalSource.SCROLL) {
-      this.#processScroll(timestamp);
-    } else if (source === IncrementalSource.INPUT) {
-      this.#processInput(timestamp, data);
-    } else if (source === IncrementalSource.SELECTION) {
-      this.#processSelection(timestamp, data);
+    switch (source) {
+      case IncrementalSource.MUTATION: {
+        this.#processMutation(data);
+
+        break;
+      }
+      case IncrementalSource.MOUSE_INTERACTION: {
+        this.#processMouseInteraction(timestamp, data);
+
+        break;
+      }
+      case IncrementalSource.SCROLL: {
+        this.#processScroll(timestamp);
+
+        break;
+      }
+      case IncrementalSource.INPUT: {
+        this.#processInput(timestamp, data);
+
+        break;
+      }
+      case IncrementalSource.SELECTION: {
+        this.#processSelection(timestamp, data);
+
+        break;
+      }
+      // No default
     }
   }
 
   /**
    * Apply Mutation adds / removes / texts / attributes to the DOM
-   * tracker (`_process_mutation`, `rrweb_analyzer.py:635-656`).
+   * tracker.
    *
    * @param data - The event's `data` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_mutation
    */
   #processMutation(data: Dict): void {
     for (const add of iterList(data["adds"])) {
@@ -981,17 +1021,17 @@ export class EventAnalyzer {
   }
 
   /**
-   * Emit click-family / focus / touch-start actions for interactions
-   * (`_process_mouse_interaction`, `rrweb_analyzer.py:658-692`).
+   * Emit click-family / focus / touch-start actions for interactions.
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_mouse_interaction
    */
   #processMouseInteraction(timestamp: number, data: Dict): void {
     const interactionType = data["type"];
     const nodeId = data["id"];
 
-    // Python `isinstance(interaction_type, int)` — `bool` IS an int
+    // Python `isinstance(interaction_type, int)` — `bool` is an int
     // subclass in CPython, and `True == 1` never matches the name map,
     // so the practical domain is plain integers.
     if (
@@ -1031,10 +1071,10 @@ export class EventAnalyzer {
   }
 
   /**
-   * Emit a debounced scroll action (`_process_scroll`,
-   * `rrweb_analyzer.py:694-699`).
+   * Emit a debounced scroll action.
    *
    * @param timestamp - Unix ms.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_scroll
    */
   #processScroll(timestamp: number): void {
     if (timestamp - this.lastScrollTime > EventAnalyzer.SCROLL_DEBOUNCE_MS) {
@@ -1044,11 +1084,11 @@ export class EventAnalyzer {
   }
 
   /**
-   * Emit a debounced input action (per-node) — `_process_input`,
-   * `rrweb_analyzer.py:701-742`.
+   * Emit a debounced input action (per-node).
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_input
    */
   #processInput(timestamp: number, data: Dict): void {
     const nodeId = data["id"];
@@ -1073,14 +1113,14 @@ export class EventAnalyzer {
       const state = pyTruthyValue(isChecked) ? "checked" : "unchecked";
       description = `Set ${nodeDesc} to ${state}`;
     } else if (pyTruthyValue(text)) {
-      description = `Entered '${String(text)}' in ${nodeDesc}`;
+      description = `Entered '${pythonStrOf(text)}' in ${nodeDesc}`;
     } else {
       description = `Modified ${nodeDesc}`;
     }
 
     const metadata: Record<string, unknown> = {
       // Python `len(text) if isinstance(text, str) else 0` — `len` is
-      // code points (R11.6).
+      // code points.
       text_length: typeof text === "string" ? cpLength(text) : 0,
       is_checked: isChecked === undefined ? null : isChecked,
     };
@@ -1098,11 +1138,11 @@ export class EventAnalyzer {
   }
 
   /**
-   * Emit a debounced text-selection action (`_process_selection`,
-   * `rrweb_analyzer.py:744-786`).
+   * Emit a debounced text-selection action.
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_selection
    */
   #processSelection(timestamp: number, data: Dict): void {
     const rangesRaw = data["ranges"] ?? [];
@@ -1134,10 +1174,11 @@ export class EventAnalyzer {
           ) as TrackedNode;
           if (Object.hasOwn(nodeData, "text")) {
             const textContent = String(nodeData.text);
-            // R11.6 — Python slicing is by CODE POINT.
+            // Python slices by code point, not by UTF-16 unit.
             const text = pythonStrip(
               cpSlice(textContent, startOffset, endOffset),
             );
+            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
             if (text !== "") {
               selectedTexts.push(text);
             }
@@ -1159,11 +1200,11 @@ export class EventAnalyzer {
   }
 
   /**
-   * Emit `console_error` actions for `rrweb/console@*` plugin payloads
-   * (`_process_plugin_event`, `rrweb_analyzer.py:788-819`).
+   * Emit `console_error` actions for `rrweb/console@*` plugin payloads.
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.EventAnalyzer._process_plugin_event
    */
   #processPluginEvent(timestamp: number, data: Dict): void {
     const plugin = data["plugin"] ?? "";
@@ -1200,13 +1241,10 @@ export class EventAnalyzer {
   }
 }
 
-// =============================================================================
-// Markdown reporter
-// =============================================================================
+// --- Markdown reporter ---
 
 /**
- * Render `{ts_seconds}: {description}` lines, collapsing runs
- * (`_collapse_timeline`, `rrweb_analyzer.py:820-846`).
+ * Render `{ts_seconds}: {description}` lines, collapsing runs.
  *
  * Consecutive entries with an identical description coalesce into a
  * single line with a `(×N)` suffix. The timestamp shown is the first in
@@ -1214,8 +1252,9 @@ export class EventAnalyzer {
  *
  * @param lines - `(timestamp_ms, description)` pairs in timeline order.
  * @returns Newline-joined markdown; `""` for empty input.
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer._collapse_timeline
  */
-export function collapseTimeline(
+function collapseTimeline(
   lines: ReadonlyArray<readonly [number, string]>,
 ): string {
   const out: string[] = [];
@@ -1229,7 +1268,7 @@ export function collapseTimeline(
     }
     const run = j - i;
     const suffix = run > 1 ? ` (×${run})` : "";
-    // Python `ts // 1000` is FLOOR division (negative timestamps floor
+    // Python `ts // 1000` is floor division (negative timestamps floor
     // toward -inf); `Math.floor` is the exact twin.
     out.push(`${Math.floor(ts / 1000)}: ${desc}${suffix}`);
     i = j;
@@ -1238,8 +1277,17 @@ export function collapseTimeline(
 }
 
 /**
- * Render `{ts_seconds}: {description}` lines from a description list
- * (`MarkdownReporter`, `rrweb_analyzer.py:849-871`).
+ * Render `{ts_seconds}: {description}` lines from a description list.
+ *
+ * @example
+ * ```ts
+ * new MarkdownReporter([
+ *   [1_700_000_000_000, "Scrolled"],
+ *   [1_700_000_001_000, "Scrolled"],
+ * ]).generate();
+ * // "1700000000: Scrolled (×2)"
+ * ```
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.MarkdownReporter
  */
 export class MarkdownReporter {
   /** The parallel `(timestamp_ms, description)` pairs. */
@@ -1268,13 +1316,10 @@ export class MarkdownReporter {
   }
 }
 
-// =============================================================================
-// Public entry point
-// =============================================================================
+// --- Public entry point ---
 
 /**
- * Convert a raw rrweb event stream into normalized actions + markdown
- * (`RrwebAnalyzer`, `rrweb_analyzer.py:874-921`).
+ * Convert a raw rrweb event stream into normalized actions + markdown.
  *
  * Stateless across calls: each {@link analyze} invocation constructs its
  * own {@link DOMTracker} + {@link EventAnalyzer}. Inputs are not
@@ -1287,9 +1332,10 @@ export class MarkdownReporter {
  *   // action.timestamp, action.action, action.target_desc
  * }
  * ```
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.RrwebAnalyzer
  */
 export class RrwebAnalyzer {
-  /** The `log.info` sink (R9.5). */
+  /** The `log.info` sink. */
   readonly #logger: AnalyzerLogger | undefined;
 
   /**
@@ -1302,24 +1348,24 @@ export class RrwebAnalyzer {
   }
 
   /**
-   * Walk `events` once and produce the {@link AnalyzerResult}
-   * (`analyze`, `rrweb_analyzer.py:892-921`).
+   * Walk `events` once and produce the {@link AnalyzerResult}.
    *
    * @param events - Raw rrweb event dicts. Order doesn't matter — the
    *   analyzer sorts a shallow copy by `timestamp` before walking.
    * @returns The action list, markdown timeline, page visits, and
    *   console errors. Empty on empty input.
+   * @see mixpanel_headless._internal.replays.rrweb_analyzer.RrwebAnalyzer.analyze
    */
-  analyze(events: ReadonlyArray<Dict>): AnalyzerResult {
+  analyze(events: readonly Dict[]): AnalyzerResult {
     if (events.length === 0) {
       return { actions: [], markdown_summary: "", pages: [], errors: [] };
     }
 
-    // Python `sorted(...)` is STABLE; so is `Array.prototype.sort` in
-    // every ES2019+ engine. Decorate-sort-undecorate (B5-ARB FID-F3):
-    // Python computes `int(e.get("timestamp", 0))` for EVERY element —
+    // Python `sorted(...)` is stable; so is `Array.prototype.sort` in
+    // every ES2019+ engine. Decorate-sort-undecorate because Python
+    // computes `int(e.get("timestamp", 0))` for every element —
     // including single-element lists a JS comparator would never
-    // visit — and the default applies only when the key is ABSENT
+    // visit — and the default applies only when the key is absent
     // (an explicit `null` raises `int(None)`'s `TypeError`).
     const sortedEvents = events
       .map((event) => ({
@@ -1331,7 +1377,7 @@ export class RrwebAnalyzer {
       .sort((a, b) => a.key - b.key)
       .map((decorated) => decorated.event);
 
-    const domTracker = new DOMTracker(this.#logger);
+    const domTracker = new DOMTracker({ logger: this.#logger });
     const eventAnalyzer = new EventAnalyzer(domTracker);
     for (const event of sortedEvents) {
       eventAnalyzer.processEvent(event);
@@ -1353,19 +1399,27 @@ export class RrwebAnalyzer {
 }
 
 /**
- * Convenience entry: walk events + return the markdown string
- * (`analyze_events`, `rrweb_analyzer.py:924-949`).
+ * Convenience entry: walk events + return the markdown string.
  *
  * @param rrwebEvents - List of rrweb event dicts.
- * @param logger - Optional log sink (R9.5).
+ * @param logger - Optional log sink.
  * @returns The markdown timeline string.
- * @throws ValueError - `rrwebEvents` is empty or not a list.
+ * @throws {@link ValueError} - when `rrwebEvents` is empty or not an array.
+ * @example
+ * ```ts
+ * analyzeEvents([
+ *   { type: 4, timestamp: 1_700_000_000_000, data: { href: "https://app.example.com/" } },
+ *   { type: 3, timestamp: 1_700_000_002_000, data: { source: 3 } },
+ * ]);
+ * // "1700000000: Navigated to https://app.example.com/\n1700000002: Scrolled"
+ * ```
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer.analyze_events
  */
 export function analyzeEvents(
-  rrwebEvents: ReadonlyArray<Dict>,
+  rrwebEvents: readonly Dict[],
   logger?: AnalyzerLogger,
 ): string {
-  // Guard order is SOURCE order: the emptiness check runs FIRST, so a
+  // Guard order is Python's source order: the emptiness check runs first, so a
   // non-list falsy input (e.g. `""`) raises "cannot be empty".
   if (!pyTruthyValue(rrwebEvents)) {
     throw new ValueError("Events list cannot be empty");
@@ -1379,8 +1433,7 @@ export function analyzeEvents(
 }
 
 /**
- * Render a markdown timeline from a structured action list
- * (`_render_markdown`, `rrweb_analyzer.py:952-969`).
+ * Render a markdown timeline from a structured action list.
  *
  * Renders each action's full `description` (falling back to
  * `target_desc` when empty) and collapses consecutive duplicates via
@@ -1388,6 +1441,12 @@ export function analyzeEvents(
  *
  * @param actions - Structured action list (may be empty).
  * @returns Multi-line markdown string. Empty when `actions` is empty.
+ * @example
+ * ```ts
+ * renderMarkdown(result.actions);
+ * // "1700000000: Navigated to https://app.example.com/\n1700000002: Scrolled"
+ * ```
+ * @see mixpanel_headless._internal.replays.rrweb_analyzer._render_markdown
  */
 export function renderMarkdown(actions: readonly UserAction[]): string {
   if (actions.length === 0) {
@@ -1404,9 +1463,7 @@ export function renderMarkdown(actions: readonly UserAction[]): string {
   );
 }
 
-// =============================================================================
-// Local helpers (no Python twin — the JS-side plumbing the port needs)
-// =============================================================================
+// --- Local helpers (no Python twin) ---
 
 /**
  * CPython truthiness for a `dict`-sourced value (Python `if x:`).
@@ -1448,14 +1505,14 @@ function iterList(value: unknown): readonly unknown[] {
 }
 
 /**
- * `str.capitalize()` — upper-case the first CHARACTER, lower-case the
+ * `str.capitalize()` — upper-case the first character, lower-case the
  * rest (Python's semantics; JS has no builtin twin).
  *
  * @param text - The verb to capitalize.
  * @returns The capitalized text.
  */
 function capitalize(text: string): string {
-  const chars = Array.from(text);
+  const chars = codepoints(text);
   if (chars.length === 0) {
     return text;
   }
@@ -1466,7 +1523,7 @@ function capitalize(text: string): string {
 
 /**
  * `str.strip('"')` — drop every leading and trailing double-quote
- * (Python strips the whole character SET, not one occurrence).
+ * (Python strips the whole character set, not one occurrence).
  *
  * @param text - The message fragment.
  * @returns The text without surrounding quotes.
@@ -1485,7 +1542,7 @@ function stripQuotes(text: string): string {
 
 /**
  * `urllib.parse.urlparse(href).path` for the `<a href="http…">` branch
- * (`rrweb_analyzer.py:434-443`) — the analyzer only reads `.path`, and
+ * (`rrweb_analyzer.py`) — the analyzer only reads `.path`, and
  * CPython's parser takes everything after the authority up to the
  * first `?` or `#`.
  *

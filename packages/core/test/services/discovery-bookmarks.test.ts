@@ -1,18 +1,11 @@
-// Translated DiscoveryService.list_bookmarks tests (B5-S1, packet §4):
-// assertion-for-assertion port of tests/unit/test_discovery_bookmarks.py
-// (R10.2) — TestListBookmarks :28 (the file's only class).
-//
-// Translation notes:
-// - The `MagicMock()` api-client fixture becomes a stub object carrying
-//   only the method under test, cast to `MixpanelClient` (the service
-//   touches nothing else on this path).
-// - `mock_api_client.list_bookmarks.assert_called_once_with(
-//   bookmark_type="insights")` -> the recorded call list; Python's
-//   kwarg becomes the TS positional (`listBookmarks(bookmarkType)`).
-// - `isinstance(result[0], BookmarkInfo)` translates to an
-//   `instanceof` check on the same class.
+// DiscoveryService.list_bookmarks: BookmarkInfo parsing (required and
+// optional fields, explicit nulls, every bookmark type, the nested
+// results.results shape) and the bookmark_type pass-through. Mirrors
+// tests/unit/test_discovery_bookmarks.py (TestListBookmarks). The MagicMock
+// client is a call-recording stub; Python's kwarg is the TS positional.
 
 import { describe, expect, it } from "vitest";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
 import { DiscoveryService } from "../../src/services/discovery.js";
@@ -22,12 +15,12 @@ import { BookmarkInfo } from "../../src/types/results/discovery.js";
 interface BookmarkStub {
   readonly service: DiscoveryService;
   readonly calls: Array<string | null>;
-  setResponse(value: JsonValue): void;
+  setResponse: (value: JsonValue) => void;
 }
 
 /**
  * Build the `mock_api_client` + `discovery_service` fixture pair
- * (test_discovery_bookmarks.py:16-25).
+ * (test_discovery_bookmarks.py).
  *
  * @returns The service plus the call log and a response setter.
  */
@@ -49,7 +42,8 @@ function bookmarkStub(): BookmarkStub {
   };
 }
 
-describe("TestListBookmarks", () => {
+describe("List bookmarks", () => {
+  // python: TestListBookmarks
   it("returns a list of BookmarkInfo", async () => {
     const stub = bookmarkStub();
     stub.setResponse({
@@ -192,7 +186,7 @@ describe("TestListBookmarks", () => {
   it("handles empty results", async () => {
     const stub = bookmarkStub();
     stub.setResponse({ results: [] });
-    expect(await stub.service.listBookmarks()).toEqual([]);
+    await expect(stub.service.listBookmarks()).resolves.toStrictEqual([]);
   });
 
   it("passes bookmark_type to the API client", async () => {
@@ -201,7 +195,7 @@ describe("TestListBookmarks", () => {
 
     await stub.service.listBookmarks("insights");
 
-    expect(stub.calls).toEqual(["insights"]);
+    expect(stub.calls).toStrictEqual(["insights"]);
   });
 
   it("parses every bookmark type", async () => {

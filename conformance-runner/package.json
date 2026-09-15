@@ -3,7 +3,26 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "description": "Conformance rig for Mixpanel Headless: replays the Python-extracted vector corpus against the TypeScript port.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",
+    "directory": "conformance-runner"
+  },
+  "keywords": [
+    "mixpanel",
+    "conformance",
+    "testing"
+  ],
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@mixpanel-headless/core": "^0.1.0",
+    "@mixpanel-headless/node": "^0.1.0"
   }
 }

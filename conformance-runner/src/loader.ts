@@ -1,29 +1,29 @@
 /**
- * Corpus snapshot loader (design D12, task TS-4).
+ * Corpus snapshot loader.
  *
  * Loads the committed corpus snapshot (`conformance-runner/corpus/`, written
- * by `scripts/sync-corpus.sh`) into typed vectors:
+ * by `scripts/sync-corpus.sh`) into typed vectors. Every JSONL line is
+ * parsed with the lossless parser so raw number tokens survive as
+ * `JsonNumber` (`18` vs `18.0`, integers above 2^53) — plain `JSON.parse`
+ * is never used for vector payloads. Drift protection:
+ * `manifest.source_commit` must equal the pinned `sourceCommit` from
+ * `corpus.config.json`; every extracted bundle's `$bundle` header must
+ * carry the same commit and an accurate line count; vector ids must be
+ * corpus-unique. Authored bundles (the `authored/` subtree, outside the
+ * record pipeline) keep their authoring-time stamp — or none at all for
+ * storybook harvest headers — and are exempt from the commit equality
+ * (count and id checks still apply). Any violation raises
+ * {@link CorpusIntegrityError}: a stale or hand-edited snapshot must never
+ * silently skew a conformance run.
  *
- * - Every JSONL line is parsed with the LOSSLESS parser (D6 rule 3 hard
- *   requirement): raw number tokens survive as `JsonNumber`, so `18` vs
- *   `18.0` and integers above 2^53 are preserved — plain `JSON.parse` is
- *   never used for vector payloads.
- * - Drift protection: `manifest.source_commit` must equal the pinned
- *   `sourceCommit` (from `corpus.config.json`); every EXTRACTED bundle's
- *   `$bundle` header must carry the same commit and an accurate line
- *   count; vector ids must be corpus-unique. Authored bundles (the
- *   `authored/` subtree, outside the record pipeline) keep their
- *   authoring-time stamp — or none at all for storybook harvest headers —
- *   and are exempt from the commit equality (count and id checks still
- *   apply). Any violation raises {@link CorpusIntegrityError} — a stale
- *   or hand-edited snapshot must never silently skew a conformance run.
+ * @see conformance.runner.loading.load_vectors
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import type { JsonValue } from "./json-value.js";
-import { JsonNumber } from "./json-value.js";
+import { boundJsonReaders } from "./internal/guards.js";
+import { JsonNumber, type JsonValue } from "./json-value.js";
 import { parseLossless } from "./lossless-json.js";
 import type {
   BundleInfo,
@@ -35,7 +35,15 @@ import type {
   VectorOrigin,
 } from "./vector-types.js";
 
-/** Raised when the snapshot fails a structural or provenance check. */
+/**
+ * Raised when the snapshot fails a structural or provenance check.
+ *
+ * @example
+ * ```ts
+ * loadCorpus(corpusDir, "0000000000000000000000000000000000000000");
+ * // throws CorpusIntegrityError: manifest.source_commit … does not match the pinned sourceCommit
+ * ```
+ */
 export class CorpusIntegrityError extends Error {
   /**
    * Create an integrity error.
@@ -48,13 +56,22 @@ export class CorpusIntegrityError extends Error {
   }
 }
 
-/** The pinned corpus configuration (`corpus.config.json`, design D12). */
+/**
+ * The object/string readers, raising {@link CorpusIntegrityError}; every
+ * manifest / vector string field must be non-empty.
+ */
+const { asObject, requireString, optionalString } = boundJsonReaders(
+  (message) => new CorpusIntegrityError(message),
+  { nonEmpty: true },
+);
+
+/** The pinned corpus configuration (`corpus.config.json`). */
 export interface CorpusConfig {
   /** Snapshot directory, relative to the conformance-runner package. */
   readonly vectorsPath: string;
   /** Pinned full source-commit SHA the snapshot must carry. */
   readonly sourceCommit: string;
-  /** The frozen record clock both runners inject (design D1.4). */
+  /** The frozen record clock both runners inject. */
   readonly recordEpoch: string;
 }
 
@@ -97,73 +114,6 @@ export function loadCorpusConfig(packageDir: string): CorpusConfig {
     sourceCommit: record["sourceCommit"] as string,
     recordEpoch: record["recordEpoch"] as string,
   };
-}
-
-/**
- * Assert a loaded JSON value is a plain object.
- *
- * @param value - The value to narrow.
- * @param context - Human-readable location for the error message.
- * @returns The value as a string-keyed record.
- * @throws CorpusIntegrityError - When the value is not an object.
- */
-function asObject(
-  value: JsonValue | undefined,
-  context: string,
-): Record<string, JsonValue> {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value) ||
-    value instanceof JsonNumber
-  ) {
-    throw new CorpusIntegrityError(`${context}: expected a JSON object`);
-  }
-  return value;
-}
-
-/**
- * Assert an object field is a non-empty string.
- *
- * @param record - The containing object.
- * @param key - The field name.
- * @param context - Human-readable location for the error message.
- * @returns The string value.
- * @throws CorpusIntegrityError - When absent or not a string.
- */
-function requireString(
-  record: Record<string, JsonValue>,
-  key: string,
-  context: string,
-): string {
-  const value = record[key];
-  if (typeof value !== "string" || value === "") {
-    throw new CorpusIntegrityError(
-      `${context}: missing string field ${JSON.stringify(key)}`,
-    );
-  }
-  return value;
-}
-
-/**
- * Read an optional object field, asserting it is a non-empty string when
- * present.
- *
- * @param record - The containing object.
- * @param key - The field name.
- * @param context - Human-readable location for the error message.
- * @returns The string value, or `undefined` when the field is absent.
- * @throws CorpusIntegrityError - When present but not a non-empty string.
- */
-function optionalString(
-  record: Record<string, JsonValue>,
-  key: string,
-  context: string,
-): string | undefined {
-  if (!Object.hasOwn(record, key)) {
-    return undefined;
-  }
-  return requireString(record, key, context);
 }
 
 /**
@@ -233,9 +183,9 @@ function loadManifest(
   let text: string;
   try {
     text = readFileSync(manifestPath, "utf8");
-  } catch (cause) {
+  } catch (error) {
     throw new CorpusIntegrityError(
-      `corpus manifest not found at ${manifestPath} (run scripts/sync-corpus.sh): ${String(cause)}`,
+      `corpus manifest not found at ${manifestPath} (run scripts/sync-corpus.sh): ${String(error)}`,
     );
   }
   const raw = asObject(parseLossless(text), "manifest.json");
@@ -327,7 +277,7 @@ function toVector(
     id,
     kind: kind as VectorKind,
     ...(typeof capability === "string" ? { capability } : {}),
-    ...(origin !== undefined ? { origin: origin as VectorOrigin } : {}),
+    ...(origin === undefined ? {} : { origin: origin as VectorOrigin }),
     ...(typeof sourceTest === "string" ? { sourceTest } : {}),
     api,
     input,
@@ -338,7 +288,7 @@ function toVector(
 }
 
 /**
- * Load the full corpus snapshot (design D12).
+ * Load the full corpus snapshot.
  *
  * @param corpusDir - The snapshot directory (usually `<pkg>/corpus`).
  * @param expectedSourceCommit - The pinned SHA (config `sourceCommit`).
@@ -349,7 +299,6 @@ function toVector(
  *   pin mismatch, malformed bundle header, header/vector count mismatch,
  *   bundle commit drift, duplicate vector ids, malformed vector lines, or
  *   a manifest total that disagrees with the loaded vector count.
- *
  * @example
  * ```typescript
  * const config = loadCorpusConfig(packageDir);
@@ -388,13 +337,12 @@ export function loadCorpus(
       headerLine["$bundle"],
       `${bundlePath} $bundle header`,
     );
-    // Authored bundles (corpus `authored/` subtree, design D13/D3.1) sit
-    // outside the record pipeline: their `source_commit` is the
-    // authoring-time stamp (or absent entirely for storybook harvest
-    // headers, which carry `generator`/`source_root` provenance instead),
-    // so only extracted bundles are held to the manifest-commit equality
-    // (D12 drift protection).
-    const isAuthored = bundlePath.split(/[/\\]/)[0] === "authored";
+    // Authored bundles (the corpus `authored/` subtree) sit outside the
+    // record pipeline: their `source_commit` is the authoring-time stamp
+    // (or absent entirely for storybook harvest headers, which carry
+    // `generator`/`source_root` provenance instead), so only extracted
+    // bundles are held to the manifest-commit equality.
+    const isAuthored = bundlePath.split(/[/\\]/, 1)[0] === "authored";
     const bundleCommit = isAuthored
       ? optionalString(header, "source_commit", `${bundlePath} $bundle`)
       : requireString(header, "source_commit", `${bundlePath} $bundle`);
@@ -419,8 +367,8 @@ export function loadCorpus(
       : requireString(header, "source_file", `${bundlePath} $bundle`);
     bundles.push({
       path: bundlePath,
-      ...(bundleCommit !== undefined ? { sourceCommit: bundleCommit } : {}),
-      ...(sourceFile !== undefined ? { sourceFile } : {}),
+      ...(bundleCommit === undefined ? {} : { sourceCommit: bundleCommit }),
+      ...(sourceFile === undefined ? {} : { sourceFile }),
       count: declaredCount,
     });
     for (const [index, line] of vectorLines.entries()) {
@@ -435,9 +383,9 @@ export function loadCorpus(
       vectors.push({ ...vector, bundlePath });
     }
   }
-  // manifest counts.total covers the RECORD-PIPELINE extraction only;
-  // authored vectors (origin "authored", design D13/D3.1) are hand-written
-  // additions outside the manifest's reconciliation scope.
+  // manifest counts.total covers the record-pipeline extraction only;
+  // authored vectors (origin "authored") are hand-written additions outside
+  // the manifest's reconciliation scope.
   const extractedCount = vectors.filter(
     (vector) => vector.origin !== "authored",
   ).length;

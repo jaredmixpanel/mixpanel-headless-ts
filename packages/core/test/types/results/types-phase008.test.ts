@@ -1,12 +1,10 @@
-// Translated result-class tests (packet P2-6): assertion-for-assertion
-// port of tests/unit/test_types_phase008.py (R10.2).
-//
-// Same translation notes as types.test.ts. Python builds `UserEvent`
-// with tz-aware `datetime` objects; the TS field stores ISO text
-// (phase2-design watchlist #5), so datetime fixtures translate to
-// their `isoformat()` strings. Immutability suites are not ported
-// (compile-time `readonly`).
+// UserEvent, ActivityFeedResult, the NumericSum / NumericAverage /
+// Frequency / NumericBucket results and SavedReportResult: construction,
+// the df projection as row arrays and to_dict. Mirrors
+// tests/unit/test_types_phase008.py. Python builds UserEvent with tz-aware
+// datetimes; the TS field stores ISO text (`isoformat()` strings).
 import { describe, expect, it } from "vitest";
+
 import {
   ActivityFeedResult,
   FrequencyResult,
@@ -17,35 +15,40 @@ import {
   UserEvent,
 } from "../../../src/types/results/live-query.js";
 
-describe("UserEvent (TestUserEvent)", () => {
-  it("test_basic_creation", () => {
-    const event_time = "2024-01-01T12:00:00+00:00";
+describe("UserEvent", () => {
+  // python: TestUserEvent
+  it("basic creation", () => {
+    // python: test_basic_creation
+    const eventTime = "2024-01-01T12:00:00+00:00";
     const event = new UserEvent({
       event: "Sign Up",
-      time: event_time,
+      time: eventTime,
       properties: { plan: "premium", $distinct_id: "user_123" },
     });
     expect(event.event).toBe("Sign Up");
-    expect(event.time).toBe(event_time);
+    expect(event.time).toBe(eventTime);
     expect(event.properties["plan"]).toBe("premium");
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const event = new UserEvent({
       event: "Sign Up",
       time: "2024-01-01T12:00:00+00:00",
       properties: { plan: "premium" },
     });
     const data = event.toJSON();
-    const json_str = JSON.stringify(data);
-    expect(json_str).toContain("Sign Up");
+    const jsonStr = JSON.stringify(data);
+    expect(jsonStr).toContain("Sign Up");
     expect(data["event"]).toBe("Sign Up");
     expect(data["time"]).toContain("2024-01-01");
   });
 });
 
-describe("ActivityFeedResult (TestActivityFeedResult)", () => {
-  it("test_basic_creation", () => {
+describe("ActivityFeedResult", () => {
+  // python: TestActivityFeedResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const events = [
       new UserEvent({
         event: "Sign Up",
@@ -59,12 +62,13 @@ describe("ActivityFeedResult (TestActivityFeedResult)", () => {
       to_date: "2024-01-31",
       events,
     });
-    expect(result.distinct_ids).toEqual(["user_123"]);
+    expect(result.distinct_ids).toStrictEqual(["user_123"]);
     expect(result.from_date).toBe("2024-01-01");
     expect(result.events).toHaveLength(1);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const events = [
       new UserEvent({
         event: "Sign Up",
@@ -89,7 +93,8 @@ describe("ActivityFeedResult (TestActivityFeedResult)", () => {
     expect(result.toRows()).toHaveLength(2);
   });
 
-  it("test_df_empty_events", () => {
+  it("df empty events", () => {
+    // python: test_df_empty_events
     const result = new ActivityFeedResult({
       distinct_ids: ["user_123"],
       from_date: "2024-01-01",
@@ -100,17 +105,19 @@ describe("ActivityFeedResult (TestActivityFeedResult)", () => {
     expect(result.rowColumns()).toContain("event");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new ActivityFeedResult({
       distinct_ids: ["user_123"],
       from_date: null,
       to_date: null,
       events: [],
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const events = [
       new UserEvent({
         event: "Sign Up",
@@ -131,8 +138,10 @@ describe("ActivityFeedResult (TestActivityFeedResult)", () => {
   });
 });
 
-describe("NumericSumResult (TestNumericSumResult)", () => {
-  it("test_basic_creation", () => {
+describe("NumericSumResult", () => {
+  // python: TestNumericSumResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const result = new NumericSumResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -147,7 +156,8 @@ describe("NumericSumResult (TestNumericSumResult)", () => {
     expect(result.results["2024-01-01"]).toBe(15432.5);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new NumericSumResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -161,7 +171,8 @@ describe("NumericSumResult (TestNumericSumResult)", () => {
     expect(result.toRows()).toHaveLength(2);
   });
 
-  it("test_df_empty_results", () => {
+  it("df empty results", () => {
+    // python: test_df_empty_results
     const result = new NumericSumResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -174,7 +185,8 @@ describe("NumericSumResult (TestNumericSumResult)", () => {
     expect(result.rowColumns()).toContain("date");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new NumericSumResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -183,10 +195,11 @@ describe("NumericSumResult (TestNumericSumResult)", () => {
       unit: "day",
       results: { "2024-01-01": 100.0 },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_with_computed_at", () => {
+  it("to dict with computed at", () => {
+    // python: test_to_dict_with_computed_at
     const result = new NumericSumResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -199,7 +212,8 @@ describe("NumericSumResult (TestNumericSumResult)", () => {
     expect(Object.hasOwn(result.toJSON(), "computed_at")).toBe(true);
   });
 
-  it("test_to_dict_without_computed_at", () => {
+  it("to dict without computed at", () => {
+    // python: test_to_dict_without_computed_at
     const result = new NumericSumResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -212,8 +226,10 @@ describe("NumericSumResult (TestNumericSumResult)", () => {
   });
 });
 
-describe("NumericAverageResult (TestNumericAverageResult)", () => {
-  it("test_basic_creation", () => {
+describe("NumericAverageResult", () => {
+  // python: TestNumericAverageResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const result = new NumericAverageResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -226,7 +242,8 @@ describe("NumericAverageResult (TestNumericAverageResult)", () => {
     expect(result.results["2024-01-01"]).toBe(54.32);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new NumericAverageResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -240,7 +257,8 @@ describe("NumericAverageResult (TestNumericAverageResult)", () => {
     expect(result.toRows()).toHaveLength(2);
   });
 
-  it("test_df_empty_results", () => {
+  it("df empty results", () => {
+    // python: test_df_empty_results
     const result = new NumericAverageResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -253,7 +271,8 @@ describe("NumericAverageResult (TestNumericAverageResult)", () => {
     expect(result.rowColumns()).toContain("date");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new NumericAverageResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -262,10 +281,11 @@ describe("NumericAverageResult (TestNumericAverageResult)", () => {
       unit: "day",
       results: { "2024-01-01": 50.0 },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const result = new NumericAverageResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -280,8 +300,10 @@ describe("NumericAverageResult (TestNumericAverageResult)", () => {
   });
 });
 
-describe("FrequencyResult (TestFrequencyResult)", () => {
-  it("test_basic_creation", () => {
+describe("FrequencyResult", () => {
+  // python: TestFrequencyResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const result = new FrequencyResult({
       event: "App Open",
       from_date: "2024-01-01",
@@ -299,7 +321,8 @@ describe("FrequencyResult (TestFrequencyResult)", () => {
     expect(result.data["2024-01-01"]).toHaveLength(5);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new FrequencyResult({
       event: "App Open",
       from_date: "2024-01-01",
@@ -315,7 +338,8 @@ describe("FrequencyResult (TestFrequencyResult)", () => {
     expect(result.toRows()).toHaveLength(1);
   });
 
-  it("test_df_empty_data", () => {
+  it("df empty data", () => {
+    // python: test_df_empty_data
     const result = new FrequencyResult({
       event: null,
       from_date: "2024-01-01",
@@ -328,7 +352,8 @@ describe("FrequencyResult (TestFrequencyResult)", () => {
     expect(result.rowColumns()).toContain("date");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new FrequencyResult({
       event: "App Open",
       from_date: "2024-01-01",
@@ -337,10 +362,11 @@ describe("FrequencyResult (TestFrequencyResult)", () => {
       addiction_unit: "hour",
       data: { "2024-01-01": [100, 50] },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_event_can_be_none", () => {
+  it("event can be null", () => {
+    // python: test_event_can_be_none
     const result = new FrequencyResult({
       event: null,
       from_date: "2024-01-01",
@@ -352,7 +378,8 @@ describe("FrequencyResult (TestFrequencyResult)", () => {
     expect(result.event).toBeNull();
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const result = new FrequencyResult({
       event: "App Open",
       from_date: "2024-01-01",
@@ -368,8 +395,10 @@ describe("FrequencyResult (TestFrequencyResult)", () => {
   });
 });
 
-describe("NumericBucketResult (TestNumericBucketResult)", () => {
-  it("test_basic_creation", () => {
+describe("NumericBucketResult", () => {
+  // python: TestNumericBucketResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const result = new NumericBucketResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -386,7 +415,8 @@ describe("NumericBucketResult (TestNumericBucketResult)", () => {
     expect(result.series["0 - 100"]?.["2024-01-01"]).toBe(50);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new NumericBucketResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -404,7 +434,8 @@ describe("NumericBucketResult (TestNumericBucketResult)", () => {
     expect(result.toRows()).toHaveLength(4); // 2 buckets x 2 dates
   });
 
-  it("test_df_empty_series", () => {
+  it("df empty series", () => {
+    // python: test_df_empty_series
     const result = new NumericBucketResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -417,7 +448,8 @@ describe("NumericBucketResult (TestNumericBucketResult)", () => {
     expect(result.rowColumns()).toContain("date");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new NumericBucketResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -426,10 +458,11 @@ describe("NumericBucketResult (TestNumericBucketResult)", () => {
       unit: "day",
       series: { "0 - 100": { "2024-01-01": 50 } },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const result = new NumericBucketResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -438,14 +471,16 @@ describe("NumericBucketResult (TestNumericBucketResult)", () => {
       unit: "day",
       series: { "0 - 100": { "2024-01-01": 50 } },
     });
-    const json_str = JSON.stringify(result.toJSON());
-    expect(json_str).toContain("Purchase");
-    expect(json_str).toContain("0 - 100");
+    const jsonStr = JSON.stringify(result.toJSON());
+    expect(jsonStr).toContain("Purchase");
+    expect(jsonStr).toContain("0 - 100");
   });
 });
 
-describe("SavedReportResult phase008 (TestSavedReportResult)", () => {
-  it("test_basic_creation", () => {
+describe("SavedReportResult phase008", () => {
+  // python: TestSavedReportResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const result = new SavedReportResult({
       bookmark_id: 12345678,
       computed_at: "2024-01-15T10:30:00+00:00",
@@ -464,7 +499,8 @@ describe("SavedReportResult phase008 (TestSavedReportResult)", () => {
     ).toBe(150);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new SavedReportResult({
       bookmark_id: 12345,
       computed_at: "2024-01-15T10:30:00+00:00",
@@ -482,7 +518,8 @@ describe("SavedReportResult phase008 (TestSavedReportResult)", () => {
     expect(result.toRows()).toHaveLength(4); // 2 events x 2 dates
   });
 
-  it("test_df_empty_series", () => {
+  it("df empty series", () => {
+    // python: test_df_empty_series
     const result = new SavedReportResult({
       bookmark_id: 12345,
       computed_at: "2024-01-15T10:30:00+00:00",
@@ -495,7 +532,8 @@ describe("SavedReportResult phase008 (TestSavedReportResult)", () => {
     expect(result.rowColumns()).toContain("date");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new SavedReportResult({
       bookmark_id: 12345,
       computed_at: "2024-01-15T10:30:00+00:00",
@@ -504,10 +542,11 @@ describe("SavedReportResult phase008 (TestSavedReportResult)", () => {
       headers: ["$event"],
       series: { "Sign Up": { "2024-01-01": 100 } },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const result = new SavedReportResult({
       bookmark_id: 12345678,
       computed_at: "2024-01-15T10:30:00+00:00",

@@ -1,39 +1,11 @@
-// Translated facade-driven query-validation tests (B5-S2, packet §3 +
-// §8): the B2-M1 deferral named in the
-// `test/query/query-validation.test.ts:5-15` header — assertion-for-
-// assertion port of the FACADE halves of
-// tests/unit/test_query_validation.py (R10.2), ALL 11 classes
-// (TestTimeRangeValidation :61, TestAggregationValidation :161,
-// TestPerMetricValidation :287, TestFormulaValidation :344,
-// TestAnalysisModeValidation :377, TestGroupByValidation :405,
-// TestEmptyEventsValidation :494, TestFormulaInListValidation :521,
-// TestBuildParamsValidation :558, TestPercentileValidation :586,
-// TestHistogramValidation :622).
-//
-// HEADER EXCLUSIONS (already translated at B2 — do NOT re-translate):
-// - Every case in the classes above that calls `validate_query_args(...)`
-//   DIRECTLY rather than going through the facade
-//   (`test_v10_default_last_with_dates_ok` :104,
-//   `test_valid_date_range_passes` :120, `test_valid_last_passes` :137,
-//   `test_valid_property_math_with_property` :204,
-//   `test_valid_per_user_with_property` :221,
-//   `test_per_user_without_property_raises` :239,
-//   `test_per_user_with_unique_raises` :256,
-//   `test_v4_formula_with_two_events_ok` :353): the B2-M1 translation
-//   covers the validator directly.
-// - `TestValidateTimeArgs` :658 and `TestValidateGroupByArgs` :743 were
-//   translated in FULL at B2 (same header).
-//
-// Translation notes:
-// - `pytest.raises(ValueError, …)` on a CONSTRUCTOR (V13, V12, V26) names
-//   Python's dual-inheriting `ParamValidationError`; the TS twin carries
-//   the same message.
-// - `ws._api_client = mock_api_client` mid-test becomes a facade built
-//   with that stub from the start (the assignment is Python's way of
-//   swapping in a response; nothing observes the pre-swap client).
+// Query-parameter validation (V0–V27) exercised through the Workspace facade.
+// Mirrors the facade halves of all eleven classes in
+// tests/unit/test_query_validation.py; the cases that call validate_query_args
+// directly, plus TestValidateTimeArgs / TestValidateGroupByArgs, live in
+// test/query/query-validation.test.ts. Constructor ValueErrors are ParamValidationError.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import {
   BookmarkValidationError,
   ParamValidationError,
@@ -41,10 +13,9 @@ import {
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Formula, Metric } from "../../src/types/query-params/metric.js";
 import {
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
-  type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
+} from "../../test-support/workspace-test-helpers.js";
 
 /** An empty-but-valid insights response (the Python mock's shape). */
 const EMPTY_OK: Record<string, unknown> = {
@@ -55,57 +26,46 @@ const EMPTY_OK: Record<string, unknown> = {
   meta: {},
 };
 
-/**
- * The `ws` fixture.
- *
- * @param mock - Optional stub client (for call-log asserts).
- * @returns The facade under test.
- */
-function makeWs(mock: MockWorkspaceClient = mockWorkspaceClient()): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
+// --- Time range validation (V7-V11) ---
 
-// ===========================================================================
-// T007: time range validation (V7-V11)
-// ===========================================================================
-
-describe("TestTimeRangeValidation", () => {
+describe("Time range validation", () => {
+  // python: TestTimeRangeValidation
   it("V7: last must be a positive integer", async () => {
-    await expect(makeWs().query("Login", { last: 0 })).rejects.toBeInstanceOf(
-      BookmarkValidationError,
-    );
-    await expect(makeWs().query("Login", { last: 0 })).rejects.toThrow(
-      /last must be a positive integer/,
-    );
+    await expect(
+      makeStubWorkspace().query("Login", { last: 0 }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeStubWorkspace().query("Login", { last: 0 }),
+    ).rejects.toThrow(/last must be a positive integer/);
   });
 
   it("V7: a negative last is rejected", async () => {
-    await expect(makeWs().query("Login", { last: -5 })).rejects.toBeInstanceOf(
-      BookmarkValidationError,
-    );
-    await expect(makeWs().query("Login", { last: -5 })).rejects.toThrow(
-      /last must be a positive integer/,
-    );
+    await expect(
+      makeStubWorkspace().query("Login", { last: -5 }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeStubWorkspace().query("Login", { last: -5 }),
+    ).rejects.toThrow(/last must be a positive integer/);
   });
 
   it("V8: from_date must be YYYY-MM-DD", async () => {
     await expect(
-      makeWs().query("Login", { from_date: "01/01/2024" }),
+      makeStubWorkspace().query("Login", { from_date: "01/01/2024" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { from_date: "01/01/2024" }),
+      makeStubWorkspace().query("Login", { from_date: "01/01/2024" }),
     ).rejects.toThrow(/from_date must be YYYY-MM-DD format/);
   });
 
   it("V8: to_date must also be YYYY-MM-DD", async () => {
     await expect(
-      makeWs().query("Login", {
+      makeStubWorkspace().query("Login", {
         from_date: "2024-01-01",
         to_date: "Jan 31 2024",
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", {
+      makeStubWorkspace().query("Login", {
         from_date: "2024-01-01",
         to_date: "Jan 31 2024",
       }),
@@ -114,23 +74,23 @@ describe("TestTimeRangeValidation", () => {
 
   it("V9: to_date without from_date is rejected", async () => {
     await expect(
-      makeWs().query("Login", { to_date: "2024-01-31" }),
+      makeStubWorkspace().query("Login", { to_date: "2024-01-31" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { to_date: "2024-01-31" }),
+      makeStubWorkspace().query("Login", { to_date: "2024-01-31" }),
     ).rejects.toThrow(/to_date requires from_date/);
   });
 
   it("V10: a non-default last cannot combine with explicit dates", async () => {
     await expect(
-      makeWs().query("Login", {
+      makeStubWorkspace().query("Login", {
         last: 7,
         from_date: "2024-01-01",
         to_date: "2024-01-31",
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", {
+      makeStubWorkspace().query("Login", {
         last: 7,
         from_date: "2024-01-01",
         to_date: "2024-01-31",
@@ -139,17 +99,16 @@ describe("TestTimeRangeValidation", () => {
   });
 });
 
-// ===========================================================================
-// T016: aggregation validation (V1-V3)
-// ===========================================================================
+// --- Aggregation validation (V1-V3) ---
 
-describe("TestAggregationValidation", () => {
+describe("Aggregation validation", () => {
+  // python: TestAggregationValidation
   it("V1: property-based math requires math_property", async () => {
     await expect(
-      makeWs().query("Purchase", { math: "average" }),
+      makeStubWorkspace().query("Purchase", { math: "average" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Purchase", { math: "average" }),
+      makeStubWorkspace().query("Purchase", { math: "average" }),
     ).rejects.toThrow(/requires math_property/);
   });
 
@@ -165,65 +124,76 @@ describe("TestAggregationValidation", () => {
       "p99",
     ]) {
       await expect(
-        makeWs().query("Purchase", { math: mathType }),
+        makeStubWorkspace().query("Purchase", { math: mathType }),
       ).rejects.toBeInstanceOf(BookmarkValidationError);
       await expect(
-        makeWs().query("Purchase", { math: mathType }),
+        makeStubWorkspace().query("Purchase", { math: mathType }),
       ).rejects.toThrow(/requires math_property/);
     }
   });
 
   it("V2: non-property math rejects math_property", async () => {
     await expect(
-      makeWs().query("Login", { math: "unique", math_property: "amount" }),
+      makeStubWorkspace().query("Login", {
+        math: "unique",
+        math_property: "amount",
+      }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { math: "unique", math_property: "amount" }),
+      makeStubWorkspace().query("Login", {
+        math: "unique",
+        math_property: "amount",
+      }),
     ).rejects.toThrow(/math_property is only valid/);
   });
 
   it("V2: 'unique' math rejects math_property", async () => {
     await expect(
-      makeWs().query("Login", { math: "unique", math_property: "amount" }),
+      makeStubWorkspace().query("Login", {
+        math: "unique",
+        math_property: "amount",
+      }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { math: "unique", math_property: "amount" }),
+      makeStubWorkspace().query("Login", {
+        math: "unique",
+        math_property: "amount",
+      }),
     ).rejects.toThrow(/math_property is only valid/);
   });
 
   it("V3: per_user is incompatible with DAU", async () => {
     await expect(
-      makeWs().query("Login", { math: "dau", per_user: "average" }),
+      makeStubWorkspace().query("Login", { math: "dau", per_user: "average" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { math: "dau", per_user: "average" }),
+      makeStubWorkspace().query("Login", { math: "dau", per_user: "average" }),
     ).rejects.toThrow(/per_user is incompatible/);
   });
 
   it("V3: per_user is incompatible with WAU", async () => {
     await expect(
-      makeWs().query("Login", { math: "wau", per_user: "total" }),
+      makeStubWorkspace().query("Login", { math: "wau", per_user: "total" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { math: "wau", per_user: "total" }),
+      makeStubWorkspace().query("Login", { math: "wau", per_user: "total" }),
     ).rejects.toThrow(/per_user is incompatible/);
   });
 
   it("V3: per_user is incompatible with MAU", async () => {
     await expect(
-      makeWs().query("Login", { math: "mau", per_user: "min" }),
+      makeStubWorkspace().query("Login", { math: "mau", per_user: "min" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { math: "mau", per_user: "min" }),
+      makeStubWorkspace().query("Login", { math: "mau", per_user: "min" }),
     ).rejects.toThrow(/per_user is incompatible/);
   });
 });
 
-// ===========================================================================
-// T018: per-Metric validation (V13-V14)
-// ===========================================================================
+// --- Per-Metric validation (V13-V14) ---
 
-describe("TestPerMetricValidation", () => {
+describe("Per metric validation", () => {
+  // python: TestPerMetricValidation
   it("V13: a Metric with property math requires a property", () => {
     expect(() => new Metric({ event: "Purchase", math: "average" })).toThrow(
       ParamValidationError,
@@ -235,12 +205,12 @@ describe("TestPerMetricValidation", () => {
 
   it("V14: a Metric with non-property math rejects a property", async () => {
     await expect(
-      makeWs().query(
+      makeStubWorkspace().query(
         new Metric({ event: "Login", math: "unique", property: "amount" }),
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query(
+      makeStubWorkspace().query(
         new Metric({ event: "Login", math: "unique", property: "amount" }),
       ),
     ).rejects.toThrow(/property is only valid/);
@@ -250,21 +220,21 @@ describe("TestPerMetricValidation", () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(EMPTY_OK);
 
-    await makeWs(mock).query(
+    await makeStubWorkspace(mock).query(
       new Metric({ event: "Purchase", math: "total", property: "amount" }),
     );
 
-    expect(mock.insightsCalls.length).toBe(1);
+    expect(mock.insightsCalls).toHaveLength(1);
   });
 
   it("per-Metric per_user is incompatible with DAU", async () => {
     await expect(
-      makeWs().query(
+      makeStubWorkspace().query(
         new Metric({ event: "Login", math: "dau", per_user: "average" }),
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query(
+      makeStubWorkspace().query(
         new Metric({ event: "Login", math: "dau", per_user: "average" }),
       ),
     ).rejects.toThrow(/per_user is incompatible/);
@@ -272,79 +242,76 @@ describe("TestPerMetricValidation", () => {
 
   it("per-Metric per_user requires a property", async () => {
     await expect(
-      makeWs().query(
+      makeStubWorkspace().query(
         new Metric({ event: "Login", math: "total", per_user: "average" }),
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query(
+      makeStubWorkspace().query(
         new Metric({ event: "Login", math: "total", per_user: "average" }),
       ),
     ).rejects.toThrow(/per_user requires property/);
   });
 });
 
-// ===========================================================================
-// T035: formula validation (V4)
-// ===========================================================================
+// --- Formula validation (V4) ---
 
-describe("TestFormulaValidation", () => {
+describe("Formula validation", () => {
+  // python: TestFormulaValidation
   it("V4: a formula requires at least 2 events", async () => {
     await expect(
-      makeWs().query("Login", { formula: "A * 100" }),
+      makeStubWorkspace().query("Login", { formula: "A * 100" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { formula: "A * 100" }),
+      makeStubWorkspace().query("Login", { formula: "A * 100" }),
     ).rejects.toThrow(/formula requires at least 2 events/);
   });
 });
 
-// ===========================================================================
-// T040: analysis mode validation (V5-V6)
-// ===========================================================================
+// --- Analysis mode validation (V5-V6) ---
 
-describe("TestAnalysisModeValidation", () => {
+describe("Analysis mode validation", () => {
+  // python: TestAnalysisModeValidation
   it("V5: rolling and cumulative are mutually exclusive", async () => {
     await expect(
-      makeWs().query("Login", { rolling: 7, cumulative: true }),
+      makeStubWorkspace().query("Login", { rolling: 7, cumulative: true }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Login", { rolling: 7, cumulative: true }),
+      makeStubWorkspace().query("Login", { rolling: 7, cumulative: true }),
     ).rejects.toThrow(/mutually exclusive/);
   });
 
   it("V6: rolling must be a positive integer", async () => {
     await expect(
-      makeWs().query("Login", { rolling: 0 }),
+      makeStubWorkspace().query("Login", { rolling: 0 }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
-    await expect(makeWs().query("Login", { rolling: 0 })).rejects.toThrow(
-      /rolling must be a positive integer/,
-    );
+    await expect(
+      makeStubWorkspace().query("Login", { rolling: 0 }),
+    ).rejects.toThrow(/rolling must be a positive integer/);
   });
 
   it("V6: a negative rolling is rejected", async () => {
     await expect(
-      makeWs().query("Login", { rolling: -3 }),
+      makeStubWorkspace().query("Login", { rolling: -3 }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
-    await expect(makeWs().query("Login", { rolling: -3 })).rejects.toThrow(
-      /rolling must be a positive integer/,
-    );
+    await expect(
+      makeStubWorkspace().query("Login", { rolling: -3 }),
+    ).rejects.toThrow(/rolling must be a positive integer/);
   });
 });
 
-// ===========================================================================
-// GroupBy validation (V11-V12)
-// ===========================================================================
+// --- GroupBy validation (V11-V12) ---
 
-describe("TestGroupByValidation", () => {
+describe("Group by validation", () => {
+  // python: TestGroupByValidation
   it("V11: bucket_min requires bucket_size", async () => {
     await expect(
-      makeWs().query("Purchase", {
+      makeStubWorkspace().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_min: 0 }),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Purchase", {
+      makeStubWorkspace().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_min: 0 }),
       }),
     ).rejects.toThrow(/bucket_min\/bucket_max require bucket_size/);
@@ -352,12 +319,12 @@ describe("TestGroupByValidation", () => {
 
   it("V11: bucket_max requires bucket_size", async () => {
     await expect(
-      makeWs().query("Purchase", {
+      makeStubWorkspace().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_max: 100 }),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Purchase", {
+      makeStubWorkspace().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_max: 100 }),
       }),
     ).rejects.toThrow(/bucket_min\/bucket_max require bucket_size/);
@@ -383,12 +350,12 @@ describe("TestGroupByValidation", () => {
 
   it("bucket_size with the default string property_type is rejected", async () => {
     await expect(
-      makeWs().query("Purchase", {
+      makeStubWorkspace().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_size: 10 }),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Purchase", {
+      makeStubWorkspace().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_size: 10 }),
       }),
     ).rejects.toThrow(/bucket_size requires property_type='number'/);
@@ -398,7 +365,7 @@ describe("TestGroupByValidation", () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(EMPTY_OK);
 
-    await makeWs(mock).query("Purchase", {
+    await makeStubWorkspace(mock).query("Purchase", {
       group_by: new GroupBy({
         property: "amount",
         property_type: "number",
@@ -408,12 +375,12 @@ describe("TestGroupByValidation", () => {
       }),
     });
 
-    expect(mock.insightsCalls.length).toBe(1);
+    expect(mock.insightsCalls).toHaveLength(1);
   });
 
   it("bucket_size without bucket_min/bucket_max is rejected", async () => {
     await expect(
-      makeWs().query("Purchase", {
+      makeStubWorkspace().query("Purchase", {
         group_by: new GroupBy({
           property: "amount",
           property_type: "number",
@@ -422,7 +389,7 @@ describe("TestGroupByValidation", () => {
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query("Purchase", {
+      makeStubWorkspace().query("Purchase", {
         group_by: new GroupBy({
           property: "amount",
           property_type: "number",
@@ -433,16 +400,15 @@ describe("TestGroupByValidation", () => {
   });
 });
 
-// ===========================================================================
-// V0: empty events
-// ===========================================================================
+// --- V0: empty events ---
 
-describe("TestEmptyEventsValidation", () => {
+describe("Empty events validation", () => {
+  // python: TestEmptyEventsValidation
   it("V0: an empty events list is rejected", async () => {
-    await expect(makeWs().query([])).rejects.toBeInstanceOf(
+    await expect(makeStubWorkspace().query([])).rejects.toBeInstanceOf(
       BookmarkValidationError,
     );
-    await expect(makeWs().query([])).rejects.toThrow(
+    await expect(makeStubWorkspace().query([])).rejects.toThrow(
       /At least one event is required/,
     );
   });
@@ -450,31 +416,32 @@ describe("TestEmptyEventsValidation", () => {
   it("V0: a non-empty events list passes validation", async () => {
     // Any error other than the V0 one is acceptable (the stub response
     // is not a valid insights body, so the transform raises).
-    try {
-      await makeWs().query(["Login"]);
-    } catch (exc) {
-      expect(String(exc)).not.toContain("At least one event is required");
-    }
+    const error = await makeStubWorkspace()
+      .query(["Login"])
+      .then(
+        () => null,
+        (error_: unknown) => error_,
+      );
+    expect(String(error)).not.toContain("At least one event is required");
   });
 });
 
-// ===========================================================================
-// Formula-in-list validation
-// ===========================================================================
+// --- Formula-in-list validation ---
 
-describe("TestFormulaInListValidation", () => {
+describe("Formula in list validation", () => {
+  // python: TestFormulaInListValidation
   it("a Formula as the sole argument is rejected", async () => {
     await expect(
-      makeWs().query(new Formula({ expression: "A * 100" })),
+      makeStubWorkspace().query(new Formula({ expression: "A * 100" })),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query(new Formula({ expression: "A * 100" })),
+      makeStubWorkspace().query(new Formula({ expression: "A * 100" })),
     ).rejects.toThrow(/Formula cannot be the only item/);
   });
 
   it("mixing a list Formula with a top-level formula is rejected", async () => {
     await expect(
-      makeWs().query(
+      makeStubWorkspace().query(
         [
           new Metric({ event: "A" }),
           new Metric({ event: "B" }),
@@ -484,7 +451,7 @@ describe("TestFormulaInListValidation", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query(
+      makeStubWorkspace().query(
         [
           new Metric({ event: "A" }),
           new Metric({ event: "B" }),
@@ -497,61 +464,65 @@ describe("TestFormulaInListValidation", () => {
 
   it("a list Formula with only 1 event triggers V4", async () => {
     await expect(
-      makeWs().query(["Login", new Formula({ expression: "A * 100" })]),
+      makeStubWorkspace().query([
+        "Login",
+        new Formula({ expression: "A * 100" }),
+      ]),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().query(["Login", new Formula({ expression: "A * 100" })]),
+      makeStubWorkspace().query([
+        "Login",
+        new Formula({ expression: "A * 100" }),
+      ]),
     ).rejects.toThrow(/formula requires at least 2 events/);
   });
 });
 
-// ===========================================================================
-// T054c: build_params() validation parity
-// ===========================================================================
+// --- build_params() validation parity ---
 
-describe("TestBuildParamsValidation", () => {
+describe("Build params validation", () => {
+  // python: TestBuildParamsValidation
   it("rejects last=0", async () => {
     await expect(
-      makeWs().buildParams("Login", { last: 0 }),
+      makeStubWorkspace().buildParams("Login", { last: 0 }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
-    await expect(makeWs().buildParams("Login", { last: 0 })).rejects.toThrow(
-      /last must be a positive integer/,
-    );
+    await expect(
+      makeStubWorkspace().buildParams("Login", { last: 0 }),
+    ).rejects.toThrow(/last must be a positive integer/);
   });
 
   it("rejects a formula without enough events", async () => {
     await expect(
-      makeWs().buildParams("Login", { formula: "A + B" }),
+      makeStubWorkspace().buildParams("Login", { formula: "A + B" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Login", { formula: "A + B" }),
+      makeStubWorkspace().buildParams("Login", { formula: "A + B" }),
     ).rejects.toThrow(/formula requires at least 2 events/);
   });
 
   it("rejects an invalid date format", async () => {
     await expect(
-      makeWs().buildParams("Login", { from_date: "01/01/2024" }),
+      makeStubWorkspace().buildParams("Login", { from_date: "01/01/2024" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Login", { from_date: "01/01/2024" }),
+      makeStubWorkspace().buildParams("Login", { from_date: "01/01/2024" }),
     ).rejects.toThrow(/YYYY-MM-DD/);
   });
 });
 
-// ===========================================================================
-// T064: percentile validation
-// ===========================================================================
+// --- Percentile validation ---
 
-describe("TestPercentileValidation", () => {
+describe("Percentile validation", () => {
+  // python: TestPercentileValidation
   it("V1: math='percentile' requires math_property", async () => {
     await expect(
-      makeWs().buildParams("Login", {
+      makeStubWorkspace().buildParams("Login", {
         math: "percentile",
         percentile_value: 95,
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Login", {
+      makeStubWorkspace().buildParams("Login", {
         math: "percentile",
         percentile_value: 95,
       }),
@@ -560,13 +531,13 @@ describe("TestPercentileValidation", () => {
 
   it("V26: math='percentile' requires percentile_value", async () => {
     await expect(
-      makeWs().buildParams("Login", {
+      makeStubWorkspace().buildParams("Login", {
         math: "percentile",
         math_property: "duration",
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Login", {
+      makeStubWorkspace().buildParams("Login", {
         math: "percentile",
         math_property: "duration",
       }),
@@ -593,7 +564,7 @@ describe("TestPercentileValidation", () => {
   });
 
   it("percentile with a property and a value passes", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       math: "percentile",
       math_property: "duration",
       percentile_value: 95,
@@ -602,29 +573,28 @@ describe("TestPercentileValidation", () => {
   });
 });
 
-// ===========================================================================
-// T068: histogram validation
-// ===========================================================================
+// --- Histogram validation ---
 
-describe("TestHistogramValidation", () => {
+describe("Histogram validation", () => {
+  // python: TestHistogramValidation
   it("V1: math='histogram' requires math_property", async () => {
     await expect(
-      makeWs().buildParams("Login", { math: "histogram" }),
+      makeStubWorkspace().buildParams("Login", { math: "histogram" }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Login", { math: "histogram" }),
+      makeStubWorkspace().buildParams("Login", { math: "histogram" }),
     ).rejects.toThrow(/requires math_property/);
   });
 
   it("V27: math='histogram' requires per_user", async () => {
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         math: "histogram",
         math_property: "amount",
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         math: "histogram",
         math_property: "amount",
       }),
@@ -633,7 +603,7 @@ describe("TestHistogramValidation", () => {
 
   it("V27: Metric(math='histogram') requires per_user", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "Purchase",
           math: "histogram",
@@ -642,7 +612,7 @@ describe("TestHistogramValidation", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "Purchase",
           math: "histogram",
@@ -653,7 +623,7 @@ describe("TestHistogramValidation", () => {
   });
 
   it("histogram with a property and per_user passes", async () => {
-    const result = await makeWs().buildParams("Purchase", {
+    const result = await makeStubWorkspace().buildParams("Purchase", {
       math: "histogram",
       math_property: "amount",
       per_user: "total",

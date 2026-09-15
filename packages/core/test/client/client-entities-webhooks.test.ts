@@ -1,12 +1,18 @@
-// Layer-3 translation — Phase-3 packet B4-C4 webhook locks.
-// Source: tests/unit/test_api_client_webhooks.py (ALL classes — webhook
-// CRUD list/create/update/delete + test connectivity).
-import { describe, expect, it } from "vitest";
-import { toNativeJson } from "../../src/client/json-value.js";
-import { createMockClient, makeSession } from "./client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
+// Webhook client methods: list/create/update/delete and `testWebhook`
+// (paths, methods, bodies, result unwrapping). Mirrors every class of
+// tests/unit/test_api_client_webhooks.py against the mock-transport client.
 
-/** The `oauth_credentials` fixture twin (test_api_client_webhooks.py:27-30). */
+import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
+import { toNativeJson } from "../../src/client/json-value.js";
+import {
+  createMockClient,
+  makeSession,
+  parseBody,
+} from "../../test-support/client-test-helpers.js";
+
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -15,7 +21,7 @@ function oauthCredentials(): Session {
   });
 }
 
-/** The `_webhook_result` helper twin (:52-75). */
+/** The `_webhook_result` helper twin. */
 function webhookResult(
   id = "wh-uuid-123",
   name = "Test Webhook",
@@ -32,7 +38,7 @@ function webhookResult(
   };
 }
 
-/** The `_mutation_result` helper twin (:78-91). */
+/** The `_mutation_result` helper twin. */
 function mutationResult(
   id = "wh-uuid-123",
   name = "Test Webhook",
@@ -40,13 +46,10 @@ function mutationResult(
   return { id, name };
 }
 
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
-}
-
-describe("TestListWebhooks", () => {
-  it("test_returns_webhook_list", async () => {
+describe("List webhooks", () => {
+  // python: TestListWebhooks
+  it("returns webhook list", async () => {
+    // python: test_returns_webhook_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -65,7 +68,8 @@ describe("TestListWebhooks", () => {
     expect(result[1]?.["name"]).toBe("Hook B");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -75,16 +79,18 @@ describe("TestListWebhooks", () => {
     expect(capturedUrls[0]).toContain("/webhooks/");
   });
 
-  it("test_empty_result", async () => {
+  it("empty result", async () => {
+    // python: test_empty_result
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
     }));
     const result = await client.listWebhooks();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -95,8 +101,10 @@ describe("TestListWebhooks", () => {
   });
 });
 
-describe("TestCreateWebhook", () => {
-  it("test_creates_webhook", async () => {
+describe("Create webhook", () => {
+  // python: TestCreateWebhook
+  it("creates webhook", async () => {
+    // python: test_creates_webhook
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -119,7 +127,8 @@ describe("TestCreateWebhook", () => {
     expect(result["id"]).toBe("new-id");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -133,8 +142,10 @@ describe("TestCreateWebhook", () => {
   });
 });
 
-describe("TestUpdateWebhook", () => {
-  it("test_updates_webhook", async () => {
+describe("Update webhook", () => {
+  // python: TestUpdateWebhook
+  it("updates webhook", async () => {
+    // python: test_updates_webhook
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -157,7 +168,8 @@ describe("TestUpdateWebhook", () => {
     expect(result["name"]).toBe("Updated");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -171,8 +183,10 @@ describe("TestUpdateWebhook", () => {
   });
 });
 
-describe("TestDeleteWebhook", () => {
-  it("test_deletes_webhook", async () => {
+describe("Delete webhook", () => {
+  // python: TestDeleteWebhook
+  it("deletes webhook", async () => {
+    // python: test_deletes_webhook
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -182,7 +196,8 @@ describe("TestDeleteWebhook", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -193,8 +208,10 @@ describe("TestDeleteWebhook", () => {
   });
 });
 
-describe("TestTestWebhook", () => {
-  it("test_sends_post", async () => {
+describe("Test webhook", () => {
+  // python: TestTestWebhook
+  it("sends post", async () => {
+    // python: test_sends_post
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -214,7 +231,8 @@ describe("TestTestWebhook", () => {
     expect(result["status_code"]).toBe(200);
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -230,7 +248,8 @@ describe("TestTestWebhook", () => {
     expect(capturedUrls[0]).toContain("/webhooks/test/");
   });
 
-  it("test_failure_result", async () => {
+  it("failure result", async () => {
+    // python: test_failure_result
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {

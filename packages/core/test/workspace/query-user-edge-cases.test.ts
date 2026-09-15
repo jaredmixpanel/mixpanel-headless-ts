@@ -1,37 +1,13 @@
-// Translated query-user edge-case tests (B5-S2, packet §3 + §8): the
-// B2-M3 / B3-K4 file deferral (`B2-M3-notes.md:44`,
-// `B3-K4-notes.md:86`) — assertion-for-assertion port of
-// tests/test_query_user_edge_cases.py (R10.2), ALL 3 classes
-// (TestTier1DataCorruption :173, TestTier2CrashPaths :593,
-// TestTier3ValidationGaps :768).
-//
-// Translation notes:
-// - Python's Tier-2 cases reach three PRIVATE methods
-//   (`_execute_user_query_sequential`, `_build_page_kwargs`,
-//   `_execute_user_aggregate`) to exercise their bare `json.loads`.
-//   In TS those decodes live in the exported {@link buildPageKwargs}
-//   and {@link buildStatsKwargs} (the `self`-free blocks, R7.2 split);
-//   the sequential engine's `output_properties` decode IS
-//   `buildPageKwargs`, so T2-02 and T2-03 both assert there.
-// - `json.JSONDecodeError` is `LosslessJsonError`: the engage-param
-//   round-trips decode through the shared lossless parser, never a bare
-//   `JSON.parse` (B0-1 F1).
-// - `pytest.raises(ValueError, …)` on `filter_to_selector` names
-//   Python's dual-inheriting `ParamValidationError`; the TS twin
-//   carries the same message.
-// - `.df` asserts become `toRows()` / `rowColumns()` (C6).
+// `Workspace.queryUser` edge cases in three tiers: silent data corruption
+// (sort_key, failed pages, id collisions), crash paths (malformed cohort
+// filters, bad JSON, unsupported operators) and validation gaps. Mirrors
+// all 3 classes of `tests/test_query_user_edge_cases.py`; `.df` asserts
+// become `toRows()` / `rowColumns()`.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  BookmarkValidationError,
-  ParamValidationError,
-} from "../../src/errors.js";
+
 import { LosslessJsonError } from "../../src/client/lossless-json.js";
-import {
-  buildPageKwargs,
-  buildStatsKwargs,
-} from "../../src/workspace-query-params.js";
+import { ParamValidationError } from "../../src/errors.js";
 import { filterToSelector } from "../../src/query/user-builders.js";
 import {
   validateUserArgs,
@@ -42,35 +18,27 @@ import {
   filterUnchecked,
 } from "../../src/types/query-params/filter.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import type { Workspace } from "../../src/workspace.js";
+import {
+  buildPageKwargs,
+  buildStatsKwargs,
+} from "../../src/workspace-query-params.js";
+import { codesOf } from "../../test-support/error-codes.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
   makePageResult,
   makeProfilesBatch,
   makeRawProfile,
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
-  type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :141-163).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
-
-/** Read the collected `BookmarkValidationError` codes. */
-function codesOf(exc: unknown): string[] {
-  return (exc as BookmarkValidationError).errors.map((e) => e.code);
-}
+} from "../../test-support/workspace-test-helpers.js";
 
 // ===========================================================================
 // TIER 1 — data corruption / silent wrong results
 // ===========================================================================
 
-describe("TestTier1DataCorruption", () => {
+describe("Tier 1 data corruption", () => {
+  // python: TestTier1DataCorruption
   it("T1.01: both paths pass the wrapped sort_key format", async () => {
     const total = 200;
     const pageSize = 100;
@@ -87,7 +55,7 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: "ltv",
       parallel: true,
@@ -117,7 +85,7 @@ describe("TestTier1DataCorruption", () => {
 
     // After $-stripping, both map to "email" — only one column survives
     const emailCols = result.rowColumns().filter((c) => c === "email");
-    expect(emailCols.length).toBe(1);
+    expect(emailCols).toHaveLength(1);
     // Document which value wins (last-write-wins in the property loop)
     const emailValue = result.toRows()[0]!["email"];
     expect(["builtin@x.com", "custom@x.com"]).toContain(emailValue);
@@ -143,16 +111,16 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
     });
 
     // Total equals len(profiles), not the API total
-    expect(result.profiles.length).toBe(300);
+    expect(result.profiles).toHaveLength(300);
     expect(result.total).toBe(result.profiles.length);
-    expect(result.meta["failed_pages"]).toEqual([2, 3]);
+    expect(result.meta["failed_pages"]).toStrictEqual([2, 3]);
   });
 
   it("T1.04: when all parallel pages fail, only page 0 is returned", async () => {
@@ -175,15 +143,15 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(100);
+    expect(result.profiles).toHaveLength(100);
     expect(result.total).toBe(result.profiles.length);
-    expect(result.meta["failed_pages"]).toEqual([1, 2, 3, 4]);
+    expect(result.meta["failed_pages"]).toStrictEqual([1, 2, 3, 4]);
   });
 
   it("T1.05: distinct_ids yields '' for a profile without the key", () => {
@@ -197,7 +165,7 @@ describe("TestTier1DataCorruption", () => {
       mode: "profiles",
     });
 
-    expect(result.distinct_ids).toEqual([""]);
+    expect(result.distinct_ids).toStrictEqual([""]);
   });
 
   it("T1.06: empty pages with has_more=true terminate the sequential loop", async () => {
@@ -230,7 +198,7 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 100_000,
     });
@@ -250,13 +218,13 @@ describe("TestTier1DataCorruption", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 1000,
     });
 
-    expect(mock.exportPageCalls.length).toBe(1);
-    expect(result.profiles.length).toBe(1000);
+    expect(mock.exportPageCalls).toHaveLength(1);
+    expect(result.profiles).toHaveLength(1000);
   });
 
   it("T1.08: parallel workers use session_id=null when page 0 has none", async () => {
@@ -275,13 +243,13 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(total);
+    expect(result.profiles).toHaveLength(total);
     expect(result.meta["session_id"]).toBeNull();
     for (const call of mock.exportPageCalls.slice(1)) {
       expect(call.options["session_id"] ?? null).toBeNull();
@@ -293,7 +261,15 @@ describe("TestTier1DataCorruption", () => {
 // TIER 2 — crash paths
 // ===========================================================================
 
-describe("TestTier2CrashPaths", () => {
+describe("Tier 2 crash paths", () => {
+  // python: TestTier2CrashPaths
+  // Python reaches the private `_build_page_kwargs` /
+  // `_execute_user_aggregate` decodes; in TS they are the exported
+  // `buildPageKwargs` / `buildStatsKwargs` (the sequential engine's
+  // `output_properties` decode is `buildPageKwargs`). `json.JSONDecodeError`
+  // is `LosslessJsonError`: the engage params decode through the shared
+  // lossless parser, never a bare `JSON.parse`. `pytest.raises(ValueError)`
+  // on `filter_to_selector` names the dual-inheriting `ParamValidationError`.
   it("T2.01: a malformed cohort filter raises U_COHORT", async () => {
     // A Filter that passes the cohort-filter predicate but has the
     // wrong internal structure.
@@ -304,13 +280,12 @@ describe("TestTier2CrashPaths", () => {
       _property_type: "list",
     });
 
-    const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.buildUserParams({ where: malformedFilter });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U_COHORT");
-    }
+    const ws = makeStubWorkspace(mockWorkspaceClient());
+    const error = await expectRejects(
+      ws.buildUserParams({ where: malformedFilter }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U_COHORT");
   });
 
   it("T2.02: malformed output_properties JSON raises the decode error", () => {
@@ -375,7 +350,7 @@ describe("TestTier2CrashPaths", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({ status: "ok" });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
     });
 
@@ -388,10 +363,11 @@ describe("TestTier2CrashPaths", () => {
 // TIER 3 — validation gaps
 // ===========================================================================
 
-describe("TestTier3ValidationGaps", () => {
+describe("Tier 3 validation gaps", () => {
+  // python: TestTier3ValidationGaps
   /** The `ws` the Tier-3 cases build. */
   function makeWs(): Workspace {
-    return workspaceFactory(mockWorkspaceClient());
+    return makeStubWorkspace(mockWorkspaceClient());
   }
 
   it("T3.01: a double quote in sort_by is escaped", async () => {
@@ -399,7 +375,7 @@ describe("TestTier3ValidationGaps", () => {
       mode: "profiles",
       sort_by: 'foo"bar',
     });
-    expect(params["sort_key"]).toBe('properties["foo\\"bar"]');
+    expect(params["sort_key"]).toBe(String.raw`properties["foo\"bar"]`);
   });
 
   it("T3.02: a close bracket in sort_by is escaped", async () => {
@@ -407,7 +383,7 @@ describe("TestTier3ValidationGaps", () => {
       mode: "profiles",
       sort_by: '"]',
     });
-    expect(params["sort_key"]).toBe('properties["\\"]"]');
+    expect(params["sort_key"]).toBe(String.raw`properties["\"]"]`);
   });
 
   it("T3.03: an empty where list produces no 'where' param", async () => {
@@ -431,7 +407,7 @@ describe("TestTier3ValidationGaps", () => {
 
   it("T3.05: UP2 is dead code for a JSON-string filter_by_cohort", () => {
     const errors = validateUserParams({ filter_by_cohort: '{"id": 42}' });
-    expect(errors.filter((e) => e.code === "UP2").length).toBe(0);
+    expect(errors.filter((e) => e.code === "UP2")).toHaveLength(0);
   });
 
   it("T3.06: include_all_users with an in_cohort filter is accepted", async () => {
@@ -460,16 +436,15 @@ describe("TestTier3ValidationGaps", () => {
 
   it("T3.09: UP4 rejects a malformed action string", () => {
     const errors = validateUserParams({ action: "extremes(None)" });
-    expect(errors.filter((e) => e.code === "UP4").length).toBe(1);
+    expect(errors.filter((e) => e.code === "UP4")).toHaveLength(1);
   });
 
   it("T3.10: workers=6 triggers U23", async () => {
-    try {
-      await makeWs().buildUserParams({ workers: 6 });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U23");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ workers: 6 }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U23");
   });
 
   it("T3.11: limit=0 triggers U3", () => {

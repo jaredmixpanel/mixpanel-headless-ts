@@ -1,41 +1,21 @@
-// B4-ARB resolution locks (b4-review-resolution.md) — TS-native tests
-// pinning the four wire-review fixes applied at arbitration:
-//
-// - W-F1: exportEvents mid-stream body-read failures are inside the
-//   `except httpx.HTTPError` scope (api_client.py:1870-1953) — they
-//   retry, then wrap as HTTP_ERROR.
-// - W-F2: `timeoutSeconds` is ENFORCED at the fetch adapter — a hung
-//   server fails like httpx's Timeout (an httpx.HTTPError → retried →
-//   HTTP_ERROR), and the clock covers the headers phase + buffered body
-//   read; a streaming body is NOT clock-bounded after headers
-//   (deviation D-B4ARB-1: httpx read-timeouts are per-read, so a
-//   healthy long-running export must not be killed by a total clock).
-// - W-F3: a custom abort reason (controller.abort("user-stop")) exits
-//   the request point as DOMException name "AbortError" (R6.7).
-// - W-F5: export_profiles threads `session_id` into the next page's
-//   JSON body VERBATIM (api_client.py:2105 — `response.get` value, not
-//   a stringification).
-//
-// (W-F4, the pagination `except Exception` scope, is locked in
-// pagination.test.ts alongside the other INVALID_RESPONSE tests.)
+// TS-only wire-behaviour locks (no Python source test): mid-stream export
+// body failures retry inside the `httpx.HTTPError` scope, then wrap as
+// HTTP_ERROR; `timeoutSeconds` is enforced at the fetch adapter for headers and
+// buffered bodies only (httpx read-timeouts are per-read, so a healthy stream is
+// never clock-bounded); custom abort reasons exit as AbortError; `session_id` is threaded verbatim.
+
 import { describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
-import { MixpanelHeadlessError } from "../../src/errors.js";
 import type { JsonValue } from "../../src/client/json-value.js";
+import { MixpanelHeadlessError } from "../../src/errors.js";
+import { toError } from "../../src/invariant.js";
 import {
   createMockClient,
+  drain,
   makeSession,
   staticTokenResolver,
-} from "./client-test-helpers.js";
-
-/** Drain an async generator into an array (`list(...)`). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
+} from "../../test-support/client-test-helpers.js";
 
 /** Read the `event` member of a yielded export line. */
 function eventName(value: unknown): unknown {
@@ -58,8 +38,9 @@ function clientOver(
   const client = createMixpanelClient({
     session: makeSession(),
     fetch: fetchImpl,
-    sleep: async (ms: number): Promise<void> => {
+    sleep: (ms: number): Promise<void> => {
       sleeps.push(ms);
+      return Promise.resolve();
     },
     random: () => 0,
     tokenResolver: staticTokenResolver(),
@@ -76,12 +57,14 @@ function brokenBodyFetch(
 ): { fetchImpl: typeof fetch; calls: () => number } {
   const encoder = new TextEncoder();
   let calls = 0;
-  const fetchImpl = (async (): Promise<Response> => {
+  const fetchImpl = ((): Promise<Response> => {
     calls += 1;
     if (options.failForever !== true && calls > 1) {
-      return new Response(encoder.encode(options.goodBody ?? lines.join("")), {
-        status: 200,
-      });
+      return Promise.resolve(
+        new Response(encoder.encode(options.goodBody ?? lines.join("")), {
+          status: 200,
+        }),
+      );
     }
     // Deliver the good lines across pulls, THEN error: erroring a
     // stream discards its queue, so the error must wait for the reads.
@@ -97,7 +80,7 @@ function brokenBodyFetch(
         controller.error(failure());
       },
     });
-    return new Response(body, { status: 200 });
+    return Promise.resolve(new Response(body, { status: 200 }));
   }) as typeof fetch;
   return { fetchImpl, calls: () => calls };
 }
@@ -116,13 +99,13 @@ function hangingFetch(): { fetchImpl: typeof fetch; calls: () => number } {
         return; // hang forever (no signal ever supplied — test fails by timeout)
       }
       if (signal.aborted) {
-        reject(signal.reason);
+        reject(toError(signal.reason));
         return;
       }
       signal.addEventListener(
         "abort",
         () => {
-          reject(signal.reason);
+          reject(toError(signal.reason));
         },
         { once: true },
       );
@@ -138,7 +121,7 @@ function slowChunkFetch(
 ): typeof fetch {
   const encoder = new TextEncoder();
   const remaining = [...chunks];
-  return (async (): Promise<Response> => {
+  return (): Promise<Response> => {
     const body = new ReadableStream<Uint8Array>({
       async pull(controller): Promise<void> {
         if (remaining.length === 0) {
@@ -146,17 +129,17 @@ function slowChunkFetch(
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, delayMs));
-        controller.enqueue(encoder.encode(remaining.shift() as string));
+        controller.enqueue(encoder.encode(remaining.shift()));
         if (remaining.length === 0) {
           controller.close();
         }
       },
     });
-    return new Response(body, { status: 200 });
-  }) as typeof fetch;
+    return Promise.resolve(new Response(body, { status: 200 }));
+  };
 }
 
-describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope", () => {
+describe("mid-stream body failures retry inside the httpx.HTTPError scope", () => {
   it("retries a body-read failure and re-streams (Python re-yields)", async () => {
     const line = '{"event":"A","properties":{"time":1}}\n';
     const good =
@@ -171,9 +154,13 @@ describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope"
     const events = await drain(client.exportEvents("2024-01-01", "2024-01-31"));
     // Attempt 1 yields A then dies mid-body; attempt 2 re-streams A, B —
     // the duplicate is Python's exact observable (generator re-entry).
-    expect(events.map(eventName)).toEqual(["A", "A", "B"]);
+    expect(events.map((event) => eventName(event))).toStrictEqual([
+      "A",
+      "A",
+      "B",
+    ]);
     expect(calls()).toBe(2);
-    expect(sleeps).toEqual([1000]); // _calculate_backoff(0), random=0.
+    expect(sleeps).toStrictEqual([1000]); // _calculate_backoff(0), random=0.
   });
 
   it("wraps an exhausted mid-stream failure as HTTP_ERROR", async () => {
@@ -186,8 +173,8 @@ describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope"
     let caught: unknown;
     try {
       await drain(client.exportEvents("2024-01-01", "2024-01-31"));
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(MixpanelHeadlessError);
     expect((caught as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
@@ -198,7 +185,7 @@ describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope"
   });
 });
 
-describe("W-F2: request timeouts are enforced at the adapter", () => {
+describe("request timeouts are enforced at the adapter", () => {
   it("times out a hung buffered request and wraps as HTTP_ERROR", async () => {
     const { fetchImpl, calls } = hangingFetch();
     const { client } = clientOver(fetchImpl, {
@@ -208,8 +195,8 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
     let caught: unknown;
     try {
       await client.request("GET", "https://mixpanel.com/api/app/test");
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(MixpanelHeadlessError);
     expect((caught as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
@@ -226,8 +213,8 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
     let caught: unknown;
     try {
       await drain(client.exportEvents("2024-01-01", "2024-01-31"));
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(MixpanelHeadlessError);
     expect((caught as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
@@ -236,7 +223,7 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
     );
   });
 
-  it("does NOT clock-bound a healthy streaming body (D-B4ARB-1)", async () => {
+  it("does NOT clock-bound a healthy streaming body", async () => {
     // Two chunks, each behind a 30ms real delay: total wall time far
     // exceeds the 20ms export timeout, but the clock stops at headers.
     const fetchImpl = slowChunkFetch(
@@ -248,11 +235,11 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
       exportTimeoutSeconds: 0.02,
     });
     const events = await drain(client.exportEvents("2024-01-01", "2024-01-31"));
-    expect(events.map(eventName)).toEqual(["A", "B"]);
+    expect(events.map((event) => eventName(event))).toStrictEqual(["A", "B"]);
   });
 });
 
-describe("W-F3: custom abort reasons exit the request point as AbortError", () => {
+describe("custom abort reasons exit the request point as AbortError", () => {
   it("controller.abort('user-stop') rejects as DOMException AbortError", async () => {
     const { fetchImpl } = hangingFetch();
     const { client } = clientOver(fetchImpl, { maxRetries: 0 });
@@ -265,15 +252,15 @@ describe("W-F3: custom abort reasons exit the request point as AbortError", () =
       await client.request("GET", "https://mixpanel.com/api/app/test", {
         signal: controller.signal,
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(DOMException);
     expect((caught as DOMException).name).toBe("AbortError");
   });
 });
 
-describe("W-F5: export_profiles threads session_id verbatim", () => {
+describe("exportProfiles threads session_id verbatim", () => {
   it("a numeric session_id round-trips as a JSON number, not a string", async () => {
     const { client, transport } = createMockClient(makeSession(), (request) => {
       const body =

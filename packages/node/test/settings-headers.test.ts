@@ -1,41 +1,32 @@
-// Layer-3 translation of `tests/unit/test_settings_headers.py` — the
-// B8-N1 classes only (b8-packets.md §2.3 row 3):
-//
-// - TestSettingsHeaderAttachment :52 → translated below (a
-//   `[settings].custom_header` written by the real node ConfigManager
-//   reaches `Session.headers` through `resolveSession`).
-// - TestNoEnvMutation :71            → translated below (resolution over
-//   the real `createNodeEnv` bag never mutates `process.env`).
-// - TestBridgeHeaderAttachment :97   → translated below at B8-N2
-//   (bridge headers reach `Session.headers` through `BridgeView`;
-//   packet §3.3 row 7).
-// - TestSessionHeadersOnOutboundRequests :156 → translated at B0, NOT
-//   re-translated (playbook `:244-246`).
+// Custom-header attachment through the real node ConfigManager and bridge
+// wiring. Mirrors tests/unit/test_settings_headers.py
+// (TestSessionHeadersOnOutboundRequests is covered by the core client tests
+// and not repeated here).
 
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { resolveSession } from "../../core/src/auth/resolver.js";
-import { Secret } from "../../core/src/secret.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { resolveSession, Secret } from "@mixpanel-headless/core";
+
 import { createNodeBridgeEffects } from "../src/auth/bridge.js";
 import { ConfigManager } from "../src/config.js";
 import { createNodeConfigSource } from "../src/config-writes.js";
 import { createNodeEnv } from "../src/env.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
-const cleanups: (() => void)[] = [];
-let restoreEnv: () => void = () => {};
+const cleanups: Array<() => void> = [];
 
 beforeEach(() => {
   // The Python suite's autouse `_isolated_home` + conftest MP_* scrub:
   // node env wiring reads the REAL process.env, so tests scrub MP_*
   // first and restore after (helpers.ts).
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -60,18 +51,21 @@ function cmWithAccountActive(): {
   return { config, cm: new ConfigManager({ configPath }) };
 }
 
-describe("TestSettingsHeaderAttachment", () => {
-  it("test_session_carries_setting_header", () => {
+describe("settings custom header attachment", () => {
+  // python: TestSettingsHeaderAttachment
+  it("the session carries the [settings] custom header", () => {
+    // python: test_session_carries_setting_header
     const { config, cm } = cmWithAccountActive();
     cm.setCustomHeader({ name: "X-Foo", value: "bar" });
     const session = resolveSession(
       {},
       { env: createNodeEnv(), config, bridge: null },
     );
-    expect([...session.headers.entries()]).toEqual([["X-Foo", "bar"]]);
+    expect([...session.headers]).toStrictEqual([["X-Foo", "bar"]]);
   });
 
-  it("test_no_setting_header_means_empty_dict", () => {
+  it("no custom header means empty session headers", () => {
+    // python: test_no_setting_header_means_empty_dict
     const { config } = cmWithAccountActive();
     const session = resolveSession(
       {},
@@ -81,8 +75,10 @@ describe("TestSettingsHeaderAttachment", () => {
   });
 });
 
-describe("TestNoEnvMutation", () => {
-  it("test_settings_header_does_not_set_env_vars", () => {
+describe("no env mutation during resolution", () => {
+  // python: TestNoEnvMutation
+  it("resolving a custom header leaves process.env untouched", () => {
+    // python: test_settings_header_does_not_set_env_vars
     // FR-023: snapshot process.env before/after resolution — identical.
     // The legacy v2 code mutated MP_CUSTOM_HEADER_NAME/_VALUE during
     // resolution; the node env bag is read-only at call time.
@@ -91,11 +87,12 @@ describe("TestNoEnvMutation", () => {
     const before = { ...process.env };
     resolveSession({}, { env: createNodeEnv(), config, bridge: null });
     const after = { ...process.env };
-    expect(after).toEqual(before);
+    expect(after).toStrictEqual(before);
   });
 });
 
-describe("TestBridgeHeaderAttachment (test_settings_headers.py:97 — B8-N2)", () => {
+describe("bridge header attachment", () => {
+  // python: test_settings_headers.py::TestBridgeHeaderAttachment
   /** Write the SA bridge fixture and point MP_AUTH_FILE at it. */
   function writeBridgeFixture(headers: Record<string, string>): string {
     const dir = makeTempDir(cleanups);
@@ -119,11 +116,12 @@ describe("TestBridgeHeaderAttachment (test_settings_headers.py:97 — B8-N2)", (
     if (process.platform !== "win32") {
       chmodSync(bridgePath, 0o600);
     }
-    process.env["MP_AUTH_FILE"] = bridgePath;
+    vi.stubEnv("MP_AUTH_FILE", bridgePath);
     return bridgePath;
   }
 
-  it("test_bridge_headers_populate_session", () => {
+  it("bridge headers populate the session", () => {
+    // python: test_bridge_headers_populate_session
     const { config } = cmWithAccountActive();
     writeBridgeFixture({ "X-Mixpanel-Cluster": "internal-1" });
     const session = resolveSession(
@@ -138,7 +136,8 @@ describe("TestBridgeHeaderAttachment (test_settings_headers.py:97 — B8-N2)", (
     expect(session.account.name).toBe("bridged");
   });
 
-  it("test_bridge_does_not_mutate_environ", () => {
+  it("resolving bridge headers leaves process.env untouched", () => {
+    // python: test_bridge_does_not_mutate_environ
     const { config } = cmWithAccountActive();
     writeBridgeFixture({ "X-Hdr": "v" });
     const before = { ...process.env };
@@ -151,6 +150,6 @@ describe("TestBridgeHeaderAttachment (test_settings_headers.py:97 — B8-N2)", (
       },
     );
     const after = { ...process.env };
-    expect(after).toEqual(before);
+    expect(after).toStrictEqual(before);
   });
 });

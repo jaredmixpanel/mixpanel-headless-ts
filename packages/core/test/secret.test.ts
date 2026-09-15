@@ -1,15 +1,17 @@
-// Secret wrapper tests (R4.6) including fast-check property #1 from
-// phase2-design C9: for arbitrary strings s, no stringification /
-// serialization / enumeration surface of `new Secret(s)` contains s,
-// and `reveal()` returns s exactly.
+// The `Secret` wrapper: for arbitrary strings s, no stringification /
+// serialization / enumeration surface of `new Secret(s)` contains s, and
+// `reveal()` returns s exactly. Mirrors Pydantic's SecretStr redaction
+// (ten asterisks); TS unit + property tests, no Python suite mirrored.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { Secret } from "../src/secret.js";
 
 /** Pydantic's exact redaction literal (ten asterisks). */
 const MASK = "**********";
 
-/** The Node inspect hook symbol (registered via Symbol.for, R9.1). */
+/** The Node inspect hook symbol (registered via Symbol.for). */
 const INSPECT = Symbol.for("nodejs.util.inspect.custom");
 
 /**
@@ -29,6 +31,7 @@ function pureRenders(secret: Secret): string[] {
   }
   return [
     String(secret),
+    // eslint-disable-next-line unicorn/no-useless-template-literals, @typescript-eslint/restrict-template-expressions -- the test exercises template-literal rendering of a Secret
     `${secret}`,
     secret.toString(),
     inspectFn.call(secret),
@@ -53,24 +56,24 @@ describe("Secret", () => {
 
   it("has no own enumerable properties (spread/keys/entries leak nothing)", () => {
     const s = new Secret("value");
-    expect(Object.keys(s)).toEqual([]);
-    expect(Object.entries(s)).toEqual([]);
-    expect({ ...s }).toEqual({});
+    expect(Object.keys(s)).toStrictEqual([]);
+    expect(Object.entries(s)).toStrictEqual([]);
+    expect({ ...(s as object) }).toStrictEqual({}); // deliberate: spreading a Secret leaks nothing
   });
 
-  it("property #1: Secret never leaks the wrapped value on any surface", () => {
+  it("property: Secret never leaks the wrapped value on any surface", () => {
     fc.assert(
       fc.property(fc.string(), (raw) => {
         const secret = new Secret(raw);
         expect(secret.reveal()).toBe(raw);
         // Substring checks on the PURE renders (no container syntax).
         // Containment is only meaningful when the raw value is not itself
-        // a substring of the mask (design C9 carve-out: s === mask; the
+        // a substring of the mask (carve-out: s === mask; the
         // empty string / single '*' are contained in every mask render).
-        if (raw.length > 0 && !MASK.includes(raw)) {
-          for (const rendered of pureRenders(secret)) {
-            expect(rendered).not.toContain(raw);
-          }
+        const renders =
+          raw.length > 0 && !MASK.includes(raw) ? pureRenders(secret) : [];
+        for (const rendered of renders) {
+          expect(rendered).not.toContain(raw);
         }
         // Container/enumeration surfaces: exact-shape equality (immune to
         // structural-character false positives), so the secret cannot
@@ -78,16 +81,16 @@ describe("Secret", () => {
         expect(JSON.stringify(secret)).toBe(`"${MASK}"`);
         expect(JSON.stringify({ k: secret })).toBe(`{"k":"${MASK}"}`);
         expect(JSON.stringify([secret])).toBe(`["${MASK}"]`);
-        expect(Object.keys(secret)).toEqual([]);
-        expect(Object.entries(secret)).toEqual([]);
-        expect(Object.getOwnPropertyNames(secret)).toEqual([]);
-        expect({ ...secret }).toEqual({});
+        expect(Object.keys(secret)).toStrictEqual([]);
+        expect(Object.entries(secret)).toStrictEqual([]);
+        expect(Object.getOwnPropertyNames(secret)).toStrictEqual([]);
+        expect({ ...(secret as object) }).toStrictEqual({}); // deliberate: spreading a Secret leaks nothing
         expect(String(secret)).toBe(MASK);
       }),
     );
   });
 
-  it("property #1 (JSON-escaped payloads): serialized bags never leak", () => {
+  it("property (JSON-escaped payloads): serialized bags never leak", () => {
     // Strings needing JSON escaping (quotes, backslashes, control chars)
     // must not appear even in escaped form: compare the PARSED bag value.
     fc.assert(

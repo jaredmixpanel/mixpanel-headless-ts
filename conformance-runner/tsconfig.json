@@ -1,7 +1,18 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "noEmit": true,
+    // DOM libs: fetch typing names (RequestInfo, BodyInit,
+    // ReadableWritablePair) that @types/node does not expose as globals.
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "esnext.disposable"
+    ],
     "types": ["node"]
   },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  "references": [{ "path": "../packages/core" }, { "path": "../packages/node" }]
 }

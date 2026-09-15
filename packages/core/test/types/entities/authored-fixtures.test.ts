@@ -1,22 +1,10 @@
-// C8(b) authored-fixture locks (phase2-design C5 item 5, packet P2-7).
-//
-// The models below have NO corpus `$type` occurrences and NO wire
-// vector whose api returns them (model-coverage.json rows the P2-1
-// generator left `unresolved`): nested sub-models the recorder only
-// ever saw inside their parents, params models with no recorded
-// call, and the account-surface models. Each gets an authored
-// full-field payload — the same `tagged_models=False` walk shape the
-// recorder emits — locked by the identity round-trip
-// `fromDict(payload)` -> `toVectorPayload()` deep-equal, plus the
-// C8(b) anti-vacuity probes (unknown-key mutation + declared-keys
-// equality). `coverage_overrides.json` on the Python support branch
-// points each model's `authored_fixture` at this file.
-//
-// The five auth-family Pydantic models (`ServiceAccount`,
-// `OAuthBrowserAccount`, `OAuthTokenAccount`, `Session`, `Project`)
-// are locked by their P2-4 parse-factory suites instead
-// (`packages/core/test/auth/*.test.ts`) and are not repeated here.
+// Authored full-field fixtures for the entity models the recorded corpus
+// never returns at top level (nested sub-models, params with no recorded
+// call, account-surface models): each must round-trip fromDict() →
+// toVectorPayload() identically and survive the unknown-key probe. TS-only
+// (no Python twin); the auth-family models are locked by test/auth/ instead.
 import { describe, expect, it } from "vitest";
+
 import { ResponseValidationError } from "../../../src/errors.js";
 import * as entities from "../../../src/types/entities/index.js";
 import {
@@ -189,36 +177,60 @@ const FIXTURES: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   },
 };
 
-describe("C8(b) authored entity fixtures", () => {
-  for (const [name, payload] of Object.entries(FIXTURES)) {
+/**
+ * The observable outcome of decoding a payload that carries an unknown
+ * key: the surviving serialized keys, or `rejected` when the decode threw
+ * {@link ResponseValidationError} (any other throw propagates).
+ *
+ * @param decode - Decode-and-serialize thunk.
+ * @returns The outcome record compared against the model's extra policy.
+ */
+function unknownKeyOutcome(
+  decode: () => object,
+): { rejected: true } | { keys: string[] } {
+  try {
+    return { keys: Object.keys(decode()) };
+  } catch (error) {
+    if (error instanceof ResponseValidationError) {
+      return { rejected: true };
+    }
+    throw error;
+  }
+}
+
+describe("authored entity fixtures", () => {
+  describe.each(Object.entries(FIXTURES))("%s", (name, payload) => {
     const cls = (entities as Readonly<Record<string, unknown>>)[
       name
     ] as EntityModelStatics;
 
-    describe(name, () => {
-      it("is a real exported entity class", () => {
-        expect(typeof cls).toBe("function");
-      });
-
-      it("round-trips the authored payload identically", () => {
-        const instance = cls.fromDict(payload);
-        expect(instance).toBeInstanceOf(cls as unknown as CallableFunction);
-        expect(instance).toBeInstanceOf(EntityModel);
-        expect(instance.toVectorPayload()).toEqual(payload);
-      });
-
-      it("survives the unknown-key mutation probe", () => {
-        const mutated = { ...payload, __p2_7_unknown__: true };
-        if (cls.extraPolicy === "forbid") {
-          expect(() => cls.fromDict(mutated)).toThrow(ResponseValidationError);
-        } else {
-          const instance = cls.fromDict(mutated);
-          expect(Object.keys(instance.toJSON())).toEqual([
-            ...cls.fieldSpecs.map((spec) => spec.name),
-            ...(cls.computedSpecs ?? []).map((spec) => spec.name),
-          ]);
-        }
-      });
+    it("is a real exported entity class", () => {
+      expect(typeof cls).toBe("function");
     });
-  }
+
+    it("round-trips the authored payload identically", () => {
+      const instance = cls.fromDict(payload);
+      expect(instance).toBeInstanceOf(cls);
+      expect(instance).toBeInstanceOf(EntityModel);
+      expect(instance.toVectorPayload()).toStrictEqual(payload);
+    });
+
+    it("survives the unknown-key mutation probe", () => {
+      const mutated = { ...payload, __p2_7_unknown__: true };
+      // Forbid models reject; lax models absorb the key but must DROP
+      // it from the serialized walk (declared keys only).
+      expect(
+        unknownKeyOutcome(() => cls.fromDict(mutated).toJSON()),
+      ).toStrictEqual(
+        cls.extraPolicy === "forbid"
+          ? { rejected: true }
+          : {
+              keys: [
+                ...cls.fieldSpecs.map((spec) => spec.name),
+                ...(cls.computedSpecs ?? []).map((spec) => spec.name),
+              ],
+            },
+      );
+    });
+  });
 });

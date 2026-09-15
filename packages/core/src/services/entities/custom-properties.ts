@@ -1,110 +1,126 @@
 /**
- * Custom-property wire methods (App API) — Phase-3 packet B4-C5 port
- * of the `MixpanelAPIClient` custom-properties range
- * (`api_client.py:7345-7541`).
+ * Custom-property wire methods on the App API (`custom_properties/`,
+ * workspace-scoped through `maybe_scoped_path`). Ids are strings, and
+ * update is a PUT (full replacement), not a PATCH; results come back
+ * verbatim after Python's isinstance guards.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). Custom-property IDs are STRINGS (R3-family). `update` is a
- * PUT (full replacement), not PATCH. Results are returned verbatim
- * after the source's isinstance guards (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_custom_properties
  */
 
 import { appRequest } from "../../client/app-request.js";
-import type { ClientCore } from "../../client/client.js";
+import type { ClientCore } from "../../client/core.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { expectListResult, expectRecordResult } from "./shared.js";
 
-/** The C5 custom-property method surface (mixed into `MixpanelClient`). */
+/** Custom-property methods mixed into `MixpanelClient`. */
 export interface CustomPropertyMethods {
   /**
-   * List custom properties (`list_custom_properties`,
-   * `api_client.py:7345-7373` — GET `custom_properties/`).
+   * List custom properties. Sends GET `custom_properties/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The property list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_custom_properties
    */
-  listCustomProperties(signal?: AbortSignal): Promise<JsonValue[]>;
+  listCustomProperties: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create a custom property (`create_custom_property`, `:7375-7409`
-   * — POST `custom_properties/`).
+   * Create a custom property. Sends POST `custom_properties/`.
    *
    * @param body - Custom-property definition.
    * @param signal - Optional cancellation signal.
    * @returns The created property dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_custom_property
    */
-  createCustomProperty(
+  createCustomProperty: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a custom property (`get_custom_property`, `:7411-7442` — GET
-   * `custom_properties/{id}/`).
+   * Get a custom property. Sends GET `custom_properties/{id}/`.
    *
    * @param propertyId - Custom-property ID (string).
    * @param signal - Optional cancellation signal.
    * @returns The property dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_custom_property
    */
-  getCustomProperty(
+  getCustomProperty: (
     propertyId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Replace a custom property (`update_custom_property`, `:7444-7480`
-   * — PUT `custom_properties/{id}/`, full replacement).
+   * Replace a custom property. Sends PUT `custom_properties/{id}/`, full
+   * replacement.
    *
    * @param propertyId - Custom-property ID (string).
    * @param body - Full replacement definition.
    * @param signal - Optional cancellation signal.
    * @returns The updated property dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_custom_property
    */
-  updateCustomProperty(
+  updateCustomProperty: (
     propertyId: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a custom property (`delete_custom_property`, `:7482-7504`).
+   * Delete a custom property.
    *
    * @param propertyId - Custom-property ID (string).
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_custom_property
    */
-  deleteCustomProperty(propertyId: string, signal?: AbortSignal): Promise<void>;
+  deleteCustomProperty: (
+    propertyId: string,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
-   * Validate a custom-property expression (`validate_custom_property`,
-   * `:7506-7540` — POST `custom_properties/validate/`).
+   * Validate a custom-property expression. Sends POST
+   * `custom_properties/validate/`.
    *
    * @param body - Definition to validate.
    * @param signal - Optional cancellation signal.
    * @returns The validation result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.validate_custom_property
    */
-  validateCustomProperty(
+  validateCustomProperty: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**
- * Build the C5 custom-property methods over the C1 core seam.
+ * Build the custom-property methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const props = createCustomPropertyMethods(core);
+ * await props.validateCustomProperty({ name: "Revenue (USD)", formula: "..." });
+ * // { valid: true, ... }
+ * ```
  */
 export function createCustomPropertyMethods(
   core: ClientCore,
 ): CustomPropertyMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

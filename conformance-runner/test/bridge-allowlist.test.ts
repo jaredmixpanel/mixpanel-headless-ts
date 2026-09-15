@@ -1,36 +1,16 @@
-// Bridge allowlist tests (heads spec 01 §5.3, task H2).
-//
-// The committed table `conformance-runner/bridge-allowlist.gen.json` is the
-// route/classification source of truth the desktop bridge handler matches
-// against. It is DERIVED from the pinned corpus, so it can go stale exactly
-// like `api-map.gen.ts` does; these tests are the gate that notices.
-//
-// 1. Freshness: re-run scripts/generate-bridge-allowlist.mjs against the
-//    committed corpus pin and byte-compare. The two header stamps that
-//    legitimately move on every run (`generatedAt`, `headlessCommit`) are
-//    fed back into the regeneration so the comparison stays byte-exact
-//    over everything that is actually derived.
-// 2. Coverage: every `wire_api` in the corpus api-index has at least one
-//    row, unless the rules file records it as excluded or as a justified
-//    coverage exception — so a headless method with no wire vector is
-//    noticed rather than silently unreachable through the bridge.
-// 3. Rules hygiene: no stale exclusion rows, every reason non-empty.
-// 4. Row invariants: write rows carry a write class and a consent verb,
-//    read rows carry neither, and overlapping templates never disagree
-//    about access (the classifier must not be widenable by route order).
-// 5. Pinning and route shape: every row's `pin` is backed by real evidence
-//    in the route (§5.5 pins the project id wherever it rides — path, query
-//    param or body field), no placeholder sits directly under a family root
-//    where it would wildcard the family, no bindable id is left anonymous,
-//    and no literal segment still holds a slash.
-// 6. Denied routes: routes the rules refuse are emitted, justified, and
-//    never present in the matchable `rows`.
+// bridge-allowlist.gen.json — the route/classification table the desktop
+// bridge matches against, derived from the pinned corpus. Locks freshness
+// (byte-exact regeneration), coverage of every corpus wire_api, rules
+// hygiene, row invariants (write class + consent verb on writes), pinning
+// and route shape, and that denied routes never appear in `rows`.
+
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 /** The conformance-runner package root. */
@@ -69,7 +49,7 @@ interface AllowlistRow {
   readonly paramNames: readonly string[];
   readonly access: "read" | "write";
   readonly pin: PinKind;
-  readonly pinSources: readonly ("path" | "query" | "body")[];
+  readonly pinSources: ReadonlyArray<"path" | "query" | "body">;
   readonly writeClass?: string;
   readonly consentVerb?: string;
   readonly tsMethod: string;
@@ -140,7 +120,7 @@ function sha256(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-describe("bridge-allowlist.gen.json freshness (spec 01 §5.3)", () => {
+describe("bridge-allowlist.gen.json freshness", () => {
   it("is byte-identical to a fresh regeneration from the pinned corpus", () => {
     const regenerated = execFileSync(
       process.execPath,
@@ -170,7 +150,7 @@ describe("bridge-allowlist.gen.json freshness (spec 01 §5.3)", () => {
   });
 });
 
-describe("bridge-allowlist coverage (spec 01 §5.3)", () => {
+describe("bridge-allowlist coverage", () => {
   /**
    * Every python api the table accounts for: primary rows plus aliases, and
    * the denied routes too — an api the rules deliberately refuse is still
@@ -222,7 +202,7 @@ describe("bridge-allowlist coverage (spec 01 §5.3)", () => {
   });
 });
 
-describe("bridge-allowlist row invariants (spec 01 §5.3, §7.2)", () => {
+describe("bridge-allowlist row invariants", () => {
   it("gives every write row a write class and a consent verb", () => {
     const bad = allowlist.rows
       .filter(
@@ -311,7 +291,7 @@ describe("bridge-allowlist row invariants (spec 01 §5.3, §7.2)", () => {
   });
 });
 
-describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () => {
+describe("bridge-allowlist pinning and route shape", () => {
   const everyRow: readonly AllowlistRow[] = [
     ...allowlist.rows,
     ...allowlist.deniedRoutes,
@@ -333,7 +313,7 @@ describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () =
         wrong.push(`${row.method} ${row.template}: ${row.pin} with no source`);
         continue;
       }
-      const placeholder = `{${row.pin === "project" ? "project_id" : row.pin === "organization" ? "organization_id" : "workspace_id"}}`;
+      const placeholder = `{${row.pin}_id}`;
       if (evidence.has("path") !== row.template.includes(placeholder)) {
         wrong.push(`${row.method} ${row.template}: path source disagrees`);
       }
@@ -393,13 +373,13 @@ describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () =
     const leaked: string[] = [];
     for (const row of everyRow) {
       const segments = row.template.split("/");
-      segments.forEach((segment, i) => {
-        if (segment !== "workspaces" && segment !== "organizations") return;
+      for (const [i, segment] of segments.entries()) {
+        if (segment !== "workspaces" && segment !== "organizations") continue;
         const next = segments[i + 1];
         if (next === "{int}" || next === "{param}") {
           leaked.push(`${row.method} ${row.template}`);
         }
-      });
+      }
     }
     expect(leaked).toStrictEqual([]);
   });
@@ -417,7 +397,7 @@ describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () =
       const depth = rootDepth.get(row.family);
       if (depth === undefined) continue;
       const head = row.template.split("/")[depth];
-      if (head !== undefined && head.startsWith("{")) {
+      if (head?.startsWith("{")) {
         wildcards.push(`${row.method} ${row.family} ${row.template}`);
       }
     }
@@ -449,7 +429,7 @@ describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () =
   });
 });
 
-describe("bridge-allowlist consent verbs (spec 01 §7.2)", () => {
+describe("bridge-allowlist consent verbs", () => {
   /** Run the generator with substitute rule inputs; return its stderr. */
   const runGenerator = (
     overrides: Readonly<{ verbs?: string; routeVerbs?: string }>,
@@ -541,7 +521,7 @@ describe("bridge-allowlist consent verbs (spec 01 §7.2)", () => {
   });
 });
 
-describe("bridge-allowlist denied routes (spec 01 §5.3)", () => {
+describe("bridge-allowlist denied routes", () => {
   it("keeps every denied route out of the matchable rows", () => {
     const matchable = new Set(
       allowlist.rows.map(

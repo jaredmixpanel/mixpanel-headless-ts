@@ -1,46 +1,32 @@
-// Layer-3 translation — Phase-3 packet B4-C6 pagination locks.
-// Sources:
-//
-// - tests/unit/test_pagination.py (824) — ALL: TestPaginateAll (:64),
-//   TestPaginateAllRobustness (:335), TestPaginateAllMalformedResults
-//   (:519), TestPaginateAllRetryAfter (:702) + the
-//   `run_rate_limited_pagination` driver (:647).
-//
-// Translation notes (R10.2 — assertion content preserved):
-// - The Python `patch("mixpanel_headless._internal.pagination.MAX_PAGES",
-//   50)` pin translates to the injectable `maxPages` option (default
-//   10000) — an option, not a mutable module global (packet C6 §Layer-3,
-//   playbook B4 row). The limit error still fires at page N+1 with the
-//   code preserved.
-// - `patch("time.sleep")` capture translates to the injected sleep seam
-//   of `createMockClient` (ms, R2.12): Python's recorded `[30.0] * 3`
-//   seconds become `[30000, 30000, 30000]` ms — same schedule, unit
-//   moved to the seam.
-// - `itertools.islice(..., 15000)` merely bounded Python's consumption;
-//   the TS drain consumes until the PAGINATION_LIMIT raise at page 51,
-//   which is the same observable.
+// `paginateAll`: cursor following, page-size and extra params, query_origin
+// injection, malformed `results`, mid-walk 429/500/401 handling and the
+// Retry-After clamp/fallback schedule. Mirrors tests/unit/test_pagination.py
+// (all classes plus `run_rate_limited_pagination`). `patch(MAX_PAGES, 50)` is
+// the `maxPages` option; recorded `time.sleep` seconds appear as ms (`[30000] * 3`).
 import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
+import { type JsonValue, toNativeJson } from "../../src/client/json-value.js";
+import {
+  MAX_RATE_LIMIT_RETRIES,
+  paginateAll,
+  PAGINATION_BACKOFF_MAX_SECONDS,
+} from "../../src/client/pagination.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
   RateLimitError,
   ServerError,
 } from "../../src/errors.js";
-import { toNativeJson, type JsonValue } from "../../src/client/json-value.js";
 import {
-  MAX_RATE_LIMIT_RETRIES,
-  PAGINATION_BACKOFF_MAX_SECONDS,
-  paginateAll,
-} from "../../src/client/pagination.js";
-import type { Session } from "../../src/auth/session.js";
-import {
-  createMockClient,
-  makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "./client-test-helpers.js";
+  createMockClient,
+  drain,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture (test_pagination.py:36-39). */
+/** The `oauth_credentials` fixture. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -49,22 +35,15 @@ function oauthCredentials(): Session {
   });
 }
 
-/** Drain an async generator into an array (the `list(...)` analog). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
-
 /** Native-JSON view of drained page items (JsonNumber tokens folded). */
 function native(items: readonly JsonValue[]): unknown[] {
   return items.map((item) => toNativeJson(item));
 }
 
-describe("TestPaginateAll", () => {
-  it("test_yields_all_results_across_pages", async () => {
+describe("Paginate all", () => {
+  // python: TestPaginateAll
+  it("yields all results across pages", async () => {
+    // python: test_yields_all_results_across_pages
     let callCount = 0;
     const { client } = createMockClient(
       oauthCredentials(),
@@ -97,11 +76,12 @@ describe("TestPaginateAll", () => {
     const items = await drain(
       paginateAll(client, "/projects/12345/dashboards"),
     );
-    expect(native(items)).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+    expect(native(items)).toStrictEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
     expect(callCount).toBe(2);
   });
 
-  it("test_follows_next_cursor_until_none", async () => {
+  it("follows next cursor until null", async () => {
+    // python: test_follows_next_cursor_until_none
     const cursorsSeen: Array<string | null> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -140,10 +120,11 @@ describe("TestPaginateAll", () => {
     );
     const items = await drain(paginateAll(client, "/projects/12345/items"));
     expect(items).toHaveLength(3);
-    expect(cursorsSeen).toEqual([null, "c2", "c3"]);
+    expect(cursorsSeen).toStrictEqual([null, "c2", "c3"]);
   });
 
-  it("test_handles_empty_results", async () => {
+  it("handles empty results", async () => {
+    // python: test_handles_empty_results
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -158,10 +139,11 @@ describe("TestPaginateAll", () => {
     const items = await drain(
       paginateAll(client, "/projects/12345/dashboards"),
     );
-    expect(items).toEqual([]);
+    expect(items).toStrictEqual([]);
   });
 
-  it("test_handles_missing_pagination_field", async () => {
+  it("handles missing pagination field", async () => {
+    // python: test_handles_missing_pagination_field
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -172,10 +154,11 @@ describe("TestPaginateAll", () => {
     const items = await drain(
       paginateAll(client, "/projects/12345/dashboards"),
     );
-    expect(native(items)).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(native(items)).toStrictEqual([{ id: 1 }, { id: 2 }]);
   });
 
-  it("test_respects_page_size_parameter", async () => {
+  it("respects page size parameter", async () => {
+    // python: test_respects_page_size_parameter
     const capturedParams: Array<Record<string, string>> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -197,7 +180,8 @@ describe("TestPaginateAll", () => {
     expect(capturedParams[0]?.["page_size"]).toBe("25");
   });
 
-  it("test_passes_additional_params", async () => {
+  it("passes additional params", async () => {
+    // python: test_passes_additional_params
     const capturedParams: Array<Record<string, string>> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -221,7 +205,8 @@ describe("TestPaginateAll", () => {
     expect(capturedParams[0]?.["include_archived"]).toBe("true");
   });
 
-  it("test_injects_query_origin_telemetry", async () => {
+  it("injects query origin telemetry", async () => {
+    // python: test_injects_query_origin_telemetry
     const capturedParams: Array<Record<string, string>> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -241,7 +226,8 @@ describe("TestPaginateAll", () => {
     expect(capturedParams[0]?.["query_origin"]).toBe("mixpanel-headless");
   });
 
-  it("test_canonical_query_origin_wins_over_caller", async () => {
+  it("canonical query origin wins over caller", async () => {
+    // python: test_canonical_query_origin_wins_over_caller
     const capturedParams: Array<Record<string, string>> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -265,7 +251,8 @@ describe("TestPaginateAll", () => {
     expect(capturedParams[0]?.["query_origin"]).toBe("mixpanel-headless");
   });
 
-  it("test_handles_response_without_results_key", async () => {
+  it("handles response without results key", async () => {
+    // python: test_handles_response_without_results_key
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -274,12 +261,14 @@ describe("TestPaginateAll", () => {
       }),
     );
     const items = await drain(paginateAll(client, "/projects/12345/items"));
-    expect(native(items)).toEqual([{ id: 1 }]);
+    expect(native(items)).toStrictEqual([{ id: 1 }]);
   });
 });
 
-describe("TestPaginateAllRobustness", () => {
-  it("test_infinite_loop_same_cursor", async () => {
+describe("Paginate all robustness", () => {
+  // python: TestPaginateAllRobustness
+  it("infinite loop same cursor", async () => {
+    // python: test_infinite_loop_same_cursor
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -291,13 +280,14 @@ describe("TestPaginateAllRobustness", () => {
         },
       }),
     );
-    // MAX_PAGES monkeypatch → injectable maxPages option (packet C6).
+    // MAX_PAGES monkeypatch → the injectable maxPages option.
     await expect(
       drain(paginateAll(client, "/projects/12345/items", { maxPages: 50 })),
     ).rejects.toThrow(/maximum page limit/);
   });
 
-  it("test_non_json_response", async () => {
+  it("non JSON response", async () => {
+    // python: test_non_json_response
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -311,12 +301,12 @@ describe("TestPaginateAllRobustness", () => {
     ).rejects.toThrow(/Non-JSON response/);
   });
 
-  it("wraps ANY body-parse failure as INVALID_RESPONSE (W-F4)", async () => {
-    // TS-native B4-ARB lock (b4-review-wire.md F4): pagination.py:246
-    // catches broad `except Exception` — even a RecursionError from
-    // pathological nesting wraps as INVALID_RESPONSE. The TS analog is
-    // the RangeError the recursive-descent parser throws on deep
-    // nesting; it must NOT escape uncoded.
+  it("wraps ANY body-parse failure as INVALID_RESPONSE", async () => {
+    // TS-only: `mixpanel_headless._internal.pagination` catches a broad
+    // `except Exception` — even a RecursionError from pathological nesting
+    // wraps as INVALID_RESPONSE. The TS analog is the RangeError the
+    // recursive-descent parser throws on deep nesting; it must NOT escape
+    // uncoded.
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -328,8 +318,8 @@ describe("TestPaginateAllRobustness", () => {
     let raised: unknown = null;
     try {
       await drain(paginateAll(client, "/projects/12345/items"));
-    } catch (cause) {
-      raised = cause;
+    } catch (error_) {
+      raised = error_;
     }
     expect(raised).toBeInstanceOf(MixpanelHeadlessError);
     const error = raised as MixpanelHeadlessError;
@@ -337,7 +327,8 @@ describe("TestPaginateAllRobustness", () => {
     expect(error.message).toMatch(/Non-JSON response during pagination/);
   });
 
-  it("test_http_429_mid_pagination", async () => {
+  it("HTTP 429 mid pagination", async () => {
+    // python: test_http_429_mid_pagination
     let callCount = 0;
     const { client, sleeps } = createMockClient(
       oauthCredentials(),
@@ -364,11 +355,12 @@ describe("TestPaginateAllRobustness", () => {
       drain(paginateAll(client, "/projects/12345/items")),
     ).rejects.toThrow(RateLimitError);
     // Python: `[call.args[0] for call in mock_sleep...] == [30.0] * 3`
-    // (seconds); the TS sleep seam is ms (R2.12).
-    expect(sleeps).toEqual([30_000, 30_000, 30_000]);
+    // (seconds); the TS sleep seam is ms.
+    expect(sleeps).toStrictEqual([30_000, 30_000, 30_000]);
   });
 
-  it("test_http_500_mid_pagination", async () => {
+  it("HTTP 500 mid pagination", async () => {
+    // python: test_http_500_mid_pagination
     let callCount = 0;
     const { client } = createMockClient(
       oauthCredentials(),
@@ -392,7 +384,8 @@ describe("TestPaginateAllRobustness", () => {
     ).rejects.toThrow(ServerError);
   });
 
-  it("test_http_401_mid_pagination", async () => {
+  it("HTTP 401 mid pagination", async () => {
+    // python: test_http_401_mid_pagination
     let callCount = 0;
     const { client } = createMockClient(
       oauthCredentials(),
@@ -417,8 +410,10 @@ describe("TestPaginateAllRobustness", () => {
   });
 });
 
-describe("TestPaginateAllMalformedResults", () => {
-  it("test_null_results_treated_as_empty_page", async () => {
+describe("Paginate all malformed results", () => {
+  // python: TestPaginateAllMalformedResults
+  it("null results treated as empty page", async () => {
+    // python: test_null_results_treated_as_empty_page
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -431,10 +426,11 @@ describe("TestPaginateAllMalformedResults", () => {
       }),
     );
     const items = await drain(paginateAll(client, "/projects/12345/items"));
-    expect(items).toEqual([]);
+    expect(items).toStrictEqual([]);
   });
 
-  it("test_null_results_still_follows_next_cursor", async () => {
+  it("null results still follows next cursor", async () => {
+    // python: test_null_results_still_follows_next_cursor
     let callCount = 0;
     const { client } = createMockClient(
       oauthCredentials(),
@@ -461,7 +457,7 @@ describe("TestPaginateAllMalformedResults", () => {
       },
     );
     const items = await drain(paginateAll(client, "/projects/12345/items"));
-    expect(native(items)).toEqual([{ id: 1 }]);
+    expect(native(items)).toStrictEqual([{ id: 1 }]);
     expect(callCount).toBe(2);
   });
 
@@ -471,7 +467,7 @@ describe("TestPaginateAllMalformedResults", () => {
     ["dict", { id: 1 }],
     ["bool", true],
   ])(
-    "test_non_list_results_raises_invalid_response[%s]",
+    "non list results raises invalid response[%s]", // python: test_non_list_results_raises_invalid_response
     async (_label: string, resultsValue: unknown) => {
       const { client } = createMockClient(
         oauthCredentials(),
@@ -487,8 +483,8 @@ describe("TestPaginateAllMalformedResults", () => {
       let raised: unknown = null;
       try {
         await drain(paginateAll(client, "/projects/12345/items"));
-      } catch (cause) {
-        raised = cause;
+      } catch (error_) {
+        raised = error_;
       }
       expect(raised).toBeInstanceOf(MixpanelHeadlessError);
       const error = raised as MixpanelHeadlessError;
@@ -499,7 +495,7 @@ describe("TestPaginateAllMalformedResults", () => {
 });
 
 /**
- * `run_rate_limited_pagination` (test_pagination.py:647-699): drive a
+ * `run_rate_limited_pagination`: drive a
  * rate-limited walk and capture the sleep durations (ms seam) and any
  * raised error.
  *
@@ -520,9 +516,9 @@ async function runRateLimitedPagination(
         return {
           status: 429,
           json: { error: "rate_limited" },
-          ...(retryAfter !== null
-            ? { headers: { "Retry-After": retryAfter } }
-            : {}),
+          ...(retryAfter === null
+            ? {}
+            : { headers: { "Retry-After": retryAfter } }),
         };
       }
       return {
@@ -538,17 +534,19 @@ async function runRateLimitedPagination(
   const raised: unknown[] = [];
   try {
     await drain(paginateAll(client, "/projects/12345/items"));
-  } catch (cause) {
-    raised.push(cause);
+  } catch (error) {
+    raised.push(error);
   }
   return { durations: sleeps, raised };
 }
 
-describe("TestPaginateAllRetryAfter", () => {
-  it("test_valid_retry_after_is_honored", async () => {
+describe("Paginate all retry after", () => {
+  // python: TestPaginateAllRetryAfter
+  it("valid retry after is honored", async () => {
+    // python: test_valid_retry_after_is_honored
     const { durations, raised } = await runRateLimitedPagination("30");
-    expect(durations).toEqual([30_000]);
-    expect(raised).toEqual([]);
+    expect(durations).toStrictEqual([30_000]);
+    expect(raised).toStrictEqual([]);
   });
 
   it.each([
@@ -562,11 +560,11 @@ describe("TestPaginateAllRetryAfter", () => {
     ["empty", ""],
     ["thousands-separator", "1,000"],
   ])(
-    "test_hostile_retry_after_falls_back_to_backoff[%s]",
+    "hostile retry after falls back to backoff[%s]", // python: test_hostile_retry_after_falls_back_to_backoff
     async (_label: string, retryAfter: string) => {
       const { durations, raised } = await runRateLimitedPagination(retryAfter);
-      expect(durations).toEqual([1_000]);
-      expect(raised).toEqual([]);
+      expect(durations).toStrictEqual([1_000]);
+      expect(raised).toStrictEqual([]);
     },
   );
 
@@ -575,23 +573,25 @@ describe("TestPaginateAllRetryAfter", () => {
     ["exponent", "1e9"],
     ["one-day", "86400"],
   ])(
-    "test_oversized_retry_after_is_clamped[%s]",
+    "oversized retry after is clamped[%s]", // python: test_oversized_retry_after_is_clamped
     async (_label: string, retryAfter: string) => {
       const { durations, raised } = await runRateLimitedPagination(retryAfter);
-      expect(durations).toEqual([PAGINATION_BACKOFF_MAX_SECONDS * 1000]);
-      expect(raised).toEqual([]);
+      expect(durations).toStrictEqual([PAGINATION_BACKOFF_MAX_SECONDS * 1000]);
+      expect(raised).toStrictEqual([]);
     },
   );
 
-  it("test_missing_retry_after_uses_exponential_backoff", async () => {
+  it("missing retry after uses exponential backoff", async () => {
+    // python: test_missing_retry_after_uses_exponential_backoff
     const { durations, raised } = await runRateLimitedPagination(null);
-    expect(durations).toEqual([1_000]);
-    expect(raised).toEqual([]);
+    expect(durations).toStrictEqual([1_000]);
+    expect(raised).toStrictEqual([]);
   });
 
-  it("test_exhausted_retries_backoff_schedule_is_bounded", async () => {
+  it("exhausted retries backoff schedule is bounded", async () => {
+    // python: test_exhausted_retries_backoff_schedule_is_bounded
     const { durations, raised } = await runRateLimitedPagination("inf", true);
-    expect(durations).toEqual([1_000, 2_000, 4_000]);
+    expect(durations).toStrictEqual([1_000, 2_000, 4_000]);
     expect(durations).toHaveLength(MAX_RATE_LIMIT_RETRIES);
     expect(
       durations.every(
@@ -607,7 +607,7 @@ describe("TestPaginateAllRetryAfter", () => {
     ["infinity", "inf"],
     ["garbage", "abc"],
   ])(
-    "test_hostile_retry_after_not_reported_on_error[%s]",
+    "hostile retry after not reported on error[%s]", // python: test_hostile_retry_after_not_reported_on_error
     async (_label: string, retryAfter: string) => {
       const { raised } = await runRateLimitedPagination(retryAfter, true);
       expect(raised[0]).toBeInstanceOf(RateLimitError);
@@ -615,7 +615,8 @@ describe("TestPaginateAllRetryAfter", () => {
     },
   );
 
-  it("test_valid_retry_after_reported_on_error", async () => {
+  it("valid retry after reported on error", async () => {
+    // python: test_valid_retry_after_reported_on_error
     const { raised } = await runRateLimitedPagination("45", true);
     expect(raised[0]).toBeInstanceOf(RateLimitError);
     expect((raised[0] as RateLimitError).retryAfter).toBe(45);

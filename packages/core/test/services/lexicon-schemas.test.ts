@@ -1,35 +1,11 @@
-// Translated Lexicon-schemas tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_lexicon_schemas.py (R10.2) — ALL 13
-// classes: TestEndpointsApp :44, TestParseLexiconMetadata :68,
-// TestParseLexiconProperty :121, TestParseLexiconDefinition :157,
-// TestParseLexiconSchema :199, TestLexiconMetadata :241,
-// TestLexiconProperty :281, TestLexiconDefinition :307,
-// TestLexiconSchema :333, TestAPIClientGetSchemas :401,
-// TestAPIClientGetSchema :467, TestDiscoveryServiceListSchemas :533,
-// TestDiscoveryServiceGetSchema :644.
-//
-// The three client-direct classes translate HERE by packet assignment:
-// B4-C5's scope did not take this file (`b4-packets.md:862-870`) and
-// the app-endpoint rows are un-asserted in `client/url.test.ts`.
-//
-// Translation notes:
-// - `ENDPOINTS["us"]["app"]` -> the `ReadonlyMap` lookup (R4.8).
-// - The four `test_frozen` cases (`:244`, `:284`, `:310`, `:336`) have
-//   no TS runtime analog — `readonly` is compile-time only. Same
-//   exclusion (and reason) as the Phase-2 result-class translation,
-//   `test/types/results/types.test.ts:12-13`.
-// - `to_dict()` -> `toJSON()` (R4.7). Python's `LexiconProperty.to_dict`
-//   drops absent optionals, which the Phase-2 class already mirrors.
-// - `discovery_factory` -> the B4 `createMockClient` transport analog,
-//   as in `discovery.test.ts`.
+// Lexicon schemas: the app endpoints, the _parse_lexicon_* helpers, the
+// LexiconMetadata / Property / Definition / Schema `toJSON()` (Python
+// `to_dict`), the client's get_schemas / get_schema and DiscoveryService's
+// list_schemas / get_schema. Mirrors tests/unit/test_lexicon_schemas.py (all
+// classes); the `test_frozen` cases have no runtime analog (`readonly` only).
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
+
 import { ENDPOINTS } from "../../src/client/url.js";
 import { AuthenticationError, QueryError } from "../../src/errors.js";
 import {
@@ -45,17 +21,20 @@ import {
   LexiconProperty,
   LexiconSchema,
 } from "../../src/types/results/discovery.js";
+import {
+  type CannedHandler,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The `discovery_factory` fixture (test_lexicon_schemas.py:375-398). */
-function discoveryFactory(handler: Handler): DiscoveryService {
+/** The `discovery_factory` fixture. */
+function discoveryFactory(handler: CannedHandler): DiscoveryService {
   const { client } = createMockClient(makeSession(), handler);
   return new DiscoveryService(client);
 }
 
-describe("TestEndpointsApp", () => {
+describe("Endpoints app", () => {
+  // python: TestEndpointsApp
   it("defines the US app endpoint", () => {
     expect(ENDPOINTS.get("us")?.has("app")).toBe(true);
     expect(ENDPOINTS.get("us")?.get("app")).toBe(
@@ -78,7 +57,8 @@ describe("TestEndpointsApp", () => {
   });
 });
 
-describe("TestParseLexiconMetadata", () => {
+describe("Parse lexicon metadata", () => {
+  // python: TestParseLexiconMetadata
   it("parses metadata from the com.mixpanel key", () => {
     const data = {
       "com.mixpanel": {
@@ -95,11 +75,11 @@ describe("TestParseLexiconMetadata", () => {
     expect(result).not.toBeNull();
     expect(result?.source).toBe("api");
     expect(result?.display_name).toBe("Purchase Event");
-    expect(result?.tags).toEqual(["core", "monetization"]);
+    expect(result?.tags).toStrictEqual(["core", "monetization"]);
     expect(result?.hidden).toBe(false);
     expect(result?.dropped).toBe(false);
-    expect(result?.contacts).toEqual(["owner@example.com"]);
-    expect(result?.team_contacts).toEqual(["analytics"]);
+    expect(result?.contacts).toStrictEqual(["owner@example.com"]);
+    expect(result?.team_contacts).toStrictEqual(["analytics"]);
   });
 
   it("uses defaults for missing fields", () => {
@@ -109,11 +89,11 @@ describe("TestParseLexiconMetadata", () => {
     expect(result).not.toBeNull();
     expect(result?.source).toBeNull();
     expect(result?.display_name).toBe("Test");
-    expect(result?.tags).toEqual([]);
+    expect(result?.tags).toStrictEqual([]);
     expect(result?.hidden).toBe(false);
     expect(result?.dropped).toBe(false);
-    expect(result?.contacts).toEqual([]);
-    expect(result?.team_contacts).toEqual([]);
+    expect(result?.contacts).toStrictEqual([]);
+    expect(result?.team_contacts).toStrictEqual([]);
   });
 
   it("returns null for a null input", () => {
@@ -129,7 +109,8 @@ describe("TestParseLexiconMetadata", () => {
   });
 });
 
-describe("TestParseLexiconProperty", () => {
+describe("Parse lexicon property", () => {
+  // python: TestParseLexiconProperty
   it("parses a basic property definition", () => {
     const result = parseLexiconProperty({
       type: "string",
@@ -158,7 +139,8 @@ describe("TestParseLexiconProperty", () => {
   });
 });
 
-describe("TestParseLexiconDefinition", () => {
+describe("Parse lexicon definition", () => {
+  // python: TestParseLexiconDefinition
   it("parses a definition with properties", () => {
     const result = parseLexiconDefinition({
       description: "User completed a purchase",
@@ -182,18 +164,19 @@ describe("TestParseLexiconDefinition", () => {
     });
     expect(result.metadata).not.toBeNull();
     expect(result.metadata?.display_name).toBe("Purchase");
-    expect(result.metadata?.tags).toEqual(["core"]);
+    expect(result.metadata?.tags).toStrictEqual(["core"]);
   });
 
   it("parses an empty definition", () => {
     const result = parseLexiconDefinition({});
     expect(result.description).toBeNull();
-    expect(result.properties).toEqual({});
+    expect(result.properties).toStrictEqual({});
     expect(result.metadata).toBeNull();
   });
 });
 
-describe("TestParseLexiconSchema", () => {
+describe("Parse lexicon schema", () => {
+  // python: TestParseLexiconSchema
   it("parses an event schema", () => {
     const result = parseLexiconSchema({
       entityType: "event",
@@ -220,7 +203,8 @@ describe("TestParseLexiconSchema", () => {
   });
 });
 
-describe("TestLexiconMetadata", () => {
+describe("Lexicon metadata", () => {
+  // python: TestLexiconMetadata
   it("serializes all fields", () => {
     const metadata = new LexiconMetadata({
       source: "api",
@@ -231,7 +215,7 @@ describe("TestLexiconMetadata", () => {
       contacts: ["test@example.com"],
       team_contacts: ["analytics"],
     });
-    expect(metadata.toJSON()).toEqual({
+    expect(metadata.toJSON()).toStrictEqual({
       source: "api",
       display_name: "Test Event",
       tags: ["core"],
@@ -243,14 +227,15 @@ describe("TestLexiconMetadata", () => {
   });
 });
 
-describe("TestLexiconProperty", () => {
+describe("Lexicon property", () => {
+  // python: TestLexiconProperty
   it("includes only type for a minimal property", () => {
     const prop = new LexiconProperty({
       type: "boolean",
       description: null,
       metadata: null,
     });
-    expect(prop.toJSON()).toEqual({ type: "boolean" });
+    expect(prop.toJSON()).toStrictEqual({ type: "boolean" });
   });
 
   it("includes the description when present", () => {
@@ -259,14 +244,15 @@ describe("TestLexiconProperty", () => {
       description: "User's country",
       metadata: null,
     });
-    expect(prop.toJSON()).toEqual({
+    expect(prop.toJSON()).toStrictEqual({
       type: "string",
       description: "User's country",
     });
   });
 });
 
-describe("TestLexiconDefinition", () => {
+describe("Lexicon definition", () => {
+  // python: TestLexiconDefinition
   it("serializes correctly", () => {
     const prop = new LexiconProperty({
       type: "number",
@@ -278,14 +264,15 @@ describe("TestLexiconDefinition", () => {
       properties: { amount: prop },
       metadata: null,
     });
-    expect(definition.toJSON()).toEqual({
+    expect(definition.toJSON()).toStrictEqual({
       description: "Purchase event",
       properties: { amount: { type: "number", description: "Amount" } },
     });
   });
 });
 
-describe("TestLexiconSchema", () => {
+describe("Lexicon schema", () => {
+  // python: TestLexiconSchema
   it("serializes correctly", () => {
     const definition = new LexiconDefinition({
       description: "Test event",
@@ -297,7 +284,7 @@ describe("TestLexiconSchema", () => {
       name: "Test Event",
       schema_json: definition,
     });
-    expect(schema.toJSON()).toEqual({
+    expect(schema.toJSON()).toStrictEqual({
       entity_type: "event",
       name: "Test Event",
       schema_json: { description: "Test event", properties: {} },
@@ -305,7 +292,8 @@ describe("TestLexiconSchema", () => {
   });
 });
 
-describe("TestAPIClientGetSchemas", () => {
+describe("API client get schemas", () => {
+  // python: TestAPIClientGetSchemas
   it("returns the list of schema dicts", async () => {
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
@@ -342,11 +330,12 @@ describe("TestAPIClientGetSchemas", () => {
       status: 200,
       json: { results: [] },
     }));
-    expect(await client.getSchemas()).toEqual([]);
+    await expect(client.getSchemas()).resolves.toStrictEqual([]);
   });
 });
 
-describe("TestAPIClientGetSchema", () => {
+describe("API client get schema", () => {
+  // python: TestAPIClientGetSchema
   it("returns the normalized schema dict", async () => {
     // API returns: {status: "ok", results: <schemaJson>}
     // Client normalizes to: {entityType, name, schemaJson}
@@ -357,7 +346,7 @@ describe("TestAPIClientGetSchema", () => {
     const schema = await client.getSchema("event", "Purchase");
     expect(schema["entityType"]).toBe("event");
     expect(schema["name"]).toBe("Purchase");
-    expect(schema["schemaJson"]).toEqual({ properties: {} });
+    expect(schema["schemaJson"]).toStrictEqual({ properties: {} });
   });
 
   it("passes entity_name as a query param", async () => {
@@ -379,7 +368,8 @@ describe("TestAPIClientGetSchema", () => {
   });
 });
 
-describe("TestDiscoveryServiceListSchemas", () => {
+describe("Discovery service list schemas", () => {
+  // python: TestDiscoveryServiceListSchemas
   it("returns schemas sorted by (entity_type, name)", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -456,7 +446,8 @@ describe("TestDiscoveryServiceListSchemas", () => {
   });
 });
 
-describe("TestDiscoveryServiceGetSchema", () => {
+describe("Discovery service get schema", () => {
+  // python: TestDiscoveryServiceGetSchema
   it("returns a LexiconSchema", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,

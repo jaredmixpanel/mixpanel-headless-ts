@@ -1,10 +1,13 @@
-// Loader tests (src/loader.ts, task TS-4): full-snapshot enumeration plus
-// integrity-check unit tests over synthetic mini-corpora.
+// Loader (src/loader.ts): full-snapshot enumeration plus integrity checks
+// over synthetic mini-corpora.
+
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { afterEach, describe, expect, it } from "vitest";
+
 import { JsonNumber } from "../src/json-value.js";
 import {
   CorpusIntegrityError,
@@ -74,7 +77,7 @@ function makeMiniCorpus(options?: {
     );
   }
   mkdirSync(join(dir, "filters"), { recursive: true });
-  writeFileSync(join(dir, "filters", "test_a.jsonl"), lines.join("\n") + "\n");
+  writeFileSync(join(dir, "filters", "test_a.jsonl"), `${lines.join("\n")}\n`);
   return dir;
 }
 
@@ -82,7 +85,7 @@ function makeMiniCorpus(options?: {
  * Write one authored bundle (`authored/bundle.jsonl`) into a mini corpus.
  *
  * Every vector line carries `origin: "authored"` so the bundle stays
- * outside the manifest `counts.total` reconciliation (design D13/D3.1).
+ * outside the manifest `counts.total` reconciliation.
  *
  * @param dir - The corpus directory returned by makeMiniCorpus.
  * @param header - `$bundle` header fields merged over the declared count
@@ -110,10 +113,10 @@ function addAuthoredBundle(
     );
   }
   mkdirSync(join(dir, "authored"), { recursive: true });
-  writeFileSync(join(dir, "authored", "bundle.jsonl"), lines.join("\n") + "\n");
+  writeFileSync(join(dir, "authored", "bundle.jsonl"), `${lines.join("\n")}\n`);
 }
 
-describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
+describe("loadCorpus on the committed snapshot", () => {
   const config = loadCorpusConfig(PACKAGE_DIR);
   const corpus = loadCorpus(
     resolve(PACKAGE_DIR, config.vectorsPath),
@@ -123,7 +126,7 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
 
   /**
    * Extracted (record-pipeline) vectors only: manifest counts cover the
-   * extraction, not the hand-authored D13/D3.1 additions.
+   * extraction, not the hand-authored additions.
    */
   const extracted = corpus.vectors.filter(
     (vector) => vector.origin !== "authored",
@@ -131,7 +134,7 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
 
   it("enumerates the full snapshot and matches the manifest total", () => {
     expect(corpus.manifest.sourceCommit).toBe(config.sourceCommit);
-    expect(extracted.length).toBe(corpus.manifest.total);
+    expect(extracted).toHaveLength(corpus.manifest.total);
     expect(corpus.vectors.length).toBeGreaterThanOrEqual(extracted.length);
     expect(corpus.vectors.length).toBeGreaterThanOrEqual(2500);
     expect(corpus.bundles.length).toBeGreaterThanOrEqual(100);
@@ -150,34 +153,29 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
     for (const vector of extracted) {
       byKind.set(vector.kind, (byKind.get(vector.kind) ?? 0) + 1);
     }
-    const counts = corpus.manifest.raw["counts"] as { [key: string]: unknown };
-    const manifestByKind = counts["by_kind"] as { [key: string]: JsonNumber };
+    const counts = corpus.manifest.raw["counts"] as Record<string, unknown>;
+    const manifestByKind = counts["by_kind"] as Record<string, JsonNumber>;
     for (const [kind, declared] of Object.entries(manifestByKind)) {
       expect(byKind.get(kind) ?? 0).toBe(declared.toNumber());
     }
   });
 
-  it("preserves raw number tokens (lossless loading, D6 rule 3)", () => {
-    let sawToken = false;
-    const scan = (value: unknown): void => {
-      if (sawToken) {
-        return;
-      }
+  it("preserves raw number tokens (lossless loading)", () => {
+    const containsToken = (value: unknown): boolean => {
       if (value instanceof JsonNumber) {
-        sawToken = true;
-      } else if (Array.isArray(value)) {
-        value.forEach(scan);
-      } else if (typeof value === "object" && value !== null) {
-        Object.values(value).forEach(scan);
+        return true;
       }
+      if (Array.isArray(value)) {
+        return value.some((item) => containsToken(item));
+      }
+      if (typeof value === "object" && value !== null) {
+        return Object.values(value).some((item) => containsToken(item));
+      }
+      return false;
     };
-    for (const vector of corpus.vectors) {
-      scan(vector.call);
-      scan(vector.expect);
-      if (sawToken) {
-        break;
-      }
-    }
+    const sawToken = corpus.vectors.some(
+      (vector) => containsToken(vector.call) || containsToken(vector.expect),
+    );
     expect(sawToken).toBe(true);
   });
 });
@@ -190,7 +188,7 @@ describe("loadCorpus integrity checks (synthetic corpora)", () => {
     expect(corpus.bundles[0]?.sourceFile).toBe("tests/unit/test_a.py");
   });
 
-  it("refuses a source-commit pin mismatch (D12 drift protection)", () => {
+  it("refuses a source-commit pin mismatch", () => {
     expect(() => loadCorpus(makeMiniCorpus(), "b".repeat(40))).toThrow(
       CorpusIntegrityError,
     );

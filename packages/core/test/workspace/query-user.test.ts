@@ -1,56 +1,24 @@
-// Translated query_user tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_query_user.py (R10.2) — ALL 18
-// classes (TestQueryUserDefaultLimit :164, TestQueryUserExplicitLimit
-// :237, TestQueryUserPropertySelection :367, TestQueryUserSorting :417,
-// TestQueryUserSearch :526, TestQueryUserDistinctId :575,
-// TestQueryUserDistinctIds :608, TestQueryUserGroupId :644,
-// TestQueryUserAsOf :674, TestQueryUserTotalCount :726,
-// TestQueryUserDataFrame :798, TestQueryUserEmptyResult :926,
-// TestQueryUserConfigError :1002, TestQueryUserResultMetadata :1034,
-// TestQueryUserProfileNormalization :1158,
-// TestQueryUserPaginationSessionId :1252,
-// TestQueryUserValueErrorWrapping :1335,
-// TestQueryUserAggregatePropertyEscaping :1355).
-//
-// Translation notes:
-// - `export_profiles_page.call_args.kwargs.get(k)` becomes the recorded
-//   options bag (`mock.exportPageCalls[i].options[k]`); the TS client
-//   takes `(page, options)` where Python takes kwargs, so the same keys
-//   and values are compared. Absent-vs-null: the facade forwards only
-//   the keys the params dict carries, so `get(k) is None` translates to
-//   `?? null` being null (absent OR explicit null — the same Python
-//   `.get(k)` semantics).
-// - `mock.side_effect = [p0, p1, p2]` (an iterable side effect) becomes
-//   a handler indexed by call count.
-// - `.df` asserts become `toRows()` / `rowColumns()` (C6).
-// - The Python file records two REMOVED cases in comments
-//   (`test_no_credentials_raises_config_error`, B1 Fix 10) — nothing to
-//   translate.
+// Workspace.queryUser in profiles mode: limits, pagination, property selection,
+// sorting, search, ids, as_of, totals, frame shape, metadata, normalization,
+// session ids and error wrapping. Mirrors all 18 classes of
+// tests/test_workspace_query_user.py. `call_args.kwargs.get(k)` reads become
+// `exportPageCalls[i].options[k] ?? null`; `.df` asserts use toRows()/rowColumns().
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
+import { sortedByCodepoint } from "../../src/compat/codepoint.js";
 import { BookmarkValidationError } from "../../src/errors.js";
 import { filterUnchecked } from "../../src/types/query-params/filter.js";
+import type { ProfilePageResult } from "../../src/types/results/discovery.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
-import { ProfilePageResult } from "../../src/types/results/discovery.js";
-import { sortedByCodepoint } from "../../src/compat/codepoint.js";
+import type { Workspace } from "../../src/workspace.js";
 import {
   makePageResult,
   makeRawProfile,
-  mockWorkspaceClient,
-  TEST_SESSION,
+  makeStubWorkspace,
   type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :125-146).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
+  mockWorkspaceClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * Install a fixed page result (`mock.export_profiles_page.return_value`).
@@ -86,7 +54,7 @@ function sideEffect(
   });
 }
 
-// Mock data (test file :151-155)
+// Mock data
 const RAW_PROFILE_1 = makeRawProfile("user_001", undefined, {
   plan: "premium",
   email: "alice@example.com",
@@ -100,11 +68,10 @@ const RAW_PROFILE_3 = makeRawProfile("user_003", undefined, {
   email: "carol@example.com",
 });
 
-// ===========================================================================
-// Default limit=1
-// ===========================================================================
+// --- Default limit=1 ---
 
-describe("TestQueryUserDefaultLimit", () => {
+describe("Query user default limit", () => {
+  // python: TestQueryUserDefaultLimit
   it("returns exactly one profile", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -115,11 +82,13 @@ describe("TestQueryUserDefaultLimit", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result).toBeInstanceOf(UserQueryResult);
     expect(result.mode).toBe("profiles");
-    expect(result.profiles.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
     expect(result.profiles[0]!["distinct_id"]).toBe("user_001");
   });
 
@@ -130,7 +99,9 @@ describe("TestQueryUserDefaultLimit", () => {
       makePageResult([RAW_PROFILE_1], { total: 5432, has_more: true }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.total).toBe(1);
     expect(result.total).toBe(result.profiles.length);
@@ -146,17 +117,16 @@ describe("TestQueryUserDefaultLimit", () => {
       }),
     );
 
-    await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    await makeStubWorkspace(mock).queryUser({ mode: "profiles" });
 
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 });
 
-// ===========================================================================
-// Explicit limit + pagination
-// ===========================================================================
+// --- Explicit limit + pagination ---
 
-describe("TestQueryUserExplicitLimit", () => {
+describe("Query user explicit limit", () => {
+  // python: TestQueryUserExplicitLimit
   it("truncates to the requested count", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -167,12 +137,12 @@ describe("TestQueryUserExplicitLimit", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
 
-    expect(result.profiles.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
   });
 
   it("paginates across multiple pages", async () => {
@@ -201,13 +171,13 @@ describe("TestQueryUserExplicitLimit", () => {
       }),
     ]);
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 3,
     });
 
-    expect(result.profiles.length).toBe(3);
-    expect(mock.exportPageCalls.length).toBe(3);
+    expect(result.profiles).toHaveLength(3);
+    expect(mock.exportPageCalls).toHaveLength(3);
   });
 
   it("stops paginating once the limit is met", async () => {
@@ -222,14 +192,14 @@ describe("TestQueryUserExplicitLimit", () => {
       }),
     ]);
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
 
-    expect(result.profiles.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
     // Should not fetch page 1 since the limit is already met
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 
   it("a huge limit fetches all pages until has_more is false", async () => {
@@ -251,41 +221,39 @@ describe("TestQueryUserExplicitLimit", () => {
       }),
     ]);
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(2);
-    expect(mock.exportPageCalls.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
+    expect(mock.exportPageCalls).toHaveLength(2);
   });
 });
 
-// ===========================================================================
-// Property selection
-// ===========================================================================
+// --- Property selection ---
 
-describe("TestQueryUserPropertySelection", () => {
+describe("Query user property selection", () => {
+  // python: TestQueryUserPropertySelection
   it("forwards properties as output_properties", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       properties: ["$email", "plan"],
     });
 
-    expect(mock.exportPageCalls[0]!.options["output_properties"]).toEqual([
-      "$email",
-      "plan",
-    ]);
+    expect(mock.exportPageCalls[0]!.options["output_properties"]).toStrictEqual(
+      ["$email", "plan"],
+    );
   });
 
   it("properties=null sends no output_properties", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       properties: null,
     });
@@ -296,16 +264,15 @@ describe("TestQueryUserPropertySelection", () => {
   });
 });
 
-// ===========================================================================
-// Sorting
-// ===========================================================================
+// --- Sorting ---
 
-describe("TestQueryUserSorting", () => {
+describe("Query user sorting", () => {
+  // python: TestQueryUserSorting
   it("sort_by is translated to sort_key", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: "$last_seen",
     });
@@ -319,7 +286,7 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: "revenue",
       sort_order: "ascending",
@@ -332,7 +299,7 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: "$last_seen",
     });
@@ -344,13 +311,13 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: 'weird"prop',
     });
 
     expect(mock.exportPageCalls[0]!.options["sort_key"]).toBe(
-      'properties["weird\\"prop"]',
+      String.raw`properties["weird\"prop"]`,
     );
   });
 
@@ -358,27 +325,26 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
-      sort_by: "back\\slash",
+      sort_by: String.raw`back\slash`,
     });
 
     expect(mock.exportPageCalls[0]!.options["sort_key"]).toBe(
-      'properties["back\\\\slash"]',
+      String.raw`properties["back\\slash"]`,
     );
   });
 });
 
-// ===========================================================================
-// Search
-// ===========================================================================
+// --- Search ---
 
-describe("TestQueryUserSearch", () => {
+describe("Query user search", () => {
+  // python: TestQueryUserSearch
   it("search is forwarded", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       search: "alice",
     });
@@ -390,17 +356,16 @@ describe("TestQueryUserSearch", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    await makeStubWorkspace(mock).queryUser({ mode: "profiles" });
 
     expect(mock.exportPageCalls[0]!.options["search"] ?? null).toBeNull();
   });
 });
 
-// ===========================================================================
-// distinct_id / distinct_ids
-// ===========================================================================
+// --- distinct_id / distinct_ids ---
 
-describe("TestQueryUserDistinctId", () => {
+describe("Query user distinct ID", () => {
+  // python: TestQueryUserDistinctId
   it("distinct_id reaches the API", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -411,18 +376,19 @@ describe("TestQueryUserDistinctId", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       distinct_id: "user_target",
     });
 
-    expect(result.profiles.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
     expect(result.profiles[0]!["distinct_id"]).toBe("user_target");
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 });
 
-describe("TestQueryUserDistinctIds", () => {
+describe("Query user distinct IDs", () => {
+  // python: TestQueryUserDistinctIds
   it("distinct_ids returns profiles for each requested id", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -433,24 +399,23 @@ describe("TestQueryUserDistinctIds", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       distinct_ids: ["user_001", "user_002"],
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
     const ids = result.profiles.map((p) => p["distinct_id"]);
     expect(ids).toContain("user_001");
     expect(ids).toContain("user_002");
   });
 });
 
-// ===========================================================================
-// group_id
-// ===========================================================================
+// --- group_id ---
 
-describe("TestQueryUserGroupId", () => {
+describe("Query user group ID", () => {
+  // python: TestQueryUserGroupId
   it("group_id is forwarded", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -461,7 +426,7 @@ describe("TestQueryUserGroupId", () => {
       ),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       group_id: "companies",
     });
@@ -470,16 +435,15 @@ describe("TestQueryUserGroupId", () => {
   });
 });
 
-// ===========================================================================
-// as_of
-// ===========================================================================
+// --- as_of ---
 
-describe("TestQueryUserAsOf", () => {
+describe("Query user as of", () => {
+  // python: TestQueryUserAsOf
   it("a Unix int as_of is forwarded as as_of_timestamp", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       as_of: 1704067200,
     });
@@ -493,7 +457,7 @@ describe("TestQueryUserAsOf", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       as_of: "2024-01-01",
     });
@@ -504,11 +468,10 @@ describe("TestQueryUserAsOf", () => {
   });
 });
 
-// ===========================================================================
-// result.total == len(profiles)
-// ===========================================================================
+// --- result.total == len(profiles) ---
 
-describe("TestQueryUserTotalCount", () => {
+describe("Query user total count", () => {
+  // python: TestQueryUserTotalCount
   it("total equals len(profiles) with limit=1", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -516,7 +479,9 @@ describe("TestQueryUserTotalCount", () => {
       makePageResult([RAW_PROFILE_1], { total: 99999, has_more: true }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.total).toBe(1);
     expect(result.total).toBe(result.profiles.length);
@@ -532,7 +497,7 @@ describe("TestQueryUserTotalCount", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
@@ -551,7 +516,7 @@ describe("TestQueryUserTotalCount", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 100_000,
     });
@@ -561,16 +526,17 @@ describe("TestQueryUserTotalCount", () => {
   });
 });
 
-// ===========================================================================
-// Frame column schema
-// ===========================================================================
+// --- Frame column schema ---
 
-describe("TestQueryUserDataFrame", () => {
+describe("Query user data frame", () => {
+  // python: TestQueryUserDataFrame
   it("the first column is distinct_id", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.rowColumns()[0]).toBe("distinct_id");
   });
@@ -579,7 +545,9 @@ describe("TestQueryUserDataFrame", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.rowColumns()[1]).toBe("last_seen");
   });
@@ -599,7 +567,9 @@ describe("TestQueryUserDataFrame", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     const columns = result.rowColumns();
     expect(columns).toContain("email");
@@ -624,13 +594,15 @@ describe("TestQueryUserDataFrame", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     const columns = [...result.rowColumns()];
     expect(columns[0]).toBe("distinct_id");
     expect(columns[1]).toBe("last_seen");
     const remaining = columns.slice(2);
-    expect(remaining).toEqual(sortedByCodepoint(remaining));
+    expect(remaining).toStrictEqual(sortedByCodepoint(remaining));
   });
 
   it("row count matches the profile count", async () => {
@@ -643,20 +615,19 @@ describe("TestQueryUserDataFrame", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
 
-    expect(result.toRows().length).toBe(2);
+    expect(result.toRows()).toHaveLength(2);
   });
 });
 
-// ===========================================================================
-// Empty result
-// ===========================================================================
+// --- Empty result ---
 
-describe("TestQueryUserEmptyResult", () => {
+describe("Query user empty result", () => {
+  // python: TestQueryUserEmptyResult
   /** The empty page every case in this class returns. */
   function emptyPage(): ProfilePageResult {
     return makePageResult([], {
@@ -670,18 +641,22 @@ describe("TestQueryUserEmptyResult", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, emptyPage());
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
-    expect(result.profiles.length).toBe(0);
+    expect(result.profiles).toHaveLength(0);
     expect(result.total).toBe(0);
-    expect(result.toRows().length).toBe(0);
+    expect(result.toRows()).toHaveLength(0);
   });
 
   it("the empty frame still has distinct_id and last_seen columns", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, emptyPage());
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.rowColumns()).toContain("distinct_id");
     expect(result.rowColumns()).toContain("last_seen");
@@ -691,37 +666,39 @@ describe("TestQueryUserEmptyResult", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, emptyPage());
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
-    expect(result.distinct_ids).toEqual([]);
+    expect(result.distinct_ids).toStrictEqual([]);
   });
 });
 
-// ===========================================================================
-// Credentials
-// ===========================================================================
+// --- Credentials ---
 
-describe("TestQueryUserConfigError", () => {
+describe("Query user config error", () => {
+  // python: TestQueryUserConfigError
   it("does not raise with valid credentials", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result).toBeInstanceOf(UserQueryResult);
   });
 });
 
-// ===========================================================================
-// Result metadata
-// ===========================================================================
+// --- Result metadata ---
 
-describe("TestQueryUserResultMetadata", () => {
+describe("Query user result metadata", () => {
+  // python: TestQueryUserResultMetadata
   /** Build a facade whose page call returns one profile. */
   function oneProfileWs(): Workspace {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
-    return workspaceFactory(mock);
+    return makeStubWorkspace(mock);
   }
 
   it("returns a UserQueryResult", async () => {
@@ -758,16 +735,15 @@ describe("TestQueryUserResultMetadata", () => {
   });
 });
 
-// ===========================================================================
-// Profile normalization
-// ===========================================================================
+// --- Profile normalization ---
 
-describe("TestQueryUserProfileNormalization", () => {
+describe("Query user profile normalization", () => {
+  // python: TestQueryUserProfileNormalization
   /** Build a facade whose page call returns RAW_PROFILE_1. */
   function oneProfileWs(): Workspace {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
-    return workspaceFactory(mock);
+    return makeStubWorkspace(mock);
   }
 
   it("profiles carry 'distinct_id' (not '$distinct_id')", async () => {
@@ -799,11 +775,10 @@ describe("TestQueryUserProfileNormalization", () => {
   });
 });
 
-// ===========================================================================
-// Pagination session_id forwarding
-// ===========================================================================
+// --- Pagination session_id forwarding ---
 
-describe("TestQueryUserPaginationSessionId", () => {
+describe("Query user pagination session ID", () => {
+  // python: TestQueryUserPaginationSessionId
   /** Install the two-page side effect both cases in this class share. */
   function twoPages(mock: MockWorkspaceClient, sessionId: string): void {
     sideEffect(mock, [
@@ -828,7 +803,7 @@ describe("TestQueryUserPaginationSessionId", () => {
     const mock = mockWorkspaceClient();
     twoPages(mock, "sess_first");
 
-    await workspaceFactory(mock).queryUser({ mode: "profiles", limit: 2 });
+    await makeStubWorkspace(mock).queryUser({ mode: "profiles", limit: 2 });
 
     expect(mock.exportPageCalls[0]!.page).toBe(0);
   });
@@ -837,7 +812,7 @@ describe("TestQueryUserPaginationSessionId", () => {
     const mock = mockWorkspaceClient();
     twoPages(mock, "sess_paginate");
 
-    await workspaceFactory(mock).queryUser({ mode: "profiles", limit: 2 });
+    await makeStubWorkspace(mock).queryUser({ mode: "profiles", limit: 2 });
 
     expect(mock.exportPageCalls[1]!.options["session_id"]).toBe(
       "sess_paginate",
@@ -845,11 +820,10 @@ describe("TestQueryUserPaginationSessionId", () => {
   });
 });
 
-// ===========================================================================
-// PR #118 review fixes
-// ===========================================================================
+// --- PR #118 review fixes ---
 
-describe("TestQueryUserValueErrorWrapping", () => {
+describe("Query user value error wrapping", () => {
+  // python: TestQueryUserValueErrorWrapping
   it("an unsupported filter operator raises BookmarkValidationError", async () => {
     // Python PR #236: the constructor rejects unknown operators, so the
     // ES13 builder guard is driven through the unchecked rebuild (Python
@@ -859,7 +833,7 @@ describe("TestQueryUserValueErrorWrapping", () => {
       _operator: "unsupported_op",
       _value: "val",
     });
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
 
     await expect(
       ws.queryUser({ mode: "profiles", where: f }),
@@ -867,19 +841,20 @@ describe("TestQueryUserValueErrorWrapping", () => {
   });
 });
 
-describe("TestQueryUserAggregatePropertyEscaping", () => {
+describe("Query user aggregate property escaping", () => {
+  // python: TestQueryUserAggregatePropertyEscaping
   it("a double quote in aggregate_property is escaped in the action", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({ results: 42 });
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "extremes",
       aggregate_property: 'has"quote',
     });
 
     expect(mock.engageStatsCalls[0]!["action"]).toBe(
-      'extremes(properties["has\\"quote"])',
+      String.raw`extremes(properties["has\"quote"])`,
     );
   });
 });

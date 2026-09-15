@@ -1,114 +1,71 @@
 /**
  * Hand-rolled structural twin of the pydantic v2 sorting models in
- * `src/mixpanel_headless/_internal/bookmark_schema.py`, plus the
- * pydantic-error → `ValidationError` adapter that sits on top of them.
+ * `bookmark_schema.py`, the model-description machinery (`FieldType` /
+ * `ModelSpec` / `UnionSpec` / {@link validateModel}) that
+ * `bookmarks/schema.ts` reuses for the rest of the model tree, and the
+ * pydantic-error → `ValidationError` adapter on top of them.
  *
- * Python ranges ported here (re-read before touching anything):
- * `bookmark_schema.py:61-316` (the adapter: `_DEFAULT_CODE_MAP`,
- * `_default_code_mapper`, `_sorting_code_mapper`, `validate_with_pydantic`,
- * `_translate_pydantic_error`, `_DISCRIMINATOR_TAGS`, `_loc_to_jsonpath`)
- * and `bookmark_schema.py:372-680` (the sorting models
- * `FlatLabelSortConfig`, `FlatValueSortConfig`, `SortByColumnsConfig`,
- * `SortByValueConfig`, `OldTableSortByValue`, the four discriminator
- * callables and `InsightsBookmarkSortConfig`).
+ * TS has no pydantic, so the reference semantics here are pydantic-core
+ * in lax mode (the shared `_BASE_CONFIG` sets only `populate_by_name` +
+ * `extra="forbid"`, never `strict=True`) — not CPython's `int()` /
+ * `str.strip()` and not JS's `parseInt` / `String.trim()`. Every
+ * acceptance decision was measured against pydantic-core itself. The
+ * load-bearing findings: error order is model field-definition order,
+ * then `extra_forbidden` for unexpected keys in input insertion order
+ * (emission order is contract); discriminated unions insert the variant
+ * `Tag` name into `loc`, which {@link DISCRIMINATOR_TAGS} strips back
+ * out; lax coercion lets `int` fields take bools, integral finite floats
+ * and a restricted numeric-string grammar, while `str` fields take
+ * strings only and `list` fields arrays only; non-Optional fields that
+ * merely carry a default reject an explicit `null`.
  *
- * **R11.7 third-parser carve-out.** TS has no pydantic. The reference
- * semantics of this module are **pydantic-core in LAX mode** (the shared
- * `_BASE_CONFIG` sets only `populate_by_name` + `extra="forbid"`, so no
- * `strict=True`) — NOT CPython's `int()`/`str.strip()` and NOT JS's
- * `parseInt`/`String.trim()`. Every acceptance decision below is pinned to
- * measured probe evidence recorded in
- * `context/phase3/notes/B2-M2-notes.md` §"CPython pydantic probe"
- * (scripts `throwaway/b2-m2/probe-sorting{,2}.py`,
- * `probe-int-grammar.py`, run 2026-08-15 against the support-branch
- * pydantic pin). The three load-bearing findings:
- *
- * 1. Error ORDER is model field-definition order, then `extra_forbidden`
- *    for unexpected keys in input insertion order (Caution §11: emission
- *    order is contract).
- * 2. Discriminated unions insert the variant `Tag` name into `loc`;
- *    {@link DISCRIMINATOR_TAGS} strips it back out.
- * 3. Lax coercion: `int` fields take bools, integral finite floats and
- *    a restricted numeric-string grammar; `str` fields take strings only;
- *    `list` fields take arrays only.
- *
- * **R10.8 ownership**: this file is the single TS home of the
- * `bookmark_schema` slice. Batch **B3-K1** (the full `bookmark_schema.py`
- * port) IMPORTS and GROWS this file — it must never re-implement the
- * sorting models, the code mappers or the loc→JSONPath renderer.
- *
- * **B3-K1 growth (2026-08-15)**: the model-description machinery below
- * (`FieldType` / `FieldSpec` / `ModelSpec` / `UnionSpec` /
- * {@link validateModel}) is now EXPORTED and generalised so
- * `bookmarks/schema.ts` can describe the non-sorting model tree with
- * the same one pydantic-core twin. Added kinds: `float`, `bool`,
- * `json`, `literalInt`, generic `list`/`dict`/`tuple`, nested `model`
- * (thunked, for the recursive `SubBehavior` / `Behavior` cycle) and
- * `plainUnion` (pydantic smart unions). Added model-level
- * `extra: "allow"` (FlowsBookmarkParams) and field-level `nullable`
- * (non-Optional fields WITH defaults, e.g. `forward: int = 0`, reject
- * explicit `null` — probe `fbp/collapse_repeated-null`). The old
- * `optionalStr` / `optionalInt` / `ignore` kinds folded into
- * `str` / `int` / `json` + `nullable`; the sorting specs below were
- * rewritten onto them with identical semantics.
- *
- * B3-K1 probe evidence: `context/phase3/notes/B3-K1-notes.md` §Probe
- * (`throwaway/b3-k1/probe-{schema,grammar,detail,order,bool}.py`,
- * CPython + pydantic pin, run 2026-08-15).
- *
- * @module bookmarks/schema-sorting
+ * @see mixpanel_headless._internal.bookmark_schema
  * @internal
  */
 
+import { codepoints } from "../compat/codepoint.js";
+// The PyFloat-carrier duck check has exactly one implementation in the
+// port. Importing it here keeps the sorting slice carrier-aware without
+// asking the conformance binding to unwrap floats on the `params.sorting`
+// path only — see the module note on float carriers below.
+import { isPythonDict } from "../compat/python-dict.js";
+import { floatCarrierValue, isFloatCarrier } from "../compat/python-values.js";
 import { PYTHON_NUMERIC_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ValidationError } from "../errors.js";
-// R10.8: the PyFloat-carrier duck check has exactly one implementation in
-// the port (landed by B2 shard V1a). Importing it here keeps the sorting
-// slice carrier-aware WITHOUT asking the (b′) binding to unwrap floats on
-// the `params.sorting` path only — see the module note on float carriers
-// below. `query/validation-shared.ts` imports nothing from `bookmarks/`,
-// so this direction is acyclic.
-import {
-  floatCarrierValue,
-  isFloatCarrier,
-  isPythonDict,
-} from "../query/validation-shared.js";
+import { defined } from "../invariant.js";
 
-// =============================================================================
-// Pydantic error shape
-// =============================================================================
+// --- Pydantic error shape ---
 
 /**
  * One entry of `pydantic.ValidationError.errors()` — the subset
- * `_translate_pydantic_error` reads (`bookmark_schema.py:223-254`).
+ * `_translate_pydantic_error` reads.
  */
 export interface PydanticErrorEntry {
   /** Pydantic error `type` string, e.g. `"missing"`, `"literal_error"`. */
   readonly type: string;
   /** Location tuple: field names, list indices and discriminator Tags. */
-  readonly loc: readonly (string | number)[];
-  /** Human-readable message (display-only, R5.4). */
+  readonly loc: ReadonlyArray<string | number>;
+  /** Human-readable message (display-only, never contract). */
   readonly msg: string;
 }
 
 /**
  * Path-aware code mapper: `(pydantic_error_type, loc) -> package_code`.
  *
- * Port of the `CodeMapper` alias (`bookmark_schema.py:98-107`).
+ * @see mixpanel_headless._internal.bookmark_schema.CodeMapper
  */
-export type CodeMapper = (
+type CodeMapper = (
   errType: string,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
 ) => string;
 
-// =============================================================================
-// Adapter tables (bookmark_schema.py:71-167)
-// =============================================================================
+// --- Adapter tables (bookmark_schema.py) ---
 
 /**
  * Maps pydantic v2 `error['type']` strings to the package's stable
- * `B*` / `S*` codes. Port of `_DEFAULT_CODE_MAP`
- * (`bookmark_schema.py:71-95`) as a `ReadonlyMap` (R4.8).
+ * `B*` / `S*` codes.
+ *
+ * @see mixpanel_headless._internal.bookmark_schema._DEFAULT_CODE_MAP
  */
 export const DEFAULT_CODE_MAP: ReadonlyMap<string, string> = new Map([
   // Missing required field
@@ -138,68 +95,90 @@ export const DEFAULT_CODE_MAP: ReadonlyMap<string, string> = new Map([
 
 /**
  * Default `CodeMapper` — ignores `loc`, falls back to
- * {@link DEFAULT_CODE_MAP}. Port of `_default_code_mapper`
- * (`bookmark_schema.py:110-121`).
+ * {@link DEFAULT_CODE_MAP}.
  *
  * @param errType - Pydantic error `type`.
  * @param _loc - Unused by the default mapper (protocol requirement).
  * @returns A package error code, or `"VALIDATION_ERROR"`.
+ * @example
+ * ```typescript
+ * defaultCodeMapper("missing", ["sections"]); // "B0_MISSING_FIELD"
+ * defaultCodeMapper("weird_type", []); // "VALIDATION_ERROR"
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema._default_code_mapper
  */
 export function defaultCodeMapper(
   errType: string,
-  // The `CodeMapper` protocol requires the parameter (Python `_loc`).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _loc: readonly (string | number)[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the `CodeMapper` protocol fixes the arity (Python `_loc`)
+  _loc: ReadonlyArray<string | number>,
 ): string {
   return DEFAULT_CODE_MAP.get(errType) ?? "VALIDATION_ERROR";
 }
 
 /**
- * Path-aware code mapper for sorting-block validation errors.
- *
- * Port of `_sorting_code_mapper` (`bookmark_schema.py:124-167`),
- * branch-for-branch in source order.
+ * Path-aware code mapper for sorting-block validation errors,
+ * branch-for-branch in Python source order.
  *
  * @param errType - Pydantic error `type`.
  * @param loc - Pydantic `loc` tuple.
  * @returns An `S*` code when the path identifies a sorting-specific
  *   rule, otherwise the default mapping.
+ * @example
+ * ```typescript
+ * sortingCodeMapper("extra_forbidden", ["line", "unknownKey"]); // "S3_UNKNOWN_FIELD"
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema._sorting_code_mapper
  */
 export function sortingCodeMapper(
   errType: string,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
 ): string {
-  const last = loc.length > 0 ? loc[loc.length - 1] : null;
-  if (errType === "missing") {
-    if (last === "colSortAttrs") {
-      return "S2_MISSING_COL_SORT_ATTRS";
+  const last = loc.length > 0 ? loc.at(-1) : null;
+  // One switch over `errType` (source-order branches preserved); a case
+  // that matches the type but not the path falls through to the default
+  // mapping exactly as the Python if-chain does.
+  switch (errType) {
+    case "missing": {
+      if (last === "colSortAttrs") {
+        return "S2_MISSING_COL_SORT_ATTRS";
+      }
+      if (last === "sortBy") {
+        return "S8_MISSING_SORT_BY";
+      }
+      if (last === "sortOrder") {
+        return "S9_MISSING_SORT_ORDER";
+      }
+      break;
     }
-    if (last === "sortBy") {
-      return "S8_MISSING_SORT_BY";
+    case "literal_error": {
+      if (last === "sortBy") {
+        return "S1_INVALID_SORT_BY";
+      }
+      if (last === "sortOrder") {
+        return "S6_INVALID_SORT_ORDER";
+      }
+      break;
     }
-    if (last === "sortOrder") {
-      return "S9_MISSING_SORT_ORDER";
-    }
-  }
-  if (errType === "literal_error") {
-    if (last === "sortBy") {
+    case "union_tag_invalid":
+    case "union_tag_not_found": {
       return "S1_INVALID_SORT_BY";
     }
-    if (last === "sortOrder") {
-      return "S6_INVALID_SORT_ORDER";
+    case "extra_forbidden": {
+      return "S3_UNKNOWN_FIELD";
     }
-  }
-  if (errType === "union_tag_invalid" || errType === "union_tag_not_found") {
-    return "S1_INVALID_SORT_BY";
-  }
-  if (errType === "extra_forbidden") {
-    return "S3_UNKNOWN_FIELD";
-  }
-  if (errType === "list_type" && last === "colSortAttrs") {
-    return "S7_NOT_A_LIST";
-  }
-  if (errType === "dict_type" || errType === "model_type") {
-    return "S5_NOT_A_DICT";
+    case "list_type": {
+      if (last === "colSortAttrs") {
+        return "S7_NOT_A_LIST";
+      }
+      break;
+    }
+    case "dict_type":
+    case "model_type": {
+      return "S5_NOT_A_DICT";
+    }
+    default: {
+      break;
+    }
   }
   return DEFAULT_CODE_MAP.get(errType) ?? "VALIDATION_ERROR";
 }
@@ -207,11 +186,12 @@ export function sortingCodeMapper(
 /**
  * Tag names that discriminated-union annotations insert into `loc`.
  *
- * Port of `_DISCRIMINATOR_TAGS` (`bookmark_schema.py:257-271`) —
- * including the two `ShowClause` tags, which belong to the B3-K1 half
- * of the module but are part of the same frozenset in Python.
+ * Includes the two `ShowClause` tags, which belong to the non-sorting
+ * half of the module but are part of the same frozenset in Python.
+ *
+ * @see mixpanel_headless._internal.bookmark_schema._DISCRIMINATOR_TAGS
  */
-export const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
+const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
   // FlatSortConfig (colSortAttrs[i])
   "FlatLabelSortConfig",
   "FlatValueSortConfig",
@@ -228,14 +208,18 @@ export const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
 /**
  * Convert a pydantic `loc` tuple to a dotted JSONPath string.
  *
- * Port of `_loc_to_jsonpath` (`bookmark_schema.py:274-315`).
- *
  * @param loc - Pydantic location tuple.
  * @param prefix - Optional dotted prefix (without trailing dot).
  * @returns A dotted JSONPath string.
+ * @example
+ * ```typescript
+ * locToJsonPath(["colSortAttrs", 0, "FlatLabelSortConfig", "sortOrder"], "params.sorting");
+ * // "params.sorting.colSortAttrs[0].sortOrder"
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema._loc_to_jsonpath
  */
 export function locToJsonPath(
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
   prefix: string,
 ): string {
   const parts: string[] = [];
@@ -247,11 +231,11 @@ export function locToJsonPath(
       continue;
     }
     if (typeof item === "number") {
-      if (parts.length === 0) {
+      const last = parts.length - 1;
+      if (last < 0) {
         parts.push(`[${String(item)}]`);
       } else {
-        parts[parts.length - 1] =
-          `${parts[parts.length - 1]!}[${String(item)}]`;
+        parts[last] = `${parts[last] ?? ""}[${String(item)}]`;
       }
     } else {
       parts.push(item);
@@ -263,12 +247,11 @@ export function locToJsonPath(
 /**
  * Convert one pydantic error entry to a package `ValidationError`.
  *
- * Port of `_translate_pydantic_error` (`bookmark_schema.py:223-250`).
- *
  * @param err - A single pydantic error entry.
  * @param codeMapper - Path-aware mapper to a package code.
  * @param pathPrefix - JSONPath prefix to prepend.
  * @returns The translated error.
+ * @see mixpanel_headless._internal.bookmark_schema._translate_pydantic_error
  */
 function translatePydanticError(
   err: PydanticErrorEntry,
@@ -280,37 +263,35 @@ function translatePydanticError(
   return new ValidationError(path, err.msg, code);
 }
 
-// =============================================================================
-// pydantic-core lax coercion primitives (probe-pinned)
-// =============================================================================
+// --- pydantic-core lax coercion primitives ---
 
 /**
  * Strip pydantic-core's (Rust `str::trim`) whitespace set from both
  * ends of a string.
  *
  * Measured identical to {@link PYTHON_NUMERIC_WHITESPACE} — the pinned
- * CPython `str.isspace()` table minus `U+001C..U+001F` (notes §probe
- * finding 4). It is NOT `pythonStrip` (which strips `U+001C..U+001F`)
- * and NOT `String.trim()` (which strips `U+FEFF`); using either would
- * change accept/reject decisions, so the set is spelled out here by
- * codepoint rather than by regex (R11.7 bans `\s` grammars).
+ * CPython `str.isspace()` table minus `U+001C..U+001F`. It is not
+ * `pythonStrip` (which strips `U+001C..U+001F`) and not `String.trim()`
+ * (which strips `U+FEFF`); using either would change accept/reject
+ * decisions, so the set is spelled out here by codepoint rather than by
+ * a `\s` grammar that drifts with the engine's Unicode tables.
  *
  * @param text - String to trim.
  * @returns The trimmed string.
  */
 function pydanticTrim(text: string): string {
-  const cps = [...text];
+  const cps = codepoints(text);
   let start = 0;
   let end = cps.length;
   while (start < end) {
-    const cp = cps[start]!.codePointAt(0);
+    const cp = cps[start]?.codePointAt(0);
     if (cp === undefined || !PYTHON_NUMERIC_WHITESPACE.has(cp)) {
       break;
     }
     start += 1;
   }
   while (end > start) {
-    const cp = cps[end - 1]!.codePointAt(0);
+    const cp = cps[end - 1]?.codePointAt(0);
     if (cp === undefined || !PYTHON_NUMERIC_WHITESPACE.has(cp)) {
       break;
     }
@@ -322,7 +303,7 @@ function pydanticTrim(text: string): string {
 /**
  * pydantic-core's lax `str -> int` grammar (accept/reject only).
  *
- * Probe-pinned (notes §probe finding 4): trim, then
+ * Measured against pydantic-core: trim, then
  * `[+-]? DIGITS(single underscores between digits) ( "." "0"+ )?`
  * with ASCII digits only. Accepts `"5"`, `"+5"`, `"05"`, `"1_0"`,
  * `"1_000.0"`, `"0.000"`, arbitrarily long digit runs; rejects
@@ -330,7 +311,7 @@ function pydanticTrim(text: string): string {
  * `"10.01"`, `"1.0_0"`, non-ASCII digits and the empty string.
  *
  * No numeric value is produced — the model result is discarded, only
- * the error stream matters — so the R4.5 2^53 policy never applies
+ * the error stream matters — so the 2^53 integer policy never applies
  * (CPython accepts arbitrary-precision ints here).
  *
  * @param text - The candidate string.
@@ -343,7 +324,7 @@ function pydanticIntFromString(text: string): boolean {
 }
 
 /**
- * ASCII-only lowercase fold (R11.7: no locale-sensitive
+ * ASCII-only lowercase fold (no locale-sensitive
  * `toLowerCase`, no `/i` regex flag whose Unicode folding differs
  * from pydantic-core's `eq_ignore_ascii_case`).
  *
@@ -353,16 +334,18 @@ function pydanticIntFromString(text: string): boolean {
 function asciiLower(text: string): string {
   let out = "";
   for (const ch of text) {
-    const cp = ch.codePointAt(0)!;
-    out += cp >= 0x41 && cp <= 0x5a ? String.fromCodePoint(cp + 0x20) : ch;
+    // Single-code-point strings compare by code point here: only the
+    // ASCII range "A".."Z" folds (a Python `str.lower()` twin would be
+    // wrong — this is the ASCII-only fold pydantic-core applies).
+    out += ch >= "A" && ch <= "Z" ? ch.toLowerCase() : ch;
   }
   return out;
 }
 
 /**
  * True when every `_` in `text` sits strictly between two ASCII
- * digits — pydantic-core's numeric-underscore rule (probe finding:
- * `1_0` / `1_0.5` / `1.0_0` accepted, `1__0` / `_1` / `1_` rejected).
+ * digits — pydantic-core's numeric-underscore rule (`1_0` / `1_0.5` /
+ * `1.0_0` accepted, `1__0` / `_1` / `1_` rejected).
  *
  * @param text - Candidate numeric string (already trimmed).
  * @returns True when the underscore placement is legal.
@@ -373,8 +356,8 @@ function underscoresWellPlaced(text: string): boolean {
     if (text[i] !== "_") {
       continue;
     }
-    const prev = i > 0 ? text[i - 1]! : "";
-    const next = i + 1 < text.length ? text[i + 1]! : "";
+    const prev = text[i - 1] ?? "";
+    const next = text[i + 1] ?? "";
     if (!digits.includes(prev) || !digits.includes(next)) {
       return false;
     }
@@ -385,7 +368,7 @@ function underscoresWellPlaced(text: string): boolean {
 /**
  * pydantic-core's lax `str -> float` grammar (accept/reject only).
  *
- * Probe-pinned (`throwaway/b3-k1/probe-grammar.py`): trim with
+ * Measured against pydantic-core: trim with
  * {@link pydanticTrim}, then either a signed `inf`/`infinity`/`nan`
  * word (ASCII case-insensitive) or a decimal literal with an optional
  * fraction and exponent, single underscores allowed between digits.
@@ -438,34 +421,21 @@ const PYDANTIC_BOOL_STRINGS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * True for the TS analogue of a Python `dict` — delegates to the
- * shared {@link isPythonDict} discrimination (B2 arbiter fix F1):
- * PyFloat carriers (Python floats) and reconstructed class instances
- * are NOT dicts, exactly as pydantic sees them.
- *
- * @param value - Candidate value.
- * @returns True when Python's `isinstance(value, dict)` would hold.
- */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return isPythonDict(value);
-}
-
-/**
  * `2**63` — pydantic-core converts a float to an integer through Rust's
- * `i64`, so an INTEGRAL float at or beyond this magnitude does not
- * reach the int/bool coercion paths at all (probe `probe-bool2.py`:
- * `4.6e18 -> bool_parsing / int OK` but `9.223372036854776e18 ->
- * bool_type / int_parsing_size`). Python `int`s have no such ceiling —
- * `2**70` validates fine on an `int` field — so the guard is keyed on
- * float-ness, never on magnitude alone.
+ * `i64`, so an integral float at or beyond this magnitude never reaches
+ * the int/bool coercion paths: `4.6e18` gives `bool_parsing` on a bool
+ * field and validates on an int field, while `9.223372036854776e18`
+ * gives `bool_type` / `int_parsing_size`. Python `int`s have no such
+ * ceiling — `2**70` validates fine on an `int` field — so the guard is
+ * keyed on float-ness, never on magnitude alone.
  */
 const I64_LIMIT = 2 ** 63;
 
 /**
  * Numeric view of a value for pydantic's lax scalar coercions: plain
  * JS numbers stand for Python `int`s, PyFloat carriers for Python
- * `float`s, and both classify by VALUE (probe: `2` and `2.0` both
- * reach the same accept/reject decision on every field kind K1 owns).
+ * `float`s, and both classify by value: `2` and `2.0` reach the same
+ * accept/reject decision on every field kind.
  * Booleans are excluded — pydantic handles `bool` before `int`.
  *
  * @param value - Candidate value.
@@ -482,8 +452,8 @@ function numericValue(value: unknown): number | undefined {
  * True when a numeric value stands for a Python `float` rather than a
  * Python `int`.
  *
- * Contract rule (P2 codec convention): Python floats cross the wire as
- * PyFloat carriers, so a BARE JS number is a Python `int` — unless it
+ * Codec convention: Python floats cross the wire as PyFloat carriers,
+ * so a bare JS number is a Python `int` — unless it
  * is non-integral, which no Python `int` can be. This is the only
  * place the int/float distinction changes an outcome (`int` fields:
  * Python ints are arbitrary-precision and always fit, floats blow up
@@ -493,18 +463,16 @@ function numericValue(value: unknown): number | undefined {
  * @param numeric - Its numeric view.
  * @returns True for Python-float semantics.
  */
-function isPythonFloat(value: unknown, numeric: number): boolean {
+function isPydanticFloat(value: unknown, numeric: number): boolean {
   return isFloatCarrier(value) || !Number.isInteger(numeric);
 }
 
-// =============================================================================
-// Model description tables (bookmark_schema.py:390-680)
-// =============================================================================
+// --- Model description tables (bookmark_schema.py) ---
 
 /**
  * A field's declared type, in pydantic-lax terms.
  *
- * `model` carries a THUNK because the Python model tree is cyclic
+ * `model` carries a thunk because the Python model tree is cyclic
  * (`SubBehavior.behaviors: list[SubBehavior]`,
  * `FormulaShowClause.referencedMetrics: list[BehaviorShowClause]`) —
  * a direct reference would hit the TS temporal dead zone.
@@ -541,7 +509,7 @@ export type FieldType =
     };
 
 /** One member of a plain (non-discriminated) pydantic union. */
-export interface PlainUnionMember {
+interface PlainUnionMember {
   /** Name pydantic appends to `loc` (`"int"`, `"CustomMultiAttribution"`, …). */
   readonly name: string;
   /** The member's declared type. */
@@ -549,7 +517,7 @@ export interface PlainUnionMember {
 }
 
 /** One model field, in class-body declaration order. */
-export interface FieldSpec {
+interface FieldSpec {
   /** Wire key (alias when the model declares one). */
   readonly key: string;
   /** Alternate key accepted because `populate_by_name=True`. */
@@ -562,9 +530,9 @@ export interface FieldSpec {
    * Whether an explicit `null` is accepted (`X | None` in the
    * annotation). Defaults to `!required`, which is right for every
    * `X | None = None` field; set it to `false` for the non-Optional
-   * fields that merely carry a DEFAULT (`forward: int = 0`,
+   * fields that merely carry a default (`forward: int = 0`,
    * `conv_first_step: bool = False`) — those reject `null` with the
-   * field's own type error (probe `fbp/collapse_repeated-null`).
+   * field's own type error.
    */
   readonly nullable?: boolean;
 }
@@ -578,7 +546,7 @@ export interface ModelSpec {
   /**
    * `model_config.extra`. Defaults to `"forbid"` (`_BASE_CONFIG`);
    * only `FlowsBookmarkParams` declares `"allow"`
-   * (`bookmark_schema.py:1514`, pinned by
+   * (`bookmark_schema.py`, pinned by
    * `test_flows_bookmark_params_currently_allows_extras`).
    */
   readonly extra?: "forbid" | "allow";
@@ -594,13 +562,13 @@ export interface UnionSpec {
 
 /**
  * A named structural validator for one model — the TS stand-in for a
- * pydantic model CLASS.
+ * pydantic model class.
  *
  * `validate_with_pydantic(model_cls, …)` takes a class; TS has none,
  * so the port passes this handle around instead. `.name` is what the
  * conformance `model_name` output codec serialises for
- * `get_root_model_for_bookmark_type`, and what B6-W3's dispatch keys
- * on; `.validate` is what {@link validateWithPydantic} consumes.
+ * `get_root_model_for_bookmark_type`, and what the facade's dispatch
+ * keys on; `.validate` is what {@link validateWithPydantic} consumes.
  */
 export interface RootModelHandle {
   /** The Python class name. */
@@ -614,6 +582,12 @@ export interface RootModelHandle {
  *
  * @param spec - The model description.
  * @returns A handle whose `validate` runs the model at `loc = ()`.
+ * @example
+ * ```typescript
+ * const handle = modelHandle(FLAT_LABEL_SORT_CONFIG);
+ * handle.name; // "FlatLabelSortConfig"
+ * handle.validate({ sortBy: "label", sortOrder: "sideways" }).length; // 1
+ * ```
  */
 export function modelHandle(spec: ModelSpec): RootModelHandle {
   return {
@@ -629,7 +603,7 @@ export function modelHandle(spec: ModelSpec): RootModelHandle {
 /** Mirrors sorting.py `SortOrder`. */
 export const SORT_ORDER_LITERAL = ["asc", "desc"] as const;
 
-/** Mirrors sorting.py `FlatLabelSortConfig` (`bookmark_schema.py:390-401`). */
+/** Mirrors sorting.py `FlatLabelSortConfig`. */
 const FLAT_LABEL_SORT_CONFIG: ModelSpec = {
   name: "FlatLabelSortConfig",
   fields: [
@@ -648,7 +622,7 @@ const FLAT_LABEL_SORT_CONFIG: ModelSpec = {
   ],
 };
 
-/** Mirrors sorting.py `FlatValueSortConfig` (`bookmark_schema.py:404-422`). */
+/** Mirrors sorting.py `FlatValueSortConfig`. */
 const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
   name: "FlatValueSortConfig",
   fields: [
@@ -670,24 +644,22 @@ const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
 /**
  * Discriminator callable for `FlatSortConfig` (`colSortAttrs[i]`).
  *
- * Port of `_flat_sort_discriminator` (`bookmark_schema.py:425-444`).
- *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
+ * @see mixpanel_headless._internal.bookmark_schema._flat_sort_discriminator
  */
 function flatSortDiscriminator(value: unknown): string {
-  const sortBy = isPlainObject(value)
-    ? Object.hasOwn(value, "sortBy")
-      ? value.sortBy
-      : undefined
-    : undefined;
+  const sortBy =
+    isPythonDict(value) && Object.hasOwn(value, "sortBy")
+      ? value["sortBy"]
+      : undefined;
   if (sortBy === "label") {
     return "FlatLabelSortConfig";
   }
   return "FlatValueSortConfig";
 }
 
-/** Mirrors sorting.py `FlatSortConfig` (`bookmark_schema.py:448-452`). */
+/** Mirrors sorting.py `FlatSortConfig`. */
 const FLAT_SORT_CONFIG: UnionSpec = {
   discriminate: flatSortDiscriminator,
   variants: new Map([
@@ -696,7 +668,7 @@ const FLAT_SORT_CONFIG: UnionSpec = {
   ]),
 };
 
-/** Mirrors sorting.py `SortByColumnsConfig` (`bookmark_schema.py:455-474`). */
+/** Mirrors sorting.py `SortByColumnsConfig`. */
 const SORT_BY_COLUMNS_CONFIG: ModelSpec = {
   name: "SortByColumnsConfig",
   fields: [
@@ -717,7 +689,7 @@ const SORT_BY_COLUMNS_CONFIG: ModelSpec = {
   ],
 };
 
-/** Mirrors sorting.py `SortByValueConfig` (`bookmark_schema.py:477-497`). */
+/** Mirrors sorting.py `SortByValueConfig`. */
 const SORT_BY_VALUE_CONFIG: ModelSpec = {
   name: "SortByValueConfig",
   fields: [
@@ -744,24 +716,22 @@ const SORT_BY_VALUE_CONFIG: ModelSpec = {
 /**
  * Discriminator callable for `SortConfig` (per-chart-type sort).
  *
- * Port of `_sort_config_discriminator` (`bookmark_schema.py:500-519`).
- *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
+ * @see mixpanel_headless._internal.bookmark_schema._sort_config_discriminator
  */
 function sortConfigDiscriminator(value: unknown): string {
-  const sortBy = isPlainObject(value)
-    ? Object.hasOwn(value, "sortBy")
-      ? value.sortBy
-      : undefined
-    : undefined;
+  const sortBy =
+    isPythonDict(value) && Object.hasOwn(value, "sortBy")
+      ? value["sortBy"]
+      : undefined;
   if (sortBy === "column") {
     return "SortByColumnsConfig";
   }
   return "SortByValueConfig";
 }
 
-/** Mirrors sorting.py `SortConfig` (`bookmark_schema.py:523-527`). */
+/** Mirrors sorting.py `SortConfig`. */
 const SORT_CONFIG: UnionSpec = {
   discriminate: sortConfigDiscriminator,
   variants: new Map([
@@ -770,7 +740,7 @@ const SORT_CONFIG: UnionSpec = {
   ]),
 };
 
-/** Mirrors sorting.py `OldTableSortByValue` (`bookmark_schema.py:530-544`). */
+/** Mirrors sorting.py `OldTableSortByValue`. */
 const OLD_TABLE_SORT_BY_VALUE: ModelSpec = {
   name: "OldTableSortByValue",
   fields: [
@@ -800,19 +770,17 @@ const OLD_TABLE_SORT_BY_VALUE: ModelSpec = {
 /**
  * Discriminator callable for the line-chart `FlatOrColumnSortConfig`.
  *
- * Port of `_flat_or_column_sort_discriminator`
- * (`bookmark_schema.py:547-592`).
- *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
+ * @see mixpanel_headless._internal.bookmark_schema._flat_or_column_sort_discriminator
  */
 function flatOrColumnSortDiscriminator(value: unknown): string {
   let sortBy: unknown;
   let hasCols: boolean;
-  if (isPlainObject(value)) {
-    sortBy = Object.hasOwn(value, "sortBy") ? value.sortBy : undefined;
+  if (isPythonDict(value)) {
+    sortBy = Object.hasOwn(value, "sortBy") ? value["sortBy"] : undefined;
     const cols = Object.hasOwn(value, "colSortAttrs")
-      ? value.colSortAttrs
+      ? value["colSortAttrs"]
       : undefined;
     hasCols = cols !== undefined && cols !== null;
   } else {
@@ -831,7 +799,7 @@ function flatOrColumnSortDiscriminator(value: unknown): string {
   return "FlatValueSortConfig";
 }
 
-/** Mirrors sorting.py `FlatOrColumnSortConfig` (`bookmark_schema.py:600-606`). */
+/** Mirrors sorting.py `FlatOrColumnSortConfig`. */
 const FLAT_OR_COLUMN_SORT_CONFIG: UnionSpec = {
   discriminate: flatOrColumnSortDiscriminator,
   variants: new Map([
@@ -845,18 +813,18 @@ const FLAT_OR_COLUMN_SORT_CONFIG: UnionSpec = {
 /**
  * Discriminator callable for `InsightsBookmarkSortConfig.table`.
  *
- * Port of `_table_sort_discriminator` (`bookmark_schema.py:609-635`).
  * Note the asymmetry with the other discriminators: `sortColumn` is
- * tested with `in` (key PRESENCE, `null` included), not `is not None`.
+ * tested with `in` (key presence, `null` included), not `is not None`.
  *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
+ * @see mixpanel_headless._internal.bookmark_schema._table_sort_discriminator
  */
 function tableSortDiscriminator(value: unknown): string {
   let sortBy: unknown;
   let hasSortColumn: boolean;
-  if (isPlainObject(value)) {
-    sortBy = Object.hasOwn(value, "sortBy") ? value.sortBy : undefined;
+  if (isPythonDict(value)) {
+    sortBy = Object.hasOwn(value, "sortBy") ? value["sortBy"] : undefined;
     hasSortColumn = Object.hasOwn(value, "sortColumn");
   } else {
     sortBy = undefined;
@@ -871,7 +839,7 @@ function tableSortDiscriminator(value: unknown): string {
   return "SortByValueConfig";
 }
 
-/** Mirrors sorting.py `TableSortConfig` (`bookmark_schema.py:640-645`). */
+/** Mirrors sorting.py `TableSortConfig`. */
 const TABLE_SORT_CONFIG: UnionSpec = {
   discriminate: tableSortDiscriminator,
   variants: new Map([
@@ -883,7 +851,7 @@ const TABLE_SORT_CONFIG: UnionSpec = {
 
 /**
  * Mirrors sorting.py `InsightsBookmarkSortConfig`
- * (`bookmark_schema.py:648-679`). Field order below IS the error
+ * (`bookmark_schema.py`). Field order below IS the error
  * emission order; the kebab-case keys come from the model's
  * `alias_generator`, the snake_case ones from `populate_by_name=True`.
  */
@@ -931,9 +899,7 @@ export const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
   ],
 };
 
-// =============================================================================
-// The structural validator
-// =============================================================================
+// --- The structural validator ---
 
 /**
  * Validate one value against a field's declared type.
@@ -943,18 +909,19 @@ export const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
  * @param loc - `loc` prefix for emitted errors (includes the field key).
  * @param out - Error sink, appended in emission order.
  */
-export function validateFieldValue(
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
+function validateFieldValue(
   value: unknown,
   type: FieldType,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
   out: PydanticErrorEntry[],
 ): void {
   switch (type.kind) {
-    case "json":
+    case "json": {
       // `JsonValue` / `Any` / `Ignore[JsonValue]` — accepted at parse
-      // time, never reported (probe `sections/behavior-ignore-filter-junk`,
-      // `jsonvalue/*`: dicts, lists, scalars, NaN and Infinity all pass).
+      // time, never reported.
       return;
+    }
     case "literal": {
       if (typeof value === "string" && type.values.includes(value)) {
         return;
@@ -968,17 +935,16 @@ export function validateFieldValue(
     }
     case "literalInt": {
       // Python equality decides membership, so `True`/`False` match
-      // `1`/`0` and `1.0` matches `1`; strings never coerce
-      // (probe `lit-int/*`).
+      // `1`/`0` and `1.0` matches `1`; strings never coerce.
       const numeric =
-        typeof value === "boolean" ? (value ? 1 : 0) : numericValue(value);
+        typeof value === "boolean" ? Number(value) : numericValue(value);
       if (numeric !== undefined && type.values.includes(numeric)) {
         return;
       }
       out.push({
         type: "literal_error",
         loc,
-        msg: literalMessage(type.values.map((v) => String(v))),
+        msg: literalMessage(type.values.map(String)),
       });
       return;
     }
@@ -997,12 +963,12 @@ export function validateFieldValue(
       if (typeof value === "boolean") {
         return;
       }
-      // A PyFloat carrier IS a Python float here (Caution §8). pydantic
+      // A PyFloat carrier is a Python float here. pydantic
       // treats ints and floats uniformly on an `int` field except for the
       // fractional/non-finite branches, so classify by numeric value and
       // never by JS type — that keeps the binding free of a sorting-only
-      // unwrap rule (which would collide with B18B's `isinstance(int)`
-      // check on the SAME params dict).
+      // unwrap rule (which would collide with the bookmark validator's
+      // B18B `isinstance(int)` check on the same params dict).
       const numeric = numericValue(value);
       if (numeric !== undefined) {
         if (!Number.isFinite(numeric)) {
@@ -1011,7 +977,7 @@ export function validateFieldValue(
             loc,
             msg: "Input should be a finite number",
           });
-        } else if (isPythonFloat(value, numeric)) {
+        } else if (isPydanticFloat(value, numeric)) {
           if (Math.abs(numeric) >= I64_LIMIT) {
             out.push({
               type: "int_parsing_size",
@@ -1046,8 +1012,8 @@ export function validateFieldValue(
       return;
     }
     case "float": {
-      // Every finite AND non-finite number is accepted, ints included
-      // (probe `lax/float/*`: `inf`, `nan`, `True` all pass).
+      // Every finite and non-finite number is accepted, ints included
+      // (`inf`, `nan`, `True` all pass).
       if (typeof value === "boolean" || numericValue(value) !== undefined) {
         return;
       }
@@ -1074,8 +1040,8 @@ export function validateFieldValue(
       }
       const numeric = numericValue(value);
       if (numeric !== undefined) {
-        // Probe `probe-bool.py` / `probe-bool2.py`: value-based, NOT
-        // type-based — `0`/`1`/`0.0`/`1.0`/`-0.0` pass; other INTEGRAL
+        // Value-based, not type-based (measured against pydantic-core):
+        // `0`/`1`/`0.0`/`1.0`/`-0.0` pass; other integral
         // numbers inside the i64 window give `bool_parsing`; everything
         // else (fractional, inf, nan, |v| >= 2**63 whether int or
         // float) gives `bool_type`.
@@ -1098,7 +1064,7 @@ export function validateFieldValue(
         return;
       }
       if (typeof value === "string") {
-        // No trimming here — probe: `" true "` is rejected.
+        // No trimming here: `" true "` is rejected.
         if (!PYDANTIC_BOOL_STRINGS.has(asciiLower(value))) {
           out.push({
             type: "bool_parsing",
@@ -1124,13 +1090,13 @@ export function validateFieldValue(
         });
         return;
       }
-      value.forEach((item, index) => {
+      for (const [index, item] of value.entries()) {
         validateFieldValue(item, type.item, [...loc, index], out);
-      });
+      }
       return;
     }
     case "dict": {
-      if (!isPlainObject(value)) {
+      if (!isPythonDict(value)) {
         out.push({
           type: "dict_type",
           loc,
@@ -1138,8 +1104,8 @@ export function validateFieldValue(
         });
         return;
       }
-      for (const key of Object.keys(value)) {
-        validateFieldValue(value[key], type.value, [...loc, key], out);
+      for (const [key, value_] of Object.entries(value)) {
+        validateFieldValue(value_, type.value, [...loc, key], out);
       }
       return;
     }
@@ -1163,30 +1129,31 @@ export function validateFieldValue(
         });
         return;
       }
-      type.items.forEach((itemType, index) => {
+      for (const [index, itemType] of type.items.entries()) {
         if (index >= value.length) {
           out.push({
             type: "missing",
             loc: [...loc, index],
             msg: "Field required",
           });
-          return;
+          continue;
         }
         validateFieldValue(value[index], itemType, [...loc, index], out);
-      });
+      }
       return;
     }
-    case "model":
+    case "model": {
       validateModel(value, type.model(), loc, out);
       return;
-    case "union":
+    }
+    case "union": {
       validateUnion(value, type.union, loc, out);
       return;
+    }
     case "plainUnion": {
       // pydantic smart union: the first member that validates wins and
-      // silences everything; when none does, EVERY member's errors are
-      // emitted in declaration order, each tagged with the member name
-      // (probe `sections/meas-multiattr-bad-type`, `nesteddict/*`).
+      // silences everything; when none does, every member's errors are
+      // emitted in declaration order, each tagged with the member name.
       const collected: PydanticErrorEntry[] = [];
       for (const member of type.members) {
         const memberErrors: PydanticErrorEntry[] = [];
@@ -1209,18 +1176,16 @@ export function validateFieldValue(
 
 /**
  * Render pydantic's `literal_error` message for a value set
- * (display-only, R5.4 — reproduced for parity of the ported message
- * text only).
+ * (display-only — reproduced for parity of the ported message text).
  *
  * @param quoted - The literal's admitted values, already rendered
  *   (string literals arrive single-quoted, int literals bare).
  * @returns The message pydantic emits.
  */
 function literalMessage(quoted: readonly string[]): string {
+  const last = defined(quoted.at(-1), "literal alternative");
   const rendered =
-    quoted.length === 1
-      ? quoted[0]!
-      : `${quoted.slice(0, -1).join(", ")} or ${quoted[quoted.length - 1]!}`;
+    quoted.length === 1 ? last : `${quoted.slice(0, -1).join(", ")} or ${last}`;
   return `Input should be ${rendered}`;
 }
 
@@ -1232,11 +1197,14 @@ function literalMessage(quoted: readonly string[]): string {
  * @param union - The union spec.
  * @param loc - `loc` prefix (without the Tag).
  * @param out - Error sink.
+ * @throws {@link Error} - when the discriminator returns an undeclared
+ *   Tag — unreachable by construction, every discriminator returns a
+ *   declared one.
  */
-export function validateUnion(
+function validateUnion(
   value: unknown,
   union: UnionSpec,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
   out: PydanticErrorEntry[],
 ): void {
   const tag = union.discriminate(value);
@@ -1251,15 +1219,13 @@ export function validateUnion(
 /**
  * Validate a value against a model.
  *
- * Emission order (probe finding 1, re-confirmed at B3-K1 by
- * `order/do-multiple`): declared fields in class-body order, then —
+ * Emission order: declared fields in class-body order, then —
  * for `extra="forbid"` models only — unexpected keys in input
  * insertion order.
  *
- * Alias handling under `populate_by_name=True`: the ALIAS wins when
+ * Alias handling under `populate_by_name=True`: the alias wins when
  * both spellings are present, and the Python-name key then falls
- * through to the extras pass (probe `alias/fsstc-both`,
- * `alias/both-_idx-and-idx`, `alias/steps-both-from`).
+ * through to the extras pass.
  *
  * @param value - The input value.
  * @param model - The model spec.
@@ -1267,13 +1233,13 @@ export function validateUnion(
  *   was reached through a discriminated union).
  * @param out - Error sink.
  */
-export function validateModel(
+function validateModel(
   value: unknown,
   model: ModelSpec,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
   out: PydanticErrorEntry[],
 ): void {
-  if (!isPlainObject(value)) {
+  if (!isPythonDict(value)) {
     out.push({
       type: "model_type",
       loc,
@@ -1328,27 +1294,30 @@ export function validateModel(
  * Run `InsightsBookmarkSortConfig.model_validate(raw)` and return the
  * pydantic error stream it would raise (empty when valid).
  *
- * NOTE (documented JS/Python divergence, harmless for every real chart
- * type): `Object.keys` orders integer-like keys first, while a Python
- * dict is purely insertion-ordered. Only reachable with numeric-string
- * chart-type keys, which `validate_sorting_block` filters out as
- * `S4_UNKNOWN_CHART_TYPE` before this validator ever sees them.
- *
  * @param raw - The value at `params['sorting']` (already chart-type
  *   pre-filtered by the caller).
  * @returns Pydantic error entries in emission order.
+ * @example
+ * ```typescript
+ * validateInsightsBookmarkSortConfig({ bar: { sortBy: "value", sortOrder: "desc" } });
+ * // []
+ * validateInsightsBookmarkSortConfig({ bar: { sortBy: "value", sortOrder: 1 } });
+ * // [{ type: "literal_error", loc: ["bar", "SortByValueConfig", "sortOrder"], msg: "…" }]
+ * ```
  */
 export function validateInsightsBookmarkSortConfig(
   raw: unknown,
 ): PydanticErrorEntry[] {
+  // Divergence: `Object.keys` orders integer-like keys first while a
+  // Python dict is insertion-ordered, so the error emission order flips
+  // for numeric-string chart-type keys — which `validate_sorting_block`
+  // filters out as `S4_UNKNOWN_CHART_TYPE` before this runs.
   const out: PydanticErrorEntry[] = [];
   validateModel(raw, INSIGHTS_BOOKMARK_SORT_CONFIG, [], out);
   return out;
 }
 
-// =============================================================================
-// Model handles (B3-K1) — the TS stand-ins for the pydantic classes
-// =============================================================================
+// --- Model handles — the TS stand-ins for the pydantic classes ---
 
 /** Handle for `FlatLabelSortConfig`. */
 export const FLAT_LABEL_SORT_CONFIG_MODEL: RootModelHandle = modelHandle(
@@ -1369,21 +1338,17 @@ export const SORT_BY_COLUMNS_CONFIG_MODEL: RootModelHandle = modelHandle(
 export const SORT_BY_VALUE_CONFIG_MODEL: RootModelHandle =
   modelHandle(SORT_BY_VALUE_CONFIG);
 
-/** Handle for `OldTableSortByValue`. */
-export const OLD_TABLE_SORT_BY_VALUE_MODEL: RootModelHandle = modelHandle(
-  OLD_TABLE_SORT_BY_VALUE,
-);
-
 /**
- * Handle for `InsightsBookmarkSortConfig` — the model the (b′) binder
- * resolves for the `"InsightsBookmarkSortConfig"` adapter name.
+ * Handle for `InsightsBookmarkSortConfig` — the model the conformance
+ * binding resolves for the `"InsightsBookmarkSortConfig"` adapter name.
  */
 export const INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL: RootModelHandle = modelHandle(
   INSIGHTS_BOOKMARK_SORT_CONFIG,
 );
 
 /**
- * Options for {@link validateWithPydantic} (Python kwonly args, R3.9).
+ * Options for {@link validateWithPydantic} (Python keyword-only
+ * arguments).
  */
 export interface ValidateWithPydanticOptions {
   /** Path-aware mapper from `(err_type, loc)` to a package code. */
@@ -1395,16 +1360,26 @@ export interface ValidateWithPydanticOptions {
 /**
  * Validate `raw` against a model and translate pydantic's errors.
  *
- * Port of `validate_with_pydantic` (`bookmark_schema.py:170-220`),
- * specialised to the model set this file owns: the `model_cls`
+ * Specialised to the model set this file owns: the `model_cls`
  * positional becomes the structural validator function, because TS has
  * no pydantic model objects.
  *
  * @param validator - The structural validator for the model.
  * @param raw - The raw value to validate.
- * @param options - `code_mapper` / `path_prefix` (both kwonly in Python).
+ * @param options - `code_mapper` (defaults to {@link defaultCodeMapper})
+ *   and `path_prefix` (defaults to `""`), both keyword-only in Python.
  * @returns Empty list if validation passed, one `ValidationError` per
  *   pydantic error otherwise.
+ * @example
+ * ```typescript
+ * const errors = validateWithPydantic(
+ *   INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate,
+ *   { bar: { sortBy: "value", sortOrder: 1 } },
+ *   { code_mapper: sortingCodeMapper, path_prefix: "params.sorting" },
+ * );
+ * errors[0].code; // "S2_INVALID_SORT_ORDER"
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema.validate_with_pydantic
  */
 export function validateWithPydantic(
   validator: (raw: unknown) => PydanticErrorEntry[],

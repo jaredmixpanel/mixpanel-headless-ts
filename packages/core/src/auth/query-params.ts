@@ -1,34 +1,34 @@
 /**
- * Python `urllib.parse.parse_qs` twin (default flags:
- * `keep_blank_values=False`, `strict_parsing=False`, separator `&`) —
- * shared by the callback server's `do_GET` query parse
- * (`callback_server.py:209-210`) and the redirect/paste parser
- * (`flow.py:92`). One canonical helper (watchlist #13 discipline for
- * query parsing — a second local parser is a per-se finding).
+ * Python `urllib.parse.parse_qs` twin with its default flags
+ * (`keep_blank_values=False`, `strict_parsing=False`, separator `&`),
+ * shared by the Node callback server's query parse and the
+ * redirect/paste parser — the one query parser in the auth surface.
+ * `URLSearchParams` is deliberately not used: its component decoding
+ * follows the WHATWG urlencoded serializer, whose replacement-character
+ * rules differ from CPython `unquote(errors="replace")` on some
+ * malformed inputs, and it cannot express `parse_qs`'s blank-value
+ * dropping.
  *
- * B9-R2 HOME NOTE (b9-packets.md §3.1 row 2): moved MECHANICALLY from
- * `packages/node/src/auth/query-params.ts` to core (the fetch-pure
- * hoist — this module was already `node:*`-free); node re-exports from
- * here and its B8 suites stay green unchanged.
- *
- * `URLSearchParams` is NOT used: its component decoding follows the
- * WHATWG urlencoded serializer (throw-free but replacement-char rules
- * differ from CPython `unquote(errors="replace")` on some malformed
- * inputs), and it cannot express parse_qs's blank-value dropping.
+ * @see mixpanel_headless._internal.auth.callback_server
  */
 
 /**
- * CPython `urllib.parse.unquote` twin (string variant,
- * `errors="replace"`): percent-decodes `%XX` runs as UTF-8 byte
- * sequences, leaves malformed escapes (`%zz`, trailing `%`) literal.
+ * Percent-decode `%XX` runs as UTF-8 byte sequences, leaving malformed
+ * escapes (`%zz`, a trailing `%`) literal — the CPython
+ * `urllib.parse.unquote` string variant with `errors="replace"`.
  *
- * Boundary note: WHATWG `TextDecoder` (non-fatal) and CPython
- * `errors="replace"` can emit different U+FFFD counts for some
- * malformed multi-byte runs — out of contract (garbage-in inputs
- * only; no vector or Layer-3 lock observes the difference).
- *
+ * @remarks
+ * WHATWG `TextDecoder` (non-fatal) and CPython `errors="replace"` can
+ * emit different U+FFFD counts for some malformed multi-byte runs; out
+ * of contract (garbage-in inputs only; nothing in the corpus or the
+ * Python suite observes the difference).
  * @param text - The percent-encoded text.
  * @returns The decoded text.
+ * @example
+ * ```typescript
+ * pythonUnquote("caf%C3%A9%20au%20lait%zz");
+ * // "café au lait%zz"
+ * ```
  */
 export function pythonUnquote(text: string): string {
   if (!text.includes("%")) {
@@ -39,10 +39,12 @@ export function pythonUnquote(text: string): string {
   let pending: number[] = [];
   const decoder = new TextDecoder("utf-8", { fatal: false });
   const flush = (): void => {
-    if (pending.length > 0) {
-      result += decoder.decode(Uint8Array.from(pending));
-      pending = [];
+    if (pending.length === 0) {
+      return;
     }
+
+    result += decoder.decode(Uint8Array.from(pending));
+    pending = [];
   };
   for (let i = 1; i < parts.length; i += 1) {
     const part = parts[i] ?? "";
@@ -65,12 +67,11 @@ export function pythonUnquote(text: string): string {
 
 /**
  * Parse a query string with `parse_qs` default semantics: fields split
- * on `&`, `+` decoded as space, values percent-decoded, BLANK values
- * and `=`-less fields DROPPED, repeated names collected in order.
+ * on `&`, `+` decoded as space, values percent-decoded, blank values
+ * and `=`-less fields dropped, repeated names collected in order.
  *
  * @param query - The raw query-string text (no leading `?`).
  * @returns Name → ordered value list (only non-empty lists appear).
- *
  * @example
  * ```typescript
  * parseQs("code=ABC&state=XYZ");
@@ -96,10 +97,10 @@ export function parseQs(query: string): Map<string, string[]> {
     const name = pythonUnquote(field.slice(0, eq).replaceAll("+", " "));
     const value = pythonUnquote(rawValue.replaceAll("+", " "));
     const existing = out.get(name);
-    if (existing !== undefined) {
-      existing.push(value);
-    } else {
+    if (existing === undefined) {
       out.set(name, [value]);
+    } else {
+      existing.push(value);
     }
   }
   return out;

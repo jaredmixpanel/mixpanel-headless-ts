@@ -1,6 +1,10 @@
-// Unit tests for the lossless JSON parser (D6 rule 3 / D12 hard
-// requirement): raw number tokens must survive loading verbatim.
+// The lossless JSON parser (`parseLossless`) and `toNativeJson`: raw number
+// tokens survive verbatim, `json.loads` grammar parity (duplicate keys,
+// `__proto__`, opt-in NaN/Infinity constants), the source-key-order sidecar
+// read back through `orderedKeys` / `orderedEntries`, and the `unsafeIntegers`
+// bigint opt-out. TS-only: Python's `json.loads` needs none of this.
 import { describe, expect, it } from "vitest";
+
 import {
   JsonNumber,
   orderedEntries,
@@ -14,9 +18,10 @@ import {
 
 describe("parseLossless", () => {
   it("captures number tokens verbatim", () => {
-    const value = parseLossless('{"a": 18.0, "b": 18, "c": 1e-7}') as {
-      [key: string]: JsonNumber;
-    };
+    const value = parseLossless('{"a": 18.0, "b": 18, "c": 1e-7}') as Record<
+      string,
+      JsonNumber
+    >;
     expect(value["a"]).toBeInstanceOf(JsonNumber);
     expect(value["a"]?.raw).toBe("18.0");
     expect(value["b"]?.raw).toBe("18");
@@ -40,16 +45,29 @@ describe("parseLossless", () => {
 
   it("parses nested structures, literals and escapes", () => {
     const value = parseLossless(
-      '[null, true, false, "a\\nb\\u00e9", {"k": []}]',
+      String.raw`[null, true, false, "a\nb\u00e9", {"k": []}]`,
     );
-    expect(value).toEqual([null, true, false, "a\nbé", { k: [] }]);
+    expect(value).toStrictEqual([null, true, false, "a\nbé", { k: [] }]);
   });
 
   it("applies last-wins semantics to duplicate keys", () => {
-    const value = parseLossless('{"a": 1, "a": 2}') as {
-      [key: string]: JsonNumber;
-    };
+    const value = parseLossless('{"a": 1, "a": 2}') as Record<
+      string,
+      JsonNumber
+    >;
     expect(value["a"]?.raw).toBe("2");
+  });
+
+  it('keeps a "__proto__" key as an own property (json.loads parity)', () => {
+    const value = parseLossless('{"__proto__": {"a": 1}, "b": 2}') as Record<
+      string,
+      unknown
+    >;
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+    expect(Object.keys(value)).toStrictEqual(["__proto__", "b"]);
+    const native = toNativeJson(value) as Record<string, unknown>;
+    expect(Object.getPrototypeOf(native)).toBe(Object.prototype);
+    expect(JSON.stringify(native)).toBe('{"__proto__":{"a":1},"b":2}');
   });
 
   it("rejects trailing content", () => {
@@ -72,13 +90,12 @@ describe("parseLossless", () => {
   });
 });
 
-// Arbiter fix F1 (b0-review-resolution): Python `json.loads` (and thus
-// every `response.json()` body-parse site in api_client.py) accepts the
-// three non-finite constants `NaN` / `Infinity` / `-Infinity` — probed
-// live against CPython 3.14: exact case only, no `+Infinity`, no `-NaN`,
-// no case variants. The opt-in `pythonConstants` flag mirrors that
-// grammar for the wire body-parse sites; the DEFAULT stays strict RFC
-// 8259 so vector/selftest JSON keeps D6 rule 5 enforcement.
+// Python `json.loads` (and thus every `response.json()` body-parse site in
+// mixpanel_headless.api_client) accepts the three non-finite constants
+// `NaN` / `Infinity` / `-Infinity` — probed live against CPython 3.14: exact
+// case only, no `+Infinity`, no `-NaN`, no case variants. The opt-in
+// `pythonConstants` flag mirrors that grammar for the wire body-parse sites;
+// the DEFAULT stays strict RFC 8259 so vector/selftest JSON stays strict.
 describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
   const opts = { pythonConstants: true } as const;
 
@@ -97,7 +114,7 @@ describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
       b: number[];
     };
     expect(value.a).toBeNaN();
-    expect(value.b).toEqual([Infinity, -Infinity]);
+    expect(value.b).toStrictEqual([Infinity, -Infinity]);
   });
 
   it("rejects every variant json.loads rejects (probed: exact case only)", () => {
@@ -116,9 +133,10 @@ describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
   });
 
   it("still parses ordinary numbers as JsonNumber tokens under the flag", () => {
-    const value = parseLossless('{"a": 18.0, "b": -2}', opts) as {
-      [key: string]: JsonNumber;
-    };
+    const value = parseLossless('{"a": 18.0, "b": -2}', opts) as Record<
+      string,
+      JsonNumber
+    >;
     expect(value["a"]).toBeInstanceOf(JsonNumber);
     expect(value["a"]?.raw).toBe("18.0");
     expect(value["b"]?.raw).toBe("-2");
@@ -132,25 +150,22 @@ describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Ordered-entries capability (B8-MAPFIX, user ratification
-// `user-ratifications.md:14-22`): the parser records SOURCE key order
-// wherever the built plain object cannot represent it (out-of-order
-// integer-like keys), read back via `orderedKeys` / `orderedEntries`.
-// Python twin: `json.loads` dict key order.
-// ---------------------------------------------------------------------------
+// --- Ordered entries ---
+// The parser records SOURCE key order wherever the built plain object cannot
+// represent it (out-of-order integer-like keys), read back via `orderedKeys`
+// / `orderedEntries`. Python twin: `json.loads` dict key order.
 
-describe("parseLossless ordered entries (B8-MAPFIX)", () => {
+describe("parseLossless ordered entries", () => {
   it("captures source order for out-of-ascending integer-like keys", () => {
     const value = parseLossless('{"200": 1, "100": 2}') as Record<
       string,
       unknown
     >;
     // JS enumeration hoists ascending…
-    expect(Object.keys(value)).toEqual(["100", "200"]);
+    expect(Object.keys(value)).toStrictEqual(["100", "200"]);
     // …the sidecar keeps Python's source order.
-    expect(orderedKeys(value)).toEqual(["200", "100"]);
-    expect(orderedEntries(value).map(([k]) => k)).toEqual(["200", "100"]);
+    expect(orderedKeys(value)).toStrictEqual(["200", "100"]);
+    expect(orderedEntries(value).map(([k]) => k)).toStrictEqual(["200", "100"]);
   });
 
   it("mixed integer-like and plain keys keep full source order", () => {
@@ -158,7 +173,7 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       unknown
     >;
-    expect(orderedKeys(value)).toEqual(["b", "3", "a", "1"]);
+    expect(orderedKeys(value)).toStrictEqual(["b", "3", "a", "1"]);
   });
 
   it("in-order objects carry no sidecar and fall back to Object.keys", () => {
@@ -166,8 +181,8 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       unknown
     >;
-    expect(Object.getOwnPropertySymbols(value)).toEqual([]);
-    expect(orderedKeys(value)).toEqual(["100", "200", "zeta"]);
+    expect(Object.getOwnPropertySymbols(value)).toStrictEqual([]);
+    expect(orderedKeys(value)).toStrictEqual(["100", "200", "zeta"]);
   });
 
   it("duplicate keys: FIRST position wins, LAST value wins (json.loads)", () => {
@@ -177,7 +192,7 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       JsonNumber
     >;
-    expect(orderedKeys(value)).toEqual(["2", "1"]);
+    expect(orderedKeys(value)).toStrictEqual(["2", "1"]);
     expect(value["2"]?.raw).toBe("3");
     expect(value["1"]?.raw).toBe("2");
   });
@@ -187,42 +202,40 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       unknown
     >;
-    expect(Object.keys(value)).toEqual(["1", "9"]);
+    expect(Object.keys(value)).toStrictEqual(["1", "9"]);
     expect(JSON.stringify(value)).toBe('{"1":false,"9":true}');
-    expect({ ...value }).toEqual({ "1": false, "9": true });
+    expect({ ...value }).toStrictEqual({ "1": false, "9": true });
   });
 
   it("toNativeJson propagates the sidecar through conversion", () => {
     const parsed = parseLossless(
       '{"outer": {"42": {"x": 1}, "7": {"x": 2}}}',
     ) as Record<string, unknown>;
-    const native = toNativeJson(parsed as never) as Record<
+    const native = toNativeJson(parsed) as Record<
       string,
       Record<string, unknown>
     >;
-    expect(orderedKeys(native["outer"] as object)).toEqual(["42", "7"]);
+    expect(orderedKeys(native["outer"] as object)).toStrictEqual(["42", "7"]);
   });
 
   it("nested objects capture order independently", () => {
     const parsed = parseLossless(
       '{"a": {"5": 1, "3": 2}, "b": {"3": 1, "5": 2}}',
     ) as Record<string, Record<string, unknown>>;
-    expect(orderedKeys(parsed["a"] as object)).toEqual(["5", "3"]);
-    expect(orderedKeys(parsed["b"] as object)).toEqual(["3", "5"]);
+    expect(orderedKeys(parsed["a"] as object)).toStrictEqual(["5", "3"]);
+    expect(orderedKeys(parsed["b"] as object)).toStrictEqual(["3", "5"]);
   });
 });
 
-// ADDITIVE: the int64 opt-out of the R4.5 double-rounding narrowing —
+// TS-only: the int64 opt-out of the documented double-rounding narrowing —
 // the carrier for lookup-table ids beyond 2^53.
 describe("toNativeJson unsafeIntegers", () => {
-  const TEXT =
-    '{"big": -8644926364725811123, "safe": 7, "edge": 9007199254740991, ' +
-    '"first_unsafe": 9007199254740992, "float": 42.0, "list": [1, 2 ** 0]}'.replace(
-      "2 ** 0",
-      "-9007199254740993",
-    );
+  const TEXT = `{"big": -8644926364725811123, "safe": 7, "edge": 9007199254740991, ${'"first_unsafe": 9007199254740992, "float": 42.0, "list": [1, 2 ** 0]}'.replace(
+    "2 ** 0",
+    "-9007199254740993",
+  )}`;
 
-  it("rounds by default (the documented R4.5 narrowing)", () => {
+  it("rounds by default (the documented double narrowing)", () => {
     const native = toNativeJson(parseLossless(TEXT)) as Record<string, unknown>;
     expect(native["big"]).toBe(-8644926364725811000);
     expect(native["safe"]).toBe(7);
@@ -237,7 +250,7 @@ describe("toNativeJson unsafeIntegers", () => {
     expect(native["edge"]).toBe(9007199254740991);
     expect(native["first_unsafe"]).toBe(9007199254740992n);
     expect(native["float"]).toBe(42);
-    expect(native["list"]).toEqual([1, -9007199254740993n]);
+    expect(native["list"]).toStrictEqual([1, -9007199254740993n]);
   });
 
   it("threads the option through nested containers and keeps the key-order sidecar", () => {
@@ -250,6 +263,6 @@ describe("toNativeJson unsafeIntegers", () => {
     >;
     expect(native["outer"]?.["42"]?.["id"]).toBe(-8644926364725811123n);
     expect(native["outer"]?.["7"]?.["id"]).toBe(1);
-    expect(orderedKeys(native["outer"] as object)).toEqual(["42", "7"]);
+    expect(orderedKeys(native["outer"] as object)).toStrictEqual(["42", "7"]);
   });
 });

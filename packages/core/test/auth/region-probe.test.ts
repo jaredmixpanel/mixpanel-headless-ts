@@ -1,38 +1,20 @@
-// Layer-3 translation of `tests/unit/test_region_probe.py` (486 lines,
-// 16 tests, 8 classes) — B7-A2 packet §2.4 (`b7-packets.md`).
-//
-// Mechanism substitutions (header-cited per R10.2 / packet §2.4):
-// - httpx.MockTransport-backed `_client(handler)` fixtures translate to
-//   hand-built `ProbeClient` fakes over the SAME per-region handler maps
-//   (the `ProbeClient` interface IS the injected seam the TS port
-//   defines in place of `httpx.Client` — packet §2.3).
-// - `httpx.ConnectError("DNS lookup failed")` raised inside a handler
-//   translates to a rejection with the R2.10-normalized
-//   `MixpanelHttpError` whose cause chain mirrors the harness shape
-//   (`transport-errors.ts` ConnectError row: TypeError("fetch failed")
-//   → cause Error{code: ECONNREFUSED, message}) — packet §2.3 item 5.
-// - `TestRegionProbeFactoryURLStripping`'s
-//   `monkeypatch.setattr(rp_mod, "probe_region", _spy_probe)` spy is not
-//   expressible over ESM exports; per packet §2.4 the class translates
-//   to direct `probeBaseUrl` asserts PLUS a real
-//   `probeRegionForCredential` run over an injected recording fetch
-//   (the factory-construction observation point).
-// - `request.extensions["timeout"]` introspection (httpx internals)
-//   translates to asserting the `timeoutSeconds` the fake client
-//   received — same observable (the probe plumbs the value per request).
-//
-// No assertion dropped; the network-error body assert keeps Python's own
-// loosened OR form (`test_region_probe.py:167`).
+// `probeRegion` / `probeRegionForCredential` / `probeBaseUrl`, mirroring
+// `tests/unit/test_region_probe.py`. httpx.MockTransport fixtures become
+// hand-built `ProbeClient` fakes over the same per-region handlers; a
+// `ConnectError` becomes a `MixpanelHttpError` with the undici cause chain;
+// the `probe_region` spy becomes `probeBaseUrl` asserts + a recording fetch.
+
 import { describe, expect, it } from "vitest";
+
+import type { Region } from "../../src/auth/account.js";
 import {
   probeBaseUrl,
+  type ProbeClient,
   probeRegion,
   probeRegionForCredential,
-  type ProbeClient,
   type ProbeResponse,
   type RegionProbeResult,
 } from "../../src/auth/region-probe.js";
-import type { Region } from "../../src/auth/account.js";
 import { MixpanelHttpError } from "../../src/client/internals.js";
 import {
   ConfigError,
@@ -104,15 +86,15 @@ const unauthHandler: Handler = () => ({ status: 401, text: "Unauthorized" });
 
 /**
  * Reject the way the transport adapter rejects for a connect failure
- * (the `_network_error_handler` twin — R2.10 shape, see header note).
+ * (the `_network_error_handler` twin; see the file header).
  *
  * @param message - The recorded failure message.
  * @returns A `MixpanelHttpError` with the undici-style cause chain.
  */
 function networkError(message: string): MixpanelHttpError {
-  const inner = new Error(message) as Error & { code: string };
-  inner.name = "Error";
-  inner.code = "ECONNREFUSED";
+  const inner: Error & { code: string } = Object.assign(new Error(message), {
+    code: "ECONNREFUSED",
+  });
   const fetchFailure = new TypeError("fetch failed", { cause: inner });
   return new MixpanelHttpError(message, { cause: fetchFailure });
 }
@@ -124,8 +106,10 @@ const networkErrorHandler: Handler = () => {
 
 // ---- tests -----------------------------------------------------------
 
-describe("TestProbeRegionHappyPaths", () => {
-  it("test_us_succeeds_first_short_circuits", async () => {
+describe("Probe region happy paths", () => {
+  // python: TestProbeRegionHappyPaths
+  it("us succeeding first short-circuits the walk", async () => {
+    // python: test_us_succeeds_first_short_circuits
     const visited: Region[] = [];
     const factory = factoryFor(
       { us: okHandler, eu: okHandler, in: okHandler },
@@ -136,12 +120,13 @@ describe("TestProbeRegionHappyPaths", () => {
     expect(result).toHaveProperty("region");
     expect(result).toHaveProperty("attempts");
     expect(result.region).toBe("us");
-    expect(result.attempts).toEqual([["us", 200]]);
+    expect(result.attempts).toStrictEqual([["us", 200]]);
     // "EU/IN should not be probed after US success"
-    expect(visited).toEqual(["us"]);
+    expect(visited).toStrictEqual(["us"]);
   });
 
-  it("test_eu_succeeds_after_us_fails", async () => {
+  it("eu succeeds after us fails", async () => {
+    // python: test_eu_succeeds_after_us_fails
     const visited: Region[] = [];
     const factory = factoryFor(
       { us: unauthHandler, eu: okHandler, in: okHandler },
@@ -149,14 +134,15 @@ describe("TestProbeRegionHappyPaths", () => {
     );
     const result = await probeRegion(factory, { Authorization: "Basic xxx" });
     expect(result.region).toBe("eu");
-    expect(result.attempts).toEqual([
+    expect(result.attempts).toStrictEqual([
       ["us", 401],
       ["eu", 200],
     ]);
-    expect(visited).toEqual(["us", "eu"]);
+    expect(visited).toStrictEqual(["us", "eu"]);
   });
 
-  it("test_in_succeeds_after_us_and_eu_fail", async () => {
+  it("in succeeds after us and eu fail", async () => {
+    // python: test_in_succeeds_after_us_and_eu_fail
     const visited: Region[] = [];
     const factory = factoryFor(
       { us: unauthHandler, eu: unauthHandler, in: okHandler },
@@ -164,17 +150,19 @@ describe("TestProbeRegionHappyPaths", () => {
     );
     const result = await probeRegion(factory, { Authorization: "Basic xxx" });
     expect(result.region).toBe("in");
-    expect(result.attempts).toEqual([
+    expect(result.attempts).toStrictEqual([
       ["us", 401],
       ["eu", 401],
       ["in", 200],
     ]);
-    expect(visited).toEqual(["us", "eu", "in"]);
+    expect(visited).toStrictEqual(["us", "eu", "in"]);
   });
 });
 
-describe("TestProbeRegionErrorPaths", () => {
-  it("test_all_regions_401_raises_with_full_attempts", async () => {
+describe("Probe region error paths", () => {
+  // python: TestProbeRegionErrorPaths
+  it("all regions 401 raises with full attempts", async () => {
+    // python: test_all_regions_401_raises_with_full_attempts
     const factory = factoryFor({
       us: unauthHandler,
       eu: unauthHandler,
@@ -190,14 +178,15 @@ describe("TestProbeRegionErrorPaths", () => {
     const attempts = (thrown as RegionProbeError).attempts;
     // Three attempts, in order; each carries the response body.
     expect(attempts).toHaveLength(3);
-    expect(attempts.map((a) => a[0])).toEqual(["us", "eu", "in"]);
-    expect(attempts.map((a) => a[1])).toEqual([401, 401, 401]);
+    expect(attempts.map((a) => a[0])).toStrictEqual(["us", "eu", "in"]);
+    expect(attempts.map((a) => a[1])).toStrictEqual([401, 401, 401]);
     for (const attempt of attempts) {
       expect(attempt[2]).toContain("Unauthorized");
     }
   });
 
-  it("test_network_error_rendered_as_status_zero", async () => {
+  it("network error rendered as status zero", async () => {
+    // python: test_network_error_rendered_as_status_zero
     const factory = factoryFor({
       us: networkErrorHandler,
       eu: unauthHandler,
@@ -215,14 +204,15 @@ describe("TestProbeRegionErrorPaths", () => {
     expect(attempts[0]?.[0]).toBe("us");
     expect(attempts[0]?.[1]).toBe(0);
     // Body carries the network error reason for diagnostic use
-    // (Python's own loosened OR assert, test_region_probe.py:167).
+    // (Python's own loosened OR assert, test_region_probe.py).
     const body = attempts[0]?.[2] ?? "";
     expect(
       body.includes("DNS lookup failed") || body.includes("ConnectError"),
     ).toBe(true);
   });
 
-  it("test_all_network_errors_raise_network_subclass", async () => {
+  it("all-network failures raise the network subclass", async () => {
+    // python: test_all_network_errors_raise_network_subclass
     const factory = factoryFor({
       us: networkErrorHandler,
       eu: networkErrorHandler,
@@ -251,7 +241,8 @@ describe("TestProbeRegionErrorPaths", () => {
     }
   });
 
-  it("test_mixed_network_and_auth_failure_raises_generic", async () => {
+  it("mixed network and auth failures raise the generic error", async () => {
+    // python: test_mixed_network_and_auth_failure_raises_generic
     const factory = factoryFor({
       us: networkErrorHandler,
       eu: networkErrorHandler,
@@ -269,8 +260,10 @@ describe("TestProbeRegionErrorPaths", () => {
   });
 });
 
-describe("TestProbeRegionOrdering", () => {
-  it("test_custom_order_eu_first", async () => {
+describe("Probe region ordering", () => {
+  // python: TestProbeRegionOrdering
+  it("a custom order probes eu first", async () => {
+    // python: test_custom_order_eu_first
     const visited: Region[] = [];
     const factory = factoryFor(
       { eu: okHandler, us: okHandler, in: okHandler },
@@ -282,10 +275,11 @@ describe("TestProbeRegionOrdering", () => {
       { order: ["eu", "us"] },
     );
     expect(result.region).toBe("eu");
-    expect(visited).toEqual(["eu"]);
+    expect(visited).toStrictEqual(["eu"]);
   });
 
-  it("test_custom_order_skips_unlisted_regions", async () => {
+  it("a custom order skips unlisted regions", async () => {
+    // python: test_custom_order_skips_unlisted_regions
     const factory = factoryFor({
       eu: unauthHandler,
       us: okHandler,
@@ -300,14 +294,16 @@ describe("TestProbeRegionOrdering", () => {
       (error: unknown) => error,
     );
     expect(thrown).toBeInstanceOf(RegionProbeError);
-    expect((thrown as RegionProbeError).attempts.map((a) => a[0])).toEqual([
-      "eu",
-    ]);
+    expect(
+      (thrown as RegionProbeError).attempts.map((a) => a[0]),
+    ).toStrictEqual(["eu"]);
   });
 });
 
-describe("TestProbeRegionTimeout", () => {
-  it("test_timeout_is_passed_to_request", async () => {
+describe("Probe region timeout", () => {
+  // python: TestProbeRegionTimeout
+  it("the timeout is passed to each request", async () => {
+    // python: test_timeout_is_passed_to_request
     const capturedTimeouts: number[] = [];
     const captureHandler: Handler = (captured) => {
       capturedTimeouts.push(captured.timeoutSeconds);
@@ -330,9 +326,11 @@ describe("TestProbeRegionTimeout", () => {
   });
 });
 
-describe("TestProbeRegionSendsHeaders", () => {
-  it("test_authorization_header_forwarded", async () => {
-    const captured: (string | undefined)[] = [];
+describe("Probe region sends headers", () => {
+  // python: TestProbeRegionSendsHeaders
+  it("the Authorization header is forwarded", async () => {
+    // python: test_authorization_header_forwarded
+    const captured: Array<string | undefined> = [];
     const captureHandler: Handler = (got) => {
       captured.push(got.headers["Authorization"]);
       return { status: 200, text: '{"user_id": 1}' };
@@ -343,10 +341,11 @@ describe("TestProbeRegionSendsHeaders", () => {
       in: okHandler,
     });
     await probeRegion(factory, { Authorization: "Basic SECRET" });
-    expect(captured).toEqual(["Basic SECRET"]);
+    expect(captured).toStrictEqual(["Basic SECRET"]);
   });
 
-  it("test_request_targets_me_endpoint", async () => {
+  it("the request targets the /me endpoint", async () => {
+    // python: test_request_targets_me_endpoint
     const capturedPaths: string[] = [];
     const captureHandler: Handler = (got) => {
       capturedPaths.push(got.path);
@@ -358,12 +357,14 @@ describe("TestProbeRegionSendsHeaders", () => {
       in: okHandler,
     });
     await probeRegion(factory, {});
-    expect(capturedPaths).toEqual(["/api/app/me"]);
+    expect(capturedPaths).toStrictEqual(["/api/app/me"]);
   });
 });
 
-describe("TestProbeRegionResponseBodyCap", () => {
-  it("test_oversized_response_body_truncated_to_4kib", async () => {
+describe("Probe region response body cap", () => {
+  // python: TestProbeRegionResponseBodyCap
+  it("an oversized response body is truncated to 4 KiB", async () => {
+    // python: test_oversized_response_body_truncated_to_4kib
     const bigBody = "x".repeat(100_000); // 100 KB
     const bigBodyHandler: Handler = () => ({ status: 401, text: bigBody });
     // Every region returns the same oversized 401 — we just want to
@@ -378,12 +379,13 @@ describe("TestProbeRegionResponseBodyCap", () => {
       (error: unknown) => error,
     );
     expect(thrown).toBeInstanceOf(RegionProbeError);
-    for (const [, , body] of (thrown as RegionProbeError).attempts) {
-      expect(body.length).toBeLessThanOrEqual(4096);
+    for (const attempt of (thrown as RegionProbeError).attempts) {
+      expect(attempt[2].length).toBeLessThanOrEqual(4096);
     }
   });
 
-  it("test_small_response_body_preserved_verbatim", async () => {
+  it("a small response body is preserved verbatim", async () => {
+    // python: test_small_response_body_preserved_verbatim
     const smallBody = '{"error": "credential rejected"}';
     const smallBodyHandler: Handler = () => ({ status: 401, text: smallBody });
     const factory = factoryFor({
@@ -396,20 +398,22 @@ describe("TestProbeRegionResponseBodyCap", () => {
       (error: unknown) => error,
     );
     expect(thrown).toBeInstanceOf(RegionProbeError);
-    for (const [, , body] of (thrown as RegionProbeError).attempts) {
-      expect(body).toBe(smallBody);
+    for (const attempt of (thrown as RegionProbeError).attempts) {
+      expect(attempt[2]).toBe(smallBody);
     }
   });
 });
 
-describe("TestRegionProbeFactoryURLStripping", () => {
-  // Header note: the Python class spies on `probe_region` via
-  // monkeypatch to observe the factory's base URL. The TS twin asserts
-  // the pure `probeBaseUrl` derivation directly AND observes the real
-  // factory through an injected recording fetch (packet §2.4).
+describe("Region probe factory URL stripping", () => {
+  // python: TestRegionProbeFactoryURLStripping
+  // The Python class spies on `probe_region` via monkeypatch to observe
+  // the factory's base URL. The TS twin asserts the pure `probeBaseUrl`
+  // derivation directly AND observes the real factory through an
+  // injected recording fetch.
 
-  it("test_factory_drops_path_component_for_standard_endpoint", async () => {
-    // Pure derivation (the `_factory` base computation, :276-277).
+  it("the factory drops the path component of the standard endpoint", async () => {
+    // python: test_factory_drops_path_component_for_standard_endpoint
+    // Pure derivation (the `_factory` base computation).
     expect(probeBaseUrl("https://mixpanel.com/api/app")).toBe(
       "https://mixpanel.com",
     );
@@ -417,7 +421,7 @@ describe("TestRegionProbeFactoryURLStripping", () => {
     // request must hit the stripped host root + /api/app/me.
     const seenUrls: string[] = [];
     const recordingFetch: typeof fetch = (input) => {
-      seenUrls.push(String(input));
+      seenUrls.push(input instanceof Request ? input.url : String(input));
       return Promise.resolve(new Response('{"user_id": 1}', { status: 200 }));
     };
     const region = await probeRegionForCredential({
@@ -433,7 +437,8 @@ describe("TestRegionProbeFactoryURLStripping", () => {
     expect(seenUrls[0]).toBe("https://mixpanel.com/api/app/me");
   });
 
-  it("test_factory_handles_trailing_slash_endpoint", () => {
+  it("the factory handles a trailing-slash endpoint", () => {
+    // python: test_factory_handles_trailing_slash_endpoint
     // Future `https://mixpanel.com/api/app/` (trailing slash) still
     // strips to the host root.
     expect(probeBaseUrl("https://mixpanel.com/api/app/")).toBe(
@@ -442,10 +447,8 @@ describe("TestRegionProbeFactoryURLStripping", () => {
   });
 });
 
-describe("probe_region_for_credential guards (docstring contract)", () => {
-  // These lock the ConfigError branches the vectors cannot see
-  // (`probe_region_for_credential` is registry-audited-out — packet
-  // §2.3 coverage note); the R10.9 harness enumerates the rest.
+describe("probeRegionForCredential guards (docstring contract)", () => {
+  // These lock the ConfigError branches the corpus vectors cannot see.
 
   it("service_account without username/secret raises ConfigError", async () => {
     await expect(
@@ -480,8 +483,10 @@ describe("probe_region_for_credential guards (docstring contract)", () => {
 
 // Type-level exhaustiveness anchor: RegionProbeResult stays the
 // two-field shape the corpus encodes.
-const _shapeCheck: RegionProbeResult = {
-  region: "us",
-  attempts: [["us", 200]],
-};
-void _shapeCheck;
+it("RegionProbeResult keeps the two-field corpus shape", () => {
+  const shape: RegionProbeResult = {
+    region: "us",
+    attempts: [["us", 200]],
+  };
+  expect(Object.keys(shape)).toStrictEqual(["region", "attempts"]);
+});

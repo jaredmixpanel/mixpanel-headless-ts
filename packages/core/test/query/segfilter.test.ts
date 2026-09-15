@@ -1,49 +1,25 @@
-/**
- * Layer-3 translation of `tests/unit/test_segfilter.py` (634 LOC, 10
- * classes; Python revision: `ts-port/phase2-contract-support` HEAD),
- * per `b3-packets.md` §"Packet K3" — ALL classes translate here, no
- * deferrals.
- *
- * R10.2 notes (assertion-for-assertion, codes not messages):
- *
- * - Python's `pytest.raises(ValueError, match="Unknown string operator")`
- *   asserts on MESSAGE text, which is explicitly out of contract (R5.4).
- *   Each such assert translates to the exception CLASS
- *   (`ParamValidationError` — the ported twin of Python's
- *   `ParamValidationError(MixpanelHeadlessError, ValueError)`) plus the
- *   registry `.code` that identifies the same guard. No assertion is
- *   dropped: the `match=` string and the `.code` name the same branch.
- * - `test_sg_guards_stay_catchable_as_value_error` asserts Python's dual
- *   inheritance (`except ValueError` reachability). TS has no
- *   `ValueError`; the ported invariant is descent from
- *   `MixpanelHeadlessError` (errors.ts header: "in TS the conformance key
- *   is class name + code, so plain MixpanelHeadlessError descent
- *   suffices"), asserted as such.
- * - Python's `# type: ignore[arg-type]` deliberate-invalid inputs become
- *   `as FilterOperator` / `as FilterPropertyType` casts at the same call
- *   sites.
- * - `isinstance(result["filter"]["operand"], str)` →
- *   `typeof … === "string"`.
- * - `"operator" not in result["filter"]` → `Object.hasOwn(...) === false`
- *   (watchlist #7 — `in` would also see prototype keys).
- */
-
+// `buildSegfilterEntry` / `convertDateFormat` — translation of
+// `tests/unit/test_segfilter.py` (all ten classes). `pytest.raises(..., match=)`
+// message asserts become `ParamValidationError` class + `.code` asserts naming
+// the same guard; "catchable as ValueError" becomes `MixpanelHeadlessError`
+// descent; `"operator" not in result` becomes `Object.hasOwn(...) === false`.
 import { describe, expect, it } from "vitest";
 
 import {
   MixpanelHeadlessError,
   ParamValidationError,
 } from "../../src/errors.js";
-import { Filter } from "../../src/types/index.js";
-import { filterUnchecked } from "../../src/types/query-params/filter.js";
 import {
-  RESOURCE_TYPE_MAP,
   buildDatetimeFilter,
   buildNumberFilter,
   buildSegfilterEntry,
   buildStringFilter,
   convertDateFormat,
+  RESOURCE_TYPE_MAP,
 } from "../../src/query/segfilter.js";
+import { Filter } from "../../src/types/index.js";
+import { filterUnchecked } from "../../src/types/query-params/filter.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 /** Narrow the `filter` sub-dict of a segfilter entry for assertions. */
 function filterOf(entry: Record<string, unknown>): Record<string, unknown> {
@@ -55,9 +31,7 @@ function propertyOf(entry: Record<string, unknown>): Record<string, unknown> {
   return entry["property"] as Record<string, unknown>;
 }
 
-// =============================================================================
-// String Operators (TestSegfilterStringOperators)
-// =============================================================================
+// --- String Operators (TestSegfilterStringOperators) ---
 
 describe("segfilter string operators", () => {
   it("Filter.equals produces operator '==' with list operand", () => {
@@ -65,7 +39,7 @@ describe("segfilter string operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("==");
-    expect(filterOf(result)["operand"]).toEqual(["US"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["US"]);
   });
 
   it("Filter.equals with a list produces operator '==' with list operand", () => {
@@ -73,7 +47,7 @@ describe("segfilter string operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("==");
-    expect(filterOf(result)["operand"]).toEqual(["US", "UK"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["US", "UK"]);
   });
 
   it("Filter.notEquals produces operator '!=' with list operand", () => {
@@ -81,7 +55,7 @@ describe("segfilter string operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("!=");
-    expect(filterOf(result)["operand"]).toEqual(["US"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["US"]);
   });
 
   it("Filter.contains produces operator 'in' with string operand", () => {
@@ -117,9 +91,7 @@ describe("segfilter string operators", () => {
   });
 });
 
-// =============================================================================
-// Number Operators (TestSegfilterNumberOperators)
-// =============================================================================
+// --- Number Operators (TestSegfilterNumberOperators) ---
 
 describe("segfilter number operators", () => {
   it("Filter.greaterThan produces operator '>' with stringified operand", () => {
@@ -159,7 +131,7 @@ describe("segfilter number operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("><");
-    expect(filterOf(result)["operand"]).toEqual(["10", "100"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["10", "100"]);
   });
 
   it("number is set uses 'is set' operator with empty string operand", () => {
@@ -277,13 +249,11 @@ describe("segfilter number operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("!><");
-    expect(filterOf(result)["operand"]).toEqual(["10", "100"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["10", "100"]);
   });
 });
 
-// =============================================================================
-// Boolean Operators (TestSegfilterBooleanOperators)
-// =============================================================================
+// --- Boolean Operators (TestSegfilterBooleanOperators) ---
 
 describe("segfilter boolean operators", () => {
   it("Filter.isTrue produces operand 'true' with NO 'operator' key", () => {
@@ -303,9 +273,7 @@ describe("segfilter boolean operators", () => {
   });
 });
 
-// =============================================================================
-// Datetime Operators (TestSegfilterDatetimeOperators)
-// =============================================================================
+// --- Datetime Operators (TestSegfilterDatetimeOperators) ---
 
 describe("segfilter datetime operators", () => {
   it("Filter.on produces operator '==' with MM/DD/YYYY operand", () => {
@@ -363,7 +331,10 @@ describe("segfilter datetime operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("><");
-    expect(filterOf(result)["operand"]).toEqual(["01/01/2026", "01/31/2026"]);
+    expect(filterOf(result)["operand"]).toStrictEqual([
+      "01/01/2026",
+      "01/31/2026",
+    ]);
   });
 
   it("YYYY-MM-DD dates are converted to MM/DD/YYYY in output", () => {
@@ -395,9 +366,7 @@ describe("segfilter datetime operators", () => {
   });
 });
 
-// =============================================================================
-// Resource Type Mapping (TestSegfilterResourceTypeMapping)
-// =============================================================================
+// --- Resource Type Mapping (TestSegfilterResourceTypeMapping) ---
 
 describe("segfilter resource-type mapping", () => {
   it("resource_type 'events' maps to property.source 'properties'", () => {
@@ -420,9 +389,7 @@ describe("segfilter resource-type mapping", () => {
   });
 });
 
-// =============================================================================
-// Output Structure (TestSegfilterStructure)
-// =============================================================================
+// --- Output Structure (TestSegfilterStructure) ---
 
 describe("segfilter output structure", () => {
   it("output dict has 'property', 'type', 'selected_property_type', 'filter'", () => {
@@ -480,9 +447,7 @@ describe("segfilter output structure", () => {
   });
 });
 
-// =============================================================================
-// Helper Functions (TestConvertDateFormat)
-// =============================================================================
+// --- Helper Functions (TestConvertDateFormat) ---
 
 describe("convertDateFormat", () => {
   it("YYYY-MM-DD converts to MM/DD/YYYY", () => {
@@ -498,9 +463,7 @@ describe("convertDateFormat", () => {
   });
 });
 
-// =============================================================================
-// Edge Cases (TestSegfilterEdgeCases)
-// =============================================================================
+// --- Edge Cases (TestSegfilterEdgeCases) ---
 
 describe("segfilter edge cases", () => {
   it("unknown operator for a property type raises the string guard", () => {
@@ -513,16 +476,12 @@ describe("segfilter edge cases", () => {
     });
 
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
-    // R5.4: `match="Unknown string operator"` is message text; the code
+    // `match="Unknown string operator"` is message text; the code
     // names the same guard.
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG1");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe(
-        "SG1_UNKNOWN_STRING_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG1");
+    expect((error as ParamValidationError).code).toBe(
+      "SG1_UNKNOWN_STRING_OPERATOR",
+    );
   });
 
   it("unknown number operator raises the number guard", () => {
@@ -535,14 +494,10 @@ describe("segfilter edge cases", () => {
     });
 
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG2");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe(
-        "SG2_UNKNOWN_NUMBER_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG2");
+    expect((error as ParamValidationError).code).toBe(
+      "SG2_UNKNOWN_NUMBER_OPERATOR",
+    );
   });
 
   it("unknown datetime operator raises the datetime guard", () => {
@@ -555,14 +510,10 @@ describe("segfilter edge cases", () => {
     });
 
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG3");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe(
-        "SG3_UNKNOWN_DATETIME_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG3");
+    expect((error as ParamValidationError).code).toBe(
+      "SG3_UNKNOWN_DATETIME_OPERATOR",
+    );
   });
 
   it("unknown property type raises the property-type guard", () => {
@@ -575,20 +526,14 @@ describe("segfilter edge cases", () => {
     });
 
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG4");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe(
-        "SG4_UNSUPPORTED_PROPERTY_TYPE",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG4");
+    expect((error as ParamValidationError).code).toBe(
+      "SG4_UNSUPPORTED_PROPERTY_TYPE",
+    );
   });
 });
 
-// =============================================================================
-// Coded guard errors (TestCodedSegfilterCodes)
-// =============================================================================
+// --- Coded guard errors (TestCodedSegfilterCodes) ---
 
 /**
  * Build a directly-constructed Filter for coded-guard seam tests
@@ -619,100 +564,81 @@ describe("coded segfilter guards", () => {
   it.each(["magical_unicorn", "was on"])(
     "buildStringFilter with unknown operator %s raises SG1",
     (operator) => {
-      try {
-        buildStringFilter(operator, "y");
-        expect.unreachable("expected SG1");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(ParamValidationError);
-        expect((exc as ParamValidationError).code).toBe(
-          "SG1_UNKNOWN_STRING_OPERATOR",
-        );
-      }
+      const error = expectThrows(
+        () => buildStringFilter(operator, "y"),
+        "expected SG1",
+      );
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
+        "SG1_UNKNOWN_STRING_OPERATOR",
+      );
     },
   );
 
   it("buildSegfilterEntry surfaces SG1 for unknown string operators", () => {
     const f = filterWith("magical_unicorn", "y", "string");
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG1");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
-        "SG1_UNKNOWN_STRING_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG1");
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "SG1_UNKNOWN_STRING_OPERATOR",
+    );
   });
 
   it.each(["magical_unicorn", "contains"])(
     "buildNumberFilter with unknown operator %s raises SG2",
     (operator) => {
-      try {
-        buildNumberFilter(operator, 1);
-        expect.unreachable("expected SG2");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(ParamValidationError);
-        expect((exc as ParamValidationError).code).toBe(
-          "SG2_UNKNOWN_NUMBER_OPERATOR",
-        );
-      }
+      const error = expectThrows(
+        () => buildNumberFilter(operator, 1),
+        "expected SG2",
+      );
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
+        "SG2_UNKNOWN_NUMBER_OPERATOR",
+      );
     },
   );
 
   it("buildSegfilterEntry surfaces SG2 for unknown number operators", () => {
     const f = filterWith("magical_unicorn", 1, "number");
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG2");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
-        "SG2_UNKNOWN_NUMBER_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG2");
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "SG2_UNKNOWN_NUMBER_OPERATOR",
+    );
   });
 
   it.each(["magical_unicorn", "is at least"])(
     "buildDatetimeFilter with unknown operator %s raises SG3",
     (operator) => {
-      try {
-        buildDatetimeFilter(operator, "2026-01-01", null);
-        expect.unreachable("expected SG3");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(ParamValidationError);
-        expect((exc as ParamValidationError).code).toBe(
-          "SG3_UNKNOWN_DATETIME_OPERATOR",
-        );
-      }
+      const error = expectThrows(
+        () => buildDatetimeFilter(operator, "2026-01-01", null),
+        "expected SG3",
+      );
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
+        "SG3_UNKNOWN_DATETIME_OPERATOR",
+      );
     },
   );
 
   it("buildSegfilterEntry surfaces SG3 for unknown datetime operators", () => {
     const f = filterWith("magical_unicorn", "2026-01-01", "datetime");
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG3");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
-        "SG3_UNKNOWN_DATETIME_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG3");
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "SG3_UNKNOWN_DATETIME_OPERATOR",
+    );
   });
 
   it.each(["list", "object"])(
     "buildSegfilterEntry raises SG4 for unsupported property type %s",
     (propertyType) => {
       const f = filterWith("equals", "y", propertyType);
-      try {
-        buildSegfilterEntry(f);
-        expect.unreachable("expected SG4");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(ParamValidationError);
-        expect((exc as ParamValidationError).code).toBe(
-          "SG4_UNSUPPORTED_PROPERTY_TYPE",
-        );
-      }
+      const error = expectThrows(() => buildSegfilterEntry(f), "expected SG4");
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
+        "SG4_UNSUPPORTED_PROPERTY_TYPE",
+      );
     },
   );
 
@@ -721,15 +647,11 @@ describe("coded segfilter guards", () => {
     // ParamValidationError)` — the dual-inheritance reachability assert.
     // TS twin: descent from `MixpanelHeadlessError` (errors.ts header).
     const f = filterWith("equals", "y", "object");
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG4");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(MixpanelHeadlessError);
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
-        "SG4_UNSUPPORTED_PROPERTY_TYPE",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG4");
+    expect(error).toBeInstanceOf(MixpanelHeadlessError);
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "SG4_UNSUPPORTED_PROPERTY_TYPE",
+    );
   });
 });

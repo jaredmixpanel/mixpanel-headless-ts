@@ -1,32 +1,23 @@
 /**
- * Atomic on-disk write primitive, credential-read helpers, and bounded
- * stdin reader — TS port of `mixpanel_headless/_internal/io_utils.py`
- * (whole file, `io_utils.py:1-545`; b8-packets.md §2.1 row 1).
+ * Atomic on-disk write primitive, credential-read helpers and the
+ * bounded stdin reader behind every persisted credential and config
+ * file in the node package.
  *
- * Every persisted credential / config write goes through
- * {@link atomicWriteBytes} so a crash between open and rename cannot
- * leave a half-written file in place of the prior good copy. Durability
- * (`fsync`) is intentionally NOT performed, exactly like Python — this
- * helper guarantees atomicity-on-success, not power-loss survival.
+ * Every such write goes through {@link atomicWriteBytes} so a crash
+ * between open and rename cannot leave a half-written file in place of
+ * the prior good copy. Durability (`fsync`) is intentionally not
+ * performed, exactly like Python: the helper guarantees atomicity on
+ * success, not power-loss survival.
  *
- * **Sanctioned R9.2 deviation (plan §4.2 "POSIX atomic 0o600 writes"
- * row; b8-packets.md §2.1)**: Python's fd-flag hardening layer —
- * `_open_credential_fd`'s `O_NOFOLLOW` / `O_CLOEXEC` / dirfd-walk
- * machinery plus the fstat-pinned invariant checks
- * (`io_utils.py:236-435`) — is DROPPED. The node port substitutes an
- * `lstat`-based symlink refusal plus `stat`-based regular-file / mode /
- * size checks. Behavior visible to callers (refusals + successful
- * reads) is preserved; the TOCTOU window between the lstat probe and
- * the subsequent `readFileSync` is the sanctioned deviation, recorded
- * in the B8-N1 notes and deferred to the Phase-4 burn-in review
- * (packet §8 outbound row 3).
+ * Python hardens credential reads at the fd level (`O_NOFOLLOW`,
+ * `O_CLOEXEC`, a dirfd walk and fstat-pinned invariant checks). The node
+ * port replaces that with an `lstat` symlink refusal plus `stat`
+ * regular-file, mode and size checks; caller-visible behaviour (refusals
+ * and successful reads) is preserved, and the TOCTOU window between the
+ * `lstat` probe and the subsequent read is the accepted deviation (the
+ * `// Divergence:` line at {@link readCredentialBytes}).
  *
- * **Tmp-name substitution (packet §2.2)**: Python embeds
- * `<pid>.<tid>` in the tmp sibling name (`io_utils.py:136`). JS has no
- * OS thread id in the main thread (`worker_threads.threadId` is 0), so
- * the port embeds `process.pid` plus a monotonically increasing
- * per-process counter — preserving the collision-avoidance intent for
- * concurrent writers within one process.
+ * @see mixpanel_headless._internal.io_utils
  */
 
 import {
@@ -44,31 +35,30 @@ import {
 import { constants as osConstants } from "node:os";
 import { basename, dirname, join } from "node:path";
 
-import { pythonStrip } from "../../core/src/compat/python-strip.js";
 import {
   ConfigError,
   MixpanelHeadlessError,
   ParamValidationError,
-} from "../../core/src/errors.js";
+  pythonStrip,
+} from "@mixpanel-headless/core";
 
 /**
- * Hard ceiling on a single secret read from stdin
- * (`io_utils.py:56-63`). Real service-account secrets are < 1 KiB and
- * OAuth bearers are < 8 KiB; a larger payload is almost always the
- * wrong file being piped.
+ * Hard ceiling on a single secret read from stdin. Real service-account
+ * secrets are under 1 KiB and OAuth bearers under 8 KiB; a larger
+ * payload is almost always the wrong file being piped.
  */
-export const SECRET_STDIN_MAX_BYTES = 64 * 1024;
+export const SECRET_STDIN_MAX_BYTES: number = 64 * 1024;
 
 /**
- * Hard ceiling on a credential file's size (`io_utils.py:66-80`).
- * 1 MiB is 100x the largest realistic file; anything larger is a
- * runaway write, a corrupted file, or an attacker-planted blob.
+ * Hard ceiling on a credential file's size. 1 MiB is 100x the largest
+ * realistic file; anything larger is a runaway write, a corrupted file,
+ * or an attacker-planted blob.
  */
-export const MAX_CREDENTIAL_BYTES = 1 << 20;
+export const MAX_CREDENTIAL_BYTES: number = 1 << 20;
 
 /**
- * Render a mode like CPython `oct()` — e.g. `0o644` (message parity
- * with `io_utils.py:131-135`; text out of contract, R5.4).
+ * Render a mode like CPython `oct()`, e.g. `0o644` (message parity;
+ * text out of contract).
  *
  * @param mode - POSIX mode bits.
  * @returns The `0o…` rendering.
@@ -78,19 +68,29 @@ function octal(mode: number): string {
 }
 
 /**
- * A credential file failed a structural safety check — TS twin of
- * Python's `CredentialPathError(OSError)` (`io_utils.py:165-181`).
+ * A credential file failed a structural safety check.
  *
- * Python subclasses `OSError` so existing `except OSError` handlers at
- * the credential call sites keep catching it; the TS lineage is
- * {@link MixpanelHeadlessError} (call sites catch the class or the
- * base), with the OSError fields (`errno`, `filename`) mirrored in
- * `details` (b8-packets.md §2.2 symlink-refusal row). The
- * `CREDENTIAL_PATH_ERROR` code is node-package-local: the Python twin
- * carries no registry code (OSError is outside the exception
- * contract), and every call site translates this class to its domain
- * exception (`ConfigError` / `OAuthError`) before any contract
- * boundary — the code never reaches the wire.
+ * @remarks
+ * Python's `CredentialPathError` subclasses `OSError` so existing
+ * `except OSError` handlers at the credential call sites keep catching
+ * it; the TS lineage is {@link MixpanelHeadlessError} (call sites catch
+ * the class or the base), with the OSError fields (`errno`, `filename`)
+ * mirrored in `details`. The `CREDENTIAL_PATH_ERROR` code is
+ * node-package-local: the Python twin carries no registry code (OSError
+ * is outside the exception contract), and every call site translates
+ * this class to its domain exception (`ConfigError` / `OAuthError`)
+ * before any contract boundary, so the code never reaches the wire.
+ * @example
+ * ```ts
+ * try {
+ *   readCredentialText(path);
+ * } catch (error) {
+ *   if (error instanceof CredentialPathError) {
+ *     logger.warning(`Refusing to read ${error.filename}: ${error.message}`);
+ *   }
+ * }
+ * ```
+ * @see mixpanel_headless._internal.io_utils.CredentialPathError
  */
 export class CredentialPathError extends MixpanelHeadlessError {
   /**
@@ -99,20 +99,28 @@ export class CredentialPathError extends MixpanelHeadlessError {
    * @param errno - POSIX errno describing the refusal class (`ELOOP`
    *   for symlinks, `EINVAL` for non-regular files, `EPERM` for lax
    *   modes, `EFBIG` for oversized files).
-   * @param message - Human-readable refusal (out of contract, R5.4).
+   * @param message - Human-readable refusal (out of contract).
    * @param filename - The offending path (Python's third OSError arg).
    */
   constructor(errno: number, message: string, filename: string) {
     super(message, "CREDENTIAL_PATH_ERROR", { errno, filename });
   }
 
-  /** POSIX errno for log triage (the `exc.errno` OSError mirror). */
+  /**
+   * Read the POSIX errno for log triage (the `exc.errno` OSError mirror).
+   *
+   * @returns The errno, or 0 when absent.
+   */
   get errno(): number {
     const value = this.details["errno"];
     return typeof value === "number" ? value : 0;
   }
 
-  /** The offending path (the `exc.filename` OSError mirror). */
+  /**
+   * Read the offending path (the `exc.filename` OSError mirror).
+   *
+   * @returns The path, or the empty string when absent.
+   */
   get filename(): string {
     const value = this.details["filename"];
     return typeof value === "string" ? value : "";
@@ -120,22 +128,27 @@ export class CredentialPathError extends MixpanelHeadlessError {
 }
 
 /**
- * True for node SYSTEM errors (libuv syscall failures) — the `OSError`
- * class-test twin at every ported `except OSError` boundary
- * (`config.py:186-189`, `bridge.py:172-176`, `storage.py:405-419`).
- * Defined ONCE here (R10.8); consumers import it by name — B8-ARB-A
- * hoisted it from `config.ts` when the bridge/storage read paths
- * gained the same clause (`b8-reviewA-resolution.md` SEM-F2/F6).
+ * Return whether `exc` is a node system error (a libuv syscall failure)
+ * — the `OSError` class test at every ported `except OSError` boundary.
  *
- * The predicate requires BOTH a string `code` and a numeric `errno`:
- * node also stamps string codes on NON-system errors (the TextDecoder
+ * @remarks
+ * The predicate requires both a string `code` and a numeric `errno`:
+ * node also stamps string codes on non-system errors (the TextDecoder
  * fatal-mode `TypeError` carries `ERR_ENCODING_INVALID_ENCODED_DATA`),
  * and those are the `UnicodeDecodeError` twins that Python's
- * `except OSError` clauses let PROPAGATE — a code-only test would
- * swallow them into the OSError arm.
- *
+ * `except OSError` clauses let propagate; a code-only test would swallow
+ * them into the OSError arm.
  * @param exc - Thrown value.
  * @returns Whether `exc` is a libuv errno error (the OSError twin).
+ * @example
+ * ```ts
+ * try {
+ *   lstatSync(path);
+ * } catch (error) {
+ *   if (!isErrnoError(error)) throw error;
+ *   // handle as Python's `except OSError` would
+ * }
+ * ```
  */
 export function isErrnoError(exc: unknown): exc is NodeJS.ErrnoException {
   return (
@@ -148,31 +161,30 @@ export function isErrnoError(exc: unknown): exc is NodeJS.ErrnoException {
 /**
  * The injectable FS operation set of {@link atomicWriteBytes} — the
  * `unittest.mock.patch("…io_utils.os.replace")` monkeypatch twin used
- * by the crash-window resilience tests (test_io_utils.py:210-300) and
- * the R10.9 harness fault-injection rows (b8-packets.md §2.5 row 1).
+ * by the crash-window resilience tests and harness fault injection.
  */
 export interface AtomicWriteFsOps {
   /** `os.open` twin (flags include `O_WRONLY|O_CREAT|O_EXCL`). */
-  openSync(path: string, flags: number, mode: number): number;
+  openSync: (path: string, flags: number, mode: number) => number;
   /** `os.fchmod` twin. */
-  fchmodSync(fd: number, mode: number): void;
+  fchmodSync: (fd: number, mode: number) => void;
   /**
    * `os.write` twin — may short-write; the caller loops.
    *
    * @returns Bytes written from `data[offset…offset+length)`.
    */
-  writeSync(
+  writeSync: (
     fd: number,
     data: Uint8Array,
     offset: number,
     length: number,
-  ): number;
+  ) => number;
   /** `os.close` twin. */
-  closeSync(fd: number): void;
+  closeSync: (fd: number) => void;
   /** `os.replace` twin (POSIX-atomic same-filesystem rename). */
-  renameSync(from: string, to: string): void;
+  renameSync: (from: string, to: string) => void;
   /** `Path.unlink(missing_ok=True)` twin (caller suppresses ENOENT). */
-  unlinkSync(path: string): void;
+  unlinkSync: (path: string) => void;
 }
 
 /** The real node:fs implementations. */
@@ -185,55 +197,59 @@ const REAL_FS_OPS: AtomicWriteFsOps = {
   unlinkSync,
 };
 
-/**
- * Per-process tmp-name counter — the `threading.get_ident()`
- * substitution (module header; packet §2.2).
- */
+/** Per-process tmp-name counter (the `threading.get_ident()` substitute). */
 let tmpCounter = 0;
 
-/** Options bag of {@link atomicWriteBytes} (Python kwonly, R3.8). */
+/** Options bag of {@link atomicWriteBytes} (Python's keyword-only args). */
 export interface AtomicWriteOptions {
   /**
-   * POSIX file mode applied to the FINAL file (default `0o600`). Must
-   * not grant any group/world bits (`mode & 0o077` must be 0).
+   * POSIX file mode applied to the final file. Must not grant any
+   * group/world bits (`mode & 0o077` must be 0).
+   *
+   * @defaultValue `0o600`
    */
   readonly mode?: number | undefined;
-  /** Injected FS operations (tests/harness only; defaults to node:fs). */
+  /**
+   * Injected FS operations (tests and the harness only).
+   *
+   * @defaultValue `node:fs`
+   */
   readonly fsOps?: Partial<AtomicWriteFsOps> | undefined;
 }
 
 /**
- * Atomically write `data` to `path` with the requested file mode (port
- * of `atomic_write_bytes`, `io_utils.py:83-163`).
+ * Atomically write `data` to `path` with the requested file mode.
  *
- * Protocol (byte-for-byte with Python):
- *
- * 1. `mode & 0o077` → coded error BEFORE any FS touch (caution #11).
- *    Python raises bare `ValueError`; the TS twin is the existing
- *    {@link ParamValidationError} / `VALIDATION_ERROR` (R5
- *    codes-not-messages — no new code minted, packet §2.2).
- * 2. Tmp sibling `<name>.tmp.<pid>.<counter>` created via
- *    `O_WRONLY|O_CREAT|O_EXCL` at literal `0o600` — an open failure
- *    (stale tmp EEXIST, missing parent ENOENT) propagates WITHOUT
- *    touching the target and WITHOUT unlinking the foreign tmp
- *    (caution #10).
- * 3. `fchmod(fd, mode)` BEFORE writing, then a full-write loop
- *    (`writeSync` may short-write).
- * 4. `renameSync` (the `os.replace` POSIX-atomic swap).
- * 5. On ANY failure after the open: close, unlink OUR tmp
- *    (`missing_ok` semantics — ENOENT suppressed), rethrow the
- *    ORIGINAL error.
- *
- * Parent directories are NOT created. The tmp file is always created
- * owner-only regardless of the requested final `mode`.
- *
+ * @remarks
+ * Protocol, byte-for-byte with Python: (1) a `mode` with group/world
+ * bits is a coded error before any FS touch (Python raises a bare
+ * `ValueError`; the TS twin is {@link ParamValidationError}, no new code
+ * minted); (2) the tmp sibling `name.tmp.pid.counter` is created via
+ * `O_WRONLY|O_CREAT|O_EXCL` at literal `0o600`, and an open failure
+ * (stale tmp `EEXIST`, missing parent `ENOENT`) propagates without
+ * touching the target and without unlinking the foreign tmp; (3)
+ * `fchmod(fd, mode)` before writing, then a full-write loop (`writeSync`
+ * may short-write); (4) `renameSync`, the `os.replace` POSIX-atomic
+ * swap; (5) on any failure after the open: close, unlink our tmp
+ * (`missing_ok` semantics, `ENOENT` suppressed), rethrow the original
+ * error. Parent directories are not created. The tmp file is always
+ * created owner-only regardless of the requested final `mode`.
  * @param path - Destination file path (created or replaced).
  * @param data - Bytes to write.
- * @param options - `mode` (default `0o600`) + test-only `fsOps`.
- * @throws ParamValidationError - `mode` grants group/world access.
+ * @param options - Final `mode` (default `0o600`) and test-only `fsOps`.
+ * @throws {@link ParamValidationError} - `mode` grants group/world access.
  * @throws Error - Node system errors (`EEXIST` stale tmp, `ENOENT`
  *   missing parent, write/rename failures) propagate verbatim — the
  *   `FileExistsError` / `FileNotFoundError` / `OSError` twins.
+ * @example
+ * ```ts
+ * atomicWriteBytes(
+ *   join(dir, "tokens.json"),
+ *   new TextEncoder().encode(JSON.stringify(payload)),
+ *   { mode: 0o600 },
+ * );
+ * ```
+ * @see mixpanel_headless._internal.io_utils.atomic_write_bytes
  */
 export function atomicWriteBytes(
   path: string,
@@ -241,20 +257,21 @@ export function atomicWriteBytes(
   options: AtomicWriteOptions = {},
 ): void {
   const mode = options.mode ?? 0o600;
-  const ops: AtomicWriteFsOps = { ...REAL_FS_OPS, ...(options.fsOps ?? {}) };
+  const ops: AtomicWriteFsOps = { ...REAL_FS_OPS, ...options.fsOps };
   if ((mode & 0o077) !== 0) {
     throw new ParamValidationError(
       `atomic_write_bytes mode must not grant group/world access; got ${octal(mode)}`,
     );
   }
   tmpCounter += 1;
+  // Divergence: Python names the tmp sibling `name.tmp.pid.tid`; JS has no OS thread id on the main thread (`worker_threads.threadId` is 0), so the port uses `process.pid` plus a per-process counter, which keeps concurrent writers in one process from colliding.
   const tmpPath = join(
     dirname(path),
     `${basename(path)}.tmp.${process.pid}.${tmpCounter}`,
   );
-  // Open OUTSIDE the cleanup scope: an EEXIST/ENOENT here must not
-  // unlink the pre-existing (foreign) tmp — `io_utils.py:142` sits
-  // before the try block for the same reason.
+  // Open outside the cleanup scope: an EEXIST/ENOENT here must not
+  // unlink the pre-existing (foreign) tmp; Python's open sits before its
+  // try block for the same reason.
   const fd = ops.openSync(
     tmpPath,
     fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL,
@@ -267,7 +284,7 @@ export function atomicWriteBytes(
       while (offset < data.length) {
         const written = ops.writeSync(fd, data, offset, data.length - offset);
         if (written <= 0) {
-          // POSIX guarantees > 0 (`io_utils.py:154` pragma).
+          // POSIX guarantees a positive count; this guard cannot fire.
           throw new Error("write returned non-positive count");
         }
         offset += written;
@@ -276,31 +293,36 @@ export function atomicWriteBytes(
       ops.closeSync(fd);
     }
     ops.renameSync(tmpPath, path);
-  } catch (exc) {
+  } catch (error) {
     try {
       ops.unlinkSync(tmpPath);
-    } catch (unlinkExc) {
+    } catch (error_) {
       // `Path.unlink(missing_ok=True)` — only ENOENT is suppressed.
-      if ((unlinkExc as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw unlinkExc;
+      if ((error_ as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error_;
       }
     }
-    throw exc;
+    throw error;
   }
 }
 
 /**
- * Raise {@link CredentialPathError} if `path` itself is a symlink
- * (port of `reject_if_symlink`, `io_utils.py:182-235`).
+ * Throw {@link CredentialPathError} if `path` itself is a symlink,
+ * dangling or live; return silently otherwise.
  *
- * `lstat` the path, throw if it's a symlink (dangling or live), return
- * silently otherwise. Missing paths are intentionally a no-op — the
- * existence check is the caller's concern. This restores the
- * attack-signal that `existsSync` (which follows symlinks and returns
- * `false` for dangling links) would hide.
- *
+ * @remarks
+ * Missing paths are intentionally a no-op: the existence check is the
+ * caller's concern. Probing with `lstat` restores the attack signal that
+ * `existsSync` (which follows symlinks and returns `false` for dangling
+ * links) would hide.
  * @param path - Credential file path to probe.
- * @throws CredentialPathError - `path` is a symlink.
+ * @throws {@link CredentialPathError} - `path` is a symlink.
+ * @example
+ * ```ts
+ * rejectIfSymlink(path); // throws on a symlink, silent otherwise
+ * if (!existsSync(path)) return null;
+ * ```
+ * @see mixpanel_headless._internal.io_utils.reject_if_symlink
  */
 export function rejectIfSymlink(path: string): void {
   const st = lstatSync(path, { throwIfNoEntry: false });
@@ -317,30 +339,32 @@ export function rejectIfSymlink(path: string): void {
 }
 
 /**
- * Read bytes from `path` while refusing every structural attack the
- * lstat/stat substitution can express (port of `read_credential_bytes`,
- * `io_utils.py:436-496`, under the module-header R9.2 drop).
+ * Read bytes from `path`, refusing every structural attack the
+ * lstat/stat checks can express.
  *
- * Refusals (each a {@link CredentialPathError}):
- *
- * - symlink at the path — live OR dangling (`ELOOP`);
- * - non-regular file: directory, FIFO, device (`EINVAL`) — checked
- *   BEFORE any open, so a FIFO cannot hang the process;
- * - group/world mode bits (`EPERM`; skipped on Windows exactly as
- *   Python skips its fstat invariants there);
- * - size above {@link MAX_CREDENTIAL_BYTES} (`EFBIG`).
- *
- * A missing non-symlink path throws the node `ENOENT` error verbatim
- * (the `FileNotFoundError` twin) — NOT a {@link CredentialPathError} —
- * preserving the call-site control flow (`io_utils.py:431-434` test
- * contract).
- *
+ * @remarks
+ * Refusals, each a {@link CredentialPathError}: a symlink at the path,
+ * live or dangling (`ELOOP`); a non-regular file such as a directory,
+ * FIFO or device (`EINVAL`), checked before any open so a FIFO cannot
+ * hang the process; group/world mode bits (`EPERM`, skipped on Windows
+ * exactly as Python skips its fstat invariants there); a size above
+ * {@link MAX_CREDENTIAL_BYTES} (`EFBIG`). A missing non-symlink path
+ * throws the node `ENOENT` error verbatim (the `FileNotFoundError`
+ * twin), not a {@link CredentialPathError}, preserving the call-site
+ * control flow.
  * @param path - File to read.
  * @returns The file contents.
- * @throws CredentialPathError - Any structural refusal above.
+ * @throws {@link CredentialPathError} - Any structural refusal above.
  * @throws Error - `ENOENT` and any other node I/O failure, verbatim.
+ * @example
+ * ```ts
+ * const bytes = readCredentialBytes(join(accountDir(name), "tokens.json"));
+ * const tokens = JSON.parse(new TextDecoder().decode(bytes));
+ * ```
+ * @see mixpanel_headless._internal.io_utils.read_credential_bytes
  */
 export function readCredentialBytes(path: string): Uint8Array {
+  // Divergence: Python opens with `O_NOFOLLOW|O_CLOEXEC` through a dirfd walk and checks the invariants on the open fd; the port checks `lstat`/`stat` first and then reads by path, so a swap between the probe and `readFileSync` is a TOCTOU window Python does not have.
   const st = lstatSync(path); // ENOENT propagates (FileNotFoundError twin).
   if (st.isSymbolicLink()) {
     throw new CredentialPathError(
@@ -380,29 +404,39 @@ export function readCredentialBytes(path: string): Uint8Array {
 
 /** Options bag of {@link readCredentialText}. */
 export interface ReadCredentialTextOptions {
-  /** Text encoding (default `utf-8`; every credential file is UTF-8). */
+  /**
+   * Text encoding; every credential file is UTF-8.
+   *
+   * @defaultValue `"utf-8"`
+   */
   readonly encoding?: string | undefined;
 }
 
 /**
- * UTF-8 (by default) wrapper around {@link readCredentialBytes} (port
- * of `read_credential_text`, `io_utils.py:497-516`).
+ * Read a credential file as text (UTF-8 by default) through
+ * {@link readCredentialBytes}.
  *
  * @param path - File to read.
  * @param options - Optional encoding override.
  * @returns Decoded file contents.
- * @throws CredentialPathError - `path` fails a structural safety check.
+ * @throws {@link CredentialPathError} - `path` fails a structural safety
+ *   check.
  * @throws TypeError - File bytes are invalid in the encoding — the
  *   `UnicodeDecodeError` twin (`TextDecoder` with `fatal: true`); call
  *   sites that let Python's `UnicodeDecodeError` propagate let this
  *   propagate too.
- * @throws Error - `ENOENT` / other node I/O failures, verbatim.
+ * @throws Error - `ENOENT` and other node I/O failures, verbatim.
+ * @example
+ * ```ts
+ * const raw = JSON.parse(readCredentialText(configPath));
+ * ```
+ * @see mixpanel_headless._internal.io_utils.read_credential_text
  */
 export function readCredentialText(
   path: string,
   options: ReadCredentialTextOptions = {},
 ): string {
-  const decoder = new TextDecoder(options.encoding ?? "utf-8", {
+  const decoder = new TextDecoder(options.encoding ?? "utf8", {
     fatal: true,
   });
   return decoder.decode(readCredentialBytes(path));
@@ -410,9 +444,9 @@ export function readCredentialText(
 
 /**
  * A synchronous chunk reader over stdin — the injectable seam of
- * {@link readCappedSecretFromStdin} (the `sys.stdin.buffer` BytesIO
- * stub twin; disclosed substitution: a `Readable` cannot be consumed
- * synchronously, so the seam is the `fs.readSync(0, …)` shape).
+ * {@link readCappedSecretFromStdin} (the `sys.stdin.buffer` BytesIO stub
+ * twin). A `Readable` cannot be consumed synchronously, so the seam has
+ * the `fs.readSync(0, …)` shape.
  *
  * @param buffer - Destination; implementations fill from offset 0.
  * @returns Bytes read (0 at EOF).
@@ -425,46 +459,58 @@ export type StdinReadSync = (buffer: Uint8Array) => number;
  *
  * @param buffer - Destination buffer.
  * @returns Bytes read (0 at EOF).
+ * @throws Error - Any `readSync` failure other than `EAGAIN` / `EOF`,
+ *   verbatim.
  */
 function defaultStdinReadSync(buffer: Uint8Array): number {
   for (;;) {
     try {
       return readSync(0, buffer, 0, buffer.length, null);
-    } catch (exc) {
-      const code = (exc as NodeJS.ErrnoException).code;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
       if (code === "EAGAIN") {
         continue;
       }
       if (code === "EOF") {
         return 0;
       }
-      throw exc;
+      throw error;
     }
   }
 }
 
 /** Options bag of {@link readCappedSecretFromStdin}. */
 export interface ReadSecretStdinOptions {
-  /** Injected chunk reader (default: `fs.readSync` on fd 0). */
+  /**
+   * Injected chunk reader.
+   *
+   * @defaultValue `fs.readSync` on fd 0
+   */
   readonly readSync?: StdinReadSync | undefined;
 }
 
 /**
  * Read a single secret value from stdin, capped at
- * {@link SECRET_STDIN_MAX_BYTES} (port of
- * `read_capped_secret_from_stdin`, `io_utils.py:517-545`).
+ * {@link SECRET_STDIN_MAX_BYTES}.
  *
- * Reads ALL bytes up to the cap, strips surrounding whitespace with
- * Python `str.strip()` semantics ({@link pythonStrip}, R11.7), and
- * rejects payloads larger than the cap rather than returning a
- * quietly-corrupted prefix.
- *
+ * @remarks
+ * Reads all bytes up to the cap, strips surrounding whitespace with
+ * Python `str.strip()` semantics ({@link pythonStrip}), and rejects
+ * payloads larger than the cap rather than returning a quietly
+ * corrupted prefix.
  * @param options - Optional injected reader (tests).
  * @returns The decoded secret with surrounding whitespace stripped.
- * @throws ConfigError - Empty/whitespace-only stdin, or a payload
- *   exceeding the cap (messages ported verbatim; out of contract).
+ * @throws {@link ConfigError} - Empty or whitespace-only stdin, or a
+ *   payload exceeding the cap (messages ported verbatim; out of
+ *   contract).
  * @throws TypeError - Payload is not valid UTF-8 (the strict-decode
  *   `UnicodeDecodeError` twin).
+ * @example
+ * ```ts
+ * // `echo "$SECRET" | mp account add --secret-stdin`
+ * const secret = readCappedSecretFromStdin();
+ * ```
+ * @see mixpanel_headless._internal.io_utils.read_capped_secret_from_stdin
  */
 export function readCappedSecretFromStdin(
   options: ReadSecretStdinOptions = {},

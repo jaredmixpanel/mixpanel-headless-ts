@@ -1,44 +1,28 @@
-// C8(b) entity-model golden tests (phase2-design C5 item 5 / C8b scope
-// extension, packet P2-7).
-//
-// Source of goldens: entity/data-governance wire vectors' plain
-// `expect.result` payloads — the recorder's `tagged_models=False`
-// field walk of the returned Pydantic model (every declared field
-// under its Python attribute name, computed fields appended) —
-// selected via `corpus/contract/model-coverage.json`: the test is
-// ARTIFACT-DRIVEN. Every model the artifact marks `entity_golden`
-// must have a handler row below, and every listed vector id must
-// resolve in the snapshot; a handler for a model the artifact does
-// NOT mark golden is a stale row and fails.
-//
-// Test body per model: decode the payload through the codec registry
-// ($type datetime/float children), `fromDict(...)` through the REAL
-// class, re-encode the full field walk (`toVectorPayload()`), and
-// diff against the ORIGINAL raw payload.
-//
-// Anti-vacuity (design C8b, arbiter V3): every golden adds (i) an
-// `instanceof` check on the decode product, (ii) an unknown-key
-// mutation probe — `extra='forbid'` models must throw
-// ResponseValidationError; lax models must DROP the unknown key from
-// `toJSON()` (so an echo implementation cannot pass), and (iii) an
-// `Object.keys(toJSON())` equality check against the class's declared
-// field list (+ computed fields).
+// Entity-model goldens, driven by corpus/contract/model-coverage.json: each
+// `entity_golden` model decodes its wire payload through the real class and
+// re-encodes the full field walk back to the original. Anti-vacuity per
+// golden: `instanceof`, an unknown-key probe (forbid → throw, lax → drop),
+// and `Object.keys(toJSON())` against the declared field list.
+
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
-import { ResponseValidationError } from "../../packages/core/src/errors.js";
+
+import * as entities from "@mixpanel-headless/core";
 import {
   parseWorkspaceRef,
+  ResponseValidationError,
   type WorkspaceRef,
-} from "../../packages/core/src/auth/session.js";
-import * as entities from "../../packages/core/src/types/entities/index.js";
+} from "@mixpanel-headless/core";
 import {
   EntityModel,
   type EntityModelStatics,
-} from "../../packages/core/src/types/entities/model-base.js";
+} from "@mixpanel-headless/core/internal";
+
 import { createRunnerDeps } from "../src/bindings.js";
-import { type JsonValue } from "../src/json-value.js";
+import type { JsonValue } from "../src/json-value.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
 import { diffPlainPayload } from "./support/plain-diff.js";
 
@@ -65,7 +49,7 @@ interface CoverageRow {
   readonly authored_fixture: string | null;
 }
 
-/** Parsed shape of the P2-1 model-coverage artifact. */
+/** Parsed shape of the model-coverage artifact. */
 interface ModelCoverage {
   readonly models: Readonly<Record<string, CoverageRow>>;
 }
@@ -108,7 +92,7 @@ interface GoldenHandler {
 function modelHandler(cls: EntityModelStatics): GoldenHandler {
   return {
     fromDict: (raw) => cls.fromDict(raw),
-    cls: cls as unknown as new (...args: never[]) => unknown,
+    cls,
     extraPolicy: cls.extraPolicy,
     toVectorPayload: (instance) => (instance as EntityModel).toVectorPayload(),
     toJSON: (instance) => (instance as EntityModel).toJSON(),
@@ -139,7 +123,7 @@ function workspaceRefToPayload(ref: WorkspaceRef): Record<string, unknown> {
 
 /**
  * The custom handler for `WorkspaceRef` — an auth-family interface +
- * parse factory (P2-4), not an {@link EntityModel} subclass. The
+ * parse factory, not an {@link EntityModel} subclass. The
  * mutation probe uses the lax arm: `parseWorkspaceRef` ignores unknown
  * keys and the serializer emits exactly the four declared fields, so
  * an echo cannot pass the declared-keys check.
@@ -155,8 +139,7 @@ const workspaceRefHandler: GoldenHandler = {
 };
 
 /**
- * The hand-maintained model -> handler table (reviewed in the P2-10
- * mini-audit). Keys must equal the artifact's `entity_golden` set —
+ * The hand-maintained model → handler table. Keys must equal the artifact's `entity_golden` set —
  * both directions are asserted below.
  */
 const HANDLERS: Readonly<Record<string, GoldenHandler>> = {
@@ -215,7 +198,7 @@ function extractPayloads(result: JsonValue): readonly JsonValue[] {
   return Array.isArray(result) ? result : [result];
 }
 
-describe("model-coverage accounting (P2-7 done-criterion)", () => {
+describe("model-coverage accounting", () => {
   it("no model remains unresolved — every row is golden/tag/fixture/deferral", () => {
     for (const [name, row] of Object.entries(coverage.models)) {
       expect(
@@ -233,97 +216,117 @@ describe("model-coverage accounting (P2-7 done-criterion)", () => {
       }
       expect(typeof row.authored_fixture, name).toBe("string");
       expect(
-        existsSync(resolve(repoRoot, row.authored_fixture as string)),
+        existsSync(resolve(repoRoot, row.authored_fixture!)),
         `${name} -> ${String(row.authored_fixture)}`,
       ).toBe(true);
     }
   });
 });
 
-describe("C8(b) entity-model goldens", () => {
+/**
+ * The observable outcome of decoding a payload that carries an unknown
+ * key: the surviving serialized keys, or `rejected` when the decode threw
+ * {@link ResponseValidationError} (any other throw propagates).
+ *
+ * @param decode - Decode-and-serialize thunk.
+ * @returns The outcome record compared against the model's extra policy.
+ */
+function unknownKeyOutcome(
+  decode: () => object,
+): { rejected: true } | { keys: string[] } {
+  try {
+    return { keys: Object.keys(decode()) };
+  } catch (error) {
+    if (error instanceof ResponseValidationError) {
+      return { rejected: true };
+    }
+    throw error;
+  }
+}
+
+describe("entity-model goldens", () => {
   it("handler table matches the artifact's entity_golden set exactly", () => {
-    expect(Object.keys(HANDLERS).sort()).toEqual(goldenModels);
+    expect(Object.keys(HANDLERS).sort()).toStrictEqual(goldenModels);
   });
 
-  for (const name of goldenModels) {
-    const handler = HANDLERS[name];
-    if (handler === undefined) {
-      continue; // reported by the set-equality test above
-    }
+  // Models without a handler are reported by the set-equality test above.
+  const handled = goldenModels.filter((name) => HANDLERS[name] !== undefined);
+  describe.each(handled)("%s", (name) => {
+    const handler = HANDLERS[name]!;
     const row = coverage.models[name];
     const ids = row === undefined ? [] : row.entity_golden_vector_ids;
+    // Class-backed handlers decode to the real core class (and its
+    // EntityModel base); the custom WorkspaceRef handler declares none.
+    const decodedClasses =
+      handler.cls === null ? [] : [handler.cls, EntityModel];
 
-    describe(name, () => {
-      it("resolves every artifact vector id in the snapshot", () => {
-        expect(ids.length).toBeGreaterThan(0);
-        for (const id of ids) {
-          expect(vectorsById.has(id), id).toBe(true);
-        }
-      });
-
-      it("round-trips every expect.result payload through the class", () => {
-        for (const id of ids) {
-          const vector = vectorsById.get(id);
-          if (vector === undefined) {
-            continue; // reported above
-          }
-          const result = vector.expect["result"] as JsonValue;
-          for (const [index, raw] of extractPayloads(result).entries()) {
-            const where = `${id} @ result[${String(index)}]`;
-            const decoded = deps.codecs.decodeValue(raw);
-            const instance = handler.fromDict(decoded);
-            if (handler.cls !== null) {
-              expect(instance, where).toBeInstanceOf(handler.cls);
-              expect(instance, where).toBeInstanceOf(EntityModel);
-            }
-            diffPlainPayload(handler.toVectorPayload(instance), raw, where);
-          }
-        }
-      });
-
-      it("survives the unknown-key mutation probe (anti-vacuity)", () => {
-        for (const id of ids) {
-          const vector = vectorsById.get(id);
-          if (vector === undefined) {
-            continue;
-          }
-          const result = vector.expect["result"] as JsonValue;
-          for (const raw of extractPayloads(result)) {
-            const decoded = deps.codecs.decodeValue(raw) as Readonly<
-              Record<string, unknown>
-            >;
-            const mutated = { ...decoded, __p2_7_unknown__: true };
-            if (handler.extraPolicy === "forbid") {
-              expect(() => handler.fromDict(mutated), id).toThrow(
-                ResponseValidationError,
-              );
-            } else {
-              // Lax models absorb the key but must DROP it from the
-              // serialized walk — an echo implementation fails here.
-              const instance = handler.fromDict(mutated);
-              expect(Object.keys(handler.toJSON(instance)), id).toEqual([
-                ...handler.declaredKeys,
-              ]);
-            }
-          }
-        }
-      });
-
-      it("toJSON() emits exactly the declared field list", () => {
-        for (const id of ids) {
-          const vector = vectorsById.get(id);
-          if (vector === undefined) {
-            continue;
-          }
-          const result = vector.expect["result"] as JsonValue;
-          for (const raw of extractPayloads(result)) {
-            const instance = handler.fromDict(deps.codecs.decodeValue(raw));
-            expect(Object.keys(handler.toJSON(instance)), id).toEqual([
-              ...handler.declaredKeys,
-            ]);
-          }
-        }
-      });
+    it("resolves every artifact vector id in the snapshot", () => {
+      expect(ids.length).toBeGreaterThan(0);
+      for (const id of ids) {
+        expect(vectorsById.has(id), id).toBe(true);
+      }
     });
-  }
+
+    it("round-trips every expect.result payload through the class", () => {
+      for (const id of ids) {
+        const vector = vectorsById.get(id);
+        if (vector === undefined) {
+          continue; // reported above
+        }
+        const result = vector.expect["result"] as JsonValue;
+        for (const [index, raw] of extractPayloads(result).entries()) {
+          const where = `${id} @ result[${String(index)}]`;
+          const decoded = deps.codecs.decodeValue(raw);
+          const instance = handler.fromDict(decoded);
+          for (const cls of decodedClasses) {
+            expect(instance, where).toBeInstanceOf(cls);
+          }
+          diffPlainPayload(handler.toVectorPayload(instance), raw, where);
+        }
+      }
+    });
+
+    it("survives the unknown-key mutation probe (anti-vacuity)", () => {
+      for (const id of ids) {
+        const vector = vectorsById.get(id);
+        if (vector === undefined) {
+          continue;
+        }
+        const result = vector.expect["result"] as JsonValue;
+        for (const raw of extractPayloads(result)) {
+          const decoded = deps.codecs.decodeValue(raw) as Readonly<
+            Record<string, unknown>
+          >;
+          const mutated = { ...decoded, __p2_7_unknown__: true };
+          // Forbid models reject; lax models absorb the key but must
+          // DROP it from the serialized walk — an echo implementation
+          // fails here.
+          expect(
+            unknownKeyOutcome(() => handler.toJSON(handler.fromDict(mutated))),
+            id,
+          ).toStrictEqual(
+            handler.extraPolicy === "forbid"
+              ? { rejected: true }
+              : { keys: [...handler.declaredKeys] },
+          );
+        }
+      }
+    });
+
+    it("toJSON() emits exactly the declared field list", () => {
+      for (const id of ids) {
+        const vector = vectorsById.get(id);
+        if (vector === undefined) {
+          continue;
+        }
+        const result = vector.expect["result"] as JsonValue;
+        for (const raw of extractPayloads(result)) {
+          const instance = handler.fromDict(deps.codecs.decodeValue(raw));
+          expect(Object.keys(handler.toJSON(instance)), id).toStrictEqual([
+            ...handler.declaredKeys,
+          ]);
+        }
+      }
+    });
+  });
 });

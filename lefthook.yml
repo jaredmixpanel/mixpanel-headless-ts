@@ -1,0 +1,24 @@
+# Git hooks (https://lefthook.dev/configuration/). Installed into .git/hooks
+# by lefthook's npm postinstall on `npm ci` (allowed in package.json
+# `allowScripts`; the postinstall skips itself when `CI` is set). Re-install
+# by hand after `--ignore-scripts`: `npx lefthook install`. Skip once with
+# `LEFTHOOK=0 git commit …`. The hooks are a fast local subset of the gate;
+# `npm run check` remains the contract before a push.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: eslint
+      glob: "*.{ts,mts,js,mjs,cjs}"
+      run: npx eslint --fix --no-warn-ignored {staged_files}
+      stage_fixed: true
+    - name: prettier
+      run: npx prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+pre-push:
+  jobs:
+    - name: typecheck
+      run: npm run typecheck
+    - name: tests
+      run: npm run test:fast

@@ -1,23 +1,22 @@
-// Dedicated async Layer-3 for B4-C2 (packet C2 §Layer-3 last row —
-// "NEW Vitest suites: streaming chunk behavior across await points,
-// retry timing in the export 429 loop, AsyncIterable early-return()"),
-// plus the `stream_events`/`stream_profiles` facade-wrapper locks (the
-// 3 B4 api-map members land in this shard; the B6 facade re-locks them
-// end-to-end when `Workspace` arrives).
-//
-// These are TS-native locks (no Python source test to translate — the
-// corpus records full-body `body_text` streams, so chunk-boundary and
-// cancellation behavior is Layer-3's job per the packet's
-// expectation-shape note).
+// TS-only async behaviour of the export stream: line reassembly across
+// delayed chunks, lazy yielding, early `return()`, Retry-After timing in the
+// export 429 loop, abort during the backoff sleep, plus the `streamEvents` /
+// `streamProfiles` facade wrappers. No Python source suite: the corpus records
+// full-body streams, so chunk-boundary and cancellation behaviour is locked here.
 import { describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
-import { ParamValidationError } from "../../src/errors.js";
 import type { JsonValue } from "../../src/client/json-value.js";
+import { ParamValidationError } from "../../src/errors.js";
 import {
   streamEvents,
   streamProfiles,
 } from "../../src/services/queries/streaming.js";
-import { makeSession, staticTokenResolver } from "./client-test-helpers.js";
+import {
+  drain,
+  makeSession,
+  staticTokenResolver,
+} from "../../test-support/client-test-helpers.js";
 
 /** Build a fetch serving one streamed response from explicit chunks. */
 function chunkedFetch(
@@ -25,13 +24,15 @@ function chunkedFetch(
   options: { status?: number; delayMs?: number } = {},
 ): typeof fetch {
   const encoder = new TextEncoder();
-  return (async (
+  return (
     _input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
     const signal = init?.signal ?? null;
     if (signal?.aborted === true) {
-      throw new DOMException("The operation was aborted.", "AbortError");
+      return Promise.reject(
+        new DOMException("The operation was aborted.", "AbortError"),
+      );
     }
     const body = new ReadableStream<Uint8Array>({
       async pull(controller): Promise<void> {
@@ -39,7 +40,7 @@ function chunkedFetch(
           controller.close();
           return;
         }
-        const next = chunks[0] as string;
+        const next = chunks[0]!;
         (chunks as string[]).shift();
         if (options.delayMs !== undefined) {
           // A real await point BETWEEN chunks — the consumer must
@@ -52,8 +53,10 @@ function chunkedFetch(
         }
       },
     });
-    return new Response(body, { status: options.status ?? 200 });
-  }) as typeof fetch;
+    return Promise.resolve(
+      new Response(body, { status: options.status ?? 200 }),
+    );
+  };
 }
 
 /** Assemble a client over an arbitrary fetch with recorded sleeps. */
@@ -68,8 +71,9 @@ function clientOver(
   const client = createMixpanelClient({
     session: makeSession(),
     fetch: fetchImpl,
-    sleep: async (ms: number): Promise<void> => {
+    sleep: (ms: number): Promise<void> => {
       sleeps.push(ms);
+      return Promise.resolve();
     },
     random: () => 0,
     tokenResolver: staticTokenResolver(),
@@ -136,17 +140,21 @@ describe("retry timing in the export 429 loop", () => {
   it("honors a positive Retry-After through the ms sleep seam", async () => {
     let calls = 0;
     const encoder = new TextEncoder();
-    const fetchImpl = (async (): Promise<Response> => {
+    const fetchImpl = ((): Promise<Response> => {
       calls += 1;
       if (calls === 1) {
-        return new Response(null, {
-          status: 429,
-          headers: { "Retry-After": "5" },
-        });
+        return Promise.resolve(
+          new Response(null, {
+            status: 429,
+            headers: { "Retry-After": "5" },
+          }),
+        );
       }
-      return new Response(encoder.encode('{"event":"A","properties":{}}\n'), {
-        status: 200,
-      });
+      return Promise.resolve(
+        new Response(encoder.encode('{"event":"A","properties":{}}\n'), {
+          status: 200,
+        }),
+      );
     }) as typeof fetch;
     const { client, sleeps } = clientOver(fetchImpl);
     const events: JsonValue[] = [];
@@ -154,15 +162,15 @@ describe("retry timing in the export 429 loop", () => {
       events.push(event);
     }
     expect(events).toHaveLength(1);
-    expect(sleeps).toEqual([5000]); // header path, unjittered, R2.12 ms.
+    expect(sleeps).toStrictEqual([5000]); // header path, unjittered, seconds→ms at the seam.
   });
 
   it("normalizes an abort during the backoff sleep to AbortError", async () => {
     const controller = new AbortController();
     let calls = 0;
-    const fetchImpl = (async (): Promise<Response> => {
+    const fetchImpl = ((): Promise<Response> => {
       calls += 1;
-      return new Response(null, { status: 429 });
+      return Promise.resolve(new Response(null, { status: 429 }));
     }) as typeof fetch;
     const sleeps: number[] = [];
     const client = createMixpanelClient({
@@ -182,15 +190,13 @@ describe("retry timing in the export 429 loop", () => {
     });
     let caught: unknown;
     try {
-      for await (const event of client.exportEvents(
-        "2024-01-01",
-        "2024-01-31",
-        { signal: controller.signal },
-      )) {
-        void event; // unreachable
-      }
-    } catch (exc) {
-      caught = exc;
+      await drain(
+        client.exportEvents("2024-01-01", "2024-01-31", {
+          signal: controller.signal,
+        }),
+      ); // unreachable past the abort
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(DOMException);
     expect((caught as DOMException).name).toBe("AbortError");
@@ -199,7 +205,7 @@ describe("retry timing in the export 429 loop", () => {
   });
 });
 
-describe("stream_events / stream_profiles facade wrappers", () => {
+describe("streamEvents / streamProfiles facade wrappers", () => {
   it("raw=true yields undecoded (untransformed) events", async () => {
     const fetchImpl = chunkedFetch([
       '{"event":"A","properties":{"time":1,"distinct_id":"u1"}}\n',
@@ -231,11 +237,11 @@ describe("stream_events / stream_profiles facade wrappers", () => {
       out.push(event as Record<string, unknown>);
     }
     expect(out).toHaveLength(1);
-    const transformed = out[0] as Record<string, unknown>;
+    const transformed = out[0]!;
     expect(transformed["event_name"]).toBe("Sign Up");
     expect(transformed["distinct_id"]).toBe("u1");
     expect(transformed["insert_id"]).toBe("fixed-uuid");
-    expect(transformed["properties"]).toEqual({ plan: "pro" });
+    expect(transformed["properties"]).toStrictEqual({ plan: "pro" });
   });
 
   it("validates limit lazily with the WR2/WR3 codes", async () => {
@@ -252,8 +258,8 @@ describe("stream_events / stream_profiles facade wrappers", () => {
       let caught: unknown;
       try {
         await iterator.next();
-      } catch (exc) {
-        caught = exc;
+      } catch (error) {
+        caught = error;
       }
       expect(caught).toBeInstanceOf(ParamValidationError);
       expect((caught as ParamValidationError).code).toBe(code);
@@ -261,18 +267,20 @@ describe("stream_events / stream_profiles facade wrappers", () => {
   });
 
   it("normalizes profiles via transformProfile", async () => {
-    const fetchImpl = (async (): Promise<Response> =>
-      new Response(
-        JSON.stringify({
-          results: [
-            {
-              $distinct_id: "u1",
-              $properties: { $last_seen: "2024-01-15T10:30:00", plan: "pro" },
-            },
-          ],
-          session_id: null,
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
+    const fetchImpl = ((): Promise<Response> =>
+      Promise.resolve(
+        Response.json(
+          {
+            results: [
+              {
+                $distinct_id: "u1",
+                $properties: { $last_seen: "2024-01-15T10:30:00", plan: "pro" },
+              },
+            ],
+            session_id: null,
+          },
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
       )) as typeof fetch;
     const { client } = clientOver(fetchImpl);
     const out: Array<Record<string, unknown>> = [];
@@ -282,6 +290,6 @@ describe("stream_events / stream_profiles facade wrappers", () => {
     expect(out).toHaveLength(1);
     expect(out[0]?.["distinct_id"]).toBe("u1");
     expect(out[0]?.["last_seen"]).toBe("2024-01-15T10:30:00");
-    expect(out[0]?.["properties"]).toEqual({ plan: "pro" });
+    expect(out[0]?.["properties"]).toStrictEqual({ plan: "pro" });
   });
 });

@@ -1,24 +1,22 @@
-// Layer-3 translation of `tests/pbt/test_resolver_pbt.py` (173 lines,
-// 5 Hypothesis properties) — B7-A2 packet §2.4 (`b7-packets.md`).
-//
-// Strategy shapes preserved (packet §2.4): name alphabet
-// `[a-zA-Z0-9_-]{1,12}`, project `^[1-9][0-9]{0,9}$`, workspace
-// 1..2^31−1. Mechanism substitutions (header-cited per R10.2):
-// - the tmp-dir `_build_cm` fixture becomes an in-memory
-//   `ResolverConfigSource` fake (fresh per example, as in Python);
-// - `monkeypatch.setenv` becomes an env-bag literal in the sources.
+// Resolver properties mirroring `tests/pbt/test_resolver_pbt.py` with the
+// same strategy shapes (name alphabet `[a-zA-Z0-9_-]{1,12}`, project
+// `^[1-9][0-9]{0,9}$`, workspace 1..2^31−1). The tmp-dir `_build_cm`
+// fixture becomes an in-memory `ResolverConfigSource` fake (fresh per
+// example); `monkeypatch.setenv` becomes an env-bag literal in the sources.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { parseAccount, type Account } from "../../src/auth/account.js";
-import type { ActiveSession } from "../../src/auth/session.js";
+
+import { type Account, parseAccount } from "../../src/auth/account.js";
 import {
-  resolveSession,
   type ResolverConfigSource,
   type ResolverEnv,
   type ResolverSources,
+  resolveSession,
 } from "../../src/auth/resolver.js";
-import { Target } from "../../src/types/entities/accounts.js";
+import type { ActiveSession } from "../../src/auth/session.js";
 import { AccountNotFoundError, ConfigError } from "../../src/errors.js";
+import type { Target } from "../../src/types/entities/accounts.js";
 
 /** Characters of the Python `_NAME_ALPHABET`. */
 const NAME_ALPHABET =
@@ -76,7 +74,6 @@ class PbtConfig implements ResolverConfigSource {
    * Look up a target (unused by these properties).
    *
    * @param name - Target name.
-   * @returns Never returns.
    * @throws ConfigError - Always (no targets registered).
    */
   getTarget(name: string): Target {
@@ -95,8 +92,8 @@ class PbtConfig implements ResolverConfigSource {
 
 /**
  * Build a fresh config seeded with one SA + active state (the
- * `_build_cm` twin: project lives on the account as `default_project`,
- * FR-012; only `account` goes to `[active]`).
+ * `_build_cm` twin: the project lives on the account as
+ * `default_project`; only `account` goes to `[active]`).
  *
  * @param name - Account name to register.
  * @param project - Project ID set as the account's `default_project`.
@@ -133,19 +130,21 @@ function sources(
   return { env, config, bridge: null };
 }
 
-describe("resolver PBT (test_resolver_pbt.py)", () => {
-  it("test_resolver_determinism", () => {
+describe("resolver PBT", () => {
+  it("resolution is deterministic", () => {
+    // python: test_resolver_determinism
     fc.assert(
       fc.property(accountNames, projectIds, (name, project) => {
         const config = buildCm(name, project);
         const s1 = resolveSession({}, sources(config));
         const s2 = resolveSession({}, sources(config));
-        expect(s1).toEqual(s2);
+        expect(s1).toStrictEqual(s2);
       }),
     );
   });
 
-  it("test_axis_independence_project_does_not_change_account", () => {
+  it("perturbing the project axis does not change the account", () => {
+    // python: test_axis_independence_project_does_not_change_account
     fc.assert(
       fc.property(
         accountNames,
@@ -158,13 +157,14 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
             { project: perturbedProject },
             sources(config),
           );
-          expect(sBase.account).toEqual(sPerturbed.account);
+          expect(sBase.account).toStrictEqual(sPerturbed.account);
         },
       ),
     );
   });
 
-  it("test_axis_independence_workspace_does_not_change_account_or_project", () => {
+  it("perturbing the workspace axis does not change account or project", () => {
+    // python: test_axis_independence_workspace_does_not_change_account_or_project
     fc.assert(
       fc.property(
         accountNames,
@@ -174,14 +174,15 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
           const config = buildCm(name, project);
           const sBase = resolveSession({}, sources(config));
           const sPerturbed = resolveSession({ workspace }, sources(config));
-          expect(sBase.account).toEqual(sPerturbed.account);
-          expect(sBase.project).toEqual(sPerturbed.project);
+          expect(sBase.account).toStrictEqual(sPerturbed.account);
+          expect(sBase.project).toStrictEqual(sPerturbed.project);
         },
       ),
     );
   });
 
-  it("test_env_wins_for_project_axis", () => {
+  it("env wins on the project axis", () => {
+    // python: test_env_wins_for_project_axis
     fc.assert(
       fc.property(
         accountNames,
@@ -199,7 +200,8 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
     );
   });
 
-  it("test_env_wins_for_workspace_axis", () => {
+  it("env wins on the workspace axis", () => {
+    // python: test_env_wins_for_workspace_axis
     fc.assert(
       fc.property(
         accountNames,

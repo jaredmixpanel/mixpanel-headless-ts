@@ -1,0 +1,17 @@
+// Solution file: `tsc -b` (npm run typecheck) builds the three library
+// projects into their `dist/` and type-checks every test/rig/script project.
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/core/tsconfig.test.json" },
+    { "path": "packages/browser" },
+    { "path": "packages/browser/tsconfig.test.json" },
+    { "path": "packages/node" },
+    { "path": "packages/node/tsconfig.test.json" },
+    { "path": "conformance-runner" },
+    { "path": "differential" },
+    { "path": "scripts" },
+    { "path": "tsconfig.tests.json" }
+  ]
+}

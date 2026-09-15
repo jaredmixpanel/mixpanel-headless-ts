@@ -1,42 +1,42 @@
 /**
- * The real on-disk `ResolverConfigSource & ConfigWrites` adapter over
- * {@link ConfigManager} (b8-packets.md §2.1 row 2, §2.4) — the node
- * implementation of the `config.*` members of `UNPORTED_AUTH_SEAMS`
- * (packet §4.4 owner map, N1 rows).
+ * The on-disk `ResolverConfigSource & ConfigWrites` adapter over
+ * {@link ConfigManager} — the node implementation of the `config.*`
+ * members of `UNPORTED_AUTH_SEAMS`.
  *
- * Layering (B7-ARB-B B-E2E-N1, `auth-effects.ts` interface JSDoc): the
- * FR-045 first-account promotion happens exactly ONCE, in THIS
- * adapter's {@link NodeConfigSource.addAccount} transaction — the
- * `accounts.py:472-489` twin (`_apply_add_account` + first-account
- * `_apply_set_active` under one `_mutate()`). The underlying
- * {@link ConfigManager.addAccount} stays non-promoting
- * (`test_config.py`'s asserts lock that layer).
+ * The first-account promotion to `[active].account` happens exactly
+ * once, in this adapter's {@link NodeConfigSource.addAccount}
+ * transaction (Python's `accounts.add` runs `_apply_add_account` and
+ * `_apply_set_active` under one `_mutate()`); the underlying
+ * {@link ConfigManager.addAccount} stays non-promoting, as Python's
+ * config-layer tests require.
+ *
+ * @see mixpanel_headless.accounts.add
  */
 
-import type {
-  AddAccountParams,
-  AddTargetOptions,
-  ApplySessionUpdate,
-  ConfigWrites,
-  SetActiveUpdate,
-  UpdateAccountFields,
-} from "../../core/src/accounts/auth-effects.js";
-import type { Account } from "../../core/src/auth/account.js";
-import type { ResolverConfigSource } from "../../core/src/auth/resolver.js";
-import type { ActiveSession } from "../../core/src/auth/session.js";
-import { isPythonDict } from "../../core/src/compat/python-dict.js";
-import type {
-  AccountSummary,
-  Target,
-} from "../../core/src/types/entities/accounts.js";
+import {
+  type Account,
+  type AccountSummary,
+  type ActiveSession,
+  type AddAccountParams,
+  type AddTargetOptions,
+  type ApplySessionUpdate,
+  type ConfigWrites,
+  isPythonDict,
+  type ResolverConfigSource,
+  type SetActiveUpdate,
+  type Target,
+  type UpdateAccountFields,
+} from "@mixpanel-headless/core";
+
 import { ConfigManager } from "./config.js";
 
-/** Options of {@link createNodeConfigSource} (packet §2.4). */
+/** Options of {@link createNodeConfigSource}. */
 export interface NodeConfigSourceOptions {
   /**
-   * Config file path override (defaults to `$MP_CONFIG_PATH` at
-   * construction, else `~/.mp/config.toml` — the
-   * {@link ConfigManager} ctor rules).
+   * Config file path override (the {@link ConfigManager} constructor
+   * rules).
+   *
+   * @defaultValue `$MP_CONFIG_PATH` at construction, else `~/.mp/config.toml`
    */
   readonly configPath?: string | undefined;
 }
@@ -53,12 +53,11 @@ export type NodeConfigSource = ResolverConfigSource &
  *
  * @param options - Optional config path override.
  * @returns The adapter bound to one {@link ConfigManager}.
- *
  * @example
- * ```typescript
+ * ```ts
  * const config = createNodeConfigSource({ configPath: "/tmp/x/config.toml" });
  * config.addAccount("team", { type: "oauth_browser", region: "us" });
- * config.getActive(); // { account: "team" } — FR-045 promotion
+ * config.getActive(); // { account: "team" } — first-account promotion
  * ```
  */
 export function createNodeConfigSource(
@@ -69,14 +68,14 @@ export function createNodeConfigSource(
   return {
     manager,
 
-    // ---- ResolverConfigSource (reads) ------------------------------
+    // --- ResolverConfigSource (reads) ---
 
     /**
      * Load a named account.
      *
      * @param name - Account name.
      * @returns The account record.
-     * @throws ConfigError - Unknown name (`config.py:549`).
+     * @throws {@link ConfigError} - Unknown name.
      */
     getAccount(name: string): Account {
       return manager.getAccount(name);
@@ -96,7 +95,7 @@ export function createNodeConfigSource(
      *
      * @param name - Target name.
      * @returns The target record.
-     * @throws ConfigError - Unknown name.
+     * @throws {@link ConfigError} - Unknown name.
      */
     getTarget(name: string): Target {
       return manager.getTarget(name);
@@ -111,22 +110,21 @@ export function createNodeConfigSource(
       return manager.getCustomHeader();
     },
 
-    // ---- ConfigWrites ----------------------------------------------
+    // --- ConfigWrites ---
 
     /**
-     * Add an account, promoting the FIRST-ever account to
-     * `[active].account` in the SAME transaction (FR-045; the
-     * `accounts.py:472-489` composition).
+     * Add an account, promoting the first-ever account to
+     * `[active].account` in the same transaction.
      *
      * @param name - Account name.
      * @param params - Typed credential fields.
-     * @throws ConfigError - Duplicate name (PLAIN ConfigError,
-     *   B-E2E-F1) or validation failure.
+     * @throws {@link ConfigError} - Duplicate name (a plain
+     *   `ConfigError`, not `AccountExistsError`) or validation failure.
      */
     addAccount(name: string, params: AddAccountParams): void {
       manager.transaction((raw) => {
-        // `is_first = not (raw.get("accounts") or {})` — evaluated
-        // BEFORE the insert (`accounts.py:476`).
+        // `is_first = not (raw.get("accounts") or {})`, evaluated before
+        // the insert.
         const accounts = raw["accounts"];
         const isFirst =
           !isPythonDict(accounts) || Object.keys(accounts).length === 0;
@@ -138,35 +136,36 @@ export function createNodeConfigSource(
     },
 
     /**
-     * Update fields on an existing account (`config.py:607-650`).
+     * Update fields on an existing account.
      *
      * @param name - Account to update.
      * @param fields - Fields to rewrite.
-     * @throws ConfigError - Missing account, type-incompatible field,
-     *   or validation failure.
+     * @throws {@link ConfigError} - Missing account, type-incompatible
+     *   field, or validation failure.
      */
     updateAccount(name: string, fields: UpdateAccountFields): void {
       manager.updateAccount(name, fields);
     },
 
     /**
-     * Remove an account (`config.py:652-692`).
+     * Remove an account.
      *
      * @param name - Account to remove.
-     * @param removeOptions - `force` removes despite target refs.
+     * @param removalOptions - Removal switches; `force` removes the
+     *   account even when targets still reference it.
      * @returns Sorted names of targets that referenced the account.
-     * @throws ConfigError - Missing account.
-     * @throws AccountInUseError - Referenced and `force` not set.
+     * @throws {@link ConfigError} - Missing account.
+     * @throws {@link AccountInUseError} - Referenced and `force` not set.
      */
     removeAccount(
       name: string,
-      removeOptions: { readonly force?: boolean } = {},
+      removalOptions: { readonly force?: boolean } = {},
     ): string[] {
-      return manager.removeAccount(name, removeOptions);
+      return manager.removeAccount(name, removalOptions);
     },
 
     /**
-     * List account summaries sorted by name (`config.py:494-532`).
+     * List account summaries sorted by name.
      *
      * @returns The summaries.
      */
@@ -175,12 +174,12 @@ export function createNodeConfigSource(
     },
 
     /**
-     * Update `[active]` axes in ONE transaction. `workspace: null`
-     * CLEARS the axis (the `accounts.use` account-swap clear —
-     * `SetActiveUpdate` JSDoc; both writes in a single transaction).
+     * Update `[active]` axes in one transaction. `workspace: null`
+     * clears the axis (the `accounts.use` account-swap clear); both
+     * writes land in a single transaction.
      *
      * @param update - The axes to touch.
-     * @throws ConfigError - Unknown account or invalid workspace.
+     * @throws {@link ConfigError} - Unknown account or invalid workspace.
      */
     setActive(update: SetActiveUpdate): void {
       manager.transaction((raw) => {
@@ -196,38 +195,37 @@ export function createNodeConfigSource(
     },
 
     /**
-     * Atomically apply per-axis session updates
-     * (`config.py:764-835`).
+     * Atomically apply per-axis session updates.
      *
      * @param update - The axes to touch.
-     * @throws ParamValidationError - `workspace` with
-     *   `clear_workspace` (the bare-ValueError twin).
-     * @throws ConfigError - Unknown account, or `project` with no
-     *   resolvable account.
+     * @throws {@link ParamValidationError} - `workspace` combined with
+     *   `clear_workspace` (Python raises a bare `ValueError`).
+     * @throws {@link ConfigError} - Unknown account, or `project` with
+     *   no resolvable account.
      */
     applySession(update: ApplySessionUpdate): void {
       manager.applySession(update);
     },
 
     /**
-     * Apply a target: `[active]` replaced wholesale + the target
-     * account's `default_project` updated, one transaction
-     * (`config.py:951-1002`).
+     * Apply a target: `[active]` is replaced wholesale and the target
+     * account's `default_project` updated, in one transaction.
      *
      * @param name - Target to apply.
-     * @throws ConfigError - Unknown target OR its account is gone.
+     * @throws {@link ConfigError} - Unknown target, or its account is
+     *   gone.
      */
     applyTarget(name: string): void {
       manager.applyTarget(name);
     },
 
     /**
-     * Add a target block (`config.py:887-934`).
+     * Add a target block.
      *
      * @param name - Target name.
-     * @param targetOptions - account / project / workspace.
+     * @param targetOptions - Account, project and workspace axes.
      * @returns The constructed target.
-     * @throws ConfigError - Duplicate name, missing account, or
+     * @throws {@link ConfigError} - Duplicate name, missing account, or
      *   wrapped model validation failure.
      */
     addTarget(name: string, targetOptions: AddTargetOptions): Target {
@@ -235,17 +233,17 @@ export function createNodeConfigSource(
     },
 
     /**
-     * Remove a target block (`config.py:936-949`).
+     * Remove a target block.
      *
      * @param name - Target to remove.
-     * @throws ConfigError - Unknown target.
+     * @throws {@link ConfigError} - Unknown target.
      */
     removeTarget(name: string): void {
       manager.removeTarget(name);
     },
 
     /**
-     * List targets sorted by name (`config.py:837-860`).
+     * List targets sorted by name.
      *
      * @returns The targets.
      */

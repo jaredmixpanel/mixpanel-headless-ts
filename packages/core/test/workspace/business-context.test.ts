@@ -1,47 +1,35 @@
-// B6-W1 Layer-3 translation of
-// `tests/unit/test_workspace_business_context.py` (WHOLE file, 583
-// lines — packet §3 table): `TestGetBusinessContextProject` (:146),
-// `TestSetBusinessContextProject` (:230),
-// `TestClearBusinessContextProject` (:324),
-// `TestGetBusinessContextOrganization` (:350),
-// `TestSetBusinessContextOrganization` (:446),
-// `TestGetBusinessContextChain` (:483).
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(handler)` becomes
-// `makeWorkspace(handler)`; `_stub_me(ws, …)` installs a canned
-// MeService through the facade's `meService` accessor (Python assigns
-// `ws._me_service` directly).
-//
-// R5.4: message assertions in the Python file (`missing required field
-// 'content'`) are kept as CODE + shape assertions plus the message
-// regex, matching the Python intent without promoting the text to
-// contract.
+// `Workspace.getBusinessContext` / `setBusinessContext` /
+// `clearBusinessContext` / `getBusinessContextChain` at project and
+// organization level. Mirrors `tests/unit/test_workspace_business_context.py`
+// (whole file). `httpx.MockTransport` becomes the injected-fetch seam and
+// `_stub_me` a spied `meService`; message asserts stay code + regex.
 
 import { describe, expect, it, vi } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
+import { MeOrgInfo, MeProjectInfo, MeResponse } from "../../src/client/me.js";
 import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../client/client-test-helpers.js";
-import {
-  MixpanelHeadlessError,
   BusinessContextValidationError,
+  MixpanelHeadlessError,
   QueryError,
   WorkspaceScopeError,
 } from "../../src/errors.js";
+import type { MeService } from "../../src/services/me.js";
 import {
   BUSINESS_CONTEXT_MAX_CHARS,
   BusinessContext,
   BusinessContextChain,
 } from "../../src/types/entities/business-context.js";
-import { MeOrgInfo, MeProjectInfo, MeResponse } from "../../src/client/me.js";
-import type { MeService } from "../../src/services/me.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
+import { expectRejects } from "../../test-support/raises.js";
 
-/** The `_session()` helper (:54-61) — project 12345, us, oauth token. */
+/** The `_session()` helper — project 12345, us, oauth token. */
 const SESSION = makeSession({
   projectId: "12345",
   region: "us",
@@ -49,7 +37,7 @@ const SESSION = makeSession({
 });
 
 /**
- * Build a 200 App-API response wrapping `results` (`_ok`, :133).
+ * Build a 200 App-API response wrapping `results` (`_ok`).
  *
  * @param results - The `results` payload.
  * @returns The canned response.
@@ -60,7 +48,7 @@ function ok(results: Record<string, unknown>): CannedResponse {
 
 /**
  * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :63-74).
+ * (`_make_workspace`).
  *
  * @param handler - The canned-response handler.
  * @returns The facade plus the transport capture log.
@@ -74,10 +62,13 @@ function makeWorkspace(
 
 /**
  * Pre-populate the facade's MeService with a canned MeResponse
- * (`_stub_me`, :77-131).
+ * (`_stub_me`).
  *
  * @param ws - The facade.
- * @param options - Which orgs/projects the canned `/me` carries.
+ * @param options - Which orgs/projects the canned `/me` carries:
+ *   `projectOrg` (the active project's org id; default 100, `null` for
+ *   none), `extraOrgs` (extra `organizations` entries keyed as `/me` keys
+ *   them) and `noActiveProject` (omit the active project from `projects`).
  */
 function stubMe(
   ws: Workspace,
@@ -120,7 +111,8 @@ function seenOf(transport: FakeTransport): string[] {
   );
 }
 
-describe("TestGetBusinessContextProject (:146)", () => {
+describe("Get business context project", () => {
+  // python: TestGetBusinessContextProject
   it("GET returns a BusinessContext with project_id and content", async () => {
     const { ws, transport } = makeWorkspace(() =>
       ok({ content: "# Project context\n\nHello." }),
@@ -135,7 +127,7 @@ describe("TestGetBusinessContextProject (:146)", () => {
     expect(ctx.content).toBe("# Project context\n\nHello.");
     expect(ctx.is_empty).toBe(false);
     expect(ctx.character_count).toBe("# Project context\n\nHello.".length);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/business-context",
     ]);
   });
@@ -167,7 +159,15 @@ describe("TestGetBusinessContextProject (:146)", () => {
     await expect(
       ws.getBusinessContext({ level: "org" as "organization" }),
     ).rejects.toMatchObject({ code: "WS2_INVALID_LEVEL" });
-    expect(transport.captures.length).toBe(0);
+    expect(transport.captures).toHaveLength(0);
+  });
+
+  it("a non-string `content` names the offending Python type", async () => {
+    const { ws } = makeWorkspace(() => ok({ content: true }));
+
+    await expect(ws.getBusinessContext({ level: "project" })).rejects.toThrow(
+      /field 'content' is bool, expected str/,
+    );
   });
 
   it("a response without `content` raises MixpanelHeadlessError", async () => {
@@ -182,7 +182,8 @@ describe("TestGetBusinessContextProject (:146)", () => {
   });
 });
 
-describe("TestSetBusinessContextProject (:230)", () => {
+describe("Set business context project", () => {
+  // python: TestSetBusinessContextProject
   it("SET issues PUT with a {content} body", async () => {
     const bodies: Array<[string, string, unknown]> = [];
     const { ws } = makeWorkspace((request) => {
@@ -198,7 +199,7 @@ describe("TestSetBusinessContextProject (:230)", () => {
     expect(ctx.level).toBe("project");
     expect(ctx.project_id).toBe("12345");
     expect(ctx.content).toBe("# New content");
-    expect(bodies).toEqual([
+    expect(bodies).toStrictEqual([
       [
         "PUT",
         "/api/app/projects/12345/business-context",
@@ -210,17 +211,16 @@ describe("TestSetBusinessContextProject (:230)", () => {
   it("50_001 chars rejects client-side with no HTTP call", async () => {
     const { ws, transport } = makeWorkspace(() => ok({ content: "" }));
 
-    try {
-      await ws.setBusinessContext("x".repeat(BUSINESS_CONTEXT_MAX_CHARS + 1));
-      expect.unreachable("oversize content must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(BusinessContextValidationError);
-      const err = exc as BusinessContextValidationError;
-      expect(err.details["length"]).toBe(BUSINESS_CONTEXT_MAX_CHARS + 1);
-      expect(err.details["max"]).toBe(BUSINESS_CONTEXT_MAX_CHARS);
-      expect(err.code).toBe("BUSINESS_CONTEXT_TOO_LONG");
-    }
-    expect(transport.captures.length).toBe(0);
+    const error = await expectRejects(
+      ws.setBusinessContext("x".repeat(BUSINESS_CONTEXT_MAX_CHARS + 1)),
+      "oversize content must throw",
+    );
+    expect(error).toBeInstanceOf(BusinessContextValidationError);
+    const err = error as BusinessContextValidationError;
+    expect(err.details).toHaveLength(BUSINESS_CONTEXT_MAX_CHARS + 1);
+    expect(err.details["max"]).toBe(BUSINESS_CONTEXT_MAX_CHARS);
+    expect(err.code).toBe("BUSINESS_CONTEXT_TOO_LONG");
+    expect(transport.captures).toHaveLength(0);
   });
 
   it("exactly 50,000 chars passes client-side validation", async () => {
@@ -259,11 +259,12 @@ describe("TestSetBusinessContextProject (:230)", () => {
     await expect(
       ws.setBusinessContext("x", { level: "oops" as "organization" }),
     ).rejects.toMatchObject({ code: "WS2_INVALID_LEVEL" });
-    expect(transport.captures.length).toBe(0);
+    expect(transport.captures).toHaveLength(0);
   });
 });
 
-describe("TestClearBusinessContextProject (:324)", () => {
+describe("Clear business context project", () => {
+  // python: TestClearBusinessContextProject
   it("CLEAR issues PUT with an empty content body", async () => {
     const bodies: unknown[] = [];
     const { ws } = makeWorkspace((request) => {
@@ -276,11 +277,12 @@ describe("TestClearBusinessContextProject (:324)", () => {
 
     expect(ctx.level).toBe("project");
     expect(ctx.is_empty).toBe(true);
-    expect(bodies).toEqual([{ content: "" }]);
+    expect(bodies).toStrictEqual([{ content: "" }]);
   });
 });
 
-describe("TestGetBusinessContextOrganization (:350)", () => {
+describe("Get business context organization", () => {
+  // python: TestGetBusinessContextOrganization
   it("an explicit organization_id skips the /me fetch", async () => {
     const { ws, transport } = makeWorkspace(() =>
       ok({ content: "# Org content" }),
@@ -304,7 +306,7 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
     expect(ctx.organization_id).toBe(42);
     expect(ctx.project_id).toBeNull();
     expect(ctx.content).toBe("# Org content");
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/organizations/42/business-context",
     ]);
   });
@@ -318,7 +320,7 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
     const ctx = await ws.getBusinessContext({ level: "organization" });
 
     expect(ctx.organization_id).toBe(100);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/organizations/100/business-context",
     ]);
   });
@@ -334,7 +336,7 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
     const ctx = await ws.getBusinessContext({ level: "organization" });
 
     expect(ctx.organization_id).toBe(77);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/organizations/77/business-context",
     ]);
   });
@@ -349,21 +351,21 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
       noActiveProject: true,
     });
 
-    try {
-      await ws.getBusinessContext({ level: "organization" });
-      expect.unreachable("ambiguous org must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(WorkspaceScopeError);
-      const err = exc as WorkspaceScopeError;
-      expect(err.code).toBe("ORGANIZATION_AMBIGUOUS");
-      expect(err.details["project_id"]).toBe("12345");
-      expect(err.details["available_organizations"]).toEqual(["1", "2"]);
-    }
-    expect(transport.captures.length).toBe(0);
+    const error = await expectRejects(
+      ws.getBusinessContext({ level: "organization" }),
+      "ambiguous org must throw",
+    );
+    expect(error).toBeInstanceOf(WorkspaceScopeError);
+    const err = error as WorkspaceScopeError;
+    expect(err.code).toBe("ORGANIZATION_AMBIGUOUS");
+    expect(err.details["project_id"]).toBe("12345");
+    expect(err.details["available_organizations"]).toStrictEqual(["1", "2"]);
+    expect(transport.captures).toHaveLength(0);
   });
 });
 
-describe("TestSetBusinessContextOrganization (:446)", () => {
+describe("Set business context organization", () => {
+  // python: TestSetBusinessContextOrganization
   it("org SET hits the /organizations/{id} path", async () => {
     const seen: Array<[string, string, unknown]> = [];
     const { ws } = makeWorkspace((request) => {
@@ -380,7 +382,7 @@ describe("TestSetBusinessContextOrganization (:446)", () => {
     expect(ctx.level).toBe("organization");
     expect(ctx.organization_id).toBe(100);
     expect(ctx.content).toBe("# Org-wide");
-    expect(seen).toEqual([
+    expect(seen).toStrictEqual([
       [
         "PUT",
         "/api/app/organizations/100/business-context",
@@ -390,7 +392,8 @@ describe("TestSetBusinessContextOrganization (:446)", () => {
   });
 });
 
-describe("TestGetBusinessContextChain (:483)", () => {
+describe("Get business context chain", () => {
+  // python: TestGetBusinessContextChain
   it("the chain returns both scopes from one round-trip", async () => {
     const { ws, transport } = makeWorkspace(() =>
       ok({ org_context: "# Org info", project_context: "# Project info" }),
@@ -406,7 +409,7 @@ describe("TestGetBusinessContextChain (:483)", () => {
     expect(chain.project.level).toBe("project");
     expect(chain.project.project_id).toBe("12345");
     expect(chain.project.content).toBe("# Project info");
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/business-context/chain",
     ]);
   });
@@ -432,14 +435,14 @@ describe("TestGetBusinessContextChain (:483)", () => {
     });
     // Do NOT stub the MeService — the facade's own service was never
     // constructed, so `_cached_organization_id` returns None
-    // (`workspace.py:10355-10357`).
+    // (`workspace.py`).
 
     const chain = await ws.getBusinessContextChain();
 
     expect(chain.organization.organization_id).toBeNull();
     expect(chain.organization.content).toBe("# Org");
     expect(chain.project.content).toBe("# Project");
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/business-context/chain",
     ]);
   });
@@ -448,9 +451,9 @@ describe("TestGetBusinessContextChain (:483)", () => {
     const { ws } = makeWorkspace(() => ok({ project_context: "# Project" }));
 
     const call = ws.getBusinessContextChain();
-    // B6-ARB (assertions Finding C): Python asserts BOTH the class and
-    // the message (`pytest.raises(MixpanelHeadlessError)` + str-contains,
-    // test_workspace_business_context.py TestGetBusinessContextChain).
+    // Python asserts both the class and the message
+    // (`pytest.raises(MixpanelHeadlessError)` plus a str-contains), so
+    // both are locked.
     await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
     await expect(call).rejects.toThrow(/missing required field 'org_context'/);
   });

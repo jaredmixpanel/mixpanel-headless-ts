@@ -1,9 +1,10 @@
-// Translated FunnelQueryResult tests (packet P2-6):
-// assertion-for-assertion port of tests/test_types_funnel.py
-// (TestFunnelQueryResult) — R10.2. Same translation notes as
-// query-result.test.ts; frozen-immutability tests not ported
-// (compile-time `readonly`).
+// FunnelQueryResult: construction and defaults, overall_conversion_rate,
+// the df projection as row arrays and to_dict. Mirrors
+// tests/test_types_funnel.py (TestFunnelQueryResult); same translation
+// notes as query-result.test.ts; the frozen-immutability tests are not
+// carried (compile-time `readonly`).
 import { describe, expect, it } from "vitest";
+
 import { FunnelQueryResult } from "../../../src/types/results/query-engine.js";
 
 const SAMPLE_STEPS_DATA = [
@@ -31,23 +32,27 @@ const BASE = {
   to_date: "2025-03-31",
 } as const;
 
-describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
-  it("test_construction_with_required_fields", () => {
+describe("FunnelQueryResult", () => {
+  // python: TestFunnelQueryResult
+  it("construction with required fields", () => {
+    // python: test_construction_with_required_fields
     const result = new FunnelQueryResult(BASE);
     expect(result.computed_at).toBe("2025-04-05T12:00:00Z");
     expect(result.from_date).toBe("2025-01-01");
     expect(result.to_date).toBe("2025-03-31");
   });
 
-  it("test_default_values", () => {
+  it("default values", () => {
+    // python: test_default_values
     const result = new FunnelQueryResult(BASE);
-    expect(result.steps_data).toEqual([]);
-    expect(result.series).toEqual({});
-    expect(result.params).toEqual({});
-    expect(result.meta).toEqual({});
+    expect(result.steps_data).toStrictEqual([]);
+    expect(result.series).toStrictEqual({});
+    expect(result.params).toStrictEqual({});
+    expect(result.meta).toStrictEqual({});
   });
 
-  it("test_construction_with_all_fields", () => {
+  it("construction with all fields", () => {
+    // python: test_construction_with_all_fields
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -56,12 +61,13 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
       meta: { is_cached: true },
     });
     expect(result.steps_data).toHaveLength(2);
-    expect(result.series).toEqual({ key: "value" });
-    expect(result.params).toEqual({ funnel_type: "steps" });
-    expect(result.meta).toEqual({ is_cached: true });
+    expect(result.series).toStrictEqual({ key: "value" });
+    expect(result.params).toStrictEqual({ funnel_type: "steps" });
+    expect(result.meta).toStrictEqual({ is_cached: true });
   });
 
-  it("test_overall_conversion_rate_with_steps", () => {
+  it("overall conversion rate with steps", () => {
+    // python: test_overall_conversion_rate_with_steps
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -69,12 +75,14 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.overall_conversion_rate).toBe(0.12);
   });
 
-  it("test_overall_conversion_rate_empty_steps", () => {
+  it("overall conversion rate empty steps", () => {
+    // python: test_overall_conversion_rate_empty_steps
     const result = new FunnelQueryResult(BASE);
     expect(result.overall_conversion_rate).toBe(0.0);
   });
 
-  it("test_overall_conversion_rate_single_step", () => {
+  it("overall conversion rate single step", () => {
+    // python: test_overall_conversion_rate_single_step
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: [
@@ -91,7 +99,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.overall_conversion_rate).toBe(1.0);
   });
 
-  it("test_overall_conversion_rate_missing_key", () => {
+  it("overall conversion rate missing key", () => {
+    // python: test_overall_conversion_rate_missing_key
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: [{ event: "Signup", count: 100 }],
@@ -99,12 +108,13 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.overall_conversion_rate).toBe(0.0);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
     });
-    expect(result.rowColumns()).toEqual([
+    expect(result.rowColumns()).toStrictEqual([
       "step",
       "event",
       "count",
@@ -115,7 +125,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     ]);
   });
 
-  it("test_df_row_count_matches_steps", () => {
+  it("df row count matches steps", () => {
+    // python: test_df_row_count_matches_steps
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -123,34 +134,44 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.toRows()).toHaveLength(2);
   });
 
-  it("test_df_step_numbers_are_one_indexed", () => {
+  it("df step numbers are one indexed", () => {
+    // python: test_df_step_numbers_are_one_indexed
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
     });
-    expect(result.toRows().map((row) => row["step"])).toEqual([1, 2]);
+    expect(result.toRows().map((row) => row["step"])).toStrictEqual([1, 2]);
   });
 
-  it("test_df_values_match_steps_data", () => {
+  it("df values match steps data", () => {
+    // python: test_df_values_match_steps_data
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
     });
     const rows = result.toRows();
-    expect(rows.map((row) => row["event"])).toEqual(["Signup", "Purchase"]);
-    expect(rows.map((row) => row["count"])).toEqual([1000, 120]);
-    expect(rows.map((row) => row["step_conv_ratio"])).toEqual([1.0, 0.12]);
-    expect(rows.map((row) => row["overall_conv_ratio"])).toEqual([1.0, 0.12]);
-    expect(rows.map((row) => row["avg_time"])).toEqual([0.0, 86400.0]);
-    expect(rows.map((row) => row["avg_time_from_start"])).toEqual([
+    expect(rows.map((row) => row["event"])).toStrictEqual([
+      "Signup",
+      "Purchase",
+    ]);
+    expect(rows.map((row) => row["count"])).toStrictEqual([1000, 120]);
+    expect(rows.map((row) => row["step_conv_ratio"])).toStrictEqual([
+      1.0, 0.12,
+    ]);
+    expect(rows.map((row) => row["overall_conv_ratio"])).toStrictEqual([
+      1.0, 0.12,
+    ]);
+    expect(rows.map((row) => row["avg_time"])).toStrictEqual([0.0, 86400.0]);
+    expect(rows.map((row) => row["avg_time_from_start"])).toStrictEqual([
       0.0, 86400.0,
     ]);
   });
 
-  it("test_df_empty_steps_data", () => {
+  it("df empty steps data", () => {
+    // python: test_df_empty_steps_data
     const result = new FunnelQueryResult(BASE);
     expect(result.toRows()).toHaveLength(0);
-    expect(result.rowColumns()).toEqual([
+    expect(result.rowColumns()).toStrictEqual([
       "step",
       "event",
       "count",
@@ -161,15 +182,17 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     ]);
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_df_handles_missing_keys_in_steps_data", () => {
+  it("df handles missing keys in steps data", () => {
+    // python: test_df_handles_missing_keys_in_steps_data
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: [{ event: "Signup" }],
@@ -184,7 +207,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(row?.["avg_time_from_start"]).toBe(0.0);
   });
 
-  it("test_df_handles_missing_event_name", () => {
+  it("df handles missing event name", () => {
+    // python: test_df_handles_missing_event_name
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: [{ count: 100 }],
@@ -192,7 +216,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.toRows()[0]?.["event"]).toBe("Step 1");
   });
 
-  it("test_to_dict_returns_all_fields", () => {
+  it("to dict returns all fields", () => {
+    // python: test_to_dict_returns_all_fields
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -204,30 +229,32 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(data["computed_at"]).toBe("2025-04-05T12:00:00Z");
     expect(data["from_date"]).toBe("2025-01-01");
     expect(data["to_date"]).toBe("2025-03-31");
-    expect(data["steps_data"]).toEqual(SAMPLE_STEPS_DATA);
-    expect(data["series"]).toEqual({ raw: "data" });
-    expect(data["params"]).toEqual({ funnel_type: "steps" });
-    expect(data["meta"]).toEqual({ is_cached: false });
+    expect(data["steps_data"]).toStrictEqual(SAMPLE_STEPS_DATA);
+    expect(data["series"]).toStrictEqual({ raw: "data" });
+    expect(data["params"]).toStrictEqual({ funnel_type: "steps" });
+    expect(data["meta"]).toStrictEqual({ is_cached: false });
   });
 
-  it("test_to_dict_json_serializable", () => {
+  it("to dict JSON serializable", () => {
+    // python: test_to_dict_json_serializable
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
       params: { funnel_type: "steps" },
     });
-    const json_str = JSON.stringify(result.toJSON());
-    expect(json_str).toContain("2025-04-05T12:00:00Z");
-    expect(json_str).toContain("Signup");
-    expect(json_str).toContain("Purchase");
+    const jsonStr = JSON.stringify(result.toJSON());
+    expect(jsonStr).toContain("2025-04-05T12:00:00Z");
+    expect(jsonStr).toContain("Signup");
+    expect(jsonStr).toContain("Purchase");
   });
 
-  it("test_to_dict_with_defaults", () => {
+  it("to dict with defaults", () => {
+    // python: test_to_dict_with_defaults
     const result = new FunnelQueryResult(BASE);
     const data = result.toJSON();
-    expect(data["steps_data"]).toEqual([]);
-    expect(data["series"]).toEqual({});
-    expect(data["params"]).toEqual({});
-    expect(data["meta"]).toEqual({});
+    expect(data["steps_data"]).toStrictEqual([]);
+    expect(data["series"]).toStrictEqual({});
+    expect(data["params"]).toStrictEqual({});
+    expect(data["meta"]).toStrictEqual({});
   });
 });

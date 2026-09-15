@@ -1,49 +1,27 @@
 /**
- * OAuth 2.0 flow orchestrator — TS port of
- * `mixpanel_headless/_internal/auth/flow.py`. The refresh half landed
- * at B8-N2 (b8-packets.md §3.1 row 2 / §0.2 mapping note): constructor
- * + region validation (`flow.py:118-179`), `get_valid_token`
- * (`flow.py:180-226`), `refresh_tokens` (`flow.py:442-499`) and
- * `_post_token_request` (`flow.py:500-605`). B8-N3 (packet §4.1 row 4)
- * extends THIS file with the interactive-login half: `login`
- * (`flow.py:227-394`), `exchange_code` (`flow.py:395-441`),
- * `_parse_pasted_redirect` (`flow.py:51-117`), `_build_authorize_url`
- * (`flow.py:606-637`) and `_find_available_port` (`flow.py:638-654`).
+ * OAuth 2.0 Authorization Code + PKCE flow orchestrator: the interactive
+ * login (callback server, port probe, browser launch, stdin paste), the
+ * code exchange and the refresh path. The fetch-pure halves
+ * (`parsePastedRedirect`, `buildAuthorizeUrl`, `postTokenRequest`) live
+ * in core; this module owns the node-only surfaces and `OAuthStorage`.
  *
- * Login substitutions (all header-documented, R10.7):
- * - Python's module monkeypatch surfaces (`flow.webbrowser`,
- *   `flow.start_callback_server`, `flow.ensure_client_registered`)
- *   become injected {@link OAuthFlowOptions} seams (`openBrowser`,
- *   `startCallbackServer`, `registerClient`) — no `child_process`
- *   launch at module scope (packet §4.2).
- * - `_find_available_port`'s sync bind-and-release probe is async in
- *   node (`net.Server.listen` has no sync form); the two-phase
- *   probe-then-bind shape is kept verbatim — the TOCTOU window is
- *   Python's own (packet §7 caution 14).
- * - Python's two racing completer THREADS (callback server + stdin
- *   paste reader) become racing promises; the losing completer is
- *   CANCELLED via an `AbortSignal` where Python leaks a daemon thread
- *   (node's event loop would otherwise never drain — behavior-neutral,
- *   the loser's outcome is discarded in both runtimes).
+ * Python's module monkeypatch surfaces (`flow.webbrowser`,
+ * `flow.start_callback_server`, `flow.ensure_client_registered`) become
+ * injected {@link OAuthFlowOptions} seams (`openBrowser`,
+ * `startCallbackServer`, `registerClient`), so nothing is launched at
+ * module scope. The port probe is async because `net.Server.listen` has
+ * no sync form; its two-phase probe-then-bind shape is kept verbatim and
+ * the TOCTOU window between the two is Python's own. Python's two racing
+ * completer threads (callback server and stdin paste reader) become
+ * racing promises, and the loser is cancelled via an `AbortSignal` where
+ * Python leaks a daemon thread; node's event loop would otherwise never
+ * drain, and the loser's outcome is discarded in both runtimes.
  *
- * The 7 `oauth_flow.refresh_tokens` wire vectors lock the request
- * shape (form body in insertion order, `content-type:
- * application/x-www-form-urlencoded`), the error classifier branches,
- * and the Python-isoformat `expires_at` rendering (packet §3.2).
+ * Response bodies are parsed via `parseLossless`, never
+ * `response.json()`, so large integers survive; the form body keeps
+ * Python's dict insertion order because the wire vectors lock the text.
  *
- * Transport runs over the injected `fetchImpl` through the R2.10
- * adapter (`createRequestExecutor`) — transport failures surface as
- * `MixpanelHttpError` and are wrapped into coded `OAuthError`s here.
- * Response bodies are parsed via `parseLossless` (GATE-R5 — never
- * `response.json()`; the `pythonConstants` superset is the sanctioned
- * B0-1 F1 deviation, packet §7 caution 6).
- *
- * B9-R2 HOIST (b9-packets.md §3.1, second R10.8 ruling): the
- * fetch-pure halves — `parsePastedRedirect`, `_build_authorize_url`,
- * `_post_token_request` — moved to core (`redirect-parse.ts` /
- * `oauth-http.ts`); this class delegates and re-exports, signatures
- * unchanged. The node-only surfaces (callback server, port probe,
- * browser launch, stdin paste, `OAuthStorage`) stay here.
+ * @see mixpanel_headless._internal.auth.flow
  */
 
 import { spawn } from "node:child_process";
@@ -53,18 +31,21 @@ import { createInterface } from "node:readline";
 
 import {
   buildAuthorizeUrl,
+  type CallbackResult,
+  type OAuthClientInfo,
+  OAuthError,
+  type OAuthTokens,
+  parsePastedRedirect,
+  PkceChallenge,
   postTokenRequest,
-} from "../../../core/src/auth/oauth-http.js";
-import { parsePastedRedirect } from "../../../core/src/auth/redirect-parse.js";
+} from "@mixpanel-headless/core";
 import {
-  OAuthTokens,
-  pythonUtcIsoformat,
-} from "../../../core/src/auth/token.js";
-import type { OAuthClientInfo } from "../../../core/src/auth/token.js";
-import { OAuthError } from "../../../core/src/errors.js";
+  exceptionMessage,
+  requireOAuthBaseUrl,
+} from "@mixpanel-headless/core/internal";
+
 import {
   CALLBACK_PORTS,
-  CallbackResult,
   startCallbackServer,
   type StartCallbackServerOptions,
 } from "./callback-server.js";
@@ -72,33 +53,48 @@ import {
   ensureClientRegistered,
   type EnsureClientRegisteredOptions,
 } from "./client-registration.js";
-import { OAUTH_BASE_URLS } from "./oauth-constants.js";
-import { PkceChallenge } from "./pkce.js";
 import { OAuthStorage } from "./storage.js";
 
-/** Options bag of {@link OAuthFlow} (`flow.py:137-169` kwargs). */
+/** Options bag of {@link OAuthFlow} (the Python kwargs plus seams). */
 export interface OAuthFlowOptions {
-  /** Mixpanel data residency region (default `"us"`). */
+  /**
+   * Mixpanel data residency region.
+   *
+   * @defaultValue `"us"`
+   */
   readonly region?: string | undefined;
-  /** Storage for cached tokens / client info (default: on-disk). */
+  /**
+   * Storage for cached tokens and client info.
+   *
+   * @defaultValue the on-disk `OAuthStorage`
+   */
   readonly storage?: OAuthStorage | undefined;
-  /** Injected fetch (the `http_client` seam; default global fetch). */
+  /**
+   * Injected fetch (the `http_client` seam).
+   *
+   * @defaultValue the global `fetch`
+   */
   readonly fetchImpl?: typeof fetch | undefined;
   /**
-   * Epoch-ms clock seam (packet §0.3.2 / D1.4) threaded into
-   * `fromTokenResponse` and the `isExpired` checks. Default ambient.
+   * Epoch-ms clock seam threaded into `fromTokenResponse` and the
+   * `isExpired` checks.
+   *
+   * @defaultValue the ambient clock
    */
   readonly now?: (() => number) | undefined;
   /**
    * Browser-launch effect for {@link OAuthFlow.login} (the
-   * `webbrowser.open` seam — packet §4.2). Default: a best-effort
-   * platform launcher (`open` / `cmd start` / `xdg-open`). A THROW
-   * here is wrapped into `OAUTH_BROWSER_ERROR`.
+   * `webbrowser.open` seam). A throw here is wrapped into
+   * `OAUTH_BROWSER_ERROR`.
+   *
+   * @defaultValue a best-effort platform launcher (`open` / `rundll32` / `xdg-open`)
    */
   readonly openBrowser?: ((url: string) => void | Promise<void>) | undefined;
   /**
-   * Callback-server seam (the `flow.start_callback_server` module
-   * monkeypatch twin). Default: the real localhost server.
+   * Callback-server seam (the `flow.start_callback_server` monkeypatch
+   * twin).
+   *
+   * @defaultValue the real localhost server
    */
   readonly startCallbackServer?:
     | ((
@@ -107,74 +103,77 @@ export interface OAuthFlowOptions {
     | undefined;
   /**
    * DCR seam (the `flow.ensure_client_registered` monkeypatch twin).
-   * Default: the real {@link ensureClientRegistered}.
+   *
+   * @defaultValue the real {@link ensureClientRegistered}
    */
   readonly registerClient?:
     | ((options: EnsureClientRegisteredOptions) => Promise<OAuthClientInfo>)
     | undefined;
   /**
-   * Port-probe seam (`_find_available_port`). Default: the real
-   * bind-and-release probe over {@link CALLBACK_PORTS}.
+   * Port-probe seam (`_find_available_port`).
+   *
+   * @defaultValue the real bind-and-release probe over {@link CALLBACK_PORTS}
    */
   readonly findAvailablePort?: (() => Promise<number | null>) | undefined;
   /**
-   * Stdin paste-reader seam (`sys.stdin.readline()`,
-   * `flow.py:321-330`). Resolves one line; the `signal` aborts the
-   * read when the other completer wins. Default: `process.stdin`.
+   * Stdin paste-reader seam (`sys.stdin.readline()`). Resolves one
+   * line; the `signal` aborts the read when the other completer wins.
+   *
+   * @defaultValue a `process.stdin` line reader
    */
   readonly readStdinLine?:
     ((signal: AbortSignal) => Promise<string>) | undefined;
   /**
-   * Stderr writer for the `open_browser=False` URL banner
-   * (`flow.py:349-361` `print(..., file=sys.stderr)`). Default:
-   * `process.stderr.write`.
+   * Stderr writer for the `open_browser=False` URL banner (Python's
+   * `print(..., file=sys.stderr)`).
+   *
+   * @defaultValue `process.stderr.write`
    */
   readonly stderr?: ((text: string) => void) | undefined;
 }
 
-/** Kwonly options of {@link OAuthFlow.login} (`flow.py:227`). */
+/** Keyword-only options of {@link OAuthFlow.login}. */
 export interface LoginOptions {
   /**
-   * When `true`, persist the resulting tokens to the LEGACY v2 layout
-   * (`~/.mp/oauth/tokens_{region}.json` via `OAuthStorage.saveTokens`
-   * — `flow.py:389-391`; the two-persistence-worlds rule, packet §7
-   * caution 9). Default `false`: the v3 orchestrator persists via
-   * `TokenStore.writeTokens` itself.
+   * When `true`, persist the resulting tokens to the legacy region-keyed
+   * layout (`~/.mp/oauth/tokens_{region}.json` via
+   * `OAuthStorage.saveTokens`). The account orchestrator persists via
+   * `TokenStore.writeTokens` itself and leaves this off.
+   *
+   * @defaultValue `false`
    */
   readonly persist?: boolean | undefined;
   /**
-   * When `true` (default), launch the browser to the authorize URL.
-   * When `false`, print the URL to stderr and ADD the stdin paste
-   * completer — the callback server listens either way.
+   * When `true`, launch the browser to the authorize URL. When `false`,
+   * print the URL to stderr and add the stdin paste completer; the
+   * callback server listens either way.
+   *
+   * @defaultValue `true`
    */
   readonly openBrowser?: boolean | undefined;
 }
 
-/** Kwonly options of {@link OAuthFlow.refreshTokens} (R3.8). */
+/** Keyword-only options of {@link OAuthFlow.refreshTokens}. */
 export interface RefreshTokensOptions {
   /**
-   * When supplied, embedded in error messages/details so the user
+   * When supplied, embedded in error messages and details so the user
    * knows which `mp account login NAME` to re-run.
    */
   readonly accountName?: string | null | undefined;
 }
 
-// `parsePastedRedirect` moved to core `redirect-parse.ts` at B9-R2
-// (b9-packets.md §3.1 row 3, the fetch-pure hoist — the browser
-// `completeLogin` parses the same redirect-return grammar). Imported
-// above for the paste completer and re-exported here so every existing
-// import path holds; the untouched B8 suites (`TestParsePastedRedirect`
-// rows in `oauth-flow-login.test.ts`) are the zero-behavior-change
-// proof.
-export { parsePastedRedirect };
-
 /**
- * Probe {@link CALLBACK_PORTS} for one that is not currently in use
- * (port of `_find_available_port`, `flow.py:638-654`): binds and
- * immediately releases each candidate on 127.0.0.1, in port order.
- * Async where Python is sync (module header substitution note).
+ * Probe {@link CALLBACK_PORTS} for one that is not currently in use:
+ * bind and immediately release each candidate on 127.0.0.1, in port
+ * order. Async where Python is sync (see the module header).
  *
  * @returns The first available port, or `null` when all are occupied.
+ * @example
+ * ```ts
+ * const port = await findAvailablePort();
+ * if (port === null) throw new OAuthError("all ports busy", "OAUTH_PORT_ERROR");
+ * ```
+ * @see mixpanel_headless._internal.auth.flow._find_available_port
  */
 export async function findAvailablePort(): Promise<number | null> {
   for (const port of CALLBACK_PORTS) {
@@ -196,6 +195,51 @@ export async function findAvailablePort(): Promise<number | null> {
   return null;
 }
 
+/** A platform browser-launch command, ready for `spawn(command, args)`. */
+export interface BrowserLaunchArgv {
+  /** The executable to spawn. */
+  readonly command: string;
+  /** Its argv (the URL is always exactly one element, verbatim). */
+  readonly args: readonly string[];
+}
+
+/**
+ * Build the argv behind the default {@link OAuthFlowOptions.openBrowser}
+ * (the `webbrowser.open` twin per platform). Exported so the command
+ * shape is unit-testable on every platform from one host.
+ *
+ * @remarks
+ * win32 goes through ShellExecute via `rundll32 url.dll,FileProtocolHandler`,
+ * the `os.startfile` path CPython's `webbrowser` takes on Windows. Never
+ * `cmd /c start "" url`: `spawn()` (no `shell`) passes a whitespace-free
+ * argument verbatim and cmd.exe then splits it at every `&` (and expands
+ * `%`), so the authorize URL would reach the browser truncated to
+ * `?response_type=code` with the remaining query pairs run as commands.
+ * @param platform - `process.platform`.
+ * @param url - The authorize URL to open.
+ * @returns The command and argv to spawn.
+ * @example
+ * ```ts
+ * const { command, args } = browserLaunchArgv(process.platform, authorizeUrl);
+ * spawn(command, [...args], { stdio: "ignore", detached: true }).unref();
+ * ```
+ */
+export function browserLaunchArgv(
+  platform: NodeJS.Platform,
+  url: string,
+): BrowserLaunchArgv {
+  if (platform === "darwin") {
+    return { command: "open", args: [url] };
+  }
+  if (platform === "win32") {
+    return {
+      command: "rundll32",
+      args: ["url.dll,FileProtocolHandler", url],
+    };
+  }
+  return { command: "xdg-open", args: [url] };
+}
+
 /**
  * Best-effort platform browser launcher (the `webbrowser.open` twin).
  * Launch failures after spawn are swallowed like `webbrowser.open`
@@ -204,19 +248,14 @@ export async function findAvailablePort(): Promise<number | null> {
  * @param url - The authorize URL to open.
  */
 function defaultOpenBrowser(url: string): void {
-  const [command, args]: readonly [string, readonly string[]] =
-    process.platform === "darwin"
-      ? ["open", [url]]
-      : process.platform === "win32"
-        ? ["cmd", ["/c", "start", "", url]]
-        : ["xdg-open", [url]];
+  const { command, args } = browserLaunchArgv(process.platform, url);
   const child = spawn(command, [...args], {
     stdio: "ignore",
     detached: true,
   });
   child.on("error", () => {
-    // Async launch failure ≈ webbrowser.open returning False — Python
-    // does not raise for that either.
+    // An async launch failure is `webbrowser.open` returning False;
+    // Python does not raise for that either.
   });
   child.unref();
 }
@@ -246,7 +285,7 @@ function defaultReadStdinLine(signal: AbortSignal): Promise<string> {
 }
 
 /**
- * Millisecond sleep (the `time.sleep(0.1)` twin, `flow.py:338`).
+ * Millisecond sleep (the `time.sleep(0.1)` twin).
  *
  * @param ms - Milliseconds to wait.
  * @returns Resolves after the delay.
@@ -261,15 +300,15 @@ function sleep(ms: number): Promise<void> {
 const NO_ERROR: unique symbol = Symbol("no-error");
 
 /**
- * Orchestrator for the OAuth 2.0 Authorization Code + PKCE flow —
- * refresh surface from B8-N2 (`flow.py:118-226`, `:442-605`) plus the
- * B8-N3 interactive-login surface (`flow.py:227-441`, `:606-654`).
+ * Orchestrator for the OAuth 2.0 Authorization Code + PKCE flow:
+ * interactive login, code exchange and token refresh for one region.
  *
- * Example:
- * ```typescript
+ * @example
+ * ```ts
  * const flow = new OAuthFlow({ region: "us", storage, fetchImpl });
  * const fresh = await flow.refreshTokens(tokens, "my-client-id");
  * ```
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow
  */
 export class OAuthFlow {
   /** Validated region. */
@@ -284,7 +323,7 @@ export class OAuthFlow {
   /** Epoch-ms clock. */
   readonly #now: () => number;
 
-  /** Region base URL (`OAUTH_BASE_URLS[region]`). */
+  /** Region base URL (`requireOAuthBaseUrl(region)`). */
   readonly #baseUrl: string;
 
   /** Browser-launch effect (login half). */
@@ -310,26 +349,20 @@ export class OAuthFlow {
   readonly #stderr: (text: string) => void;
 
   /**
-   * Initialize the flow orchestrator (`flow.py:137-169`).
+   * Initialize the flow orchestrator.
    *
-   * @param options - Region + injected seams.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` for a region outside
-   *   `OAUTH_BASE_URLS` (`flow.py:160-165`).
+   * @param options - Region and injected seams.
+   * @throws {@link OAuthError} - `OAUTH_CONFIG_ERROR` for a region
+   *   outside `OAUTH_BASE_URLS`.
    */
   constructor(options: OAuthFlowOptions = {}) {
     const region = options.region ?? "us";
-    if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
-      throw new OAuthError(
-        `Unknown region: ${JSON.stringify(region)}. Must be one of: ` +
-          `${Object.keys(OAUTH_BASE_URLS).sort().join(", ")}`,
-        "OAUTH_CONFIG_ERROR",
-      );
-    }
+    // The region gate runs before any other wiring, as in Python.
+    this.#baseUrl = requireOAuthBaseUrl(region);
     this.#region = region;
     this.#storage = options.storage ?? new OAuthStorage();
     this.#fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.#now = options.now ?? Date.now;
-    this.#baseUrl = OAUTH_BASE_URLS[region] as string;
     this.#openBrowser = options.openBrowser ?? defaultOpenBrowser;
     this.#startCallbackServer =
       options.startCallbackServer ?? startCallbackServer;
@@ -344,7 +377,7 @@ export class OAuthFlow {
   }
 
   /**
-   * Mixpanel data residency region (`flow.py:171-178`).
+   * Read the Mixpanel data residency region.
    *
    * @returns The region string (`us`, `eu`, or `in`).
    */
@@ -353,16 +386,16 @@ export class OAuthFlow {
   }
 
   /**
-   * Return a valid access token, refreshing if expired (port of
-   * `get_valid_token`, `flow.py:180-226`). Persists refreshed tokens
-   * via the LEGACY v2 region path (`storage.save_tokens` — packet §3.2
-   * item 7: two persistence worlds, not unified).
+   * Return a valid access token, refreshing if expired. Refreshed
+   * tokens are persisted via the legacy region-keyed storage path
+   * (`storage.save_tokens`), not the per-account layout.
    *
    * @param region - Mixpanel region for the storage lookup.
    * @returns A valid OAuth access token string (no `Bearer` prefix).
-   * @throws OAuthError - `OAUTH_TOKEN_ERROR` when no tokens exist;
-   *   `OAUTH_REFRESH_ERROR` when client info is missing or the refresh
-   *   fails; `OAUTH_REFRESH_REVOKED` on `invalid_grant`.
+   * @throws {@link OAuthError} - `OAUTH_TOKEN_ERROR` when no tokens
+   *   exist; `OAUTH_REFRESH_ERROR` when client info is missing or the
+   *   refresh fails; `OAUTH_REFRESH_REVOKED` on `invalid_grant`.
+   * @see mixpanel_headless._internal.auth.flow.OAuthFlow.get_valid_token
    */
   async getValidToken(region: string): Promise<string> {
     const tokens = this.#storage.loadTokens(region);
@@ -391,39 +424,36 @@ export class OAuthFlow {
   }
 
   /**
-   * Execute the full interactive OAuth PKCE login flow (port of
-   * `login`, `flow.py:227-393`). Step order locked (packet §4.2):
-   * PKCE + state → port probe → DCR → authorize URL → the two racing
+   * Execute the full interactive OAuth PKCE login flow, in Python's step
+   * order: PKCE and state, port probe, DCR, authorize URL, the two racing
    * completers (callback server always; stdin paste reader only when
-   * `openBrowser` is `false`) → exchange → optional persist.
+   * `openBrowser` is `false`), exchange, optional persist.
    *
-   * @param options - `persist` / `openBrowser` (see {@link LoginOptions}).
-   * @returns The obtained tokens (access + optional refresh).
-   * @throws OAuthError - Any step fails: all ports busy
+   * @param options - `persist` and `openBrowser` (see {@link LoginOptions}).
+   * @returns The obtained tokens (access plus optional refresh).
+   * @throws {@link OAuthError} - Any step fails: all ports busy
    *   (`OAUTH_PORT_ERROR`), registration, browser launch
-   *   (`OAUTH_BROWSER_ERROR`), callback/paste errors, timeout
+   *   (`OAUTH_BROWSER_ERROR`), callback or paste errors, timeout
    *   (`OAUTH_TIMEOUT`), or token exchange (`OAUTH_TOKEN_ERROR`).
-   *
    * @example
-   * ```typescript
+   * ```ts
    * const flow = new OAuthFlow({ region: "us" });
    * const tokens = await flow.login({ openBrowser: false });
    * ```
+   * @see mixpanel_headless._internal.auth.flow.OAuthFlow.login
    */
   async login(options: LoginOptions = {}): Promise<OAuthTokens> {
     const persist = options.persist ?? false;
     const openBrowser = options.openBrowser ?? true;
 
-    // Step 1: PKCE challenge and state (`flow.py:268-270` —
-    // `secrets.token_urlsafe(32)` = 32 random bytes, base64url no-pad).
-    // B9-R1 §1.3: `generate()` is async since the WebCrypto migration
-    // (`crypto.subtle.digest` is Promise-returning) — the one
-    // call-site edit; generation still precedes all I/O, as in Python.
+    // Step 1: PKCE challenge and state (`secrets.token_urlsafe(32)` is
+    // 32 random bytes, base64url without padding). `generate()` awaits
+    // WebCrypto's `crypto.subtle.digest`; generation still precedes all
+    // I/O, as in Python.
     const pkce = await PkceChallenge.generate();
     const state = randomBytes(32).toString("base64url");
 
-    // Step 2: find an available callback port by probing before
-    // binding (`flow.py:272-278`).
+    // Step 2: find an available callback port by probing before binding.
     const boundPort = await this.#findAvailablePort();
     if (boundPort === null) {
       throw new OAuthError(
@@ -432,9 +462,15 @@ export class OAuthFlow {
       );
     }
 
+    // `localhost` on purpose, not RFC 8252 §7.3's loopback literal
+    // (`127.0.0.1`): Mixpanel's redirect_uri allow-list is
+    // `http://localhost:<port>/`, DCR registrations are keyed on this
+    // exact string, and Python pins it. The server binds 127.0.0.1 only;
+    // nothing listens on ::1, so an IPv6-first browser gets a refused
+    // connect and falls back at once, without a stall.
     const redirectUri = `http://localhost:${boundPort}/callback`;
 
-    // Step 3: ensure client registration (`flow.py:282-288`).
+    // Step 3: ensure client registration.
     const clientInfo = await this.#registerClient({
       fetchImpl: this.#fetchImpl,
       region: this.#region,
@@ -443,7 +479,7 @@ export class OAuthFlow {
       now: this.#now,
     });
 
-    // Step 4: build the authorize URL (`flow.py:290-296`).
+    // Step 4: build the authorize URL.
     const authorizeUrl = this.#buildAuthorizeUrl({
       clientId: clientInfo.client_id,
       redirectUri,
@@ -451,13 +487,12 @@ export class OAuthFlow {
       state,
     });
 
-    // Step 5: two completers race on a shared result slot
-    // (`flow.py:298-334`): the callback server (always) and the stdin
-    // paste reader (only when `openBrowser` is false). Whichever
-    // produces a valid (code, state) first wins; the PKCE verifier
-    // stays in this process. First completer ERROR is retained but
-    // only surfaced after the result wait expires — Python's
-    // `error_q` consultation order (`flow.py:363-379`).
+    // Step 5: two completers race on a shared result slot: the callback
+    // server (always) and the stdin paste reader (only when
+    // `openBrowser` is false). Whichever produces a valid (code, state)
+    // first wins; the PKCE verifier stays in this process. The first
+    // completer error is retained but only surfaced after the result
+    // wait expires, matching Python's `error_q` consultation order.
     const abort = new AbortController();
     let firstError: unknown = NO_ERROR;
     const recordError = (exc: unknown): void => {
@@ -483,27 +518,26 @@ export class OAuthFlow {
       void this.#readStdinLine(abort.signal).then((line) => {
         try {
           resolveResult(parsePastedRedirect(line, { expectedState: state }));
-        } catch (exc) {
-          recordError(exc);
+        } catch (error) {
+          recordError(error);
         }
       }, recordError);
     }
 
     // Small delay so the callback server is listening before the
-    // browser opens / the URL prints (`flow.py:336-338`).
+    // browser opens or the URL prints.
     await sleep(100);
 
     if (openBrowser) {
       try {
         await this.#openBrowser(authorizeUrl);
-      } catch (exc) {
+      } catch (error) {
         abort.abort();
         throw new OAuthError(
-          `Could not open browser for authorization: ` +
-            `${exc instanceof Error ? exc.message : String(exc)}`,
+          `Could not open browser for authorization: ${exceptionMessage(error)}`,
           "OAUTH_BROWSER_ERROR",
           { authorize_url: authorizeUrl },
-          { cause: exc },
+          { cause: error },
         );
       }
     } else {
@@ -519,8 +553,7 @@ export class OAuthFlow {
     }
 
     // Step 6: wait for whichever completer produces first, capped at
-    // 310s (`flow.py:363-379`).
-    // `null` = the 310s result wait expired (the `queue.Empty` twin).
+    // 310 s; `null` means the wait expired (the `queue.Empty` twin).
     const winner = await new Promise<CallbackResult | null>((resolve) => {
       const timer = setTimeout(() => {
         resolve(null);
@@ -542,18 +575,16 @@ export class OAuthFlow {
         throw firstError;
       }
       throw new OAuthError(
-        `Callback / paste error: ` +
-          `${firstError instanceof Error ? firstError.message : String(firstError)}`,
+        `Callback / paste error: ${exceptionMessage(firstError)}`,
         "OAUTH_TOKEN_ERROR",
         {},
         { cause: firstError },
       );
     }
-    // Cancel the losing completer (module-header substitution note —
-    // Python leaks the daemon thread instead).
+    // Divergence: Python leaks the losing completer's daemon thread (it dies with the process); TS cancels it through the AbortSignal so the event loop can drain. The loser's outcome is discarded in both runtimes.
     abort.abort();
 
-    // Step 7: exchange code for tokens (`flow.py:381-387`).
+    // Step 7: exchange code for tokens.
     const tokens = await this.exchangeCode(
       winner.code,
       pkce.verifier,
@@ -561,8 +592,8 @@ export class OAuthFlow {
       redirectUri,
     );
 
-    // Step 8: save tokens (v2 layout) when the caller opts in
-    // (`flow.py:389-391`).
+    // Step 8: save tokens (legacy region-keyed layout) when the caller
+    // opts in.
     if (persist) {
       this.#storage.saveTokens(tokens, this.#region);
     }
@@ -571,8 +602,7 @@ export class OAuthFlow {
   }
 
   /**
-   * Exchange an authorization code for OAuth tokens (port of
-   * `exchange_code`, `flow.py:395-440`).
+   * Exchange an authorization code for OAuth tokens.
    *
    * @param code - The authorization code from the callback.
    * @param verifier - The PKCE code verifier.
@@ -580,12 +610,11 @@ export class OAuthFlow {
    * @param redirectUri - The redirect URI used in the authorization
    *   request.
    * @returns The obtained tokens.
-   * @throws OAuthError - The exchange fails (`OAUTH_TOKEN_ERROR` on
-   *   every classifier branch — `invalid_grant` stays generic for the
-   *   exchange operation, packet §7 caution 6).
-   *
+   * @throws {@link OAuthError} - The exchange fails (`OAUTH_TOKEN_ERROR`
+   *   on every classifier branch; `invalid_grant` stays generic for the
+   *   exchange operation).
    * @example
-   * ```typescript
+   * ```ts
    * const tokens = await flow.exchangeCode(
    *   "auth-code",
    *   "pkce-verifier",
@@ -593,6 +622,7 @@ export class OAuthFlow {
    *   "http://localhost:19284/callback",
    * );
    * ```
+   * @see mixpanel_headless._internal.auth.flow.OAuthFlow.exchange_code
    */
   async exchangeCode(
     code: string,
@@ -600,7 +630,7 @@ export class OAuthFlow {
     clientId: string,
     redirectUri: string,
   ): Promise<OAuthTokens> {
-    // Form body in Python dict INSERTION ORDER (`flow.py:429-435`).
+    // Form body in Python dict insertion order.
     const formData: Record<string, string> = {
       grant_type: "authorization_code",
       code,
@@ -616,17 +646,16 @@ export class OAuthFlow {
   }
 
   /**
-   * Build the OAuth authorization URL with PKCE parameters (port of
-   * `_build_authorize_url`, `flow.py:606-635` — urlencode param order
-   * locked: response_type, client_id, redirect_uri, state,
-   * code_challenge, code_challenge_method).
+   * Build the OAuth authorization URL with PKCE parameters; the
+   * urlencode param order is locked (response_type, client_id,
+   * redirect_uri, state, code_challenge, code_challenge_method). Scope
+   * is intentionally omitted: DCR creates apps with an empty scope
+   * field, so the provider defaults to every scope.
    *
-   * Scope is intentionally omitted — DCR creates apps with an empty
-   * scope field, so the provider defaults to every scope
-   * (`flow.py:624-626` comment ported).
-   *
-   * @param args - client id / redirect URI / challenge / state.
+   * @param args - The `clientId`, `redirectUri`, PKCE `challenge` and
+   *   `state` to encode.
    * @returns The full authorization URL.
+   * @see mixpanel_headless._internal.auth.flow.OAuthFlow._build_authorize_url
    */
   #buildAuthorizeUrl(args: {
     readonly clientId: string;
@@ -634,23 +663,21 @@ export class OAuthFlow {
     readonly challenge: string;
     readonly state: string;
   }): string {
-    // One-line delegate since the B9-R2 hoist (b9-packets.md §3.1 row
-    // 4) — the body moved verbatim to core `oauth-http.ts`.
     return buildAuthorizeUrl(this.#baseUrl, args);
   }
 
   /**
-   * Refresh OAuth tokens using a refresh token (port of
-   * `refresh_tokens`, `flow.py:442-499`).
+   * Refresh OAuth tokens using a refresh token.
    *
    * @param tokens - Current tokens carrying the refresh token.
    * @param clientId - The OAuth client ID.
    * @param options - Optional `accountName` for error messages.
    * @returns New tokens with a fresh access token.
-   * @throws OAuthError - `OAUTH_REFRESH_ERROR` when no refresh token is
-   *   available or the request fails transiently;
+   * @throws {@link OAuthError} - `OAUTH_REFRESH_ERROR` when no refresh
+   *   token is available or the request fails transiently;
    *   `OAUTH_REFRESH_REVOKED` when the IdP rejects the token as
    *   `invalid_grant`.
+   * @see mixpanel_headless._internal.auth.flow.OAuthFlow.refresh_tokens
    */
   async refreshTokens(
     tokens: OAuthTokens,
@@ -666,14 +693,14 @@ export class OAuthFlow {
       throw new OAuthError(
         `Cannot refresh: no refresh token available. ${hint}`,
         "OAUTH_REFRESH_ERROR",
-        // Two detail shapes, port verbatim (`flow.py:485`; caution 5).
+        // Two detail shapes, ported verbatim.
         accountName !== null && accountName !== ""
           ? { account_name: accountName }
           : {},
       );
     }
-    // Form body in Python dict INSERTION ORDER (packet §3.2 item 1;
-    // vector `test_refresh_posts_correct_params` locks the body text).
+    // Form body in Python dict insertion order; the wire vectors lock
+    // the body text.
     const formData: Record<string, string> = {
       grant_type: "refresh_token",
       refresh_token: tokens.refresh_token.reveal(),
@@ -687,15 +714,16 @@ export class OAuthFlow {
   }
 
   /**
-   * POST form data to the token endpoint and parse the response (port
-   * of `_post_token_request`, `flow.py:500-605` — shared by refresh
-   * and, at N3, exchange).
+   * POST form data to the token endpoint and parse the response; shared
+   * by refresh and exchange.
    *
    * @param formData - Form-encoded body (insertion order preserved).
-   * @param context - Operation name, error code, optional account.
+   * @param context - The `operation` name for messages, the `errorCode`
+   *   to raise with, and the optional `accountName` for hints.
    * @returns Parsed tokens from the endpoint response.
-   * @throws OAuthError - Every branch of the vector-locked classifier
-   *   (packet §3.2 items 3-5).
+   * @throws {@link OAuthError} - Every branch of the vector-locked
+   *   classifier.
+   * @see mixpanel_headless._internal.auth.flow.OAuthFlow._post_token_request
    */
   async #postTokenRequest(
     formData: Record<string, string>,
@@ -705,18 +733,9 @@ export class OAuthFlow {
       accountName: string | null;
     },
   ): Promise<OAuthTokens> {
-    // One-line delegate since the B9-R2 hoist (b9-packets.md §3.1 row
-    // 5) — the classifier body moved verbatim to core `oauth-http.ts`;
-    // the clock seam threads through as before (§7 caution 5).
     return postTokenRequest(this.#fetchImpl, this.#baseUrl, formData, {
       ...context,
       now: this.#now,
     });
   }
 }
-
-/**
- * Re-export of the Python-isoformat renderer for the R10.9 harness and
- * the N3 login half (single mechanism — packet §0.3.2).
- */
-export { pythonUtcIsoformat };

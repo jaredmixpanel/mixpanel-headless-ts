@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+/* eslint-disable unicorn/no-exports-in-scripts -- dual-use module: a CLI (`npm run build:browser`) whose recipe is also imported by scripts/browser-smoke.mjs and tests/browser-bundle.test.ts. */
 // Pinned, reproducible browser-bundle build (heads spec 04 §3 —
 // "Vendoring the headless bundle").
 //
@@ -29,11 +31,14 @@ import { Buffer } from "node:buffer";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { gzipSync } from "node:zlib";
+
 import { build, version as esbuildVersion } from "esbuild";
+
+import { esbuildAliases } from "./lib/workspace-aliases.mjs";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -48,12 +53,13 @@ export const IIFE_FILE = "mixpanel-headless.js";
 export const ESM_FILE = "mixpanel-headless.mjs";
 export const MANIFEST_FILE = "manifest.json";
 
-// A fixed header — no year, no build date, nothing that changes between
-// runs. `legalComments: "inline"` keeps any dependency licence comments
-// in the bytes rather than in a side file nobody vendors.
+// A fixed header — no build date, nothing that changes between runs (the
+// copyright years are the fixed span in LICENSE, not the build year).
+// `legalComments: "inline"` keeps any dependency licence comments in the
+// bytes rather than in a side file nobody vendors.
 const LICENSE_BANNER =
   `/*! ${PACKAGE_NAME} — bundled from ${SOURCE_REPO}. ` +
-  `Copyright Mixpanel, Inc. All rights reserved. */`;
+  `Copyright (c) 2025-2026 Mixpanel, Inc. Licensed under the Apache License, Version 2.0. */`;
 
 // Recorded verbatim in the manifest so the consumer can reproduce the
 // build without reading this file.
@@ -62,7 +68,14 @@ const BUILD_ARGS = [
   "--platform=browser",
   "--target=chrome148",
   "--minify",
+  "--keep-names",
   "--legal-comments=inline",
+  // The workspace aliases (source, not dist) as the equivalent CLI flags,
+  // so the recorded recipe reproduces the same bytes.
+  ...Object.entries(esbuildAliases()).map(
+    ([specifier, path]) =>
+      `--alias:${specifier}=./${relative(REPO_ROOT, path).split(sep).join("/")}`,
+  ),
 ];
 
 /**
@@ -81,7 +94,12 @@ export const IMPURITY_NEEDLES = [
   "`node:",
 ];
 
-/** @param {string} text @returns {string[]} needles actually found */
+/**
+ * Return the impurity needles that occur in `text`.
+ *
+ * @param {string} text - Bundle text to scan.
+ * @returns {string[]} The needles actually found, in `IMPURITY_NEEDLES` order.
+ */
 export function scanNodeReferences(text) {
   return IMPURITY_NEEDLES.filter((needle) => text.includes(needle));
 }
@@ -94,8 +112,8 @@ export function scanNodeReferences(text) {
  * fresh `vm` context starts from a bare `globalThis` with no Node globals
  * at all, so a bundle that secretly needed `process` would throw here.
  *
- * @param {string} iifeText
- * @returns {string[]} sorted export names
+ * @param {string} iifeText - Source of the IIFE bundle.
+ * @returns {string[]} Export names in code-unit order.
  */
 export function iifeGlobalKeys(iifeText) {
   /** @type {Record<string, unknown>} */
@@ -112,6 +130,11 @@ export function iifeGlobalKeys(iifeText) {
   return Object.keys(installed).sort();
 }
 
+/**
+ * Read the commit and cleanliness of the working tree the bundle is built from.
+ *
+ * @returns {{ commit: string, dirty: boolean }} `HEAD` and whether `git status` reports any change.
+ */
 function gitSourceState() {
   const run = (args) =>
     execFileSync("git", args, { cwd: REPO_ROOT, encoding: "utf8" }).trim();
@@ -121,14 +144,30 @@ function gitSourceState() {
   };
 }
 
+/**
+ * Run one esbuild pass over the browser barrel in the given output format.
+ *
+ * @param {"iife" | "esm"} format - esbuild output format; also selects the output file name.
+ * @param {string} [globalName] - Global the IIFE installs; omitted for ESM.
+ * @returns {Promise<Buffer>} The bundled bytes.
+ */
 async function bundleOne(format, globalName) {
   const result = await build({
     entryPoints: [join(REPO_ROOT, ENTRY)],
     bundle: true,
+    // `@mixpanel-headless/core` inside the browser sources resolves to core's
+    // TypeScript, so the vendored bytes are built from source at
+    // `sourceCommit` rather than from whatever `dist/` happens to hold.
+    alias: esbuildAliases(),
     format,
     platform: "browser",
     target: "chrome148",
     minify: true,
+    // Runtime names are load-bearing: `MixpanelHeadlessError` sets
+    // `this.name` from `constructor.name` and `pythonTypeName` prints
+    // `constructor.name` as the Python class name; minified identifiers
+    // would turn both into single letters.
+    keepNames: true,
     sourcemap: false,
     legalComments: "inline",
     banner: { js: LICENSE_BANNER },
@@ -146,9 +185,10 @@ async function bundleOne(format, globalName) {
 }
 
 /**
- * Build both artifacts and the manifest.
+ * Build both artifacts and the manifest, verifying browser purity on the way.
  *
- * @param {{ outDir?: string, allowDirty?: boolean, write?: boolean }} [options]
+ * @param {{ outDir?: string, allowDirty?: boolean, write?: boolean }} [options] - `outDir` (default `dist/browser`), `allowDirty` (build from a dirty tree; default false), `write` (write the artifacts and manifest to disk; default true).
+ * @returns {Promise<{ outDir: string, manifest: object, manifestJson: string, artifacts: Array<{ name: string, bytes: Buffer, size: number, gzipSize: number, sha256: string }>, iifeText: string, exports: string[] }>} The output directory, the manifest (object and serialised), per-artifact bytes and sizes, the IIFE text and the exported global keys.
  */
 export async function buildBrowserBundles(options = {}) {
   const {
@@ -168,7 +208,7 @@ export async function buildBrowserBundles(options = {}) {
 
   const [iifeBytes, esmBytes] = await Promise.all([
     bundleOne("iife", GLOBAL_NAME),
-    bundleOne("esm", undefined),
+    bundleOne("esm"),
   ]);
 
   const iifeText = iifeBytes.toString("utf8");
@@ -226,10 +266,22 @@ export async function buildBrowserBundles(options = {}) {
   return { outDir, manifest, manifestJson, artifacts, iifeText, exports };
 }
 
+/**
+ * Hex sha256 of a byte buffer.
+ *
+ * @param {Buffer} bytes - The bytes to digest.
+ * @returns {string} Lowercase hex digest.
+ */
 function sha256Hex(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+/**
+ * Parse the CLI arguments (`--out <dir>`, `--allow-dirty`).
+ *
+ * @param {string[]} argv - Arguments after the script path.
+ * @returns {{ outDir: string, allowDirty: boolean }} The resolved output directory and the dirty-tree opt-in.
+ */
 function parseArgv(argv) {
   let outDir = DEFAULT_OUT_DIR;
   let allowDirty = false;
@@ -268,9 +320,9 @@ if (isCli) {
         `  ${a.name.padEnd(22)} ${kb(a.size).padStart(9)} min · ${kb(a.gzipSize).padStart(9)} gzip · ${a.sha256.slice(0, 16)}`,
       );
     }
-  } catch (err) {
+  } catch (error) {
     console.error(
-      `build-browser-bundle FAILED: ${err instanceof Error ? err.message : String(err)}`,
+      `build-browser-bundle FAILED: ${error instanceof Error ? error.message : String(error)}`,
     );
     process.exit(1);
   }

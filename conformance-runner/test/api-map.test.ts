@@ -1,19 +1,15 @@
-// api-map tests (task TS-4, design D12 / naming-map §5):
-//
-// 1. Freshness + generator/runtime parity: every committed api-map.gen.ts
-//    entry is recomputed from the three inputs through src/naming.ts; any
-//    drift (stale generation, or scripts/generate-api-map.mjs disagreeing
-//    with the runtime naming module) fails here.
-// 2. Workspace authority: api-map.json member signatures must equal the
-//    api-index sidecar's (two authorities agree or the snapshot is stale).
-// 3. TS-4 done criterion: every call.api in the full corpus snapshot
-//    (measured AND setup) resolves to a mapped name or UNPORTED without
-//    throwing — never UNMAPPED_API.
+// api-map: freshness and generator/runtime parity of api-map.gen.ts,
+// workspace member authority (api-map.json vs the api-index sidecar), and
+// full-corpus resolution — every call.api resolves to a mapped name or
+// UNPORTED, never UNMAPPED_API.
+
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
 import {
   API_MAP,
   API_MAP_SOURCE_HASHES,
@@ -21,8 +17,7 @@ import {
 } from "../src/api-map.gen.js";
 import { resolveApi } from "../src/api-map.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
-import type { NamingExceptionRow } from "../src/naming.js";
-import { resolveTsApiName } from "../src/naming.js";
+import { type NamingExceptionRow, resolveTsApiName } from "../src/naming.js";
 
 /** The conformance-runner package root. */
 const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -74,7 +69,7 @@ const authoredApis = JSON.parse(authoredApisInput.text) as {
   entries: Record<string, ApiIndexEntry>;
   known_modules: readonly string[];
 };
-/** The full mapping universe: api-index + the authored D13 supplement. */
+/** The full mapping universe: api-index + the authored-apis supplement. */
 const universe: Record<string, ApiIndexEntry> = {
   ...apiIndex,
   ...authoredApis.entries,
@@ -90,7 +85,7 @@ const workspaceMembers = new Map<string, WorkspaceMember>(
   ).workspace_members.map((member) => [member.name, member]),
 );
 
-describe("api-map.gen.ts freshness and parity (D12)", () => {
+describe("api-map.gen.ts freshness and parity", () => {
   it("stamps the sha256 of all four current inputs", () => {
     expect(API_MAP_SOURCE_HASHES.apiIndexJson).toBe(apiIndexInput.sha256);
     expect(API_MAP_SOURCE_HASHES.apiMapJson).toBe(apiMapJsonInput.sha256);
@@ -103,7 +98,9 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
   });
 
   it("covers exactly the api-index + authored-supplement universe", () => {
-    expect(Object.keys(API_MAP).sort()).toEqual(Object.keys(universe).sort());
+    expect(Object.keys(API_MAP).sort()).toStrictEqual(
+      Object.keys(universe).sort(),
+    );
   });
 
   it("authored supplement never shadows an api-index entry (stale guard)", () => {
@@ -119,33 +116,33 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
       expect(
         { tsModule: entry.tsModule, tsName: entry.tsName },
         pythonApi,
-      ).toEqual(recomputed);
+      ).toStrictEqual(recomputed);
     }
   });
 
   it("carries api-index kind/capability/module/signature on every entry", () => {
     for (const [pythonApi, entry] of Object.entries(API_MAP)) {
-      const indexEntry = universe[pythonApi] as ApiIndexEntry;
+      const indexEntry = universe[pythonApi]!;
       expect(entry.kind, pythonApi).toBe(indexEntry.kind);
       expect(entry.capability, pythonApi).toBe(indexEntry.capability);
       expect(entry.pythonModule, pythonApi).toBe(indexEntry.module);
-      expect(entry.params, pythonApi).toEqual(indexEntry.params);
-      expect(entry.kwonly, pythonApi).toEqual(indexEntry.kwonly);
+      expect(entry.params, pythonApi).toStrictEqual(indexEntry.params);
+      expect(entry.kwonly, pythonApi).toStrictEqual(indexEntry.kwonly);
     }
   });
 
   it("KNOWN_PYTHON_MODULES is the sorted prefix set of the full universe", () => {
     const prefixes = [
       ...new Set([
-        ...Object.keys(universe).map((api) => api.split(".")[0] as string),
+        ...Object.keys(universe).map((api) => api.split(".", 1)[0]!),
         ...authoredApis.known_modules,
       ]),
     ].sort();
-    expect([...KNOWN_PYTHON_MODULES]).toEqual(prefixes);
+    expect([...KNOWN_PYTHON_MODULES]).toStrictEqual(prefixes);
   });
 });
 
-describe("workspace member authority (D12 input 1)", () => {
+describe("workspace member authority", () => {
   it("api-map.json signatures equal the api-index sidecar's", () => {
     for (const [pythonApi, indexEntry] of Object.entries(apiIndex)) {
       if (!pythonApi.startsWith("workspace.")) {
@@ -153,36 +150,35 @@ describe("workspace member authority (D12 input 1)", () => {
       }
       const member = workspaceMembers.get(pythonApi.slice("workspace.".length));
       expect(member, pythonApi).toBeDefined();
-      expect(member?.params, pythonApi).toEqual(indexEntry.params);
-      expect(member?.kwonly, pythonApi).toEqual(indexEntry.kwonly);
+      expect(member?.params, pythonApi).toStrictEqual(indexEntry.params);
+      expect(member?.kwonly, pythonApi).toStrictEqual(indexEntry.kwonly);
     }
   });
 });
 
-describe("resolveApi verdict buckets (D12)", () => {
+describe("resolveApi verdict buckets", () => {
   it("maps names present in the generated map", () => {
     const resolution = resolveApi("workspace.build_funnel_params");
-    expect(resolution.status).toBe("mapped");
-    if (resolution.status === "mapped") {
-      expect(resolution.entry.tsModule).toBe("core/workspace");
-      expect(resolution.entry.tsName).toBe("buildFunnelParams");
-    }
+    expect(resolution).toMatchObject({
+      status: "mapped",
+      entry: { tsModule: "core/workspace", tsName: "buildFunnelParams" },
+    });
   });
 
   it("classifies unmapped names in known modules as UNPORTED", () => {
-    expect(resolveApi("api_client.some_future_method")).toEqual({
+    expect(resolveApi("api_client.some_future_method")).toStrictEqual({
       status: "unported",
       module: "api_client",
     });
   });
 
   it("classifies names in no source as UNMAPPED (fail-fast bucket)", () => {
-    expect(resolveApi("mystery.call")).toEqual({ status: "unmapped" });
-    expect(resolveApi("nodots")).toEqual({ status: "unmapped" });
+    expect(resolveApi("mystery.call")).toStrictEqual({ status: "unmapped" });
+    expect(resolveApi("nodots")).toStrictEqual({ status: "unmapped" });
   });
 });
 
-describe("TS-4 done criterion: full-corpus api resolution", () => {
+describe("full-corpus api resolution", () => {
   it("resolves every measured and setup call.api without UNMAPPED or throw", () => {
     const config = loadCorpusConfig(PACKAGE_DIR);
     const corpus = loadCorpus(
@@ -211,7 +207,7 @@ describe("TS-4 done criterion: full-corpus api resolution", () => {
     // or UNPORTED (authored vectors referencing apis the recorded-vector
     // api-index does not carry — workspace parse targets,
     // api_client._iter_jsonl_lines, rrweb_analyzer.analyze — stay in the
-    // known-module UNPORTED bucket until their port batches land, R10.5).
+    // known-module UNPORTED bucket until they are ported).
     expect(
       (statuses.get("mapped") ?? 0) + (statuses.get("unported") ?? 0),
     ).toBe(apis.size);

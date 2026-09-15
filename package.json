@@ -3,9 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "TypeScript port of mixpanel_headless (Phase 1 verification rig scaffold).",
+  "description": "TypeScript port of the Python mixpanel_headless library: typed Mixpanel analytics queries, entity management, and data extraction for Node.js and browsers, verified against a Python-extracted conformance corpus.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git"
+  },
+  "keywords": [
+    "mixpanel",
+    "analytics",
+    "typescript",
+    "headless",
+    "api-client",
+    "monorepo"
+  ],
   "engines": {
-    "node": ">=22"
+    "node": "^22.22.2 || >=24.15"
   },
   "workspaces": [
     "packages/*",
@@ -13,38 +26,70 @@
     "differential"
   ],
   "scripts": {
-    "typecheck": "npm run typecheck --workspaces && tsc --noEmit -p tsconfig.tests.json",
-    "lint": "eslint .",
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "typecheck": "tsc -b",
+    "pack:check": "publint --strict packages/core && publint --strict packages/node && publint --strict packages/browser && attw --pack packages/core --profile esm-only && attw --pack packages/node --profile esm-only && attw --pack packages/browser --profile esm-only",
+    "knip": "knip",
+    "lint": "eslint . --max-warnings 0",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "test": "vitest run",
+    "test:fast": "vitest run --project '!corpus'",
+    "test:corpus": "vitest run --project corpus",
+    "test:coverage": "vitest run --coverage",
     "referee:bookmark": "vitest run differential/test/bookmark-schema-referee.test.ts differential/test/bookmark-referee-feed.test.ts",
-    "generate": "json2ts vendor/mixpanel-contracts/bookmark.json differential/src/generated/reports/bookmark.ts --no-enableConstEnums --no-unknownAny --unreachableDefinitions",
-    "generate:error-codes": "node scripts/gen-error-codes.mjs",
+    "generate:error-codes": "node scripts/generate-error-codes.mjs",
     "vendor:drift": "bash scripts/check-vendor-drift.sh",
     "build:browser": "node scripts/build-browser-bundle.mjs",
     "smoke:browser": "node scripts/browser-smoke.mjs",
-    "check": "npm run typecheck && npm run lint && npm run fmt:check && npm run test && npm run smoke:browser",
+    "version": "changeset version",
+    "release": "changeset publish",
+    "check": "npm run typecheck && npm run pack:check && npm run knip && npm run lint && npm run fmt:check && npm run audit:comments -- --summary && npm run vendor:drift && npm run test:coverage && npm run smoke:browser",
     "sync:corpus": "bash scripts/sync-corpus.sh",
     "conformance": "node scripts/run-conformance.mjs",
     "oracle": "node scripts/run-oracle.mjs",
     "generate:api-map": "node scripts/generate-api-map.mjs",
-    "generate:bridge-allowlist": "node scripts/generate-bridge-allowlist.mjs"
+    "generate:bridge-allowlist": "node scripts/generate-bridge-allowlist.mjs",
+    "generate:compat-tables": "uv run --python 3.14.6 --no-project python scripts/generate-non-printable.py && uv run --python 3.14.6 --no-project python scripts/generate-decimal-digits.py && uv run --python 3.14.6 --no-project python scripts/generate-whitespace.py",
+    "generate:canonical-fixtures": "uv run --python 3.14.6 --no-project python scripts/generate-canonical-fixtures.py && prettier --write packages/core/test/compat/fixtures/canonical-fixtures.json",
+    "generate:all": "npm run generate:error-codes && npm run generate:api-map && npm run generate:bridge-allowlist",
+    "audit:comments": "node scripts/audit/comment-archaeology.mjs",
+    "audit:comments:fix": "node scripts/audit/comment-archaeology.mjs --fix"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
-    "@types/node": "^20.19.43",
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@changesets/cli": "^3.0.2",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "@vitest/eslint-plugin": "^1.6.27",
     "ajv": "^8.0.0",
-    "esbuild": "^0.25.0",
-    "eslint": "^9.0.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-jsdoc": "^64.3.6",
+    "eslint-plugin-n": "^18.3.0",
+    "eslint-plugin-regexp": "^3.3.0",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "eslint-plugin-tsdoc": "^0.5.2",
+    "eslint-plugin-unicorn": "^74.0.0",
     "fast-check": "^4.0.0",
-    "json-schema-to-typescript": "15.0.0",
+    "globals": "^17.12.0",
+    "knip": "^6.34.0",
+    "lefthook": "^2.1.12",
     "prettier": "^3.0.0",
-    "typescript": "^5.0.0",
-    "typescript-eslint": "^8.0.0",
-    "vitest": "^3.0.0"
+    "publint": "^0.3.24",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.0"
   },
   "allowScripts": {
-    "esbuild": true
+    "esbuild": true,
+    "lefthook": true,
+    "fsevents": false,
+    "unrs-resolver": false
   }
 }

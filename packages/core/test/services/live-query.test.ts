@@ -1,49 +1,28 @@
-// Translated LiveQueryService tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query.py (R10.2) — ALL 7
-// classes (TestLiveQueryService :57, TestSegmentation :78, TestFunnel
-// :287, TestExtractStepsFromDateData :528, TestRetention :658,
-// TestEventCounts :845, TestPropertyCounts :1013).
-//
-// Translation notes (applied consistently):
-// - `live_query_factory` -> `liveQueryFactory` over the B4
-//   `createMockClient` httpx.MockTransport analog
-//   (`test/client/client-test-helpers.ts`). Python's explicit
-//   `client.__enter__()` / `__exit__` has no TS twin (R6.2: the TS
-//   client owns no pool that needs opening).
-// - Handlers that `assert` on the captured request assert AFTER the
-//   await via the transport capture log: a throw inside the injected
-//   fetch would be normalized into a transport error by the B4 client
-//   and mask the assertion. Same assertion, same values.
-// - `result.df` asserts (`test_event_counts_df_conversion`,
-//   `test_property_counts_df_conversion`, and the two `len(df) == 0`
-//   cases) become `toRows()` / `rowColumns()` asserts per the C6
-//   pandas convention — the pre-pandas row list IS the frame body.
-// - The private `_extract_steps_from_date_data` is
-//   {@link extractStepsFromDateData} in `services/live-query-transforms.ts`
-//   (R7.2 split of the 2,042-line Python module).
+// LiveQueryService: segmentation, funnel, retention, event counts and
+// property counts, plus the extractStepsFromDateData helper. Mirrors
+// tests/unit/test_live_query.py (all seven classes). Request asserts run
+// after the await via the transport capture log; `.df` asserts become
+// `toRows()` / `rowColumns()`; `__enter__` / `__exit__` has no TS twin.
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../client/client-test-helpers.js";
+
+import { AuthenticationError, QueryError } from "../../src/errors.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import { extractStepsFromDateData } from "../../src/services/live-query-transforms.js";
-import { AuthenticationError, QueryError } from "../../src/errors.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
+import {
+  type CannedHandler,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /**
- * The `live_query_factory` fixture (test_live_query.py:21-54).
+ * The `live_query_factory` fixture.
  *
  * @param handler - The canned-response handler.
  * @returns The service under test plus the transport capture log.
  */
-function liveQueryFactory(handler: Handler): {
+function liveQueryFactory(handler: CannedHandler): {
   live: LiveQueryService;
   transport: FakeTransport;
 } {
@@ -51,8 +30,8 @@ function liveQueryFactory(handler: Handler): {
   return { live: new LiveQueryService(client), transport };
 }
 
-/** The `success_handler` fixture (conftest.py:311-317). */
-const successHandler: Handler = () => ({ status: 200, json: [] });
+/** The `success_handler` fixture. */
+const successHandler: CannedHandler = () => ({ status: 200, json: [] });
 
 /**
  * The single captured request URL (the `str(request.url)` the Python
@@ -65,7 +44,8 @@ function firstUrl(transport: FakeTransport): string {
   return transport.captures[0]!.url;
 }
 
-describe("TestLiveQueryService", () => {
+describe("Live query service", () => {
+  // python: TestLiveQueryService
   it("accepts an API client", () => {
     const { client } = createMockClient(makeSession(), successHandler);
     const live = new LiveQueryService(client);
@@ -74,10 +54,11 @@ describe("TestLiveQueryService", () => {
 });
 
 // ===========================================================================
-// User Story 1: Segmentation Tests
+// Segmentation
 // ===========================================================================
 
-describe("TestSegmentation", () => {
+describe("Segmentation", () => {
+  // python: TestSegmentation
   it("returns SegmentationResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -106,7 +87,7 @@ describe("TestSegmentation", () => {
     expect(result.to_date).toBe("2024-01-03");
     expect(result.unit).toBe("day");
     expect(result.segment_property).toBeNull();
-    expect(result.series).toEqual({
+    expect(result.series).toStrictEqual({
       "Sign Up": {
         "2024-01-01": 147,
         "2024-01-02": 146,
@@ -203,7 +184,7 @@ describe("TestSegmentation", () => {
     );
 
     expect(result.total).toBe(0);
-    expect(result.series).toEqual({});
+    expect(result.series).toStrictEqual({});
   });
 
   it("propagates AuthenticationError from the API", async () => {
@@ -219,10 +200,11 @@ describe("TestSegmentation", () => {
 });
 
 // ===========================================================================
-// User Story 2: Funnel Tests
+// Funnel
 // ===========================================================================
 
-describe("TestFunnel", () => {
+describe("Funnel", () => {
+  // python: TestFunnel
   it("returns FunnelResult with correct step data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -268,7 +250,7 @@ describe("TestFunnel", () => {
     expect(result.funnel_id).toBe(12345);
     expect(result.from_date).toBe("2024-01-01");
     expect(result.to_date).toBe("2024-01-01");
-    expect(result.steps.length).toBe(3);
+    expect(result.steps).toHaveLength(3);
     expect(result.steps[0]!.event).toBe("App Open");
     expect(result.steps[0]!.count).toBe(1000);
     expect(result.steps[1]!.event).toBe("Sign Up");
@@ -363,7 +345,7 @@ describe("TestFunnel", () => {
     }));
     const result = await live.funnel(12345, "2024-01-01", "2024-01-01");
 
-    expect(result.steps).toEqual([]);
+    expect(result.steps).toStrictEqual([]);
     expect(result.conversion_rate).toBe(0.0);
   });
 
@@ -380,10 +362,11 @@ describe("TestFunnel", () => {
 });
 
 // ===========================================================================
-// Funnel Helper Tests
+// Funnel helper
 // ===========================================================================
 
-describe("TestExtractStepsFromDateData", () => {
+describe("Extract steps from date data", () => {
+  // python: TestExtractStepsFromDateData
   it("non-segmented format with 'steps' returns the step list", () => {
     const dateData = {
       steps: [
@@ -391,7 +374,7 @@ describe("TestExtractStepsFromDateData", () => {
         { count: 80, step_label: "Step 2" },
       ],
     };
-    expect(extractStepsFromDateData(dateData)).toEqual([
+    expect(extractStepsFromDateData(dateData)).toStrictEqual([
       { count: 100, step_label: "Step 1" },
       { count: 80, step_label: "Step 2" },
     ]);
@@ -413,36 +396,38 @@ describe("TestExtractStepsFromDateData", () => {
       ],
     };
     // Should return $overall, not individual segments
-    expect(extractStepsFromDateData(dateData)).toEqual([
+    expect(extractStepsFromDateData(dateData)).toStrictEqual([
       { count: 200, step_label: "Step 1" },
       { count: 150, step_label: "Step 2" },
     ]);
   });
 
   it("empty steps list returns an empty list", () => {
-    expect(extractStepsFromDateData({ steps: [] })).toEqual([]);
+    expect(extractStepsFromDateData({ steps: [] })).toStrictEqual([]);
   });
 
   it("empty $overall list returns an empty list", () => {
-    expect(extractStepsFromDateData({ $overall: [] })).toEqual([]);
+    expect(extractStepsFromDateData({ $overall: [] })).toStrictEqual([]);
   });
 
   it("non-list type for steps returns an empty list", () => {
-    expect(extractStepsFromDateData({ steps: "not a list" })).toEqual([]);
+    expect(extractStepsFromDateData({ steps: "not a list" })).toStrictEqual([]);
   });
 
   it("non-list type for $overall returns an empty list", () => {
-    expect(extractStepsFromDateData({ $overall: { not: "a list" } })).toEqual(
-      [],
-    );
+    expect(
+      extractStepsFromDateData({ $overall: { not: "a list" } }),
+    ).toStrictEqual([]);
   });
 
   it("unrecognized format returns an empty list", () => {
-    expect(extractStepsFromDateData({ some_other_key: [1, 2, 3] })).toEqual([]);
+    expect(
+      extractStepsFromDateData({ some_other_key: [1, 2, 3] }),
+    ).toStrictEqual([]);
   });
 
   it("empty dict returns an empty list", () => {
-    expect(extractStepsFromDateData({})).toEqual([]);
+    expect(extractStepsFromDateData({})).toStrictEqual([]);
   });
 
   it("'steps' takes precedence over '$overall'", () => {
@@ -451,17 +436,18 @@ describe("TestExtractStepsFromDateData", () => {
       $overall: [{ count: 100, step_label: "From overall" }],
     };
     // steps key is checked first, so it takes precedence
-    expect(extractStepsFromDateData(dateData)).toEqual([
+    expect(extractStepsFromDateData(dateData)).toStrictEqual([
       { count: 50, step_label: "From steps" },
     ]);
   });
 });
 
 // ===========================================================================
-// User Story 3: Retention Tests
+// Retention
 // ===========================================================================
 
-describe("TestRetention", () => {
+describe("Retention", () => {
+  // python: TestRetention
   it("returns RetentionResult with cohort data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -482,7 +468,7 @@ describe("TestRetention", () => {
     expect(result.from_date).toBe("2024-01-01");
     expect(result.to_date).toBe("2024-01-02");
     expect(result.unit).toBe("day");
-    expect(result.cohorts.length).toBe(2);
+    expect(result.cohorts).toHaveLength(2);
   });
 
   it("calculates retention percentages from counts", async () => {
@@ -524,7 +510,7 @@ describe("TestRetention", () => {
     expect(urlStr.includes("born_where=") || urlStr.includes("where=")).toBe(
       true,
     );
-    expect(result.cohorts.length).toBe(1);
+    expect(result.cohorts).toHaveLength(1);
   });
 
   it("passes interval parameters to the API", async () => {
@@ -546,7 +532,7 @@ describe("TestRetention", () => {
     expect(urlStr).toContain("interval_count=");
     // When interval != 1, unit should NOT be included
     expect(urlStr).not.toContain("unit=");
-    expect(result.cohorts[0]!.retention.length).toBe(5);
+    expect(result.cohorts[0]!.retention).toHaveLength(5);
   });
 
   it("handles empty results", async () => {
@@ -558,7 +544,7 @@ describe("TestRetention", () => {
       "2024-01-01",
     );
 
-    expect(result.cohorts).toEqual([]);
+    expect(result.cohorts).toStrictEqual([]);
   });
 
   it("returns cohorts sorted by date", async () => {
@@ -585,10 +571,11 @@ describe("TestRetention", () => {
 });
 
 // ===========================================================================
-// User Story 5: Event Counts Tests
+// Event counts
 // ===========================================================================
 
-describe("TestEventCounts", () => {
+describe("Event counts", () => {
+  // python: TestEventCounts
   it("returns EventCountsResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -609,7 +596,7 @@ describe("TestEventCounts", () => {
       "2024-01-02",
     );
 
-    expect(result.events).toEqual(["Sign Up", "Purchase"]);
+    expect(result.events).toStrictEqual(["Sign Up", "Purchase"]);
     expect(result.from_date).toBe("2024-01-01");
     expect(result.to_date).toBe("2024-01-02");
     expect(result.unit).toBe("day");
@@ -670,7 +657,7 @@ describe("TestEventCounts", () => {
     expect(columns).toContain("date");
     expect(columns).toContain("event");
     expect(columns).toContain("count");
-    expect(result.toRows().length).toBe(4); // 2 events x 2 dates
+    expect(result.toRows()).toHaveLength(4); // 2 events x 2 dates
   });
 
   it("handles empty results", async () => {
@@ -680,8 +667,8 @@ describe("TestEventCounts", () => {
     }));
     const result = await live.eventCounts([], "2024-01-01", "2024-01-01");
 
-    expect(result.series).toEqual({});
-    expect(result.toRows().length).toBe(0);
+    expect(result.series).toStrictEqual({});
+    expect(result.toRows()).toHaveLength(0);
   });
 
   it("propagates AuthenticationError from the API", async () => {
@@ -697,10 +684,11 @@ describe("TestEventCounts", () => {
 });
 
 // ===========================================================================
-// User Story 6: Property Counts Tests
+// Property counts
 // ===========================================================================
 
-describe("TestPropertyCounts", () => {
+describe("Property counts", () => {
+  // python: TestPropertyCounts
   it("returns PropertyCountsResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -823,7 +811,7 @@ describe("TestPropertyCounts", () => {
     expect(columns).toContain("date");
     expect(columns).toContain("value");
     expect(columns).toContain("count");
-    expect(result.toRows().length).toBe(4); // 2 values x 2 dates
+    expect(result.toRows()).toHaveLength(4); // 2 values x 2 dates
   });
 
   it("handles empty results", async () => {
@@ -838,8 +826,8 @@ describe("TestPropertyCounts", () => {
       "2024-01-01",
     );
 
-    expect(result.series).toEqual({});
-    expect(result.toRows().length).toBe(0);
+    expect(result.series).toStrictEqual({});
+    expect(result.toRows()).toHaveLength(0);
   });
 
   it("propagates QueryError for invalid params", async () => {

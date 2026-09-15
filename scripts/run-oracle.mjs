@@ -1,32 +1,17 @@
-// oracle-ts launcher (design D14).
+#!/usr/bin/env node
+// oracle-ts launcher.
 //
-// Same pattern as run-conformance.mjs: the repo has no build step (tsc
-// runs --noEmit; vitest executes TS directly), so this wrapper bundles
-// differential/oracle/main.ts with esbuild into dist/ and runs the
-// session loop. Spawned by the Python fuzz harness as e.g.
+// Bundles differential/oracle/main.ts from TypeScript source (same recipe as
+// run-conformance.mjs) and runs the stdin/stdout session loop. Spawned by the
+// Python fuzz harness as e.g.
 //   --right "node /abs/path/to/scripts/run-oracle.mjs"
-// esbuild diagnostics go to stderr, which the protocol reserves for
-// free-form logs, so bundling noise can never corrupt the line framing.
-import { build } from "esbuild";
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+// esbuild's own logging is silenced in the shared bundle step and a failed
+// build surfaces as an uncaught error on stderr, which the protocol reserves
+// for free-form logs, so bundling noise can never corrupt the line framing.
+import { bundleAndImport } from "./lib/bundle-and-run.mjs";
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packageDir = resolve(repoRoot, "differential");
-const outFile = resolve(packageDir, "dist", "oracle.mjs");
-
-mkdirSync(dirname(outFile), { recursive: true });
-await build({
-  entryPoints: [resolve(packageDir, "oracle", "main.ts")],
-  outfile: outFile,
-  bundle: true,
-  platform: "node",
-  format: "esm",
-  target: "node20",
-  sourcemap: false,
-  logLevel: "silent",
+const { runOracle } = await bundleAndImport({
+  entry: "differential/oracle/main.ts",
+  outFile: "differential/dist/oracle.mjs",
 });
-
-const { runOracle } = await import(pathToFileURL(outFile).href);
 await runOracle();

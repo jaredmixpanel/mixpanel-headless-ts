@@ -1,26 +1,18 @@
-// Translated bookmark-method tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query_bookmarks.py (R10.2) —
-// BOTH classes (TestQueryFlows :15, TestQuerySavedReportNormalization
-// :151).
-//
-// Translation notes:
-// - Python uses bare `MagicMock()` clients, so the TS twin is
-//   {@link mockClient}: a stub carrying only the two members the tested
-//   methods touch (`querySavedFlows`, `querySavedReport`) plus a call
-//   log. `assert_called_once_with(bookmark_id=..., ...)` reads that log;
-//   Python's kwargs map to the TS positional id + options bag, so the
-//   asserts compare `{bookmarkId, options}` with the same VALUES.
-// - `result.report_type` is the Phase-2 `report_type` getter on
-//   `SavedReportResult`.
+// LiveQueryService.query_flows and query_saved_report: FlowsResult parsing
+// and the per-report-type normalization of saved-report responses (headers,
+// date range, series). Mirrors tests/unit/test_live_query_bookmarks.py
+// (TestQueryFlows, TestQuerySavedReportNormalization). The MagicMock client
+// is a call-recording stub; Python kwargs become the TS id + options bag.
 
 import { describe, expect, it } from "vitest";
+
+import type { MixpanelClient } from "../../src/client/client.js";
+import type { JsonValue } from "../../src/client/json-value.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import {
   FlowsResult,
   SavedReportResult,
 } from "../../src/types/results/live-query.js";
-import type { MixpanelClient } from "../../src/client/client.js";
-import type { JsonValue } from "../../src/client/json-value.js";
 
 /** One recorded `querySavedReport` call. */
 interface SavedReportCall {
@@ -39,7 +31,7 @@ interface MockApiClient {
   /** Every `querySavedReport` call, in call order. */
   readonly savedReportCalls: SavedReportCall[];
   /** Set the value the next stub call resolves with. */
-  setReturnValue(value: unknown): void;
+  setReturnValue: (value: unknown) => void;
 }
 
 /**
@@ -74,7 +66,8 @@ function mockClient(): MockApiClient {
   };
 }
 
-describe("TestQueryFlows", () => {
+describe("Query flows", () => {
+  // python: TestQueryFlows
   it("returns FlowsResult", async () => {
     const mock = mockClient();
     mock.setReturnValue({
@@ -109,7 +102,7 @@ describe("TestQueryFlows", () => {
       12345,
     );
 
-    expect(result.steps.length).toBe(3);
+    expect(result.steps).toHaveLength(3);
     expect(result.steps[0]!["event"]).toBe("Page View");
     expect(result.steps[2]!["count"]).toBe(250);
   });
@@ -130,7 +123,7 @@ describe("TestQueryFlows", () => {
       12345,
     );
 
-    expect(result.breakdowns.length).toBe(2);
+    expect(result.breakdowns).toHaveLength(2);
     expect(result.breakdowns[0]!["path"]).toBe("Page View -> Add to Cart");
   });
 
@@ -180,7 +173,7 @@ describe("TestQueryFlows", () => {
       12345,
     );
 
-    expect(result.metadata).toEqual({ version: "2.0", custom: "value" });
+    expect(result.metadata).toStrictEqual({ version: "2.0", custom: "value" });
   });
 
   it("defaults to empty metadata when absent", async () => {
@@ -196,7 +189,7 @@ describe("TestQueryFlows", () => {
       12345,
     );
 
-    expect(result.metadata).toEqual({});
+    expect(result.metadata).toStrictEqual({});
   });
 
   it("calls the client with the bookmark id", async () => {
@@ -210,11 +203,12 @@ describe("TestQueryFlows", () => {
 
     await new LiveQueryService(mock.client).querySavedFlows(12345);
 
-    expect(mock.savedFlowsCalls).toEqual([12345]);
+    expect(mock.savedFlowsCalls).toStrictEqual([12345]);
   });
 });
 
-describe("TestQuerySavedReportNormalization", () => {
+describe("Query saved report normalization", () => {
+  // python: TestQuerySavedReportNormalization
   it("insights responses preserve headers and series", async () => {
     const mock = mockClient();
     mock.setReturnValue({
@@ -230,8 +224,8 @@ describe("TestQuerySavedReportNormalization", () => {
     );
 
     expect(result).toBeInstanceOf(SavedReportResult);
-    expect(result.headers).toEqual(["$metric"]);
-    expect(result.series).toEqual({
+    expect(result.headers).toStrictEqual(["$metric"]);
+    expect(result.series).toStrictEqual({
       "Event A": { "2024-01-01": 100, "2024-01-02": 150 },
     });
   });
@@ -250,7 +244,7 @@ describe("TestQuerySavedReportNormalization", () => {
     );
 
     expect(result).toBeInstanceOf(SavedReportResult);
-    expect(result.headers).toEqual(["$funnel"]);
+    expect(result.headers).toStrictEqual(["$funnel"]);
     expect(result.report_type).toBe("funnel");
   });
 
@@ -289,7 +283,7 @@ describe("TestQuerySavedReportNormalization", () => {
       { bookmark_type: "funnels" },
     );
 
-    expect(result.series).toEqual(funnelData);
+    expect(result.series).toStrictEqual(funnelData);
   });
 
   it("retention responses add the $retention header", async () => {
@@ -309,7 +303,7 @@ describe("TestQuerySavedReportNormalization", () => {
     );
 
     expect(result).toBeInstanceOf(SavedReportResult);
-    expect(result.headers).toEqual(["$retention"]);
+    expect(result.headers).toStrictEqual(["$retention"]);
     expect(result.report_type).toBe("retention");
   });
 
@@ -325,7 +319,7 @@ describe("TestQuerySavedReportNormalization", () => {
       { bookmark_type: "retention" },
     );
 
-    expect(result.series).toEqual(retentionData);
+    expect(result.series).toStrictEqual(retentionData);
   });
 
   it("retention responses extract from_date/to_date from keys", async () => {
@@ -360,7 +354,7 @@ describe("TestQuerySavedReportNormalization", () => {
     );
 
     expect(result).toBeInstanceOf(SavedReportResult);
-    expect(result.headers).toEqual(["$flows"]);
+    expect(result.headers).toStrictEqual(["$flows"]);
   });
 
   it("flows responses structure the series correctly", async () => {
@@ -397,8 +391,8 @@ describe("TestQuerySavedReportNormalization", () => {
       bookmark_type: "insights",
     });
 
-    expect(mock.savedReportCalls.length).toBe(1);
-    expect(mock.savedReportCalls[0]).toEqual({
+    expect(mock.savedReportCalls).toHaveLength(1);
+    expect(mock.savedReportCalls[0]).toStrictEqual({
       bookmarkId: 12345,
       options: {
         bookmark_type: "insights",
@@ -418,8 +412,8 @@ describe("TestQuerySavedReportNormalization", () => {
       to_date: "2024-06-30",
     });
 
-    expect(mock.savedReportCalls.length).toBe(1);
-    expect(mock.savedReportCalls[0]).toEqual({
+    expect(mock.savedReportCalls).toHaveLength(1);
+    expect(mock.savedReportCalls[0]).toStrictEqual({
       bookmarkId: 12345,
       options: {
         bookmark_type: "funnels",

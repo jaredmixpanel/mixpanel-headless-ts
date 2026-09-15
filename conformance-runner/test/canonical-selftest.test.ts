@@ -1,17 +1,12 @@
-// Selftest-driven suite for the D6 canonicalizer (design D6/D12, TS-3).
-//
-// Iterates every case in the shared `canonical-selftest.json` — the
-// cross-language contract artifact authored by Python task PR-4 and
-// executed on the Python side by conformance/tests/test_canonical_selftest.py
-// — through the TS canonicalizer. Dispatch per case `kind` follows the
-// selftest file's own `$comment` prescription: `value`/`error`/`interactions`
-// compare canonical strings, `headers` compares the match verdict, `reject`
-// expects CanonicalizationError. Every case's `input_json` is parsed with
-// the LOSSLESS loader so raw number tokens survive (D6 rule 3 — plain
-// `JSON.parse` would collapse `18.0` to `18` and fail the float-token cases
-// by design).
+// The shared canonical-selftest.json contract (authored on the Python side,
+// executed there by conformance/tests/test_canonical_selftest.py) replayed
+// through the TS canonicalizer; inputs load losslessly so raw number tokens
+// survive.
+
 import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import {
   CanonicalizationError,
   canonicalize,
@@ -34,9 +29,9 @@ interface SelftestCase {
   /** Expected canonical string (value/error/interactions kinds). */
   readonly canonical?: string;
   /** Expected-header object (headers kind). */
-  readonly headers_contain?: { [key: string]: JsonValue };
+  readonly headers_contain?: Record<string, JsonValue>;
   /** Actual-header map (headers kind). */
-  readonly actual_headers?: { [key: string]: string };
+  readonly actual_headers?: Record<string, string>;
   /** Expected match verdict (headers kind). */
   readonly matches?: boolean;
   /** Non-finite double spelling (reject kind without input_json). */
@@ -54,7 +49,7 @@ interface SelftestDocument {
 }
 
 /** Non-finite doubles constructible only via the `special` field. */
-const SPECIAL_FLOATS: { readonly [name: string]: number } = {
+const SPECIAL_FLOATS: Readonly<Record<string, number>> = {
   nan: Number.NaN,
   infinity: Number.POSITIVE_INFINITY,
   negative_infinity: Number.NEGATIVE_INFINITY,
@@ -80,14 +75,55 @@ function required<K extends keyof SelftestCase>(
   const value = testCase[field];
   if (value === undefined) {
     throw new Error(
-      `selftest case ${testCase.id} is missing required field ${String(field)}`,
+      `selftest case ${testCase.id} is missing required field ${field}`,
     );
   }
   return value;
 }
 
+/**
+ * The per-kind check each case prescribes (the selftest file's own
+ * `$comment` dispatch). Kept as a table so every `it` below runs exactly
+ * one unconditional check.
+ */
+const CASE_CHECKS: Readonly<Record<string, (testCase: SelftestCase) => void>> =
+  {
+    value: (testCase) => {
+      const input = parseLossless(required(testCase, "input_json"));
+      expect(canonicalize(input)).toBe(required(testCase, "canonical"));
+    },
+    error: (testCase) => {
+      const input = parseLossless(required(testCase, "input_json"));
+      expect(canonicalizeError(input)).toBe(required(testCase, "canonical"));
+    },
+    interactions: (testCase) => {
+      const input = parseLossless(required(testCase, "input_json"));
+      expect(Array.isArray(input)).toBe(true);
+      expect(canonicalizeInteractions(input as JsonValue[])).toBe(
+        required(testCase, "canonical"),
+      );
+    },
+    headers: (testCase) => {
+      const verdict = headersMatch(
+        required(testCase, "headers_contain"),
+        required(testCase, "actual_headers"),
+      );
+      expect(verdict).toBe(required(testCase, "matches"));
+    },
+    reject: (testCase) => {
+      const value =
+        testCase.special === undefined
+          ? parseLossless(required(testCase, "input_json"))
+          : SPECIAL_FLOATS[testCase.special];
+      expect(value).toBeDefined();
+      expect(() => canonicalize(value as JsonValue)).toThrow(
+        CanonicalizationError,
+      );
+    },
+  };
+
 describe(`canonical-selftest.json (${DOCUMENT.cases.length} cases from ${SELFTEST_PATH})`, () => {
-  it("carries the ~40-case coverage the design mandates (D6)", () => {
+  it("carries the ~40-case coverage the canonical-form rules mandate", () => {
     expect(DOCUMENT.cases.length).toBeGreaterThanOrEqual(40);
   });
 
@@ -98,49 +134,11 @@ describe(`canonical-selftest.json (${DOCUMENT.cases.length} cases from ${SELFTES
 
   for (const testCase of DOCUMENT.cases) {
     it(`${testCase.kind}: ${testCase.id}`, () => {
-      switch (testCase.kind) {
-        case "value": {
-          const input = parseLossless(required(testCase, "input_json"));
-          expect(canonicalize(input)).toBe(required(testCase, "canonical"));
-          break;
-        }
-        case "error": {
-          const input = parseLossless(required(testCase, "input_json"));
-          expect(canonicalizeError(input)).toBe(
-            required(testCase, "canonical"),
-          );
-          break;
-        }
-        case "interactions": {
-          const input = parseLossless(required(testCase, "input_json"));
-          expect(Array.isArray(input)).toBe(true);
-          expect(canonicalizeInteractions(input as JsonValue[])).toBe(
-            required(testCase, "canonical"),
-          );
-          break;
-        }
-        case "headers": {
-          const verdict = headersMatch(
-            required(testCase, "headers_contain"),
-            required(testCase, "actual_headers"),
-          );
-          expect(verdict).toBe(required(testCase, "matches"));
-          break;
-        }
-        case "reject": {
-          const value =
-            testCase.special !== undefined
-              ? SPECIAL_FLOATS[testCase.special]
-              : parseLossless(required(testCase, "input_json"));
-          expect(value).toBeDefined();
-          expect(() => canonicalize(value as JsonValue)).toThrow(
-            CanonicalizationError,
-          );
-          break;
-        }
-        default:
-          throw new Error(`unknown selftest case kind ${testCase.kind}`);
+      const assertCase = CASE_CHECKS[testCase.kind];
+      if (assertCase === undefined) {
+        throw new Error(`unknown selftest case kind ${testCase.kind}`);
       }
+      assertCase(testCase);
     });
   }
 });

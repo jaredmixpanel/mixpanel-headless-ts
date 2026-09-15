@@ -1,101 +1,19 @@
 /**
- * B6-W7 member module — the `Workspace` data-governance members that
- * are NOT Lexicon definitions: drop filters (`workspace.py:7583-7737`),
- * custom properties (`:7739-7952`), lookup tables (`:7954-8361`) and
- * custom events (`:8363-8525`), all Phase 027.
+ * Data-governance members of the `Workspace` facade that are not Lexicon
+ * definitions: drop filters, custom properties, lookup tables and custom
+ * events. Each function is the body of one facade method — options-bag
+ * mapping, the params dump, the like-named client call and result-model
+ * validation with the endpoint name Python passes. The form-encoded
+ * register call, the unauthenticated GCS PUT, the `data-group-id` /
+ * `file-name` param spellings and the `UPDATE_TARGET_MISMATCH` /
+ * `MISSING_URL` / `MISSING_FIELD` guards belong to the client, not here.
  *
- * Packet contract (`b6-packets.md` §2/§9): the `workspace.ts` B6-W7
- * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
- * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
- * like-named B4-C5 client method
- * (`services/entities/{drop-filters,custom-properties,lookup-tables,custom-events}.ts`,
- * composed onto the client at `client.ts:1077+`) and result-model
- * construction via `validateResponseModel(s)` with the exact
- * `endpoint=` string Python passes. No request assembly, no header
- * merging, no URL building, no status branching (R10.8 — compose,
- * never re-implement). In particular the `data-group-id` /
- * `file-name` / `content-type` param spellings, the form-encoded
- * register POST, the GCS PUT (no auth header), the
- * `UPDATE_TARGET_MISMATCH` echo check and the `MISSING_URL` /
- * `MISSING_FIELD` guards all live in the B4 client and are NOT
- * re-derived here.
- *
- * Shard-wide observations from the Python re-read (all 24 bodies read
- * line-by-line at HEAD 2026-08-16):
- *
- * - **21 of 24 members are pure forwards.** The three exceptions are
- *   {@link listCustomProperties} (the `displayFormula` corruption
- *   re-raise, `:7766-7786`), {@link uploadLookupTable} (the five-step
- *   orchestrator + poll loop, `:8036-8075` + `_poll_lookup_upload`
- *   `:8077-8144`) and {@link markLookupTableReady} (which builds a
- *   form-data dict rather than dumping the model, `:8178-8184`).
- * - **Three dump spellings, deliberately different.**
- *   `create_drop_filter` / `update_drop_filter` (`:7642`, `:7676`) and
- *   `update_lookup_table` (`:8277`) use the PLAIN
- *   `model_dump(exclude_none=True)`; `update_custom_property`
- *   (`:7891`), `validate_custom_property` (`:7950`) and
- *   `update_custom_event` (`:8488`) add `by_alias=True`;
- *   `create_custom_property` (`:7825`) additionally passes
- *   `mode="json"` — see W7-D4 below. The facade mirrors each source
- *   spelling exactly rather than harmonizing them.
- * - **ZERO empty-response guards** (`if raw is None: raise …`) across
- *   all four ranges — verified by grep, matching the W5/W6 precedent.
- *   The shared `requireResponse` helper is therefore deliberately
- *   unused; adding it would invent a branch Python does not have.
- * - **Three opaque passthroughs** return the client payload verbatim
- *   under a `dict[str, Any]` annotation with no model validation:
- *   `validate_custom_property` (`:7951`), `get_lookup_upload_status`
- *   (`:8245`) — plus `download_lookup_table` (`bytes`, `:8333`) and
- *   `get_lookup_download_url` (`str`, `:8360`), which forward the
- *   client's already-typed return.
- * - **`create_custom_event` is the port's only `to_form_body()` call
- *   site** (`:8406`) — W7-D3 lands that method on the Phase-2 model.
- *
- * ## Arbiter-visible decisions
- *
- * - **W7-D1 (packet §9) — the `readFile` seam.** Python reads the CSV
- *   with `Path(params.file_path).read_bytes()` (`:8044`).
- *   `packages/core` is runtime-agnostic (no `node:fs`), so the byte
- *   source is injected via {@link LookupUploadSeams.readFile}
- *   (`WorkspaceOptions.readFile`); the default throws
- *   `UNPORTED_FILE_READ_SEAM`. The real reader ships in
- *   `packages/node` (`nodeReadFile`, fs-seams.ts — B8-N1); core stays
- *   runtime-agnostic (core-alone posture, b8-packets.md §4.4).
- * - **W7-D2 — the poll clock.** Python's `_poll_lookup_upload` mixes
- *   `time.monotonic()` (deadline) with `time.sleep()` (`:8099-8102`).
- *   The sleep rides the client's existing injected seam
- *   (`client.core.sleep`, R6.3) with the ONE seconds→ms conversion at
- *   the call site (R2.12); the deadline rides
- *   {@link LookupUploadSeams.monotonic} (SECONDS, Python spelling),
- *   whose default is `Date.now() / 1000`. Sanctioned micro-deviation:
- *   `Date.now()` is a wall clock, so a system-clock adjustment mid-poll
- *   would shift the deadline where CPython's monotonic source would
- *   not — no monotonic source exists in the runtime-agnostic core, and
- *   the seam lets `packages/node` inject one. `poll_interval` /
- *   `max_poll_seconds` keep their Python names AND their SECONDS unit
- *   in the options bag.
- * - **W7-D3 — `CreateCustomEventParams.toFormBody()`.** Python's model
- *   owns the serializer (`types.py:4929-4942`), so the twin lands on
- *   the Phase-2 model (`types/entities/data-governance.ts`) over
- *   {@link pythonJsonDumps} — CPython `json.dumps` defaults, i.e. a
- *   SPACE after every colon/comma and `ensure_ascii=True`. R10.8: the
- *   dumper is not re-derived here.
- * - **W7-D4 — `mode="json"` is a no-op in the TS twin.**
- *   `create_custom_property` (`:7825`) is the facade's ONLY
- *   `mode="json"` dump. For `CreateCustomPropertyParams` the flag has
- *   exactly one Python effect: `resource_type` is a `str`-`Enum`
- *   (`types.py:5333`) that mode="python" would leave as an Enum member.
- *   The TS port represents that enum as a plain string at runtime
- *   (`types/enums.ts:114-118`), and nested models
- *   (`ComposedPropertyValue`) recurse in BOTH pydantic modes, so the
- *   dumped body is identical either way. Recorded rather than modelled:
- *   no `modeJson` flag is added to
- *   {@link EntityModel.modelDumpExcludeNone}.
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import type { MixpanelClient } from "../client/client.js";
 import { isPlainRecord } from "../client/internals.js";
+import { toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -107,15 +25,15 @@ import {
 } from "../compat/index.js";
 import { MixpanelHeadlessError, QueryError } from "../errors.js";
 import {
+  type CreateCustomEventParams,
+  type CreateCustomPropertyParams,
+  type CreateDropFilterParams,
   CustomEvent,
   CustomProperty,
   DropFilter,
   DropFilterLimitsResponse,
   LookupTable,
   LookupTableUploadUrl,
-  type CreateCustomEventParams,
-  type CreateCustomPropertyParams,
-  type CreateDropFilterParams,
   type MarkLookupTableReadyParams,
   type UpdateCustomPropertyParams,
   type UpdateDropFilterParams,
@@ -126,102 +44,120 @@ import {
   EventDefinition,
   type UpdateEventDefinitionParams,
 } from "../types/entities/lexicon.js";
-import { native, nativeInt64 } from "./shared.js";
 
-// ---------------------------------------------------------------------------
-// Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
-// spelling since the recorder replays kwargs by name).
-// ---------------------------------------------------------------------------
+// --- Options bags (keys keep the Python keyword spelling) ---
 
-/** Options bag of `Workspace.listLookupTables` (`workspace.py:7957`). */
+/** Options bag of `Workspace.listLookupTables`. */
 export interface WorkspaceListLookupTablesOptions {
   /**
-   * Optional filter by data group ID (Python default `None`); a
-   * `bigint` carries an int64 id beyond 2^53 exactly.
+   * Filter by data group id. A `bigint` carries an int64 id beyond 2^53
+   * exactly.
+   *
+   * @defaultValue `null` (every table)
    */
   readonly data_group_id?: number | bigint | null | undefined;
 }
 
-/** Options bag of `Workspace.downloadLookupTable` (`workspace.py:8302`). */
+/** Options bag of `Workspace.downloadLookupTable`. */
 export interface WorkspaceDownloadLookupTableOptions {
-  /** Optional file name filter (Python default `None`). */
+  /**
+   * File name filter.
+   *
+   * @defaultValue `null`
+   */
   readonly file_name?: string | null | undefined;
-  /** Optional row limit (Python default `None`). */
+  /**
+   * Row limit.
+   *
+   * @defaultValue `null` (no limit)
+   */
   readonly limit?: number | null | undefined;
 }
 
 /**
- * Options bag of `Workspace.uploadLookupTable` (`workspace.py:7989-7995`).
- *
- * Both members stay in SECONDS under their Python names — the single
- * seconds→milliseconds conversion happens at the sleep call site
- * (R2.12).
+ * Options bag of `Workspace.uploadLookupTable`. Both members stay in
+ * seconds under their Python names; the single seconds-to-milliseconds
+ * conversion happens at the sleep call site.
  */
 export interface WorkspaceUploadLookupTableOptions {
-  /** Seconds between status polls for async uploads (default `2.0`). */
+  /**
+   * Seconds between status polls for asynchronous uploads.
+   *
+   * @defaultValue `2.0`
+   */
   readonly poll_interval?: number | undefined;
-  /** Maximum seconds to wait for async processing (default `300.0`). */
+  /**
+   * Maximum seconds to wait for asynchronous processing.
+   *
+   * @defaultValue `300.0`
+   */
   readonly max_poll_seconds?: number | undefined;
 }
 
 /**
- * The runtime seams {@link uploadLookupTable} needs — W7-D1/W7-D2.
+ * The runtime seams {@link uploadLookupTable} needs. The facade supplies
+ * them from `WorkspaceOptions` (`readFile`, `monotonic`) and the bound
+ * client (`client.core.sleep`); tests and `packages/node` override them.
  *
- * The facade supplies these from `WorkspaceOptions` (`readFile`,
- * `monotonic`) and the bound client (`client.core.sleep`); tests and
- * `packages/node` override them.
+ * @remarks
+ * Python reads the CSV with `Path(file_path).read_bytes()` and times the
+ * poll with `time.monotonic()`. The core package is runtime-agnostic (no
+ * `node:fs`, no monotonic clock), so both are injected; the default
+ * `monotonic` is `Date.now() / 1000`, a wall clock, so a system-clock
+ * adjustment mid-poll shifts the deadline where CPython's monotonic
+ * source would not. `packages/node` may inject a monotonic source.
  */
 export interface LookupUploadSeams {
   /**
-   * `Path(file_path).read_bytes()` (`workspace.py:8044`).
+   * `Path(file_path).read_bytes()`.
    *
    * @param path - The local CSV path.
    * @returns The file bytes.
    */
-  readFile(path: string): Promise<Uint8Array>;
+  readFile: (path: string) => Promise<Uint8Array>;
   /**
-   * `time.monotonic()` in SECONDS (`workspace.py:8099`, `:8101`).
+   * `time.monotonic()`, in seconds.
    *
    * @returns Elapsed seconds from an arbitrary origin.
    */
-  monotonic(): number;
+  monotonic: () => number;
   /**
-   * `time.sleep(poll_interval)` (`workspace.py:8102`) — MILLISECONDS
-   * (R2.12); the caller converts.
+   * `time.sleep(poll_interval)`, in milliseconds; the caller converts.
    *
    * @param ms - Milliseconds to wait.
    * @returns Resolves when the wait elapses.
    */
-  sleep(ms: number): Promise<void>;
+  sleep: (ms: number) => Promise<void>;
 }
 
 /** The optional log sink of the upload orchestrator (`logging` twin). */
 export interface LookupUploadLogger {
   /**
-   * `logger.info(...)` — the async-processing notice
-   * (`workspace.py:8062-8066`).
+   * `logger.info(...)` — the asynchronous-processing notice.
    *
    * @param message - The formatted text (never vector-compared).
    */
-  info?(message: string): void;
+  info?: (message: string) => void;
   /**
-   * `logger.debug(...)` — the per-poll status trace
-   * (`workspace.py:8132-8136`).
+   * `logger.debug(...)` — the per-poll status trace.
    *
    * @param message - The formatted text (never vector-compared).
    */
-  debug?(message: string): void;
+  debug?: (message: string) => void;
 }
 
 /**
- * The default {@link LookupUploadSeams.readFile} — the real reader
- * ships in `packages/node` (`nodeReadFile`, fs-seams.ts — B8-N1); this
- * default stays so core without a wired reader still throws the coded
- * error (core-alone posture, b8-packets.md §4.4; marker retired at the
- * B8 pair-A arbiter, `b8-reviewA-resolution.md` ASR-F2).
+ * Reject the lookup-table upload with `UNPORTED_FILE_READ_SEAM` — the
+ * default {@link LookupUploadSeams.readFile}. The real reader ships in
+ * `packages/node` (`nodeReadFile`); this default stays so a facade
+ * without a wired reader still throws the coded error.
  *
- * @returns Never; always throws.
- * @throws MixpanelHeadlessError - Code `UNPORTED_FILE_READ_SEAM`.
+ * @returns Never resolves; always rejects.
+ * @throws {@link MixpanelHeadlessError} - Code `UNPORTED_FILE_READ_SEAM`.
+ * @example
+ * ```typescript
+ * const ws = new Workspace({ session, readFile: nodeReadFile }); // avoids it
+ * ```
  */
 export function unportedReadFile(): Promise<Uint8Array> {
   return Promise.reject(
@@ -236,133 +172,177 @@ export function unportedReadFile(): Promise<Uint8Array> {
 }
 
 /**
- * The default {@link LookupUploadSeams.monotonic} (W7-D2).
+ * Read the wall clock in seconds — the default
+ * {@link LookupUploadSeams.monotonic}.
  *
- * @returns Seconds since the Unix epoch on the wall clock.
+ * @returns Seconds since the Unix epoch.
+ * @example
+ * ```typescript
+ * const deadline = defaultMonotonic() + 300;
+ * ```
  */
 export function defaultMonotonic(): number {
   return Date.now() / 1000;
 }
 
-// ---------------------------------------------------------------------------
-// Drop filters (`workspace.py:7583-7737`)
-// ---------------------------------------------------------------------------
+// --- Drop filters ---
 
 /**
- * List all drop filters (`list_drop_filters`,
- * `workspace.py:7586-7611`).
+ * List every drop filter.
  *
  * @param client - The wire client.
  * @returns The `DropFilter` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
- *   failures per the B0 contract.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+ *   failures.
+ * @example
+ * ```typescript
+ * const filters = await ws.listDropFilters();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_drop_filters
  */
 export async function listDropFilters(
   client: MixpanelClient,
 ): Promise<DropFilter[]> {
   const rawList = await client.listDropFilters();
-  return validateResponseModels(DropFilter, rawList.map(native), {
-    endpoint: "list_drop_filters",
-  });
+  return validateResponseModels(
+    DropFilter,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "list_drop_filters",
+    },
+  );
 }
 
 /**
- * Create a new drop filter (`create_drop_filter`,
- * `workspace.py:7613-7646`).
+ * Create a drop filter.
  *
  * @param client - The wire client.
- * @param params - Drop filter creation parameters (dumped WITHOUT
- *   `by_alias`, `:7642`).
- * @returns The FULL post-creation list of `DropFilter` models.
- * @throws ResponseValidationError - Malformed payload.
+ * @param params - Drop filter creation parameters; dumped without
+ *   `by_alias`, as Python spells it.
+ * @returns The full post-creation list of `DropFilter` models.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const filters = await ws.createDropFilter(
+ *   new CreateDropFilterParams({ event_name: "Debug Ping", filters: [] }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_drop_filter
  */
 export async function createDropFilter(
   client: MixpanelClient,
   params: CreateDropFilterParams,
 ): Promise<DropFilter[]> {
   const rawList = await client.createDropFilter(params.modelDumpExcludeNone());
-  return validateResponseModels(DropFilter, rawList.map(native), {
-    endpoint: "create_drop_filter",
-  });
+  return validateResponseModels(
+    DropFilter,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "create_drop_filter",
+    },
+  );
 }
 
 /**
- * Update a drop filter (`update_drop_filter`,
- * `workspace.py:7648-7680`).
+ * Update a drop filter.
  *
  * @param client - The wire client.
- * @param params - Update parameters (must include the filter ID);
- *   dumped WITHOUT `by_alias` (`:7676`).
- * @returns The FULL post-update list of `DropFilter` models.
- * @throws ResponseValidationError - Malformed payload.
+ * @param params - Update parameters, including the filter `id`; dumped
+ *   without `by_alias`.
+ * @returns The full post-update list of `DropFilter` models.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const filters = await ws.updateDropFilter(
+ *   new UpdateDropFilterParams({ id: 7, active: false }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_drop_filter
  */
 export async function updateDropFilter(
   client: MixpanelClient,
   params: UpdateDropFilterParams,
 ): Promise<DropFilter[]> {
   const rawList = await client.updateDropFilter(params.modelDumpExcludeNone());
-  return validateResponseModels(DropFilter, rawList.map(native), {
-    endpoint: "update_drop_filter",
-  });
+  return validateResponseModels(
+    DropFilter,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "update_drop_filter",
+    },
+  );
 }
 
 /**
- * Delete a drop filter (`delete_drop_filter`,
- * `workspace.py:7682-7709`).
+ * Delete a drop filter.
  *
  * @param client - The wire client.
- * @param dropFilterId - Drop filter ID (integer).
- * @returns The FULL post-delete list of remaining `DropFilter` models.
- * @throws ResponseValidationError - Malformed payload.
+ * @param dropFilterId - Id of the drop filter to delete.
+ * @returns The full post-delete list of the remaining `DropFilter` models.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const remaining = await ws.deleteDropFilter(7);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_drop_filter
  */
 export async function deleteDropFilter(
   client: MixpanelClient,
   dropFilterId: number,
 ): Promise<DropFilter[]> {
   const rawList = await client.deleteDropFilter(dropFilterId);
-  return validateResponseModels(DropFilter, rawList.map(native), {
-    endpoint: "delete_drop_filter",
-  });
+  return validateResponseModels(
+    DropFilter,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "delete_drop_filter",
+    },
+  );
 }
 
 /**
- * Get drop filter usage limits (`get_drop_filter_limits`,
- * `workspace.py:7711-7736`).
+ * Fetch the drop-filter usage limits.
  *
  * @param client - The wire client.
  * @returns The `DropFilterLimitsResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const { filter_limit } = await ws.getDropFilterLimits();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_drop_filter_limits
  */
 export async function getDropFilterLimits(
   client: MixpanelClient,
 ): Promise<DropFilterLimitsResponse> {
   const raw = await client.getDropFilterLimits();
-  return validateResponseModel(DropFilterLimitsResponse, native(raw), {
+  return validateResponseModel(DropFilterLimitsResponse, toNativeJson(raw), {
     endpoint: "get_drop_filter_limits",
   });
 }
 
-// ---------------------------------------------------------------------------
-// Custom properties (`workspace.py:7739-7952`)
-// ---------------------------------------------------------------------------
+// --- Custom properties ---
 
 /**
- * List all custom properties (`list_custom_properties`,
- * `workspace.py:7742-7789`).
+ * List every custom property.
  *
- * The shard's server-corruption branch: when the App API fails to
- * serialize a project whose custom property carries an invalid
- * `displayFormula`, the 400 body says `{"field": "displayFormula"}` and
- * Python re-raises a NEW `QueryError` carrying an actionable message
- * plus the original HTTP context (`:7766-7786`). Every other
- * `QueryError` propagates untouched.
- *
+ * @remarks
+ * When the App API fails to serialize a project whose custom property
+ * carries an invalid `displayFormula`, the 400 body says
+ * `{"field": "displayFormula"}` and Python re-raises a new `QueryError`
+ * with an actionable message plus the original HTTP context. Every
+ * other `QueryError` propagates untouched.
  * @param client - The wire client.
  * @returns The `CustomProperty` models, in response order.
- * @throws QueryError - The re-raised corruption error, or the original.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link QueryError} - The re-raised corruption error, or the original.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const properties = await ws.listCustomProperties();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_custom_properties
  */
 export async function listCustomProperties(
   client: MixpanelClient,
@@ -370,16 +350,15 @@ export async function listCustomProperties(
   let rawList: readonly unknown[];
   try {
     rawList = await client.listCustomProperties();
-  } catch (exc) {
-    if (!(exc instanceof QueryError)) {
-      throw exc;
+  } catch (error) {
+    if (!(error instanceof QueryError)) {
+      throw error;
     }
-    // `details.get("response_body", {})` — the key is ABSENT (not
-    // `null`) when the body was `None` (R4.11 detail-bag mirror), so
-    // the `{}` default fires exactly where Python's does. Watchlist
-    // #13: `isinstance(body, dict)` is `isPlainRecord`, never a bare
-    // `typeof === "object"`.
-    const details = exc.details;
+    // `details.get("response_body", {})` — the key is absent (not
+    // `null`) when the body was `None`, so the `{}` default fires
+    // exactly where Python's does; `isinstance(body, dict)` is
+    // `isPlainRecord`, never a bare `typeof === "object"`.
+    const details = error.details;
     const body = isPlainRecord(details) ? (details["response_body"] ?? {}) : {};
     if (isPlainRecord(body) && body["field"] === "displayFormula") {
       throw new QueryError(
@@ -389,31 +368,43 @@ export async function listCustomProperties(
           "get_custom_property(id) to retrieve individual " +
           "properties, or contact Mixpanel support.",
         {
-          statusCode: exc.statusCode,
-          responseBody: exc.responseBody,
-          requestMethod: exc.requestMethod,
-          requestUrl: exc.requestUrl,
-          requestParams: exc.requestParams,
-          cause: exc,
+          statusCode: error.statusCode,
+          responseBody: error.responseBody,
+          requestMethod: error.requestMethod,
+          requestUrl: error.requestUrl,
+          requestParams: error.requestParams,
+          cause: error,
         },
       );
     }
-    throw exc;
+    throw error;
   }
-  return validateResponseModels(CustomProperty, rawList.map(native), {
-    endpoint: "list_custom_properties",
-  });
+  return validateResponseModels(
+    CustomProperty,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "list_custom_properties",
+    },
+  );
 }
 
 /**
- * Create a new custom property (`create_custom_property`,
- * `workspace.py:7791-7829`).
+ * Create a custom property.
  *
  * @param client - The wire client.
- * @param params - Creation parameters; dumped with `by_alias=True`
- *   (and Python's `mode="json"`, a no-op in the TS twin — W7-D4).
+ * @param params - Creation parameters, dumped with `by_alias`. Python
+ *   also passes `mode="json"`, whose only effect there is to render the
+ *   `resource_type` enum as its string; the port stores that enum as a
+ *   plain string already, so the bodies are identical.
  * @returns The created `CustomProperty`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const property = await ws.createCustomProperty(
+ *   new CreateCustomPropertyParams({ name: "Plan tier", display_formula: "…" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_custom_property
  */
 export async function createCustomProperty(
   client: MixpanelClient,
@@ -422,40 +413,50 @@ export async function createCustomProperty(
   const raw = await client.createCustomProperty(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(CustomProperty, native(raw), {
+  return validateResponseModel(CustomProperty, toNativeJson(raw), {
     endpoint: "create_custom_property",
   });
 }
 
 /**
- * Get a custom property by ID (`get_custom_property`,
- * `workspace.py:7831-7859`).
+ * Fetch a custom property by id.
  *
  * @param client - The wire client.
- * @param propertyId - Custom property ID (string).
+ * @param propertyId - Custom property id.
  * @returns The `CustomProperty`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const property = await ws.getCustomProperty("cp-123");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_custom_property
  */
 export async function getCustomProperty(
   client: MixpanelClient,
   propertyId: string,
 ): Promise<CustomProperty> {
   const raw = await client.getCustomProperty(propertyId);
-  return validateResponseModel(CustomProperty, native(raw), {
+  return validateResponseModel(CustomProperty, toNativeJson(raw), {
     endpoint: "get_custom_property",
   });
 }
 
 /**
- * Update a custom property (`update_custom_property`,
- * `workspace.py:7861-7895`).
+ * Update a custom property.
  *
  * @param client - The wire client.
- * @param propertyId - Custom property ID (string).
- * @param params - Fields to update (dumped with `by_alias=True`,
- *   `:7891`).
+ * @param propertyId - Custom property id.
+ * @param params - Fields to update, dumped with `by_alias`.
  * @returns The updated `CustomProperty`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateCustomProperty(
+ *   "cp-123",
+ *   new UpdateCustomPropertyParams({ description: "Derived plan tier" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_custom_property
  */
 export async function updateCustomProperty(
   client: MixpanelClient,
@@ -466,20 +467,24 @@ export async function updateCustomProperty(
     propertyId,
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(CustomProperty, native(raw), {
+  return validateResponseModel(CustomProperty, toNativeJson(raw), {
     endpoint: "update_custom_property",
   });
 }
 
 /**
- * Delete a custom property (`delete_custom_property`,
- * `workspace.py:7897-7916`).
+ * Delete a custom property.
  *
  * @param client - The wire client.
- * @param propertyId - Custom property ID (string).
+ * @param propertyId - Custom property id.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.deleteCustomProperty("cp-123");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_custom_property
  */
 export async function deleteCustomProperty(
   client: MixpanelClient,
@@ -489,17 +494,19 @@ export async function deleteCustomProperty(
 }
 
 /**
- * Validate a custom property definition without creating it
- * (`validate_custom_property`, `workspace.py:7918-7951`).
- *
- * Opaque passthrough: Python returns the client dict unvalidated.
+ * Validate a custom property definition without creating it. The result
+ * is returned verbatim, unvalidated.
  *
  * @param client - The wire client.
- * @param params - Parameters to validate (dumped with `by_alias=True`
- *   and NO `mode="json"`, `:7950`).
+ * @param params - Parameters to validate, dumped with `by_alias`.
  * @returns The raw validation result.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * const result = await ws.validateCustomProperty(params);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.validate_custom_property
  */
 export async function validateCustomProperty(
   client: MixpanelClient,
@@ -508,21 +515,23 @@ export async function validateCustomProperty(
   const raw = await client.validateCustomProperty(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
-// ---------------------------------------------------------------------------
-// Lookup tables (`workspace.py:7954-8361`)
-// ---------------------------------------------------------------------------
+// --- Lookup tables ---
 
 /**
- * List lookup tables (`list_lookup_tables`,
- * `workspace.py:7957-7987`).
+ * List the lookup tables.
  *
  * @param client - The wire client.
- * @param options - Optional `data_group_id` filter (keyword-only).
+ * @param options - Optional `data_group_id` filter.
  * @returns The `LookupTable` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const tables = await ws.listLookupTables({ data_group_id: 42n });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_lookup_tables
  */
 export async function listLookupTables(
   client: MixpanelClient,
@@ -531,28 +540,34 @@ export async function listLookupTables(
   const rawList = await client.listLookupTables({
     data_group_id: options.data_group_id ?? null,
   });
-  // `nativeInt64`, not `native`: `LookupTable.id` is a signed int64 that
+  // `unsafeIntegers: "bigint"`: `LookupTable.id` is a signed int64 that
   // a double would round (e.g. `-8644926364725811123`).
-  return validateResponseModels(LookupTable, rawList.map(nativeInt64), {
-    endpoint: "list_lookup_tables",
-  });
+  return validateResponseModels(
+    LookupTable,
+    rawList.map((item) => toNativeJson(item, { unsafeIntegers: "bigint" })),
+    {
+      endpoint: "list_lookup_tables",
+    },
+  );
 }
 
 /**
- * Poll for async lookup-table upload completion
- * (`_poll_lookup_upload`, `workspace.py:8077-8144`).
+ * Poll until an asynchronous lookup-table upload completes.
  *
  * @param client - The wire client.
- * @param uploadId - Async upload task ID.
+ * @param uploadId - The asynchronous upload task id.
  * @param pollInterval - Seconds between polls.
- * @param maxPollSeconds - Maximum total wait time in seconds.
- * @param seams - The clock/sleep seams (W7-D2).
+ * @param maxPollSeconds - Maximum total wait, in seconds.
+ * @param seams - The clock and sleep seams.
  * @param logger - Optional debug sink.
  * @returns The result record of the completed upload.
- * @throws MixpanelHeadlessError - `INVALID_RESPONSE` (SUCCESS with a
- *   non-dict `result`), `UPLOAD_FAILED` (FAILURE/REVOKED),
- *   `UPLOAD_NOT_FOUND` (NOTFOUND) or `UPLOAD_TIMEOUT` (deadline).
+ * @throws {@link MixpanelHeadlessError} - `INVALID_RESPONSE` (`SUCCESS`
+ *   with a non-dict `result`), `UPLOAD_FAILED` (`FAILURE` / `REVOKED`),
+ *   `UPLOAD_NOT_FOUND` (`NOTFOUND`) or `UPLOAD_TIMEOUT` (deadline
+ *   passed).
+ * @see mixpanel_headless.workspace.Workspace._poll_lookup_upload
  */
+// eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function pollLookupUpload(
   client: MixpanelClient,
   uploadId: string,
@@ -564,14 +579,14 @@ async function pollLookupUpload(
   const deadline = seams.monotonic() + maxPollSeconds;
 
   while (seams.monotonic() < deadline) {
-    // R2.12: seconds in the Python-named option, milliseconds at the
-    // ONE conversion point.
+    // Seconds in the Python-named option, milliseconds at the single
+    // conversion point.
     await seams.sleep(pollInterval * 1000);
-    const status = nativeInt64(
-      await client.getLookupUploadStatus(uploadId),
-    ) as Record<string, unknown>;
+    const status = toNativeJson(await client.getLookupUploadStatus(uploadId), {
+      unsafeIntegers: "bigint",
+    }) as Record<string, unknown>;
     // `status.get("uploadStatus", "UNKNOWN")` — the default fires on
-    // ABSENCE only (an explicit `null` stays `null`), R4.8.
+    // absence only (an explicit `null` stays `null`).
     const uploadStatus = Object.hasOwn(status, "uploadStatus")
       ? status["uploadStatus"]
       : "UNKNOWN";
@@ -591,8 +606,7 @@ async function pollLookupUpload(
     if (uploadStatus === "FAILURE" || uploadStatus === "REVOKED") {
       throw new MixpanelHeadlessError(
         `Lookup table upload failed with status ` +
-          `'${pythonStr(uploadStatus as PythonValue)}': ` +
-          `${pythonStr(status as PythonValue)}`,
+          `'${pythonStr(uploadStatus)}': ${pythonStr(status as PythonValue)}`,
         "UPLOAD_FAILED",
         { upload_id: uploadId, status },
       );
@@ -614,9 +628,8 @@ async function pollLookupUpload(
   }
 
   throw new MixpanelHeadlessError(
-    // `f"{max_poll_seconds}s"` over a `float`-annotated value —
-    // `pythonFloatStr` keeps CPython's `300.0` spelling (R11.7; it also
-    // sidesteps Discrepancy #12 at this site).
+    // `f"{max_poll_seconds}s"` over a `float`-annotated value:
+    // `pythonFloatStr` keeps CPython's `300.0` spelling.
     `Lookup table upload timed out after ${pythonFloatStr(maxPollSeconds)}s ` +
       `(uploadId=${uploadId}). Use get_lookup_upload_status() ` +
       `to check progress manually.`,
@@ -626,32 +639,41 @@ async function pollLookupUpload(
 }
 
 /**
- * Upload a CSV file as a new lookup table (`upload_lookup_table`,
- * `workspace.py:7989-8075`).
+ * Upload a CSV file as a new lookup table.
  *
- * The shard's orchestrator: signed URL → GCS PUT → register → (for
- * payloads ≥ 5 MB) poll until the async task completes. Every wire hop
- * is a B4-C5 client method; this body owns only the sequencing, the
+ * @remarks
+ * The orchestration is: signed URL, GCS PUT, register, and for payloads
+ * of 5 MB or more a poll until the asynchronous task completes. Every
+ * wire hop is a client method; this body owns only the sequencing, the
  * form-data assembly and the `name` back-fill.
- *
  * @param client - The wire client.
  * @param params - Upload parameters (`name`, `file_path`, optional
  *   `data_group_id`).
  * @param options - `poll_interval` (default `2.0` s) and
- *   `max_poll_seconds` (default `300.0` s), keyword-only in Python.
- * @param seams - The `readFile` / clock seams (W7-D1/W7-D2).
+ *   `max_poll_seconds` (default `300.0` s).
+ * @param seams - The `readFile`, clock and sleep seams.
  * @param logger - Optional log sink.
  * @returns The created `LookupTable`.
- * @throws MixpanelHeadlessError - `UNPORTED_FILE_READ_SEAM` (default
- *   `readFile`), or any poll-loop code above.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - `UNPORTED_FILE_READ_SEAM` when
+ *   no `readFile` seam was injected, or any poll-loop code
+ *   (`INVALID_RESPONSE`, `UPLOAD_FAILED`, `UPLOAD_NOT_FOUND`,
+ *   `UPLOAD_TIMEOUT`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const table = await ws.uploadLookupTable(
+ *   new UploadLookupTableParams({ name: "countries", file_path: "./countries.csv" }),
+ *   { max_poll_seconds: 600 },
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.upload_lookup_table
  */
 export async function uploadLookupTable(
   client: MixpanelClient,
   params: UploadLookupTableParams,
-  options: WorkspaceUploadLookupTableOptions = {},
+  options: WorkspaceUploadLookupTableOptions | undefined = {},
   seams: LookupUploadSeams,
-  logger?: LookupUploadLogger | undefined,
+  logger?: LookupUploadLogger,
 ): Promise<LookupTable> {
   const pollInterval = options.poll_interval ?? 2.0;
   const maxPollSeconds = options.max_poll_seconds ?? 300.0;
@@ -661,8 +683,7 @@ export async function uploadLookupTable(
   const urlInfo = await client.getLookupUploadUrl();
 
   // Step 2: read the CSV and PUT it to the signed URL. The dict values
-  // are `Any` in Python and reach `str`-annotated parameters unchecked
-  // (Discrepancy #8: out-of-annotation values are unspecified).
+  // are `Any` in Python and reach `str`-annotated parameters unchecked.
   const csvBytes = await seams.readFile(params.file_path);
   await client.uploadToSignedUrl(urlInfo["url"] as string, csvBytes);
 
@@ -673,16 +694,17 @@ export async function uploadLookupTable(
     key: urlInfo["key"] as string,
   };
   if (params.data_group_id !== null) {
-    formData["data-group-id"] = pythonStr(params.data_group_id as PythonValue);
+    formData["data-group-id"] = pythonStr(params.data_group_id);
   }
 
-  let raw: unknown = nativeInt64(await client.registerLookupTable(formData));
+  let raw: unknown = toNativeJson(await client.registerLookupTable(formData), {
+    unsafeIntegers: "bigint",
+  });
 
-  // `{"uploadId": "..."}` marks async (Celery) processing for files
-  // >= 5 MB. Python guards the read with `isinstance(raw, dict)`
-  // (`:8060`) — watchlist #13 ports it as `isPlainRecord`; on a
-  // non-dict payload the read is skipped and `raw.get("uploadId")`
-  // treats absent and `null` alike (B6-ARB fidelity F2).
+  // `{"uploadId": "..."}` marks asynchronous processing for files of
+  // 5 MB or more. Python guards the read with `isinstance(raw, dict)`
+  // (`isPlainRecord` here); on a non-dict payload the read is skipped,
+  // and `raw.get("uploadId")` treats absent and `null` alike.
   const uploadId = isPlainRecord(raw) ? (raw["uploadId"] ?? null) : null;
   if (uploadId !== null) {
     logger?.info?.(
@@ -700,10 +722,8 @@ export async function uploadLookupTable(
   }
 
   // The upload response may carry only `{'id': ...}`; inject the name
-  // from params so LookupTable validation succeeds (`:8071-8074`).
-  // Python's `isinstance(raw, dict)` half of the guard ports as
-  // `isPlainRecord` — a non-dict payload flows to validation UNTOUCHED
-  // (B6-ARB fidelity F2).
+  // from params so LookupTable validation succeeds. A non-dict payload
+  // flows to validation untouched, as in Python.
   if (isPlainRecord(raw) && !Object.hasOwn(raw, "name")) {
     raw = { ...raw, name: params.name };
   }
@@ -713,17 +733,21 @@ export async function uploadLookupTable(
 }
 
 /**
- * Mark a lookup table as ready after upload
- * (`mark_lookup_table_ready`, `workspace.py:8146-8188`).
- *
- * Builds the form-data dict by hand (no model dump) exactly as Python
- * does at `:8178-8184`.
+ * Mark a lookup table as ready after upload. The form-data dict is
+ * built by hand rather than dumped from the model, as Python does.
  *
  * @param client - The wire client.
  * @param params - Parameters (`name`, `key`, optional
  *   `data_group_id`).
  * @returns The updated `LookupTable`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const table = await ws.markLookupTableReady(
+ *   new MarkLookupTableReadyParams({ name: "countries", key: uploadUrl.key }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.mark_lookup_table_ready
  */
 export async function markLookupTableReady(
   client: MixpanelClient,
@@ -734,65 +758,82 @@ export async function markLookupTableReady(
     key: params.key,
   };
   if (params.data_group_id !== null) {
-    formData["data-group-id"] = pythonStr(params.data_group_id as PythonValue);
+    formData["data-group-id"] = pythonStr(params.data_group_id);
   }
   const raw = await client.markLookupTableReady(formData);
-  return validateResponseModel(LookupTable, nativeInt64(raw), {
-    endpoint: "mark_lookup_table_ready",
-  });
+  return validateResponseModel(
+    LookupTable,
+    toNativeJson(raw, { unsafeIntegers: "bigint" }),
+    {
+      endpoint: "mark_lookup_table_ready",
+    },
+  );
 }
 
 /**
- * Get a signed URL for uploading lookup table data
- * (`get_lookup_upload_url`, `workspace.py:8190-8220`).
+ * Fetch a signed URL for uploading lookup-table data.
  *
  * @param client - The wire client.
- * @param contentType - MIME type of the file to upload (Python
- *   POSITIONAL with default `"text/csv"`).
+ * @param contentType - MIME type of the file to upload (positional in
+ *   Python, default `"text/csv"`).
  * @returns The `LookupTableUploadUrl`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const uploadUrl = await ws.getLookupUploadUrl("text/csv");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_lookup_upload_url
  */
 export async function getLookupUploadUrl(
   client: MixpanelClient,
   contentType = "text/csv",
 ): Promise<LookupTableUploadUrl> {
   const raw = await client.getLookupUploadUrl(contentType);
-  return validateResponseModel(LookupTableUploadUrl, native(raw), {
+  return validateResponseModel(LookupTableUploadUrl, toNativeJson(raw), {
     endpoint: "get_lookup_upload_url",
   });
 }
 
 /**
- * Get the processing status of a lookup table upload
- * (`get_lookup_upload_status`, `workspace.py:8222-8245`).
- *
- * Opaque passthrough (no model validation).
+ * Fetch the processing status of a lookup-table upload, verbatim
+ * (no model validation).
  *
  * @param client - The wire client.
- * @param uploadId - Upload ID returned from the upload process.
+ * @param uploadId - The upload id returned by the upload process.
  * @returns The raw status record.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * const status = await ws.getLookupUploadStatus("upl_abc123");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_lookup_upload_status
  */
 export async function getLookupUploadStatus(
   client: MixpanelClient,
   uploadId: string,
 ): Promise<Record<string, unknown>> {
   const raw = await client.getLookupUploadStatus(uploadId);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
- * Update a lookup table (`update_lookup_table`,
- * `workspace.py:8247-8279`).
+ * Update a lookup table.
  *
  * @param client - The wire client.
- * @param dataGroupId - Data group ID of the lookup table (signed int64;
+ * @param dataGroupId - Data group id of the lookup table (signed int64;
  *   `bigint` beyond 2^53).
- * @param params - Fields to update (dumped WITHOUT `by_alias`,
- *   `:8277`).
+ * @param params - Fields to update, dumped without `by_alias`.
  * @returns The updated `LookupTable`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateLookupTable(
+ *   -8644926364725811123n,
+ *   new UpdateLookupTableParams({ name: "countries-v2" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_lookup_table
  */
 export async function updateLookupTable(
   client: MixpanelClient,
@@ -803,40 +844,52 @@ export async function updateLookupTable(
     dataGroupId,
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(LookupTable, nativeInt64(raw), {
-    endpoint: "update_lookup_table",
-  });
+  return validateResponseModel(
+    LookupTable,
+    toNativeJson(raw, { unsafeIntegers: "bigint" }),
+    {
+      endpoint: "update_lookup_table",
+    },
+  );
 }
 
 /**
- * Delete one or more lookup tables (`delete_lookup_tables`,
- * `workspace.py:8281-8300`).
+ * Delete one or more lookup tables.
  *
  * @param client - The wire client.
- * @param dataGroupIds - Data group IDs to delete (signed int64s;
+ * @param dataGroupIds - Data group ids to delete (signed int64s;
  *   `bigint` beyond 2^53).
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.deleteLookupTables([42n, -8644926364725811123n]);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_lookup_tables
  */
 export async function deleteLookupTables(
   client: MixpanelClient,
-  dataGroupIds: readonly (number | bigint)[],
+  dataGroupIds: ReadonlyArray<number | bigint>,
 ): Promise<void> {
   await client.deleteLookupTables(dataGroupIds);
 }
 
 /**
- * Download lookup table data as raw CSV bytes
- * (`download_lookup_table`, `workspace.py:8302-8335`).
+ * Download lookup-table data as raw CSV bytes.
  *
  * @param client - The wire client.
- * @param dataGroupId - Data group ID of the lookup table (signed int64;
+ * @param dataGroupId - Data group id of the lookup table (signed int64;
  *   `bigint` beyond 2^53).
- * @param options - Optional `file_name` / `limit` (keyword-only).
+ * @param options - Optional `file_name` / `limit`.
  * @returns The raw CSV bytes (Python `bytes`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * const csv = await ws.downloadLookupTable(42n, { limit: 100 });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.download_lookup_table
  */
 export async function downloadLookupTable(
   client: MixpanelClient,
@@ -850,15 +903,19 @@ export async function downloadLookupTable(
 }
 
 /**
- * Get a signed download URL for a lookup table
- * (`get_lookup_download_url`, `workspace.py:8337-8360`).
+ * Fetch a signed download URL for a lookup table.
  *
  * @param client - The wire client.
- * @param dataGroupId - Data group ID of the lookup table (signed int64;
+ * @param dataGroupId - Data group id of the lookup table (signed int64;
  *   `bigint` beyond 2^53).
- * @returns The signed URL string.
- * @throws MixpanelHeadlessError - `MISSING_URL` (raised by the B4
- *   client when the response carries no URL).
+ * @returns The signed URL.
+ * @throws {@link MixpanelHeadlessError} - `MISSING_URL`, raised by the
+ *   client when the response carries no URL.
+ * @example
+ * ```typescript
+ * const url = await ws.getLookupDownloadUrl(42n);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_lookup_download_url
  */
 export async function getLookupDownloadUrl(
   client: MixpanelClient,
@@ -867,63 +924,82 @@ export async function getLookupDownloadUrl(
   return client.getLookupDownloadUrl(dataGroupId);
 }
 
-// ---------------------------------------------------------------------------
-// Custom events (`workspace.py:8363-8525`)
-// ---------------------------------------------------------------------------
+// --- Custom events ---
 
 /**
- * Create a new custom event (`create_custom_event`,
- * `workspace.py:8366-8407`).
+ * Create a custom event.
  *
  * @param client - The wire client.
  * @param params - Creation parameters, serialized by the model's own
- *   `to_form_body()` (W7-D3).
+ *   `toFormBody()` (the Python model owns that serializer, so the port's
+ *   does too).
  * @returns The created `CustomEvent`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const event = await ws.createCustomEvent(
+ *   new CreateCustomEventParams({ name: "Any Signup", alternatives: [{ event: "Signup" }] }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_custom_event
  */
 export async function createCustomEvent(
   client: MixpanelClient,
   params: CreateCustomEventParams,
 ): Promise<CustomEvent> {
   const raw = await client.createCustomEvent(params.toFormBody());
-  return validateResponseModel(CustomEvent, native(raw), {
+  return validateResponseModel(CustomEvent, toNativeJson(raw), {
     endpoint: "create_custom_event",
   });
 }
 
 /**
- * List all custom events (`list_custom_events`,
- * `workspace.py:8409-8434`).
+ * List every custom event.
  *
  * @param client - The wire client.
  * @returns The `EventDefinition` models for custom events.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const events = await ws.listCustomEvents();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_custom_events
  */
 export async function listCustomEvents(
   client: MixpanelClient,
 ): Promise<EventDefinition[]> {
   const rawList = await client.listCustomEvents();
-  return validateResponseModels(EventDefinition, rawList.map(native), {
-    endpoint: "list_custom_events",
-  });
+  return validateResponseModels(
+    EventDefinition,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "list_custom_events",
+    },
+  );
 }
 
 /**
- * Update a custom event's Lexicon entry (`update_custom_event`,
- * `workspace.py:8436-8492`).
+ * Update a custom event's Lexicon entry.
  *
- * Identified by `custom_event_id`, never by name — a name-only PATCH
- * makes the server fabricate an orphan lexicon entry. The
- * `UPDATE_TARGET_MISMATCH` echo check lives in the B4 client.
- *
+ * @remarks
+ * The event is identified by `custom_event_id`, never by name: a
+ * name-only PATCH makes the server fabricate an orphan Lexicon entry.
+ * The `UPDATE_TARGET_MISMATCH` echo check lives in the client.
  * @param client - The wire client.
- * @param customEventId - Server-assigned custom event ID.
- * @param params - Fields to update (dumped with `by_alias=True`,
- *   `:8488`).
+ * @param customEventId - Server-assigned custom event id.
+ * @param params - Fields to update, dumped with `by_alias`.
  * @returns The updated `EventDefinition`.
- * @throws MixpanelHeadlessError - `UPDATE_TARGET_MISMATCH` when the
+ * @throws {@link MixpanelHeadlessError} - `UPDATE_TARGET_MISMATCH` when the
  *   server echoes a different `customEventId`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateCustomEvent(
+ *   9001,
+ *   new UpdateEventDefinitionParams({ description: "Any signup path" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_custom_event
  */
 export async function updateCustomEvent(
   client: MixpanelClient,
@@ -934,20 +1010,24 @@ export async function updateCustomEvent(
     customEventId,
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(EventDefinition, native(raw), {
+  return validateResponseModel(EventDefinition, toNativeJson(raw), {
     endpoint: "update_custom_event",
   });
 }
 
 /**
- * Delete a custom event (`delete_custom_event`,
- * `workspace.py:8494-8524`).
+ * Delete a custom event.
  *
  * @param client - The wire client.
- * @param customEventId - Server-assigned custom event ID.
+ * @param customEventId - Server-assigned custom event id.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.deleteCustomEvent(9001);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_custom_event
  */
 export async function deleteCustomEvent(
   client: MixpanelClient,

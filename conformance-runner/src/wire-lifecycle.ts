@@ -1,47 +1,24 @@
 /**
- * B4-C4 wire bindings — the 46 packet-C4 api-index names (feature
- * flags + experiments + annotations + webhooks + alerts), registered
- * inline in the shard commit per the P3-2 b′ fable-batch rule.
+ * `api_client.*` wire bindings for feature flags, experiments,
+ * annotations, webhooks and alerts.
  *
- * Binding honesty (P3-5 §3): every binding is memoized
- * `clientFromSession` + ONE client-method call + kwarg passthrough
- * (absent-stays-absent). The only output adaptations are the C1 codec
- * twins (`runWire`/`coreToVectorJson`); void Python methods return
- * `null` (the recorder's `None`).
- *
- * Oracle note: wire api names have NO oracle `call` surface (P3-2 c/e);
- * registration here is complete.
+ * Every binding is the memoized `clientFromSession` plus one
+ * client-method call and kwarg passthrough (absent stays absent); the
+ * only output adaptations are the `runWire`/`coreToVectorJson` codec
+ * twins, and void Python methods return `null` (the recorder's `None`).
+ * See `wire-client.ts` for the shared client-construction and honesty
+ * rules.
  */
 
-import type { MixpanelClient } from "../../packages/core/src/client/client.js";
+import type { MixpanelClient } from "@mixpanel-headless/core";
+
+import { kwargBag } from "./internal/kwargs.js";
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";
 
 /**
- * Copy the PRESENT members of `call.input` into an options bag under
- * the same Python kwarg names (absent stays absent — R3.5; the B4-C2
- * `kwargBag` twin).
- *
- * @param context - The invocation context.
- * @param names - The kwarg names the method accepts.
- * @returns The options bag.
- */
-function kwargBag(
-  context: InvocationContext,
-  names: readonly string[],
-): Record<string, unknown> {
-  const bag: Record<string, unknown> = {};
-  for (const name of names) {
-    if (Object.hasOwn(context.kwargs, name)) {
-      bag[name] = context.kwargs[name];
-    }
-  }
-  return bag;
-}
-
-/**
- * Read an OPTIONAL positional dict argument (the
+ * Read an optional positional dict argument (the
  * `conclude_experiment`/`duplicate_experiment` `body=None` default —
  * absent stays absent so the TS default applies).
  *
@@ -60,10 +37,11 @@ function optionalBody(
 }
 
 /**
- * Register the B4-C4 bindings (46 names).
+ * Register the lifecycle wire bindings.
  *
  * @param implementations - The registry to extend.
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerLifecycleWireBindings(
   implementations: ImplementationRegistry,
 ): void {

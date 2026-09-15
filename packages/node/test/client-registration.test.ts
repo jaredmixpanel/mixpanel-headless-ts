@@ -1,29 +1,23 @@
-// Layer-3 translation of `tests/unit/test_auth_registration.py`
-// (b8-packets.md §4.3 row 2): `TestEnsureClientRegistered` (:68),
-// `TestEnsureClientRegisteredRobustness` (:371),
-// `TestEnsureClientRegisteredRegionValidation` (:441) — all 13 tests.
-//
-// Python's `httpx.MockTransport` fixtures translate to an injected
-// `fetchImpl` returning web-standard `Response` objects (the N2
-// `oauth-flow-refresh.test.ts` convention); the `tmp_path` storage
-// fixture translates to `makeTempDir`.
+// ensureClientRegistered (Dynamic Client Registration). Mirrors
+// tests/unit/test_auth_registration.py; httpx.MockTransport fixtures
+// translate to an injected `fetchImpl`.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { OAuthError } from "../../core/src/errors.js";
+import { OAuthError } from "@mixpanel-headless/core";
+
 import { ensureClientRegistered } from "../src/auth/client-registration.js";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
-const cleanups: (() => void)[] = [];
-let restoreEnv: () => void = () => undefined;
+const cleanups: Array<() => void> = [];
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -37,7 +31,7 @@ interface CapturedRequest {
 }
 
 /**
- * The `_make_register_transport` twin (test_auth_registration.py:30):
+ * The `_make_register_transport` twin:
  * a fetch stub answering every request while recording it.
  *
  * @param respond - Response builder (throw to simulate transport
@@ -54,7 +48,7 @@ function mockTransport(respond: () => Response): {
     init?: RequestInit,
   ): Promise<Response> => {
     captured.push({
-      url: String(input),
+      url: input instanceof Request ? input.url : String(input),
       method: init?.method ?? "GET",
       body: typeof init?.body === "string" ? init.body : "",
     });
@@ -69,7 +63,7 @@ function jsonResponse(
   body: unknown,
   headers?: Record<string, string>,
 ): Response {
-  return new Response(JSON.stringify(body), {
+  return Response.json(body, {
     status,
     headers: { "content-type": "application/json", ...headers },
   });
@@ -80,8 +74,10 @@ function tmpStorage(): OAuthStorage {
   return new OAuthStorage({ storageDir: makeTempDir(cleanups) });
 }
 
-describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
-  it("test_posts_to_register_endpoint", async () => {
+describe("ensureClientRegistered", () => {
+  // python: test_auth_registration.py::TestEnsureClientRegistered
+  it("POSTs to the register endpoint", async () => {
+    // python: test_posts_to_register_endpoint
     const { fetchImpl, captured } = mockTransport(() =>
       jsonResponse(201, { client_id: "cid-1" }),
     );
@@ -98,7 +94,8 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
     expect(captured[0]?.url).toBe("https://mixpanel.com/oauth/mcp/register/");
   });
 
-  it("test_correct_request_body", async () => {
+  it("sends the DCR request body", async () => {
+    // python: test_correct_request_body
     const { fetchImpl, captured } = mockTransport(() =>
       jsonResponse(201, { client_id: "cid-1" }),
     );
@@ -115,12 +112,14 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
       string,
       unknown
     >;
-    expect(body["redirect_uris"]).toEqual(["http://localhost:19284/callback"]);
-    expect(body["grant_types"]).toEqual([
+    expect(body["redirect_uris"]).toStrictEqual([
+      "http://localhost:19284/callback",
+    ]);
+    expect(body["grant_types"]).toStrictEqual([
       "authorization_code",
       "refresh_token",
     ]);
-    expect(body["response_types"]).toEqual(["code"]);
+    expect(body["response_types"]).toStrictEqual(["code"]);
     expect(body["token_endpoint_auth_method"]).toBe("none");
     expect(typeof body["scope"]).toBe("string");
     const scopeStr = String(body["scope"]);
@@ -128,7 +127,8 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
     expect(scopeStr).toContain("analysis");
   });
 
-  it("test_parses_client_id_from_response", async () => {
+  it("parses the client_id from the response", async () => {
+    // python: test_parses_client_id_from_response
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(201, { client_id: "parsed-client-id" }),
     );
@@ -145,7 +145,8 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
     expect(result.redirect_uri).toBe("http://localhost:19284/callback");
   });
 
-  it("test_caches_result_per_region", async () => {
+  it("caches the registration per region", async () => {
+    // python: test_caches_result_per_region
     let callCount = 0;
     const fetchImpl = ((): Promise<Response> => {
       callCount += 1;
@@ -173,7 +174,8 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
     expect(result2.client_id).toBe(result1.client_id);
   });
 
-  it("test_re_registers_if_redirect_uri_changes", async () => {
+  it("re-registers when the redirect URI changes", async () => {
+    // python: test_re_registers_if_redirect_uri_changes
     let callCount = 0;
     const fetchImpl = ((): Promise<Response> => {
       callCount += 1;
@@ -204,7 +206,8 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
     expect(result2.redirect_uri).toBe("http://localhost:19285/callback");
   });
 
-  it("test_handles_429_rate_limit", async () => {
+  it("raises OAUTH_REGISTRATION_ERROR on a 429", async () => {
+    // python: test_handles_429_rate_limit
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(429, { error: "rate_limited" }, { "Retry-After": "60" }),
     );
@@ -216,13 +219,14 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
       storage: tmpStorage(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");
   });
 
-  it("test_eu_region_uses_eu_base_url", async () => {
+  it("uses the eu base URL for region eu", async () => {
+    // python: test_eu_region_uses_eu_base_url
     const { fetchImpl, captured } = mockTransport(() =>
       jsonResponse(201, { client_id: "eu-cid" }),
     );
@@ -239,7 +243,8 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
     );
   });
 
-  it("test_in_region_uses_in_base_url", async () => {
+  it("uses the in base URL for region in", async () => {
+    // python: test_in_region_uses_in_base_url
     const { fetchImpl, captured } = mockTransport(() =>
       jsonResponse(201, { client_id: "in-cid" }),
     );
@@ -256,7 +261,8 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
     );
   });
 
-  it("test_accepts_200_status_code", async () => {
+  it("accepts a 200", async () => {
+    // python: test_accepts_200_status_code
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, { client_id: "cid-200" }),
     );
@@ -271,7 +277,8 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
     expect(result.client_id).toBe("cid-200");
   });
 
-  it("test_accepts_201_status_code", async () => {
+  it("accepts a 201", async () => {
+    // python: test_accepts_201_status_code
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(201, { client_id: "cid-201" }),
     );
@@ -287,8 +294,10 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
   });
 });
 
-describe("TestEnsureClientRegisteredRobustness (test_auth_registration.py:371)", () => {
-  it("test_registration_response_missing_client_id", async () => {
+describe("ensureClientRegistered robustness", () => {
+  // python: test_auth_registration.py::TestEnsureClientRegisteredRobustness
+  it("raises OAUTH_REGISTRATION_ERROR when client_id is missing", async () => {
+    // python: test_registration_response_missing_client_id
     const { fetchImpl } = mockTransport(() => jsonResponse(200, {}));
 
     const error = await ensureClientRegistered({
@@ -298,13 +307,14 @@ describe("TestEnsureClientRegisteredRobustness (test_auth_registration.py:371)",
       storage: tmpStorage(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");
   });
 
-  it("test_registration_non_json_response", async () => {
+  it("raises OAUTH_REGISTRATION_ERROR on a non-JSON response", async () => {
+    // python: test_registration_non_json_response
     const { fetchImpl } = mockTransport(
       () =>
         new Response("<html><body>Oops</body></html>", {
@@ -320,15 +330,17 @@ describe("TestEnsureClientRegisteredRobustness (test_auth_registration.py:371)",
       storage: tmpStorage(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");
   });
 });
 
-describe("TestEnsureClientRegisteredRegionValidation (test_auth_registration.py:441)", () => {
-  it("test_invalid_region_raises_oauth_error", async () => {
+describe("ensureClientRegistered region validation", () => {
+  // python: test_auth_registration.py::TestEnsureClientRegisteredRegionValidation
+  it("rejects an unknown region before making any request", async () => {
+    // python: test_invalid_region_raises_oauth_error
     const { fetchImpl, captured } = mockTransport(() =>
       jsonResponse(200, { client_id: "nope" }),
     );
@@ -340,7 +352,7 @@ describe("TestEnsureClientRegisteredRegionValidation (test_auth_registration.py:
       storage: tmpStorage(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");

@@ -1,44 +1,38 @@
 /**
- * Lookup-table wire methods (App API + external GCS) — Phase-3 packet
- * B4-C5 port of the `MixpanelAPIClient` lookup-tables range
- * (`api_client.py:7546-7982`).
+ * Lookup-table wire methods on the App API and on external GCS. Three
+ * transport shapes coexist: the JSON CRUD rides `appRequest` over
+ * `maybe_scoped_path`; `register_lookup_table` (aliased by
+ * `mark_lookup_table_ready`) and `download_lookup_table` are direct
+ * transport requests with hand-built headers, `handleResponse` on non-2xx
+ * and no retry loop; `upload_to_signed_url` PUTs raw CSV bytes to a signed
+ * GCS URL with no Mixpanel auth and no header merge, because a merged
+ * custom header would break the GCS signature.
  *
- * Three wire paths coexist, ported verbatim:
- * - the JSON CRUD (list/upload-url/upload-status/update/delete/
- *   download-url) rides B0 `appRequest` over `maybe_scoped_path`;
- * - `register_lookup_table`/`mark_lookup_table_ready` (`:7683-7776`)
- *   and `download_lookup_table` (`:7874-7935`) are the B0 R10.8
- *   ownership call sites `:7720`/`:7923`: DIRECT transport requests
- *   that build headers via B0 `requestHeaders` with an explicit
- *   Authorization extra and route non-2xx through `handleResponse`
- *   manually, bypassing `_execute_with_retry` — no retry loop;
- * - `upload_to_signed_url` (`:7625-7681`) PUTs raw CSV bytes to an
- *   EXTERNAL signed URL with a fresh client: NO Mixpanel auth header,
- *   NO header merge (a merged custom header would break the GCS
- *   signature), its own `httpx.HTTPError → UPLOAD_ERROR` mapping.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_lookup_tables
  */
 
 import { appRequest } from "../../client/app-request.js";
-import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
+import type { ClientCore } from "../../client/core.js";
 import {
+  bindFirst,
   handleResponse,
   isPlainRecord,
   MixpanelHttpError,
 } from "../../client/internals.js";
+import { type JsonValue, toNativeJson } from "../../client/json-value.js";
 import {
   LosslessJsonError,
   parseLossless,
 } from "../../client/lossless-json.js";
+import { cpSlice, pythonStr, pythonStrOf } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
-import { maybeScopedPath } from "../../client/scope.js";
-import { cpSlice, pythonStr } from "../../compat/index.js";
+import { exceptionMessage } from "../../invariant.js";
+import { pythonTypeNameOf, scopedPath } from "../shared.js";
 import {
+  expectListResult,
   expectRecordResult,
   jsonTruthy,
-  expectListResult,
   paramsOrNone,
-  pythonTypeNameOf,
 } from "./shared.js";
 
 /** Options bag of {@link LookupTableMethods.listLookupTables}. */
@@ -49,7 +43,7 @@ export interface ListLookupTablesOptions {
    * spells its digits).
    */
   readonly data_group_id?: number | bigint | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -59,211 +53,413 @@ export interface DownloadLookupTableOptions {
   readonly file_name?: string | null | undefined;
   /** Optional row limit. */
   readonly limit?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C5 lookup-table method surface (mixed into `MixpanelClient`). */
+/** Lookup-table methods mixed into `MixpanelClient`. */
 export interface LookupTableMethods {
   /**
-   * List lookup tables (`list_lookup_tables`,
-   * `api_client.py:7546-7582` — GET `data-definitions/lookup-tables/`).
+   * List lookup tables. Sends GET `data-definitions/lookup-tables/`.
    *
    * @param options - Optional `data_group_id` filter + signal.
    * @returns The table list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_lookup_tables
    */
-  listLookupTables(options?: ListLookupTablesOptions): Promise<JsonValue[]>;
+  listLookupTables: (options?: ListLookupTablesOptions) => Promise<JsonValue[]>;
 
   /**
-   * Get a signed upload URL (`get_lookup_upload_url`, `:7584-7623` —
-   * GET `.../upload-url/` with the `content-type` param; validates the
-   * `url`/`path`/`key` fields).
+   * Get a signed upload URL. Sends GET `.../upload-url/` with the `content-type`
+   * param; validates the `url`/`path`/`key` fields.
    *
    * @param contentType - Upload MIME type (default `"text/csv"`).
    * @param signal - Optional cancellation signal.
    * @returns Dict with `url`, `path`, and `key`.
-   * @throws MixpanelHeadlessError - Non-dict response, or a required
-   *   field missing (`MISSING_FIELD`).
+   * @throws {@link MixpanelHeadlessError} - Non-dict response, or a required field
+   *   missing (`MISSING_FIELD`).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_lookup_upload_url
    */
-  getLookupUploadUrl(
+  getLookupUploadUrl: (
     contentType?: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * PUT CSV bytes to an external signed URL (`upload_to_signed_url`,
-   * `:7625-7681` — no Mixpanel auth, no default headers, fresh
-   * transport; transport failures and non-2xx map to `UPLOAD_ERROR`).
+   * PUT CSV bytes to an external signed URL. No Mixpanel auth, no default headers,
+   * fresh transport; transport failures and non-2xx map to `UPLOAD_ERROR`.
    *
    * @param url - The signed upload URL.
    * @param csvBytes - Raw CSV content.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
-   * @throws MixpanelHeadlessError - `UPLOAD_ERROR` on transport
-   *   failure (`{url}` details) or status ≥ 300
-   *   (`{status_code, url}` details).
+   * @throws {@link MixpanelHeadlessError} - `UPLOAD_ERROR` on transport failure
+   *   (`{url}` details) or status ≥ 300 (`{status_code, url}` details).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.upload_to_signed_url
    */
-  uploadToSignedUrl(
+  uploadToSignedUrl: (
     url: string,
     csvBytes: Uint8Array,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
-   * Register a lookup table (`register_lookup_table`, `:7683-7746` —
-   * direct POST with a FORM body and the manual `handleResponse`
-   * error route; no retry loop).
+   * Register a lookup table. Sends a direct POST with a form body through
+   * the manual `handleResponse` error route; no retry loop.
    *
    * @param formData - Form fields (name, path, key, ...).
    * @param signal - Optional cancellation signal.
    * @returns The registered table dict (after the manual
    *   `results`-unwrap).
-   * @throws MixpanelHeadlessError - Non-JSON 200 body
-   *   (`INVALID_RESPONSE`) or non-dict result; the `handleResponse`
-   *   family on non-2xx.
+   * @throws {@link MixpanelHeadlessError} - Non-JSON 200 body (`INVALID_RESPONSE`)
+   *   or non-dict result; the `handleResponse` family on non-2xx.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.register_lookup_table
    */
-  registerLookupTable(
+  registerLookupTable: (
     formData: Record<string, string>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Mark an upload ready (`mark_lookup_table_ready`, `:7748-7776` —
-   * delegates to {@link registerLookupTable} verbatim).
+   * Mark an upload ready. Delegates to {@link registerLookupTable} verbatim.
    *
    * @param formData - Form fields including the ready flag.
    * @param signal - Optional cancellation signal.
    * @returns The table status dict.
-   * @throws MixpanelHeadlessError - As {@link registerLookupTable}.
+   * @throws {@link MixpanelHeadlessError} - As {@link registerLookupTable}.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.mark_lookup_table_ready
    */
-  markLookupTableReady(
+  markLookupTableReady: (
     formData: Record<string, string>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get upload status (`get_lookup_upload_status`, `:7778-7809` — GET
-   * `.../upload-status/` with the `upload-id` param).
+   * Get upload status. Sends GET `.../upload-status/` with the `upload-id` param.
    *
    * @param uploadId - Upload ID.
    * @param signal - Optional cancellation signal.
    * @returns The status dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_lookup_upload_status
    */
-  getLookupUploadStatus(
+  getLookupUploadStatus: (
     uploadId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update table metadata (`update_lookup_table`, `:7811-7848` —
-   * PATCH with `{**body, "data-group-id": id}`).
+   * Update table metadata. Sends PATCH with `{**body, "data-group-id": id}`.
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
    *   2^53 is emitted into the JSON body as its exact digits).
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated table dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_lookup_table
    */
-  updateLookupTable(
+  updateLookupTable: (
     dataGroupId: number | bigint,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete lookup tables (`delete_lookup_tables`, `:7850-7872` —
-   * DELETE with `{"data-group-ids": [...]}`).
+   * Delete lookup tables. Sends DELETE with `{"data-group-ids": [...]}`.
    *
    * @param dataGroupIds - Data group IDs to delete (signed int64s; a
    *   `bigint` beyond 2^53 is emitted as its exact digits).
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_lookup_tables
    */
-  deleteLookupTables(
-    dataGroupIds: readonly (number | bigint)[],
+  deleteLookupTables: (
+    dataGroupIds: ReadonlyArray<number | bigint>,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
-   * Download table data as CSV bytes (`download_lookup_table`,
-   * `:7874-7935` — direct GET, `handleResponse` on ≥ 400, raw bytes
-   * on success).
+   * Download table data as CSV bytes. Sends a direct GET; `handleResponse` on
+   * ≥ 400, raw bytes on success.
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
    *   2^53 is spelled exactly into the `data-group-id` query param).
    * @param options - Optional `file_name`/`limit` + signal.
    * @returns Raw CSV bytes.
-   * @throws AuthenticationError | QueryError | ServerError - Per the
-   *   `handleResponse` mapping on non-2xx.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.download_lookup_table
    */
-  downloadLookupTable(
+  downloadLookupTable: (
     dataGroupId: number | bigint,
     options?: DownloadLookupTableOptions,
-  ): Promise<Uint8Array>;
+  ) => Promise<Uint8Array>;
 
   /**
-   * Get a signed download URL (`get_lookup_download_url`,
-   * `:7937-7982` — GET `.../download-url/`; extracts `url` or
-   * `download_url` from a dict result, passes a string result
-   * through).
+   * Get a signed download URL. Sends GET `.../download-url/`; extracts `url` or
+   * `download_url` from a dict result, passes a string result through.
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
    *   2^53 is spelled exactly into the `data-group-id` query param).
    * @param signal - Optional cancellation signal.
    * @returns The signed URL string.
-   * @throws MixpanelHeadlessError - No URL in a dict response
+   * @throws {@link MixpanelHeadlessError} - No URL in a dict response
    *   (`MISSING_URL`), or a non-dict/non-string response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_lookup_download_url
    */
-  getLookupDownloadUrl(
+  getLookupDownloadUrl: (
     dataGroupId: number | bigint,
     signal?: AbortSignal,
-  ): Promise<string>;
+  ) => Promise<string>;
+}
+async function registerLookupTable(
+  core: ClientCore,
+  formData: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/");
+  const url = core.buildUrl("app", path);
+  const authHeader = await core.getAuthHeader();
+  const { response, release } = await core.rawRequest(
+    {
+      method: "POST",
+      url,
+      params: {},
+      jsonBody: null,
+      formBody: formData,
+      headers: core.requestHeaders({ Authorization: authHeader }),
+      timeoutSeconds: core.defaultTimeoutSeconds(url),
+    },
+    signal,
+  );
+  let text: string;
+  try {
+    // Buffered read under the request-timeout clock.
+    text = await response.text();
+  } finally {
+    release();
+  }
+  if (response.status >= 400) {
+    handleResponse(
+      {
+        status: response.status,
+        text,
+        header: (name) => response.headers.get(name),
+      },
+      {
+        projectId: core.projectId(),
+        requestMethod: "POST",
+        requestUrl: url,
+        requestParams: null,
+        requestBody: formData,
+      },
+    );
+  }
+  let body: JsonValue;
+  try {
+    // Python `response.json()`: the lossless parser keeps `18.0` and
+    // integers beyond 2^53 intact.
+    body = parseLossless(text, { pythonConstants: true });
+  } catch (error) {
+    if (!(error instanceof LosslessJsonError)) {
+      throw error; // RangeError etc. propagates.
+    }
+    throw new MixpanelHeadlessError(
+      `register_lookup_table returned non-JSON response ` +
+        `(status ${response.status}): ${cpSlice(text, 0, 500)}`,
+      "INVALID_RESPONSE",
+      null,
+      { cause: error },
+    );
+  }
+  let unwrapped: JsonValue = body;
+  if (isPlainRecord(unwrapped) && Object.hasOwn(unwrapped, "results")) {
+    unwrapped = unwrapped["results"] as JsonValue;
+  }
+  if (!isPlainRecord(unwrapped)) {
+    throw new MixpanelHeadlessError(
+      `Unexpected response from register_lookup_table: ` +
+        `expected dict, got ${pythonTypeNameOf(unwrapped)}`,
+    );
+  }
+  return unwrapped;
 }
 
-/**
- * Build the C5 lookup-table methods over the C1 core seam.
- *
- * @param core - The shared client internals seam.
- * @returns The method bag.
- */
-export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
-  const scopedPath = (domainPath: string): string =>
-    maybeScopedPath(domainPath, {
-      projectId: core.projectId(),
-      workspaceId: core.workspaceId(),
-    });
+async function listLookupTables(
+  core: ClientCore,
+  options: ListLookupTablesOptions = {},
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/");
+  const params: Record<string, string> = {};
+  if (options.data_group_id !== undefined && options.data_group_id !== null) {
+    params["data-group-id"] = pythonStr(options.data_group_id);
+  }
+  const result = await appRequest(core.appDeps(options.signal), "GET", path, {
+    params: paramsOrNone(params) ?? null,
+  });
+  return expectListResult(result, "list_lookup_tables");
+}
 
-  const registerLookupTable = async (
-    formData: Record<string, string>,
-    signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>> => {
-    const path = scopedPath("data-definitions/lookup-tables/");
-    const url = core.buildUrl("app", path);
-    const authHeader = await core.getAuthHeader();
-    const { response, release } = await core.rawRequest(
-      {
-        method: "POST",
-        url,
-        params: {},
-        jsonBody: null,
-        formBody: formData,
-        headers: core.requestHeaders({ Authorization: authHeader }),
-        timeoutSeconds: core.defaultTimeoutSeconds(url),
-      },
-      signal,
-    );
-    let text: string;
-    try {
-      // Buffered read under the request-timeout clock (B4-ARB W-F2).
-      text = await response.text();
-    } finally {
-      release();
+async function getLookupUploadUrl(
+  core: ClientCore,
+  contentType = "text/csv",
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/upload-url/");
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params: { "content-type": contentType },
+  });
+  const record = expectRecordResult(result, "get_lookup_upload_url");
+  for (const requiredKey of ["url", "path", "key"]) {
+    if (!Object.hasOwn(record, requiredKey)) {
+      throw new MixpanelHeadlessError(
+        `get_lookup_upload_url response missing required ` +
+          `field '${requiredKey}': ${pythonStrOf(toNativeJson(record))}`,
+        "MISSING_FIELD",
+      );
     }
+  }
+  return record;
+}
+
+async function uploadToSignedUrl(
+  core: ClientCore,
+  url: string,
+  csvBytes: Uint8Array,
+  signal?: AbortSignal,
+): Promise<void> {
+  // Fresh-client semantics: the injected fetch is the transport analog,
+  // but the request carries only the Content-Type header — no auth, no
+  // four-layer merge (a stray header breaks GCS signature validation).
+  const fetchImpl = core.http().fetchImpl;
+  let response: Response;
+  try {
+    response = await fetchImpl(url, {
+      method: "PUT",
+      headers: { "Content-Type": "text/csv" },
+      body: csvBytes as BodyInit,
+      redirect: "manual",
+      ...(signal === undefined ? {} : { signal }),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error; // Caller cancellation passes through untouched.
+    }
+    if (
+      error instanceof MixpanelHttpError ||
+      error instanceof TypeError ||
+      error instanceof DOMException
+    ) {
+      // The `except httpx.HTTPError` arm: this call site maps transport
+      // failures straight to UPLOAD_ERROR (not the retry loop's
+      // HTTP_ERROR). The classification set mirrors the transport
+      // adapter's own guards; no bare catch.
+      throw new MixpanelHeadlessError(
+        `Upload to signed URL failed: ${exceptionMessage(error)}`,
+        "UPLOAD_ERROR",
+        { url },
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  if (response.status >= 300) {
+    const text = await response.text();
+    throw new MixpanelHeadlessError(
+      `Upload to signed URL failed with status ` +
+        `${response.status}: ${cpSlice(text, 0, 500)}`,
+      "UPLOAD_ERROR",
+      { status_code: response.status, url },
+    );
+  }
+}
+
+function markLookupTableReady(
+  core: ClientCore,
+  formData: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  return registerLookupTable(core, formData, signal);
+}
+
+async function getLookupUploadStatus(
+  core: ClientCore,
+  uploadId: string,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(
+    core,
+    "data-definitions/lookup-tables/upload-status/",
+  );
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params: { "upload-id": uploadId },
+  });
+  return expectRecordResult(result, "get_lookup_upload_status");
+}
+
+async function updateLookupTable(
+  core: ClientCore,
+  dataGroupId: number | bigint,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/");
+  // A bigint id reaches the wire as an exact integer token via the
+  // transport's bigint-aware body serializer (`stringifyJsonBody`).
+  const payload = { ...body, "data-group-id": dataGroupId };
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: payload,
+  });
+  return expectRecordResult(result, "update_lookup_table");
+}
+
+async function deleteLookupTables(
+  core: ClientCore,
+  dataGroupIds: ReadonlyArray<number | bigint>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/");
+  await appRequest(core.appDeps(signal), "DELETE", path, {
+    jsonBody: { "data-group-ids": dataGroupIds },
+  });
+}
+
+async function downloadLookupTable(
+  core: ClientCore,
+  dataGroupId: number | bigint,
+  options: DownloadLookupTableOptions = {},
+): Promise<Uint8Array> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/download/");
+  const url = core.buildUrl("app", path);
+  const authHeader = await core.getAuthHeader();
+  const params: Record<string, string> = {
+    "data-group-id": pythonStr(dataGroupId),
+  };
+  if (options.file_name !== undefined && options.file_name !== null) {
+    params["file-name"] = options.file_name;
+  }
+  if (options.limit !== undefined && options.limit !== null) {
+    params["limit"] = pythonStr(options.limit);
+  }
+  const { response, release } = await core.rawRequest(
+    {
+      method: "GET",
+      url,
+      params,
+      jsonBody: null,
+      formBody: null,
+      headers: core.requestHeaders({ Authorization: authHeader }),
+      timeoutSeconds: core.defaultTimeoutSeconds(url),
+    },
+    options.signal,
+  );
+  try {
+    // Buffered read under the request-timeout clock.
     if (response.status >= 400) {
+      const text = await response.text();
+      // Delegate error handling to the shared mapping.
       handleResponse(
         {
           status: response.status,
@@ -272,288 +468,78 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
         },
         {
           projectId: core.projectId(),
-          requestMethod: "POST",
+          requestMethod: "GET",
           requestUrl: url,
-          requestParams: null,
-          requestBody: formData,
+          requestParams: params,
+          requestBody: null,
         },
       );
     }
-    let body: JsonValue;
-    try {
-      // Python `response.json()` — json.loads on wire data (GATE-R5).
-      body = parseLossless(text, { pythonConstants: true });
-    } catch (cause) {
-      if (!(cause instanceof LosslessJsonError)) {
-        throw cause; // RangeError etc. propagates (B0-ARB F3).
-      }
-      throw new MixpanelHeadlessError(
-        `register_lookup_table returned non-JSON response ` +
-          `(status ${response.status}): ${cpSlice(text, 0, 500)}`,
-        "INVALID_RESPONSE",
-        null,
-        { cause },
-      );
+    return new Uint8Array(await response.arrayBuffer());
+  } finally {
+    release();
+  }
+}
+
+async function getLookupDownloadUrl(
+  core: ClientCore,
+  dataGroupId: number | bigint,
+  signal?: AbortSignal,
+): Promise<string> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/download-url/");
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params: { "data-group-id": pythonStr(dataGroupId) },
+  });
+  if (isPlainRecord(result)) {
+    const record = result;
+    // `result.get("url") or result.get("download_url", "")` —
+    // Python truthiness picks the fallback for None/""/0 members.
+    const primary = Object.hasOwn(record, "url") ? record["url"] : undefined;
+    const fallback = Object.hasOwn(record, "download_url")
+      ? record["download_url"]
+      : "";
+    const urlValue = jsonTruthy(primary) ? primary : fallback;
+    if (typeof urlValue === "string" && urlValue !== "") {
+      return urlValue;
     }
-    let unwrapped: JsonValue = body;
-    if (isPlainRecord(unwrapped) && Object.hasOwn(unwrapped, "results")) {
-      unwrapped = unwrapped["results"] as JsonValue;
-    }
-    if (!isPlainRecord(unwrapped)) {
-      throw new MixpanelHeadlessError(
-        `Unexpected response from register_lookup_table: ` +
-          `expected dict, got ${pythonTypeNameOf(unwrapped)}`,
-      );
-    }
-    return unwrapped;
-  };
-
-  return {
-    listLookupTables: async (
-      options: ListLookupTablesOptions = {},
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath("data-definitions/lookup-tables/");
-      const params: Record<string, string> = {};
-      if (
-        options.data_group_id !== undefined &&
-        options.data_group_id !== null
-      ) {
-        params["data-group-id"] = pythonStr(options.data_group_id);
-      }
-      const result = await appRequest(
-        core.appDeps(options.signal),
-        "GET",
-        path,
-        {
-          params: paramsOrNone(params) ?? null,
-        },
-      );
-      return expectListResult(result, "list_lookup_tables");
-    },
-
-    getLookupUploadUrl: async (
-      contentType = "text/csv",
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/lookup-tables/upload-url/");
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params: { "content-type": contentType },
-      });
-      const record = expectRecordResult(result, "get_lookup_upload_url");
-      for (const requiredKey of ["url", "path", "key"]) {
-        if (!Object.hasOwn(record, requiredKey)) {
-          throw new MixpanelHeadlessError(
-            `get_lookup_upload_url response missing required ` +
-              `field '${requiredKey}': ${pythonStrOfRecord(record)}`,
-            "MISSING_FIELD",
-          );
-        }
-      }
-      return record;
-    },
-
-    uploadToSignedUrl: async (
-      url: string,
-      csvBytes: Uint8Array,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      // Fresh-request semantics (`:7647-7657`): the injected fetch IS
-      // the transport analog, but the request carries ONLY the
-      // Content-Type header — no auth, no 4-layer merge (a stray
-      // header breaks GCS signature validation).
-      const fetchImpl = core.http().fetchImpl;
-      let response: Response;
-      try {
-        response = await fetchImpl(url, {
-          method: "PUT",
-          headers: { "Content-Type": "text/csv" },
-          body: csvBytes as BodyInit,
-          redirect: "manual",
-          ...(signal !== undefined ? { signal } : {}),
-        });
-      } catch (cause) {
-        if (cause instanceof DOMException && cause.name === "AbortError") {
-          throw cause; // R6.7 cancellation passthrough.
-        }
-        if (
-          cause instanceof MixpanelHttpError ||
-          cause instanceof TypeError ||
-          cause instanceof DOMException
-        ) {
-          // The `except httpx.HTTPError` arm (`:7664-7669`) — this
-          // call site maps transport failures straight to
-          // UPLOAD_ERROR (not the retry loop's HTTP_ERROR). The
-          // classification set mirrors the R2.10 adapter guards; no
-          // bare catch.
-          throw new MixpanelHeadlessError(
-            `Upload to signed URL failed: ${
-              cause instanceof Error ? cause.message : String(cause)
-            }`,
-            "UPLOAD_ERROR",
-            { url },
-            { cause },
-          );
-        }
-        throw cause;
-      }
-      if (response.status >= 300) {
-        const text = await response.text();
-        throw new MixpanelHeadlessError(
-          `Upload to signed URL failed with status ` +
-            `${response.status}: ${cpSlice(text, 0, 500)}`,
-          "UPLOAD_ERROR",
-          { status_code: response.status, url },
-        );
-      }
-    },
-
-    registerLookupTable,
-
-    markLookupTableReady: (
-      formData: Record<string, string>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> =>
-      registerLookupTable(formData, signal),
-
-    getLookupUploadStatus: async (
-      uploadId: string,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/lookup-tables/upload-status/");
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params: { "upload-id": uploadId },
-      });
-      return expectRecordResult(result, "get_lookup_upload_status");
-    },
-
-    updateLookupTable: async (
-      dataGroupId: number | bigint,
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/lookup-tables/");
-      // A bigint id reaches the wire as an exact integer token via the
-      // transport's bigint-aware body serializer (`stringifyJsonBody`).
-      const payload = { ...body, "data-group-id": dataGroupId };
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: payload,
-      });
-      return expectRecordResult(result, "update_lookup_table");
-    },
-
-    deleteLookupTables: async (
-      dataGroupIds: readonly (number | bigint)[],
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath("data-definitions/lookup-tables/");
-      await appRequest(core.appDeps(signal), "DELETE", path, {
-        jsonBody: { "data-group-ids": dataGroupIds },
-      });
-    },
-
-    downloadLookupTable: async (
-      dataGroupId: number | bigint,
-      options: DownloadLookupTableOptions = {},
-    ): Promise<Uint8Array> => {
-      const path = scopedPath("data-definitions/lookup-tables/download/");
-      const url = core.buildUrl("app", path);
-      const authHeader = await core.getAuthHeader();
-      const params: Record<string, string> = {
-        "data-group-id": pythonStr(dataGroupId),
-      };
-      if (options.file_name !== undefined && options.file_name !== null) {
-        params["file-name"] = options.file_name;
-      }
-      if (options.limit !== undefined && options.limit !== null) {
-        params["limit"] = pythonStr(options.limit);
-      }
-      const { response, release } = await core.rawRequest(
-        {
-          method: "GET",
-          url,
-          params,
-          jsonBody: null,
-          formBody: null,
-          headers: core.requestHeaders({ Authorization: authHeader }),
-          timeoutSeconds: core.defaultTimeoutSeconds(url),
-        },
-        options.signal,
-      );
-      try {
-        // Buffered read under the request-timeout clock (B4-ARB W-F2).
-        if (response.status >= 400) {
-          const text = await response.text();
-          // Delegate error handling (`:7926-7934`).
-          handleResponse(
-            {
-              status: response.status,
-              text,
-              header: (name) => response.headers.get(name),
-            },
-            {
-              projectId: core.projectId(),
-              requestMethod: "GET",
-              requestUrl: url,
-              requestParams: params,
-              requestBody: null,
-            },
-          );
-        }
-        return new Uint8Array(await response.arrayBuffer());
-      } finally {
-        release();
-      }
-    },
-
-    getLookupDownloadUrl: async (
-      dataGroupId: number | bigint,
-      signal?: AbortSignal,
-    ): Promise<string> => {
-      const path = scopedPath("data-definitions/lookup-tables/download-url/");
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params: { "data-group-id": pythonStr(dataGroupId) },
-      });
-      if (isPlainRecord(result)) {
-        const record = result;
-        // `result.get("url") or result.get("download_url", "")` —
-        // Python truthiness picks the fallback for None/""/0 members.
-        const primary = Object.hasOwn(record, "url")
-          ? record["url"]
-          : undefined;
-        const fallback = Object.hasOwn(record, "download_url")
-          ? record["download_url"]
-          : "";
-        const urlValue = jsonTruthy(primary as JsonValue | undefined)
-          ? primary
-          : fallback;
-        if (typeof urlValue === "string" && urlValue !== "") {
-          return urlValue;
-        }
-        throw new MixpanelHeadlessError(
-          "No download URL found in response",
-          "MISSING_URL",
-          { response: record },
-        );
-      }
-      if (typeof result === "string") {
-        return result;
-      }
-      throw new MixpanelHeadlessError(
-        `Unexpected response from get_lookup_download_url: ` +
-          `expected dict or str, got ${pythonTypeNameOf(result)}`,
-      );
-    },
-  };
+    throw new MixpanelHeadlessError(
+      "No download URL found in response",
+      "MISSING_URL",
+      { response: record },
+    );
+  }
+  if (typeof result === "string") {
+    return result;
+  }
+  throw new MixpanelHeadlessError(
+    `Unexpected response from get_lookup_download_url: ` +
+      `expected dict or str, got ${pythonTypeNameOf(result)}`,
+  );
 }
 
 /**
- * Spell a parsed record the way Python interpolates a dict into an
- * f-string (message text only — out of contract per R5.4; used by the
- * MISSING_FIELD message).
+ * Build the lookup-table methods over the shared client core.
  *
- * @param record - The parsed record.
- * @returns An approximate `str(dict)` spelling.
+ * @param core - The shared client internals seam.
+ * @returns The method bag.
+ * @example
+ * ```typescript
+ * const tables = createLookupTableMethods(core);
+ * const csv = await tables.downloadLookupTable(9007199254740993n, { limit: 100 });
+ * // Uint8Array of CSV bytes
+ * ```
  */
-function pythonStrOfRecord(record: Record<string, JsonValue>): string {
-  return JSON.stringify(record);
+export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
+  return {
+    listLookupTables: bindFirst(core, listLookupTables),
+    getLookupUploadUrl: bindFirst(core, getLookupUploadUrl),
+    uploadToSignedUrl: bindFirst(core, uploadToSignedUrl),
+    registerLookupTable: bindFirst(core, registerLookupTable),
+    markLookupTableReady: bindFirst(core, markLookupTableReady),
+    getLookupUploadStatus: bindFirst(core, getLookupUploadStatus),
+    updateLookupTable: bindFirst(core, updateLookupTable),
+    deleteLookupTables: bindFirst(core, deleteLookupTables),
+    downloadLookupTable: bindFirst(core, downloadLookupTable),
+    getLookupDownloadUrl: bindFirst(core, getLookupDownloadUrl),
+  };
 }

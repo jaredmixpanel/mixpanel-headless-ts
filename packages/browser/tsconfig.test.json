@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "esnext.disposable"
+    ],
+    "types": []
+  },
+  "include": ["test"],
+  "references": [{ "path": "./tsconfig.json" }]
+}

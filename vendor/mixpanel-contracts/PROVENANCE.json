@@ -1,6 +1,6 @@
 {
   "$comment": "Provenance manifest for vendor/mixpanel-contracts (phase1-design D15a/D15c, task TS-8). Every file is a verbatim byte copy from the read-only analytics checkout; scripts/check-vendor-drift.sh byte-diffs each entry against source_root when that checkout exists.",
-  "source_root": "/Users/jaredmcfarland/Developer/analytics",
+  "source_root": "$ANALYTICS_ROOT (the read-only analytics checkout; see scripts/check-vendor-drift.sh)",
   "vendored_date": "2026-08-14",
   "file_count": 57,
   "coverage_holes": {

@@ -1,24 +1,26 @@
 /**
  * Project webhook family + webhook CRUD/test params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
+import type { WebhookAuthType } from "../enums.js";
 import {
+  type EntityFieldSpecs,
   EntityModel,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
-import { WebhookAuthType } from "../enums.js";
 
 /**
  * Constructor input for {@link ProjectWebhook} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ProjectWebhookInit {
   /** Webhook ID (UUID string). */
@@ -44,18 +46,28 @@ export interface ProjectWebhookInit {
 /**
  * Response model for a project webhook.
  *
- * Mirror of Python `mixpanel_headless.types.ProjectWebhook` (types.py:3929;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const projectWebhook = ProjectWebhook.fromDict({
+ *   id: "f1a2b3c4",
+ *   name: "Slack alerts",
+ *   url: "https://example.com/hooks/mixpanel",
+ *   is_enabled: true,
+ * });
+ * projectWebhook.id; // "f1a2b3c4"
+ * ```
+ * @see mixpanel_headless.types.ProjectWebhook
  */
-export class ProjectWebhook extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ProjectWebhook extends EntityModel<ProjectWebhookInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ProjectWebhook";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ProjectWebhookInit> = [
     { name: "id", required: true, kind: "str" },
     { name: "name", required: true, kind: "str" },
     { name: "url", required: true, kind: "str" },
@@ -90,14 +102,11 @@ export class ProjectWebhook extends EntityModel {
    * Construct a validated ProjectWebhook (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ProjectWebhookInit) {
-    super(
-      ProjectWebhook,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ProjectWebhook, fields);
   }
 
   /**
@@ -106,18 +115,16 @@ export class ProjectWebhook extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ProjectWebhook {
-    return new ProjectWebhook(
-      prepareInit(ProjectWebhook, raw) as unknown as ProjectWebhookInit,
-    );
+    return new ProjectWebhook(prepareInit(ProjectWebhook, raw));
   }
 }
 
 /**
  * Constructor input for {@link CreateWebhookParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateWebhookParamsInit {
   /** Webhook name. */
@@ -135,18 +142,27 @@ export interface CreateWebhookParamsInit {
 /**
  * Parameters for creating a webhook.
  *
- * Mirror of Python `mixpanel_headless.types.CreateWebhookParams` (types.py:3979;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateWebhookParams({
+ *   name: "Slack alerts",
+ *   url: "https://example.com/hooks/mixpanel",
+ *   username: "example",
+ * });
+ * params.name; // "Slack alerts"
+ * ```
+ * @see mixpanel_headless.types.CreateWebhookParams
  */
-export class CreateWebhookParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateWebhookParams extends EntityModel<CreateWebhookParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateWebhookParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateWebhookParamsInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "url", required: true, kind: "str" },
     { name: "auth_type", nullable: true, check: oneOf(["basic"]) },
@@ -169,14 +185,11 @@ export class CreateWebhookParams extends EntityModel {
    * Construct a validated CreateWebhookParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateWebhookParamsInit) {
-    super(
-      CreateWebhookParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateWebhookParams, fields);
   }
 
   /**
@@ -185,21 +198,16 @@ export class CreateWebhookParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateWebhookParams {
-    return new CreateWebhookParams(
-      prepareInit(
-        CreateWebhookParams,
-        raw,
-      ) as unknown as CreateWebhookParamsInit,
-    );
+    return new CreateWebhookParams(prepareInit(CreateWebhookParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link UpdateWebhookParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateWebhookParamsInit {
   /** New name. */
@@ -219,18 +227,23 @@ export interface UpdateWebhookParamsInit {
 /**
  * Parameters for updating a webhook (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateWebhookParams` (types.py:4014;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateWebhookParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateWebhookParams
  */
-export class UpdateWebhookParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateWebhookParams extends EntityModel<UpdateWebhookParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateWebhookParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateWebhookParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "url", kind: "str", nullable: true },
     { name: "auth_type", nullable: true, check: oneOf(["basic"]) },
@@ -256,14 +269,11 @@ export class UpdateWebhookParams extends EntityModel {
    * Construct a validated UpdateWebhookParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateWebhookParamsInit) {
-    super(
-      UpdateWebhookParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateWebhookParams, fields);
   }
 
   /**
@@ -272,21 +282,16 @@ export class UpdateWebhookParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateWebhookParams {
-    return new UpdateWebhookParams(
-      prepareInit(
-        UpdateWebhookParams,
-        raw,
-      ) as unknown as UpdateWebhookParamsInit,
-    );
+    return new UpdateWebhookParams(prepareInit(UpdateWebhookParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link WebhookTestParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface WebhookTestParamsInit {
   /** URL to test. */
@@ -304,18 +309,26 @@ export interface WebhookTestParamsInit {
 /**
  * Parameters for testing webhook connectivity.
  *
- * Mirror of Python `mixpanel_headless.types.WebhookTestParams` (types.py:4050;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new WebhookTestParams({
+ *   url: "https://example.com/hooks/mixpanel",
+ *   name: "Example",
+ * });
+ * params.url; // "https://example.com/hooks/mixpanel"
+ * ```
+ * @see mixpanel_headless.types.WebhookTestParams
  */
-export class WebhookTestParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class WebhookTestParams extends EntityModel<WebhookTestParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "WebhookTestParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<WebhookTestParamsInit> = [
     { name: "url", required: true, kind: "str" },
     { name: "name", kind: "str", nullable: true },
     { name: "auth_type", nullable: true, check: oneOf(["basic"]) },
@@ -338,14 +351,11 @@ export class WebhookTestParams extends EntityModel {
    * Construct a validated WebhookTestParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: WebhookTestParamsInit) {
-    super(
-      WebhookTestParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(WebhookTestParams, fields);
   }
 
   /**
@@ -354,18 +364,16 @@ export class WebhookTestParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): WebhookTestParams {
-    return new WebhookTestParams(
-      prepareInit(WebhookTestParams, raw) as unknown as WebhookTestParamsInit,
-    );
+    return new WebhookTestParams(prepareInit(WebhookTestParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link WebhookTestResult} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface WebhookTestResultInit {
   /** Whether test succeeded. */
@@ -379,18 +387,27 @@ export interface WebhookTestResultInit {
 /**
  * Response model for webhook connectivity test.
  *
- * Mirror of Python `mixpanel_headless.types.WebhookTestResult` (types.py:4082;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const webhookTestResult = WebhookTestResult.fromDict({
+ *   success: true,
+ *   status_code: 200,
+ *   message: "OK",
+ * });
+ * webhookTestResult.success; // true
+ * ```
+ * @see mixpanel_headless.types.WebhookTestResult
  */
-export class WebhookTestResult extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class WebhookTestResult extends EntityModel<WebhookTestResultInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "WebhookTestResult";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<WebhookTestResultInit> = [
     { name: "success", required: true, kind: "bool" },
     { name: "status_code", required: true, kind: "int" },
     { name: "message", required: true, kind: "str" },
@@ -407,14 +424,11 @@ export class WebhookTestResult extends EntityModel {
    * Construct a validated WebhookTestResult (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: WebhookTestResultInit) {
-    super(
-      WebhookTestResult,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(WebhookTestResult, fields);
   }
 
   /**
@@ -423,18 +437,16 @@ export class WebhookTestResult extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): WebhookTestResult {
-    return new WebhookTestResult(
-      prepareInit(WebhookTestResult, raw) as unknown as WebhookTestResultInit,
-    );
+    return new WebhookTestResult(prepareInit(WebhookTestResult, raw));
   }
 }
 
 /**
  * Constructor input for {@link WebhookMutationResult} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface WebhookMutationResultInit {
   /** Webhook ID. */
@@ -446,18 +458,26 @@ export interface WebhookMutationResultInit {
 /**
  * Response model for webhook create/update (returns id + name only).
  *
- * Mirror of Python `mixpanel_headless.types.WebhookMutationResult` (types.py:4110;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const webhookMutationResult = WebhookMutationResult.fromDict({
+ *   id: "f1a2b3c4",
+ *   name: "Slack alerts",
+ * });
+ * webhookMutationResult.id; // "f1a2b3c4"
+ * ```
+ * @see mixpanel_headless.types.WebhookMutationResult
  */
-export class WebhookMutationResult extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class WebhookMutationResult extends EntityModel<WebhookMutationResultInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "WebhookMutationResult";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<WebhookMutationResultInit> = [
     { name: "id", required: true, kind: "str" },
     { name: "name", required: true, kind: "str" },
   ];
@@ -471,14 +491,11 @@ export class WebhookMutationResult extends EntityModel {
    * Construct a validated WebhookMutationResult (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: WebhookMutationResultInit) {
-    super(
-      WebhookMutationResult,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(WebhookMutationResult, fields);
   }
 
   /**
@@ -487,14 +504,9 @@ export class WebhookMutationResult extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): WebhookMutationResult {
-    return new WebhookMutationResult(
-      prepareInit(
-        WebhookMutationResult,
-        raw,
-      ) as unknown as WebhookMutationResultInit,
-    );
+    return new WebhookMutationResult(prepareInit(WebhookMutationResult, raw));
   }
 }

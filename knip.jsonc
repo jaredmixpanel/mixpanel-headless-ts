@@ -1,0 +1,46 @@
+// knip — unused files / dependencies / exports gate, run as `npm run knip`
+// inside `npm run check`. Plain `knip`, not `--strict`: knip 6's strict mode
+// is a workspace-isolated, direct-production-deps-only analysis that (a) stops
+// reporting unused files/exports and (b) misattributes npm-hoisted workspace
+// dependencies (`smol-toml` in packages/node shows up as unused).
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // No `ignore` block: the generated `*.gen.ts` files are imported (so never
+  // reported) and vendor/, docs/history/ and the corpus hold no analysable source;
+  // knip flags such entries as redundant configuration hints.
+  // `uv` runs the CPython-pinned compat-table generators
+  // (`npm run generate:compat-tables`); a system tool, not an npm dependency.
+  "ignoreBinaries": ["uv"],
+  "rules": {
+    "exports": "error",
+    "types": "error",
+  },
+  // Interfaces/type aliases that only appear in their own module's exported
+  // signatures must stay exported (declaration emit rejects a private name in
+  // a public signature); every other kind of export must have an importer.
+  "ignoreExportsUsedInFile": { "interface": true, "type": true },
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.mjs", "tests/**/*.test.ts"],
+      "project": ["scripts/**/*.mjs", "tests/**/*.ts"],
+    },
+    "packages/core": {
+      // `src/index.ts` and `src/internal.ts` are inferred from `exports`.
+      "project": ["src/**/*.ts", "test/**/*.ts", "test-support/**/*.ts"],
+    },
+    "packages/node": {
+      "project": ["src/**/*.ts", "test/**/*.ts"],
+    },
+    "packages/browser": {
+      "project": ["src/**/*.ts", "test/**/*.ts"],
+    },
+    "conformance-runner": {
+      "entry": ["src/cli.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"],
+    },
+    "differential": {
+      "entry": ["oracle/main.ts"],
+      "project": ["oracle/**/*.ts", "referees/**/*.ts", "test/**/*.ts"],
+    },
+  },
+}

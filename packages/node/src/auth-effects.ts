@@ -1,33 +1,30 @@
 /**
- * The real node {@link AuthEffects} bag — B8-N3 assembly
- * (b8-packets.md §4.1 row 5 / §4.4 seam-closure checklist): every
- * member of core's `UNPORTED_AUTH_SEAMS` gets its real node
- * implementation here, composed from the N1 (config / env / io-utils /
- * readFile), N2 (storage / token store / resolver / bridge / MeCache)
- * and N3 (PKCE login flow) modules. After this module, calling ANY
- * member of the node bag never throws `UNPORTED_AUTH_SEAM` /
- * `UNPORTED_RESOLVER_SEAM` (the `unportedAuthSeam` defaults STAY in
- * core — they document the core-alone posture).
+ * The node {@link AuthEffects} bag: every member of core's
+ * `UNPORTED_AUTH_SEAMS` gets its real implementation here, composed
+ * from the config, env, io-utils, storage, token-store, resolver,
+ * bridge, MeCache and PKCE login-flow modules. Core's throwing defaults
+ * stay in core; they document the core-alone posture.
  *
- * Owner map (packet §4.4): `config.*`/`env`/`readSecretStdin` — N1;
- * `tokenStore.*`/`tokenResolver`/`bridge.*`/`meCache` — N2;
- * `oauthFlow.login`/`persistActive`/`narrate` — N3 (this file).
+ * Every underlying module reads `process.env` at call time; the bag
+ * itself pins nothing except the `ConfigManager` path, which Python also
+ * resolves at construction. Build a fresh bag per logical operation when
+ * env changes must be observed (the namespace exports in `index.ts` do).
  *
- * Env-read timing (packet §0.5 / §7 caution 16): every underlying
- * module reads `process.env` at CALL time; the bag itself pins nothing
- * except the `ConfigManager` path, which Python also resolves at
- * construction (`config.py:141-153`) — build a fresh bag per logical
- * operation when env changes must be observed (the ready-made
- * namespace exports in `index.ts` do exactly that).
+ * @see mixpanel_headless.accounts
  */
 
-import type { AuthEffects } from "../../core/src/accounts/auth-effects.js";
-import { persistActiveToConfig } from "../../core/src/accounts/resolver-seams.js";
-import { resolverSourcesFromEffects } from "../../core/src/accounts/resolver-seams.js";
-import type { Region } from "../../core/src/auth/account.js";
-import type { ResolverSources } from "../../core/src/auth/resolver.js";
-import type { Session } from "../../core/src/auth/session.js";
-import type { OAuthTokens } from "../../core/src/auth/token.js";
+import type {
+  AuthEffects,
+  OAuthTokens,
+  Region,
+  ResolverSources,
+  Session,
+} from "@mixpanel-headless/core";
+import {
+  persistActiveToConfig,
+  resolverSourcesFromEffects,
+} from "@mixpanel-headless/core/internal";
+
 import {
   bridgeViewFromFile,
   createNodeBridgeEffects,
@@ -35,8 +32,8 @@ import {
 } from "./auth/bridge.js";
 import { OAuthFlow, type OAuthFlowOptions } from "./auth/flow.js";
 import type { StorageLogger } from "./auth/storage.js";
-import { createNodeTokenStore } from "./auth/token-store.js";
 import { OnDiskTokenResolver } from "./auth/token-resolver.js";
+import { createNodeTokenStore } from "./auth/token-store.js";
 import { createNodeConfigSource } from "./config-writes.js";
 import { createNodeEnv } from "./env.js";
 import { readCappedSecretFromStdin, type StdinReadSync } from "./io-utils.js";
@@ -44,8 +41,8 @@ import { createNodeMeCacheEffects } from "./me-cache.js";
 
 /**
  * The injectable login seams threaded into the {@link OAuthFlow} the
- * bag's `oauthFlow.login` builds (tests/harness drive a full fake
- * login through the REAL bag with these — packet §4.5 item 5).
+ * bag's `oauthFlow.login` builds; tests and the harness drive a full
+ * fake login through the real bag with these.
  */
 export type NodeFlowSeams = Pick<
   OAuthFlowOptions,
@@ -60,22 +57,36 @@ export type NodeFlowSeams = Pick<
 /** Options bag of {@link createNodeAuthEffects}. */
 export interface NodeAuthEffectsOptions {
   /**
-   * Config file path override (else `$MP_CONFIG_PATH` at bag
-   * construction, else `~/.mp/config.toml`).
+   * Config file path override.
+   *
+   * @defaultValue `$MP_CONFIG_PATH` at bag construction, else `~/.mp/config.toml`
    */
   readonly configPath?: string | undefined;
-  /** Injected fetch (default: global fetch — R2.4). */
+  /**
+   * Injected fetch.
+   *
+   * @defaultValue the global `fetch`
+   */
   readonly fetchImpl?: typeof fetch | undefined;
-  /** Epoch-ms clock seam (default: ambient — D1.4). */
+  /**
+   * Epoch-ms clock seam.
+   *
+   * @defaultValue the ambient clock
+   */
   readonly now?: (() => number) | undefined;
-  /** Log sink for the warn-only storage paths (default silent, R9.5). */
+  /**
+   * Log sink for the warn-only storage paths.
+   *
+   * @defaultValue silent
+   */
   readonly logger?: StorageLogger | undefined;
-  /** Login-flow seam overrides (tests/harness only). */
+  /** Login-flow seam overrides (tests and the harness only). */
   readonly flowSeams?: NodeFlowSeams | undefined;
   /**
-   * Injected stdin chunk reader for `readSecretStdin` (tests/harness
-   * only — a REAL fd-0 read blocks forever on a quiet pipe; default:
-   * the io-utils `fs.readSync` reader).
+   * Injected stdin chunk reader for `readSecretStdin` (tests and the
+   * harness only: a real fd-0 read blocks forever on a quiet pipe).
+   *
+   * @defaultValue the io-utils `fs.readSync` reader
    */
   readonly stdinReadSync?: StdinReadSync | undefined;
 }
@@ -83,11 +94,10 @@ export interface NodeAuthEffectsOptions {
 /**
  * Build the fully-wired node {@link AuthEffects} bag.
  *
- * @param options - Optional config path / fetch / clock / log seams.
- * @returns The bag — every `UNPORTED_AUTH_SEAMS` member real.
- *
+ * @param options - Optional config path, fetch, clock and log seams.
+ * @returns The bag, with every `UNPORTED_AUTH_SEAMS` member implemented.
  * @example
- * ```typescript
+ * ```ts
  * const effects = createNodeAuthEffects();
  * const accounts = createAccountsNamespace(effects);
  * accounts.list();
@@ -102,30 +112,30 @@ export function createNodeAuthEffects(
   const flowSeams = options.flowSeams ?? {};
 
   const config = createNodeConfigSource(
-    options.configPath !== undefined ? { configPath: options.configPath } : {},
+    options.configPath === undefined ? {} : { configPath: options.configPath },
   );
 
   return {
     config,
     env: createNodeEnv(),
-    tokenStore: createNodeTokenStore(logger !== undefined ? { logger } : {}),
+    tokenStore: createNodeTokenStore(logger === undefined ? {} : { logger }),
     tokenResolver: new OnDiskTokenResolver({
       fetchImpl,
-      ...(now !== undefined ? { now } : {}),
+      ...(now === undefined ? {} : { now }),
     }),
     oauthFlow: {
       /**
-       * The PKCE dance over the real {@link OAuthFlow} — ALWAYS
-       * `persist: false` (the orchestrator persists via
-       * `TokenStore.writeTokens`; B7 contract,
-       * `auth-effects.ts:369-388`). The flow (and therefore its
-       * default `OAuthStorage`) is built per call so env overrides
-       * (`MP_OAUTH_STORAGE_DIR`) are honored at call time.
+       * Run the PKCE dance over the real {@link OAuthFlow}, always with
+       * `persist: false`: the core orchestrator persists through
+       * `TokenStore.writeTokens`. The flow (and therefore its default
+       * `OAuthStorage`) is built per call so `MP_OAUTH_STORAGE_DIR` is
+       * honoured at call time.
        *
        * @param region - The region the flow commits to.
-       * @param loginOptions - `openBrowser` mirrors Python's kwarg.
-       * @returns The freshly minted tokens (NOT persisted).
-       * @throws OAuthError - Any leg of the flow fails.
+       * @param loginOptions - Login flags; `openBrowser` decides whether
+       *   the system browser is opened (Python's `open_browser` kwarg).
+       * @returns The freshly minted tokens, not persisted.
+       * @throws {@link OAuthError} - Any leg of the flow fails.
        */
       login: (
         region: Region,
@@ -134,21 +144,19 @@ export function createNodeAuthEffects(
         new OAuthFlow({
           region,
           fetchImpl,
-          ...(now !== undefined ? { now } : {}),
+          ...(now === undefined ? {} : { now }),
           ...flowSeams,
         }).login({ persist: false, openBrowser: loginOptions.openBrowser }),
     },
     bridge: createNodeBridgeEffects(),
     meCache: createNodeMeCacheEffects({
-      ...(now !== undefined ? { now } : {}),
-      ...(logger !== undefined ? { logger } : {}),
+      ...(now === undefined ? {} : { now }),
+      ...(logger === undefined ? {} : { logger }),
     }),
     /**
-     * Persist a session's axes to `[active]` in ONE `applySession`
-     * transaction — the core-shipped routing
-     * ({@link persistActiveToConfig}) bound to the on-disk config
-     * (`b6-packets.md:1026` closure; the `UNPORTED_RESOLVER_SEAM`
-     * residue of `lifecycle.ts` is closed by this member).
+     * Persist a session's axes to `[active]` in one `applySession`
+     * transaction — core's routing ({@link persistActiveToConfig})
+     * bound to the on-disk config.
      *
      * @param session - The post-swap session.
      */
@@ -156,23 +164,23 @@ export function createNodeAuthEffects(
       persistActiveToConfig(config, session);
     },
     /**
-     * Read a secret from stdin (`read_capped_secret_from_stdin` — the
-     * N1 io-utils twin).
+     * Read a secret from stdin.
      *
      * @returns The stripped secret text.
+     * @see mixpanel_headless._internal.io_utils.read_capped_secret_from_stdin
      */
     readSecretStdin: (): string =>
       readCappedSecretFromStdin(
-        options.stdinReadSync !== undefined
-          ? { readSync: options.stdinReadSync }
-          : {},
+        options.stdinReadSync === undefined
+          ? {}
+          : { readSync: options.stdinReadSync },
       ),
     /**
-     * Single-line progress narration (`_narrate`,
-     * `accounts.py:132-148`) — a stderr write; messages are out of
-     * contract (R5.4).
+     * Write one line of progress narration to stderr; messages are out
+     * of contract.
      *
      * @param msg - Single-line message (no trailing newline).
+     * @see mixpanel_headless.accounts._narrate
      */
     narrate: (msg: string): void => {
       process.stderr.write(`${msg}\n`);
@@ -183,21 +191,19 @@ export function createNodeAuthEffects(
 }
 
 /**
- * Build the default node {@link ResolverSources} bag (env + on-disk
- * config + bridge file) — the Python `resolve_session(...)` defaults
- * (`config=ConfigManager()` / `bridge=load_bridge()`,
- * `resolver.py:407-408`) made explicit for node (packet §4.1 row 5:
- * closes the Phase-2 `__all__` default-wiring deferral). The bridge is
- * loaded AT CALL TIME — call this next to each `resolveSession` use.
+ * Build the default node {@link ResolverSources} bag (env, on-disk
+ * config and bridge file) — Python's `resolve_session(...)` defaults
+ * (`config=ConfigManager()`, `bridge=load_bridge()`) made explicit. The
+ * bridge is loaded at call time, so call this next to each
+ * `resolveSession` use.
  *
- * @param options - Optional bag seams (see
- *   {@link NodeAuthEffectsOptions}).
+ * @param options - Optional bag seams (see {@link NodeAuthEffectsOptions}).
  * @returns The injected-source bag for `resolveSession(...)`.
- *
  * @example
- * ```typescript
+ * ```ts
  * const session = resolveSession({}, createNodeResolverSources());
  * ```
+ * @see mixpanel_headless._internal.auth.resolver.resolve_session
  */
 export function createNodeResolverSources(
   options: NodeAuthEffectsOptions = {},
@@ -206,39 +212,34 @@ export function createNodeResolverSources(
 }
 
 /**
- * Build the `Workspace()` STARTUP sources — the `workspace.py:476-513`
- * constructor sequence: `load_bridge()` PLUS the bridge-token
- * materialization side effect (oauth_browser bridge tokens are written
- * to the per-account `tokens.json` so the `OnDiskTokenResolver` can
- * serve them downstream — the Cowork credential-courier contract).
+ * Build the `Workspace()` startup sources: `load_bridge()` plus the
+ * bridge-token materialization side effect (oauth_browser bridge tokens
+ * are written to the per-account `tokens.json` so the
+ * `OnDiskTokenResolver` can serve them downstream — the Cowork
+ * credential-courier contract).
  *
- * Split rationale (B8-N2-notes.md disclosure #1 / B8-ARB-A SEM-F1,
- * `b8-reviewA-resolution.md`): Python materializes ONLY in the
- * `Workspace()` constructor; every other resolution (`use()` re-reads,
- * the accounts/session/targets namespaces) goes through the PURE
- * loader so a stale bridge payload never clobbers tokens refreshed
- * mid-session. Use THIS at facade construction and
- * {@link createNodeResolverSources} everywhere else.
- *
- * @param options - Optional bag seams (see
- *   {@link NodeAuthEffectsOptions}).
+ * @remarks
+ * Python materializes only in the `Workspace()` constructor; every other
+ * resolution (`use()` re-reads, the accounts/session/targets namespaces)
+ * goes through the pure loader so a stale bridge payload never clobbers
+ * tokens refreshed mid-session. Use this at facade construction and
+ * {@link createNodeResolverSources} everywhere else. Sources alone do
+ * not wire OAuth token refresh: an oauth_browser account constructed
+ * this way fails its first query with `TokenResolver is required`.
+ * Prefer `createNodeWorkspace()`, which composes sources, token
+ * resolver, MeCache and `readFile`; use this factory directly only when
+ * injecting a custom resolver via `clientOptions`.
+ * @param options - Optional bag seams (see {@link NodeAuthEffectsOptions}).
  * @returns The injected-source bag for `new Workspace({ sources })`.
- * @throws ConfigError - Malformed bridge file.
- *
- * NOTE (QA 2026-08-17): sources alone do NOT wire OAuth token refresh —
- * an oauth_browser account constructed this way fails its first query
- * with `TokenResolver is required`. Prefer `createNodeWorkspace()`
- * (workspace.ts), which composes sources + tokenResolver + MeCache +
- * readFile; use this factory directly only when injecting a custom
- * resolver via `clientOptions`.
- *
+ * @throws {@link ConfigError} - Malformed bridge file.
  * @example
- * ```typescript
+ * ```ts
  * const ws = new Workspace({
  *   sources: createNodeWorkspaceSources(),
  *   clientOptions: { tokenResolver: createNodeAuthEffects().tokenResolver },
  * });
  * ```
+ * @see mixpanel_headless.workspace.Workspace.__init__
  */
 export function createNodeWorkspaceSources(
   options: NodeAuthEffectsOptions = {},

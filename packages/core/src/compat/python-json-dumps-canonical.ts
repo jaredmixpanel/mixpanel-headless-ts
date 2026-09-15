@@ -15,7 +15,7 @@
  * 1. **`sort_keys=True`** — object keys sorted by Unicode **code point**.
  *    JS's default string compare uses UTF-16 code units, which inverts
  *    astral characters against BMP characters above U+D800 (U+FF5E sorts
- *    BEFORE U+1F600 in Python, AFTER it in a naive JS `.sort()`).
+ *    before U+1F600 in Python, after it in a naive JS `.sort()`).
  * 2. **compact separators** — `,` and `:` with no whitespace.
  * 3. the **numeric normalization rule** below.
  * 4. `ensure_ascii=True` is unchanged (lowercase `\uXXXX`, surrogate pairs
@@ -29,11 +29,11 @@
  * apply it, so it is the defined canonical behaviour rather than a JS
  * limitation leaking into the identity. In TypeScript it is free (JS has
  * one number type); Python pre-normalizes with `float.is_integer()` → `int`
- * before `json.dumps`, which the fixture generator does and the desktop's
- * P12 capture adopts.
+ * before `json.dumps`, which the fixture generator does and the desktop
+ * capture adopts.
  *
  * The rule exists because the divergence it closes is **reachable, not
- * theoretical**: Python `bookmark_builders.py:514` emits `"filterValue"`
+ * theoretical**: Python's bookmark builders emit `"filterValue"`
  * verbatim and `GroupBy.bucket_size` accepts a float, so
  * `Filter.greater_than("age", 1e15)` really does produce a `1e+15` float
  * inside params. One corpus builder vector
@@ -85,11 +85,10 @@ const CANONICAL_STYLE: JsonDumpsStyle = {
  *
  * @param value - The value to serialize (typically bookmark `params`).
  * @returns The canonical CPython-spelled JSON text.
- * @throws TypeError - For values Python's encoder rejects
+ * @throws {@link TypeError} - For values Python's encoder rejects
  *   (`Object of type X is not JSON serializable`; there is deliberately no
  *   `default=str` fallback), for non-finite numbers, and for numbers past
  *   `Number.MAX_SAFE_INTEGER`.
- *
  * @example
  * ```typescript
  * pythonJsonDumpsCanonical({ b: 1, a: [1, 2] });

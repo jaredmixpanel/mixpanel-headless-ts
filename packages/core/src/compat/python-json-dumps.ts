@@ -1,35 +1,32 @@
 /**
- * CPython `json.dumps(value)` twin with DEFAULT arguments — Phase-3
- * packet B4-C2 (R11.7 enabling dependency for wire-param spelling).
+ * CPython `json.dumps(value)` twin with default arguments.
  *
- * The C2 query/engage/export methods embed `json.dumps(...)` output
- * INSIDE query parameters and JSON-body string members
- * (`api_client.py:1855` `event`, `:2075` `filter_by_cohort`, `:2077`
- * `output_properties`, `:2081` `distinct_ids`, `:2085` `behaviors`,
- * `:2321` `segment_by_cohorts`, `:2578` / `:2632` event/values lists).
- * Those strings are diffed byte-exactly against the recorded requests,
- * so the CPython spelling is the contract:
+ * The query/engage/export request builders embed `json.dumps(...)` output
+ * inside query parameters and JSON-body string members (`event`,
+ * `filter_by_cohort`, `output_properties`, `distinct_ids`, `behaviors`,
+ * `segment_by_cohorts`, event/values lists). Those strings are diffed
+ * byte-exactly against the recorded requests, so the CPython spelling is
+ * the contract:
  *
- * - separators `(", ", ": ")` — a SPACE after every comma and colon
+ * - separators `(", ", ": ")` — a space after every comma and colon
  *   (`json.dumps(["a", "b"])` is `'["a", "b"]'`, not `'["a","b"]'`);
  * - `ensure_ascii=True` — every non-ASCII character escapes to
  *   `\uXXXX` UTF-16 units (lowercase hex; astral chars as surrogate
  *   pairs: `"𝒳"` → `'"𝒳"'`);
  * - `allow_nan=True` — non-finite floats spell `NaN` / `Infinity` /
- *   `-Infinity` (the JSON extension spellings, NOT Python repr's
+ *   `-Infinity` (the JSON extension spellings, not Python repr's
  *   `nan`/`inf`);
  * - floats via CPython `repr` ({@link pythonFloatStr}), ints as bare
  *   digit runs.
  *
- * Scope note (R4.5/R10.3): inputs are decoded vector kwargs / caller
+ * Scope: inputs are decoded vector kwargs / caller
  * data — plain objects, arrays, strings, numbers, bigints, booleans,
  * `null`. Python-only key coercions (`json.dumps({1: "x"})` →
  * `'{"1": "x"}'`) cannot arise because JS object keys are already
  * strings. Anything non-serializable raises the CPython `TypeError`
  * message shape.
  *
- * Since the heads-platform canonical form landed this module owns the
- * encoder for BOTH argument sets: the default-argument
+ * This module owns the encoder for both argument sets: the default-argument
  * {@link pythonJsonDumps} above and the `sort_keys=True`,
  * `separators=(",", ":")` canonical spelling in
  * `python-json-dumps-canonical.ts`. They differ only by a
@@ -42,12 +39,12 @@ import { pythonFloatStr } from "./python-float-str.js";
 
 /** CPython short escapes for the control characters that have them. */
 const SHORT_ESCAPES: ReadonlyMap<number, string> = new Map([
-  [0x08, "\\b"],
-  [0x09, "\\t"],
-  [0x0a, "\\n"],
-  [0x0c, "\\f"],
-  [0x0d, "\\r"],
-  [0x22, '\\"'],
+  [0x08, String.raw`\b`],
+  [0x09, String.raw`\t`],
+  [0x0a, String.raw`\n`],
+  [0x0c, String.raw`\f`],
+  [0x0d, String.raw`\r`],
+  [0x22, String.raw`\"`],
   [0x5c, "\\\\"],
 ]);
 
@@ -67,9 +64,9 @@ function encodeStringAscii(text: string): string {
     if (short !== undefined) {
       out += short;
     } else if (unit >= 0x20 && unit <= 0x7e) {
-      out += text[i];
+      out += text.charAt(i);
     } else {
-      out += `\\u${unit.toString(16).padStart(4, "0")}`;
+      out += String.raw`\u${unit.toString(16).padStart(4, "0")}`;
     }
   }
   return `${out}"`;
@@ -77,7 +74,7 @@ function encodeStringAscii(text: string): string {
 
 /**
  * Python `type(x).__name__` for the serializer's TypeError message
- * (message text only — out of contract per R5.4).
+ * (message text only — not part of the contract).
  *
  * @param value - The unserializable value.
  * @returns A best-effort Python-style type name.
@@ -96,8 +93,10 @@ function typeNameOf(value: unknown): string {
  * The two `json.dumps` argument sets this module supports, reduced to the
  * three knobs that actually change the bytes.
  *
- * @internal Consumed by `python-json-dumps-canonical.ts`; not part of the
- *   `pythonCompat` public surface.
+ * Consumed by `python-json-dumps-canonical.ts`; not part of the public
+ * surface.
+ *
+ * @internal
  */
 export interface JsonDumpsStyle {
   /** Text between array items / object members (`", "` or `","`). */
@@ -127,14 +126,18 @@ const DEFAULT_STYLE: JsonDumpsStyle = {
 /**
  * The shared recursive encoder. Both public spellings route through this
  * one body so the escape table, the number rules and the `TypeError`
- * shape can never diverge between them (R10.8).
+ * shape can never diverge between them.
  *
  * @param value - The value to serialize (decoded caller data).
  * @param style - Separator/ordering knobs; see {@link JsonDumpsStyle}.
  * @returns The CPython-spelled JSON text.
- * @throws TypeError - For values Python's encoder rejects.
- *
- * @internal Consumed by `python-json-dumps-canonical.ts`.
+ * @throws {@link TypeError} - for values Python's encoder rejects.
+ * @example
+ * ```ts
+ * dumpsStyled({ b: 1, a: 2 }, { itemSeparator: ",", keySeparator: ":", sortKeys: true, rejectUnsafeNumbers: true });
+ * // '{"a":2,"b":1}'
+ * ```
+ * @internal
  */
 export function dumpsStyled(value: unknown, style: JsonDumpsStyle): string {
   if (value === null) {
@@ -192,9 +195,9 @@ export function dumpsStyled(value: unknown, style: JsonDumpsStyle): string {
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>);
     if (style.sortKeys) {
-      // CPython `sorted(dct.items())` compares str by CODE POINT; JS
-      // `.sort()` compares UTF-16 code UNITS and inverts e.g. U+FF61 vs
-      // U+1F600 (compat/codepoint.ts owns that comparator — R10.8).
+      // CPython `sorted(dct.items())` compares str by code point; JS
+      // `.sort()` compares UTF-16 code units and inverts e.g. U+FF61 vs
+      // U+1F600.
       entries.sort(([a], [b]) => compareCodepoints(a, b));
     }
     const body = entries
@@ -216,9 +219,8 @@ export function dumpsStyled(value: unknown, style: JsonDumpsStyle): string {
  *
  * @param value - The value to serialize (decoded caller data).
  * @returns The CPython-spelled JSON text.
- * @throws TypeError - For values Python's encoder rejects
+ * @throws {@link TypeError} - For values Python's encoder rejects
  *   (`Object of type X is not JSON serializable`).
- *
  * @example
  * ```typescript
  * pythonJsonDumps(["Purchase", "View"]);

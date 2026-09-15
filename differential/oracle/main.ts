@@ -1,11 +1,13 @@
 /**
- * oracle-ts stdin/stdout loop (design D14; protocol §1 framing).
+ * oracle-ts stdin/stdout loop — the transport around {@link OracleServer}.
  *
  * One request line in, one response line out, strictly in order; blank
  * lines are ignored; `stderr` is free-form logs (never parsed). The
- * process exits 0 after serving `oracle.shutdown` AND on stdin EOF (a
+ * process exits 0 after serving `oracle.shutdown` and on stdin EOF (a
  * harness crash must not leave zombie oracles). Launched via
- * `scripts/run-oracle.mjs` (esbuild bundle — the repo has no build step).
+ * `scripts/run-oracle.mjs` as an esbuild bundle.
+ *
+ * @packageDocumentation
  */
 
 import { createInterface } from "node:readline";
@@ -46,7 +48,7 @@ export async function runOracle(): Promise<void> {
  */
 function writeLine(response: string): Promise<void> {
   return new Promise((resolvePromise, rejectPromise) => {
-    process.stdout.write(response + "\n", (error) => {
+    process.stdout.write(`${response}\n`, (error) => {
       if (error) {
         rejectPromise(error);
       } else {

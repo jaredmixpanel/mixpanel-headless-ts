@@ -1,40 +1,14 @@
-// Layer-3 translation of `tests/unit/test_io_utils.py` (803 lines, 48
-// tests) — b8-packets.md §2.3 row 1.
-//
-// Per-class dispositions (packet §2.3; PYTHON-ONLY exclusions cite plan
-// §2.2 non-portable remainder + the R9.2 fd-flag-hardening drop,
-// b8-packets.md §2.1 io_utils row):
-//
-// - TestAtomicWriteBytes :89           → translated below.
-// - TestAtomicWriteResilience :210     → translated below (fault injection
-//   via the `fsOps` seam — the `unittest.mock.patch("...os.replace")` twin;
-//   the concurrent-writers case is re-expressed over the pid+counter tmp
-//   scheme because JS has no OS threads in the main thread, packet §2.2).
-// - TestCredentialPathError :324       → re-expressed against the coded
-//   `MixpanelHeadlessError` twin (packet §2.2: OSError lineage carried in
-//   `details`; call sites catch the class instead of `except OSError`).
-// - TestReadCredentialBytes :346       → translated below. The two fd-leak
-//   probes (:441, :463) are re-expressed as 200-rejection loops (the
-//   lstat/readFileSync substitution never hand-manages fds; a leak would
-//   surface as EMFILE inside the loop).
-// - TestReadCredentialText :477        → translated below (invalid UTF-8
-//   raises the TextDecoder `TypeError` — the `UnicodeDecodeError` twin).
-// - TestRejectIfSymlink :504           → translated below.
-// - TestOpenCredentialFdFlags :546     → PYTHON-ONLY (O_CLOEXEC/O_NOFOLLOW
-//   fd flags; plan §2.2 + R9.2 drop, b8-packets.md §2.3).
-// - TestNonRegularFileRejection :587   → SPLIT (packet §2.3): the
-//   stat-based refusal is covered via a directory-as-path case; the
-//   FIFO / character-device cases are PYTHON-ONLY (no `mkfifo` /
-//   `mknod` in node:fs; the lstat-based port rejects before open).
-// - TestSizeCap :647                   → translated below.
-// - TestDirfdWalk :674                 → PYTHON-ONLY (dirfd-walk
-//   hardening — the dropped `_open_credential_fd` layer, plan §2.2).
-// - TestReadCappedSecretFromStdin :769 → translated below (injectable
-//   read seam — the `sys.stdin.buffer` BytesIO stub twin).
+// io-utils: atomicWriteBytes, readCredentialBytes/Text, rejectIfSymlink, the
+// size cap and readCappedSecretFromStdin. Mirrors tests/unit/test_io_utils.py;
+// the fd-flag classes (TestOpenCredentialFdFlags, TestDirfdWalk) and the
+// FIFO/device cases have no node analogue and are not ported. Faults are
+// injected through the `fsOps` seam where Python patched `os.replace`.
 
 import {
   chmodSync,
   mkdirSync,
+  // Delegating open used by the counter-learning spies below.
+  openSync as statSyncOpen,
   readdirSync,
   readFileSync,
   statSync,
@@ -42,36 +16,38 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  MixpanelHeadlessError,
   ConfigError,
+  MixpanelHeadlessError,
   ParamValidationError,
-} from "../../core/src/errors.js";
+} from "@mixpanel-headless/core";
+
 import {
-  MAX_CREDENTIAL_BYTES,
-  SECRET_STDIN_MAX_BYTES,
-  CredentialPathError,
   atomicWriteBytes,
+  type AtomicWriteFsOps,
+  CredentialPathError,
+  MAX_CREDENTIAL_BYTES,
   readCappedSecretFromStdin,
   readCredentialBytes,
   readCredentialText,
   rejectIfSymlink,
-  type AtomicWriteFsOps,
+  SECRET_STDIN_MAX_BYTES,
 } from "../src/io-utils.js";
-import { makeTempDir } from "./helpers.js";
+import { expectPosixMode, makeTempDir } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 afterEach(() => {
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
 });
 
-/** Return leftover `<name>.tmp.*` siblings of `target` (test_io_utils.py:77). */
+/** Return leftover `<name>.tmp.*` siblings of `target`. */
 function tmpGlob(dir: string, name: string): string[] {
   return readdirSync(dir)
     .filter((entry) => entry.startsWith(`${name}.tmp.`))
@@ -94,18 +70,19 @@ function fileMode(path: string): number {
 
 const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
 
-describe("TestAtomicWriteBytes", () => {
-  it("test_writes_bytes_with_default_mode", () => {
+describe("atomicWriteBytes", () => {
+  // python: TestAtomicWriteBytes
+  it("writes the bytes with the default 0o600 mode", () => {
+    // python: test_writes_bytes_with_default_mode
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     atomicWriteBytes(target, utf8("hello world"));
-    expect(readFileSync(target, "utf-8")).toBe("hello world");
-    if (POSIX) {
-      expect(fileMode(target)).toBe(0o600);
-    }
+    expect(readFileSync(target, "utf8")).toBe("hello world");
+    expectPosixMode(target, 0o600);
   });
 
-  it.skipIf(!POSIX)("test_writes_bytes_with_owner_only_mode", () => {
+  it.skipIf(!POSIX)("honours an explicit owner-only mode", () => {
+    // python: test_writes_bytes_with_owner_only_mode
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     atomicWriteBytes(target, utf8("x"), { mode: 0o400 });
@@ -113,40 +90,43 @@ describe("TestAtomicWriteBytes", () => {
   });
 
   it.each([0o644, 0o660, 0o604, 0o666, 0o777])(
-    "test_rejects_group_or_world_bits (mode %s)",
+    "rejects mode %s (group or world bits) before touching the filesystem",
     (badMode) => {
+      // python: test_rejects_group_or_world_bits
       const dir = makeTempDir(cleanups);
       const target = join(dir, "config.toml");
       // Python raises bare ValueError; the TS twin is the existing
-      // ParamValidationError / VALIDATION_ERROR (R5 codes-not-messages,
-      // packet §2.2 — no new code minted).
+      // ParamValidationError / VALIDATION_ERROR (no new code minted).
       expect(() =>
         atomicWriteBytes(target, utf8("x"), { mode: badMode }),
       ).toThrow(ParamValidationError);
       expect(() =>
         atomicWriteBytes(target, utf8("x"), { mode: badMode }),
       ).toThrow(/group\/world access/);
-      // The guard fires BEFORE any FS touch (caution #11).
-      expect(readdirSync(dir)).toEqual([]);
+      // The guard fires before any filesystem touch.
+      expect(readdirSync(dir)).toStrictEqual([]);
     },
   );
 
-  it("test_replaces_existing_file_atomically", () => {
+  it("replaces an existing file", () => {
+    // python: test_replaces_existing_file_atomically
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     writeFileSync(target, "old");
     atomicWriteBytes(target, utf8("new"));
-    expect(readFileSync(target, "utf-8")).toBe("new");
+    expect(readFileSync(target, "utf8")).toBe("new");
   });
 
-  it("test_no_tmp_file_left_after_success", () => {
+  it("leaves no tmp file behind on success", () => {
+    // python: test_no_tmp_file_left_after_success
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     atomicWriteBytes(target, utf8("x"));
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 
-  it("test_no_tmp_file_left_after_replace_failure", () => {
+  it("leaves no tmp file behind when the rename fails", () => {
+    // python: test_no_tmp_file_left_after_replace_failure
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     const fsOps: Partial<AtomicWriteFsOps> = {
@@ -157,11 +137,12 @@ describe("TestAtomicWriteBytes", () => {
     expect(() => atomicWriteBytes(target, utf8("x"), { fsOps })).toThrow(
       "simulated",
     );
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
-    expect(readdirSync(dir)).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
+    expect(readdirSync(dir)).toStrictEqual([]);
   });
 
-  it("test_failure_preserves_existing_file", () => {
+  it("keeps the existing file when the rename fails", () => {
+    // python: test_failure_preserves_existing_file
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     writeFileSync(target, "original");
@@ -173,11 +154,12 @@ describe("TestAtomicWriteBytes", () => {
     expect(() => atomicWriteBytes(target, utf8("new"), { fsOps })).toThrow(
       "simulated",
     );
-    expect(readFileSync(target, "utf-8")).toBe("original");
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(readFileSync(target, "utf8")).toBe("original");
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 
-  it.skipIf(!POSIX)("test_replacing_existing_resets_mode", () => {
+  it.skipIf(!POSIX)("resets a 0o644 target to 0o600 on replace", () => {
+    // python: test_replacing_existing_resets_mode
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     writeFileSync(target, "old");
@@ -186,13 +168,14 @@ describe("TestAtomicWriteBytes", () => {
     expect(fileMode(target)).toBe(0o600);
   });
 
-  it("test_excl_collision_does_not_touch_target", () => {
+  it("fails with EEXIST on a tmp-name collision and leaves the target and the foreign tmp alone", () => {
+    // python: test_excl_collision_does_not_touch_target
     // Python pre-places `<name>.tmp.<pid>.<tid>`. The TS tmp name embeds
-    // pid + a monotonically increasing per-process counter (packet §2.2
-    // substitution: JS has no OS thread id in the main thread), so the
+    // pid + a monotonically increasing per-process counter (JS has no OS
+    // thread id in the main thread), so the
     // test learns the counter from a delegating spy, then pre-places the
     // NEXT tmp path. On EEXIST the pre-existing (foreign) tmp survives —
-    // only our own cleanup path unlinks (caution #10).
+    // only our own cleanup path unlinks.
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     writeFileSync(target, "original");
@@ -206,7 +189,7 @@ describe("TestAtomicWriteBytes", () => {
         },
       },
     });
-    const probeTmp = seen[0] as string;
+    const probeTmp = seen[0]!;
     const counter = Number(probeTmp.split(".").pop());
     const staleTmp = join(dir, `config.toml.tmp.${process.pid}.${counter + 1}`);
     writeFileSync(staleTmp, "stale");
@@ -214,41 +197,42 @@ describe("TestAtomicWriteBytes", () => {
     let error: unknown;
     try {
       atomicWriteBytes(target, utf8("new"));
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect((error as NodeJS.ErrnoException).code).toBe("EEXIST");
-    expect(readFileSync(target, "utf-8")).toBe("original");
+    expect(readFileSync(target, "utf8")).toBe("original");
     // The FOREIGN stale tmp is left in place (Python leaves it too).
-    expect(readFileSync(staleTmp, "utf-8")).toBe("stale");
+    expect(readFileSync(staleTmp, "utf8")).toBe("stale");
   });
 
-  it("test_writes_empty_bytes", () => {
+  it("writes an empty payload", () => {
+    // python: test_writes_empty_bytes
     const dir = makeTempDir(cleanups);
     const target = join(dir, "empty.toml");
     atomicWriteBytes(target, new Uint8Array(0));
-    expect(readFileSync(target).length).toBe(0);
+    expect(readFileSync(target)).toHaveLength(0);
   });
 
-  it("test_missing_parent_directory_raises", () => {
+  it("raises ENOENT when the parent directory is missing", () => {
+    // python: test_missing_parent_directory_raises
     const dir = makeTempDir(cleanups);
     const target = join(dir, "nonexistent", "config.toml");
     let error: unknown;
     try {
       atomicWriteBytes(target, utf8("x"));
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect((error as NodeJS.ErrnoException).code).toBe("ENOENT");
-    expect(readdirSync(dir)).toEqual([]);
+    expect(readdirSync(dir)).toStrictEqual([]);
   });
 });
 
-// Delegating open used by the counter-learning spy above.
-import { openSync as statSyncOpen } from "node:fs";
-
-describe("TestAtomicWriteResilience", () => {
-  it("test_simulated_kill_between_write_and_replace_preserves_old", () => {
+describe("atomicWriteBytes resilience under simulated failures", () => {
+  // python: TestAtomicWriteResilience
+  it("keeps the old content when the rename step fails", () => {
+    // python: test_simulated_kill_between_write_and_replace_preserves_old
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     writeFileSync(target, "OLD_CONTENT");
@@ -263,11 +247,12 @@ describe("TestAtomicWriteResilience", () => {
     expect(() =>
       atomicWriteBytes(target, utf8("NEW_CONTENT"), { fsOps }),
     ).toThrow("simulated SIGKILL");
-    expect(readFileSync(target, "utf-8")).toBe("OLD_CONTENT");
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(readFileSync(target, "utf8")).toBe("OLD_CONTENT");
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 
-  it("test_simulated_kill_during_write_preserves_old", () => {
+  it("keeps the old content when the write step fails", () => {
+    // python: test_simulated_kill_during_write_preserves_old
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     writeFileSync(target, "OLD_CONTENT");
@@ -279,15 +264,16 @@ describe("TestAtomicWriteResilience", () => {
     expect(() =>
       atomicWriteBytes(target, utf8("NEW_CONTENT"), { fsOps }),
     ).toThrow("disk full");
-    expect(readFileSync(target, "utf-8")).toBe("OLD_CONTENT");
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(readFileSync(target, "utf8")).toBe("OLD_CONTENT");
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 
-  it("test_concurrent_writes_use_distinct_tmp_paths", () => {
+  it("uses a distinct tmp path per write", () => {
+    // python: test_concurrent_writes_use_distinct_tmp_paths
     // Python runs two OS threads; JS is single-threaded in the main
     // thread, so the port asserts the collision-avoidance MECHANISM:
     // consecutive writes to the same target pick distinct tmp paths
-    // (pid+counter), both succeed, and no tmp leaks (packet §2.2).
+    // (pid+counter), both succeed, and no tmp leaks.
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     const seen: string[] = [];
@@ -300,36 +286,41 @@ describe("TestAtomicWriteResilience", () => {
     atomicWriteBytes(target, utf8("A".repeat(1024)), { fsOps: spy });
     atomicWriteBytes(target, utf8("B".repeat(1024)), { fsOps: spy });
     expect(new Set(seen).size).toBe(2);
-    const final = readFileSync(target, "utf-8");
+    const final = readFileSync(target, "utf8");
     expect(final === "A".repeat(1024) || final === "B".repeat(1024)).toBe(true);
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 });
 
-describe("TestCredentialPathError", () => {
-  it("test_is_mixpanel_headless_error_subclass", () => {
-    // Re-expression of test_is_oserror_subclass (:327), header-cited:
-    // Python call sites catch `OSError`; the TS call sites catch the
-    // coded MixpanelHeadlessError lineage instead (packet §2.2 —
-    // symlink-attack rejections must never escape the domain wrappers).
+describe("CredentialPathError", () => {
+  // python: TestCredentialPathError
+  it("is a MixpanelHeadlessError", () => {
+    // python: test_is_mixpanel_headless_error_subclass
+    // Re-expression of test_is_oserror_subclass: Python call sites catch
+    // `OSError`; the TS call sites catch the coded MixpanelHeadlessError
+    // lineage instead (symlink-attack rejections must never escape the
+    // domain wrappers).
     expect(
       new CredentialPathError(40, "symlink rejected", "/tmp/foo"),
     ).toBeInstanceOf(MixpanelHeadlessError);
   });
 
-  it("test_carries_errno_and_path", () => {
+  it("carries errno and filename, also in details", () => {
+    // python: test_carries_errno_and_path
     const exc = new CredentialPathError(40, "symlink rejected", "/tmp/foo");
     expect(exc.errno).toBe(40);
     expect(exc.filename).toBe("/tmp/foo");
     expect(String(exc)).toContain("symlink rejected");
-    // The OSError lineage rides in `details` (packet §2.2).
+    // The OSError lineage rides in `details`.
     expect(exc.details["errno"]).toBe(40);
     expect(exc.details["filename"]).toBe("/tmp/foo");
   });
 });
 
-describe("TestReadCredentialBytes", () => {
-  it("test_reads_plain_owner_only_file", () => {
+describe("readCredentialBytes", () => {
+  // python: TestReadCredentialBytes
+  it("reads an owner-only regular file", () => {
+    // python: test_reads_plain_owner_only_file
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(join(dir, "creds.json"), '{"k":"v"}');
     expect(new TextDecoder().decode(readCredentialBytes(target))).toBe(
@@ -337,13 +328,15 @@ describe("TestReadCredentialBytes", () => {
     );
   });
 
-  it("test_reads_empty_file", () => {
+  it("reads an empty file", () => {
+    // python: test_reads_empty_file
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(join(dir, "empty"), "");
-    expect(readCredentialBytes(target).length).toBe(0);
+    expect(readCredentialBytes(target)).toHaveLength(0);
   });
 
-  it.skipIf(!POSIX)("test_rejects_symlink_to_attacker_file", () => {
+  it.skipIf(!POSIX)("rejects a symlink to a foreign file", () => {
+    // python: test_rejects_symlink_to_attacker_file
     const dir = makeTempDir(cleanups);
     const attacker = writeOwnerOnly(
       join(dir, "attacker.json"),
@@ -355,26 +348,35 @@ describe("TestReadCredentialBytes", () => {
     expect(() => readCredentialBytes(link)).toThrow(/symlink/);
   });
 
-  it.skipIf(!POSIX)("test_rejects_symlink_to_legitimate_owned_file", () => {
-    const dir = makeTempDir(cleanups);
-    const legit = writeOwnerOnly(join(dir, "legit.json"), '{"k":"v"}');
-    expect(fileMode(legit)).toBe(0o600);
-    const link = join(dir, "creds.json");
-    symlinkSync(legit, link);
-    expect(() => readCredentialBytes(link)).toThrow(/symlink/);
-  });
+  it.skipIf(!POSIX)(
+    "rejects a symlink even when the target is owner-only",
+    () => {
+      // python: test_rejects_symlink_to_legitimate_owned_file
+      const dir = makeTempDir(cleanups);
+      const legit = writeOwnerOnly(join(dir, "legit.json"), '{"k":"v"}');
+      expect(fileMode(legit)).toBe(0o600);
+      const link = join(dir, "creds.json");
+      symlinkSync(legit, link);
+      expect(() => readCredentialBytes(link)).toThrow(/symlink/);
+    },
+  );
 
-  it.skipIf(!POSIX)("test_rejects_dangling_symlink", () => {
-    const dir = makeTempDir(cleanups);
-    const link = join(dir, "creds.json");
-    symlinkSync(join(dir, "nonexistent.json"), link);
-    // CredentialPathError, NOT the ENOENT twin — the symlink check
-    // fires before any target-existence lookup.
-    expect(() => readCredentialBytes(link)).toThrow(CredentialPathError);
-    expect(() => readCredentialBytes(link)).toThrow(/symlink/);
-  });
+  it.skipIf(!POSIX)(
+    "rejects a dangling symlink with CredentialPathError, not ENOENT",
+    () => {
+      // python: test_rejects_dangling_symlink
+      const dir = makeTempDir(cleanups);
+      const link = join(dir, "creds.json");
+      symlinkSync(join(dir, "nonexistent.json"), link);
+      // CredentialPathError, NOT the ENOENT twin — the symlink check
+      // fires before any target-existence lookup.
+      expect(() => readCredentialBytes(link)).toThrow(CredentialPathError);
+      expect(() => readCredentialBytes(link)).toThrow(/symlink/);
+    },
+  );
 
-  it.skipIf(!POSIX)("test_rejects_lax_mode", () => {
+  it.skipIf(!POSIX)("rejects every group- or world-readable mode", () => {
+    // python: test_rejects_lax_mode
     for (const badMode of [0o640, 0o660, 0o604, 0o644, 0o666, 0o777]) {
       const dir = makeTempDir(cleanups);
       const target = join(dir, "creds.json");
@@ -385,7 +387,8 @@ describe("TestReadCredentialBytes", () => {
     }
   });
 
-  it.skipIf(!POSIX)("test_accepts_owner_only_modes", () => {
+  it.skipIf(!POSIX)("accepts 0o400 and 0o600", () => {
+    // python: test_accepts_owner_only_modes
     for (const goodMode of [0o400, 0o600]) {
       const dir = makeTempDir(cleanups);
       const target = join(dir, "creds.json");
@@ -395,49 +398,60 @@ describe("TestReadCredentialBytes", () => {
     }
   });
 
-  it("test_propagates_filenotfound", () => {
+  it("propagates ENOENT for a missing file", () => {
+    // python: test_propagates_filenotfound
     const dir = makeTempDir(cleanups);
     let error: unknown;
     try {
       readCredentialBytes(join(dir, "does-not-exist.json"));
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     // ENOENT (the FileNotFoundError twin), NOT CredentialPathError.
     expect((error as NodeJS.ErrnoException).code).toBe("ENOENT");
     expect(error).not.toBeInstanceOf(CredentialPathError);
   });
 
-  it.skipIf(!POSIX)("test_no_fd_leak_on_symlink_rejection", () => {
-    // Re-expression (header note): the lstat-based port opens no fd
-    // before rejection; 200 rejections must keep raising
-    // CredentialPathError — a leak would surface as EMFILE here.
-    const dir = makeTempDir(cleanups);
-    const link = join(dir, "creds.json");
-    symlinkSync(join(dir, "nonexistent.json"), link);
-    for (let i = 0; i < 200; i += 1) {
-      expect(() => readCredentialBytes(link)).toThrow(CredentialPathError);
-    }
-  });
+  it.skipIf(!POSIX)(
+    "keeps rejecting a symlink across 200 calls without leaking descriptors",
+    () => {
+      // python: test_no_fd_leak_on_symlink_rejection
+      // Re-expression (header note): the lstat-based port opens no fd
+      // before rejection; 200 rejections must keep raising
+      // CredentialPathError — a leak would surface as EMFILE here.
+      const dir = makeTempDir(cleanups);
+      const link = join(dir, "creds.json");
+      symlinkSync(join(dir, "nonexistent.json"), link);
+      for (let i = 0; i < 200; i += 1) {
+        expect(() => readCredentialBytes(link)).toThrow(CredentialPathError);
+      }
+    },
+  );
 
-  it.skipIf(!POSIX)("test_no_fd_leak_on_mode_rejection", () => {
-    const dir = makeTempDir(cleanups);
-    const target = join(dir, "creds.json");
-    writeFileSync(target, "x");
-    chmodSync(target, 0o644);
-    for (let i = 0; i < 200; i += 1) {
-      expect(() => readCredentialBytes(target)).toThrow(CredentialPathError);
-    }
-  });
+  it.skipIf(!POSIX)(
+    "keeps rejecting a lax mode across 200 calls without leaking descriptors",
+    () => {
+      // python: test_no_fd_leak_on_mode_rejection
+      const dir = makeTempDir(cleanups);
+      const target = join(dir, "creds.json");
+      writeFileSync(target, "x");
+      chmodSync(target, 0o644);
+      for (let i = 0; i < 200; i += 1) {
+        expect(() => readCredentialBytes(target)).toThrow(CredentialPathError);
+      }
+    },
+  );
 });
 
-describe("TestNonRegularFileRejection", () => {
-  // SPLIT disposition (packet §2.3): FIFO / character-device cases are
-  // PYTHON-ONLY (node:fs has no mkfifo/mknod; the lstat-based port
+describe("readCredentialBytes non-regular file rejection", () => {
+  // python: TestNonRegularFileRejection
+  // FIFO / character-device cases are Python-only (node:fs has no
+  // mkfifo/mknod; the lstat-based port
   // rejects non-regular files BEFORE any open, so the hang threat the
   // Python O_NONBLOCK machinery addresses cannot occur). The stat-based
   // refusal branch is locked via a directory at the credential path.
-  it.skipIf(!POSIX)("test_rejects_directory_via_stat_check", () => {
+  it.skipIf(!POSIX)("rejects a directory at the credential path", () => {
+    // python: test_rejects_directory_via_stat_check
     const dir = makeTempDir(cleanups);
     const target = join(dir, "creds.json");
     mkdirSync(target, { mode: 0o700 });
@@ -446,14 +460,17 @@ describe("TestNonRegularFileRejection", () => {
   });
 });
 
-describe("TestReadCredentialText", () => {
-  it("test_reads_utf8", () => {
+describe("readCredentialText", () => {
+  // python: TestReadCredentialText
+  it("decodes UTF-8", () => {
+    // python: test_reads_utf8
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(join(dir, "creds.toml"), utf8("café"));
     expect(readCredentialText(target)).toBe("café");
   });
 
-  it("test_rejects_invalid_utf8", () => {
+  it("raises TypeError for invalid UTF-8", () => {
+    // python: test_rejects_invalid_utf8
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(
       join(dir, "creds.toml"),
@@ -464,7 +481,8 @@ describe("TestReadCredentialText", () => {
     expect(() => readCredentialText(target)).toThrow(TypeError);
   });
 
-  it.skipIf(!POSIX)("test_rejects_symlink_same_as_bytes_variant", () => {
+  it.skipIf(!POSIX)("rejects a symlink like the bytes variant", () => {
+    // python: test_rejects_symlink_same_as_bytes_variant
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(join(dir, "real.toml"), "x = 1");
     const link = join(dir, "creds.toml");
@@ -473,8 +491,10 @@ describe("TestReadCredentialText", () => {
   });
 });
 
-describe("TestRejectIfSymlink", () => {
-  it.skipIf(!POSIX)("test_live_symlink_raises", () => {
+describe("rejectIfSymlink", () => {
+  // python: TestRejectIfSymlink
+  it.skipIf(!POSIX)("raises CredentialPathError for a live symlink", () => {
+    // python: test_live_symlink_raises
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(join(dir, "real.json"), "x");
     const link = join(dir, "creds.json");
@@ -483,36 +503,42 @@ describe("TestRejectIfSymlink", () => {
     expect(() => rejectIfSymlink(link)).toThrow(/symlink/);
   });
 
-  it.skipIf(!POSIX)("test_dangling_symlink_raises", () => {
+  it.skipIf(!POSIX)("raises CredentialPathError for a dangling symlink", () => {
+    // python: test_dangling_symlink_raises
     const dir = makeTempDir(cleanups);
     const link = join(dir, "creds.json");
     symlinkSync(join(dir, "missing.json"), link);
     expect(() => rejectIfSymlink(link)).toThrow(CredentialPathError);
   });
 
-  it("test_regular_file_is_noop", () => {
+  it("is a no-op for a regular file", () => {
+    // python: test_regular_file_is_noop
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(join(dir, "creds.json"), "x");
-    rejectIfSymlink(target); // no throw
+    expect(() => rejectIfSymlink(target)).not.toThrow();
   });
 
-  it("test_missing_path_is_noop", () => {
+  it("is a no-op for a missing path", () => {
+    // python: test_missing_path_is_noop
     const dir = makeTempDir(cleanups);
-    rejectIfSymlink(join(dir, "nothing-here.json")); // no throw
+    expect(() => rejectIfSymlink(join(dir, "nothing-here.json"))).not.toThrow();
   });
 });
 
-describe("TestSizeCap", () => {
-  it.skipIf(!POSIX)("test_accepts_at_cap", () => {
+describe("readCredentialBytes size cap", () => {
+  // python: TestSizeCap
+  it.skipIf(!POSIX)("accepts a file exactly at the cap", () => {
+    // python: test_accepts_at_cap
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(
       join(dir, "creds"),
       new Uint8Array(MAX_CREDENTIAL_BYTES).fill(0x41),
     );
-    expect(readCredentialBytes(target).length).toBe(MAX_CREDENTIAL_BYTES);
+    expect(readCredentialBytes(target)).toHaveLength(MAX_CREDENTIAL_BYTES);
   });
 
-  it.skipIf(!POSIX)("test_rejects_over_cap", () => {
+  it.skipIf(!POSIX)("rejects a file one byte over the cap", () => {
+    // python: test_rejects_over_cap
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(
       join(dir, "creds"),
@@ -524,14 +550,15 @@ describe("TestSizeCap", () => {
     );
   });
 
-  it("test_cap_is_sane_value", () => {
+  it("the cap is 1 MiB", () => {
+    // python: test_cap_is_sane_value
     expect(MAX_CREDENTIAL_BYTES).toBe(1 << 20);
   });
 });
 
 /**
  * Build a read seam over an in-memory payload (the `_stub_stdin`
- * BytesIO twin, test_io_utils.py:757).
+ * BytesIO twin, test_io_utils.py).
  *
  * @param payload - The bytes "piped" to stdin.
  * @returns A readSync-shaped chunk reader.
@@ -546,30 +573,34 @@ function stubStdin(payload: Uint8Array): (buffer: Uint8Array) => number {
   };
 }
 
-describe("TestReadCappedSecretFromStdin", () => {
-  it("test_returns_stripped_value", () => {
+describe("readCappedSecretFromStdin", () => {
+  // python: TestReadCappedSecretFromStdin
+  it("returns the value with surrounding whitespace stripped", () => {
+    // python: test_returns_stripped_value
     const readSync = stubStdin(utf8("  s3cret-value\n"));
     expect(readCappedSecretFromStdin({ readSync })).toBe("s3cret-value");
   });
 
-  it("test_accepts_payload_at_cap", () => {
+  it("accepts a payload exactly at the cap", () => {
+    // python: test_accepts_payload_at_cap
     const readSync = stubStdin(
       new Uint8Array(SECRET_STDIN_MAX_BYTES).fill(0x41),
     );
-    expect(readCappedSecretFromStdin({ readSync }).length).toBe(
+    expect(readCappedSecretFromStdin({ readSync })).toHaveLength(
       SECRET_STDIN_MAX_BYTES,
     );
   });
 
-  it("test_rejects_payload_over_cap", () => {
+  it("raises ConfigError naming the cap for an oversized payload", () => {
+    // python: test_rejects_payload_over_cap
     const readSync = stubStdin(
       new Uint8Array(SECRET_STDIN_MAX_BYTES + 1).fill(0x41),
     );
     let error: unknown;
     try {
       readCappedSecretFromStdin({ readSync });
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(ConfigError);
     expect((error as ConfigError).message).toContain(
@@ -578,19 +609,21 @@ describe("TestReadCappedSecretFromStdin", () => {
     expect((error as ConfigError).message).toContain("key bundle");
   });
 
-  it("test_rejects_empty_stdin", () => {
+  it("raises ConfigError for empty stdin", () => {
+    // python: test_rejects_empty_stdin
     const readSync = stubStdin(new Uint8Array(0));
     let error: unknown;
     try {
       readCappedSecretFromStdin({ readSync });
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(ConfigError);
     expect((error as ConfigError).message.toLowerCase()).toContain("empty");
   });
 
-  it("test_rejects_whitespace_only", () => {
+  it("raises ConfigError for whitespace-only stdin", () => {
+    // python: test_rejects_whitespace_only
     const readSync = stubStdin(utf8("   \n\t\n"));
     expect(() => readCappedSecretFromStdin({ readSync })).toThrow(ConfigError);
   });

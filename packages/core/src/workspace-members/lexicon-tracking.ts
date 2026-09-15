@@ -1,114 +1,57 @@
 /**
- * B6-W6 member module — the `Workspace` Lexicon data-definition and
- * tracking/history members (`workspace.py:7197-7581` "Data Governance
- * — Data Definitions / Lexicon" and `workspace.py:8526-8648` "Data
- * Governance — Tracking & History", both Phase 027).
+ * Lexicon members of the `Workspace` facade: event and property
+ * definitions, tags, tracking metadata, change history and the Lexicon
+ * export. Each function is the body of one facade method — options-bag
+ * mapping, the params dump, the like-named client call and result-model
+ * validation with the endpoint name Python passes. Resource-type
+ * canonicalization, the `name[]` filter spelling, history path quoting
+ * and the `export_type` encoding all belong to the client, not here.
  *
- * Packet contract (`b6-packets.md` §2/§8): the `workspace.ts` B6-W6
- * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
- * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
- * like-named B4-C5 client method (`services/entities/lexicon.ts`,
- * composed onto the client at `client.ts:1077+`) and result-model
- * construction via `validateResponseModel(s)` with the exact
- * `endpoint=` string Python passes. No request assembly, no header
- * merging, no URL building, no status branching (R10.8 — compose,
- * never re-implement). In particular the `resourceType`
- * canonicalization, the `name[]` filter spelling, the
- * `pythonQuote`d history paths and the `export_type` JSON encoding all
- * live in the B4 client and are NOT re-derived here.
- *
- * Shard-wide observations from the Python re-read (all 15 bodies read
- * line-by-line at HEAD 2026-08-16):
- *
- * - **14 of 15 members are pure forwards.** The single exception is
- *   {@link listLexiconTags} (`:7488-7500`), which loops the raw list
- *   and branches on `isinstance(x, str)`: a plain tag-name STRING
- *   becomes `LexiconTag(id=0, name=x)` — the documented id=0 sentinel
- *   (`workspace.py:7481-7486` docstring Note) — while every other
- *   entry goes through `validate_response_model`. That `isinstance`
- *   is a STRING discrimination, not watchlist #13's
- *   `isinstance(x, dict)`, so `isPlainRecord` has no site here; the
- *   twin is a plain `typeof x === "string"` over the raw (lossless)
- *   entry, which is a JS string for any JSON string token.
- * - **Two dump spellings, deliberately different.** The four
- *   definition writers use `model_dump(exclude_none=True,
- *   by_alias=True)` (`:7266`, `:7325`, `:7406`, `:7452`) because
- *   `UpdateEventDefinitionParams` / `UpdatePropertyDefinitionParams` /
- *   `BulkEventUpdate` / `BulkPropertyUpdate` carry `to_camel` aliases
- *   the App API requires (`displayName`, `exampleValue`,
- *   `resourceType`). The two TAG writers use a PLAIN
- *   `model_dump(exclude_none=True)` (`:7526`, `:7557`) — `by_alias`
- *   would be a no-op on their single `name` field, but the facade
- *   mirrors the source spelling exactly rather than harmonizing it.
- * - **ZERO empty-response guards** (`if raw is None: raise …`) in
- *   either range — verified by grep, matching the W5 precedent. The
- *   shared `requireResponse` helper is therefore deliberately unused;
- *   adding it would invent a branch Python does not have.
- * - **Four opaque passthroughs**: `get_tracking_metadata`,
- *   `get_event_history`, `get_property_history` and `export_lexicon`
- *   return the client's payload verbatim under `dict[str, Any]` /
- *   `list[dict[str, Any]]` annotations with no model validation
- *   (`:8556`, `:8583`, `:8614`, `:8648`) — the W4
- *   `list_erf_experiments` / W5 `test_alert` precedent.
- * - **No `int(str)`, no `.strip()`, no truthiness guard, no date
- *   construction** anywhere in the two ranges, so R11.7 / watchlist
- *   #5 / watchlist #6 have no site to bite in this shard.
- *
- * The two keyword-only members ({@link getEventDefinitions} and
- * {@link getPropertyDefinitions}) plus {@link exportLexicon} pass
- * their `None` defaults straight through (`:7370`, `:8648`); the
- * client owns the `is not None` gating, so the facade forwards
- * `?? null` rather than dropping absent keys (R3.9 — never re-derive
- * the gate).
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import type { MixpanelClient } from "../client/client.js";
+import { toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
 } from "../client/response-validation.js";
 import {
-  EventDefinition,
-  LexiconTag,
-  PropertyDefinition,
   type BulkUpdateEventsParams,
   type BulkUpdatePropertiesParams,
   type CreateTagParams,
+  EventDefinition,
+  LexiconTag,
+  PropertyDefinition,
   type UpdateEventDefinitionParams,
   type UpdatePropertyDefinitionParams,
   type UpdateTagParams,
 } from "../types/entities/lexicon.js";
-import { native } from "./shared.js";
 
-// ---------------------------------------------------------------------------
-// Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
-// spelling per packet Caution #6, since the recorder replays kwargs by
-// name).
-// ---------------------------------------------------------------------------
+// --- Options bags (keys keep the Python keyword spelling) ---
 
 /**
- * Options bag of `Workspace.getEventDefinitions` — Python's `names` is
- * a REQUIRED keyword-only argument (`workspace.py:7201`), so the bag
- * itself is required.
+ * Options bag of `Workspace.getEventDefinitions`. Python's `names` is a
+ * required keyword-only argument, so the bag itself is required.
  */
 export interface WorkspaceGetEventDefinitionsOptions {
-  /** Event names to look up (keyword-only and required in Python). */
+  /** Event names to look up. */
   readonly names: readonly string[];
 }
 
 /**
- * Options bag of `Workspace.getPropertyDefinitions` — `names` is a
- * REQUIRED keyword-only argument; `resource_type` defaults to `None`
- * (`workspace.py:7331-7336`).
+ * Options bag of `Workspace.getPropertyDefinitions`. Python's `names` is
+ * a required keyword-only argument, so the bag itself is required.
  */
 export interface WorkspaceGetPropertyDefinitionsOptions {
-  /** Property names to look up (keyword-only and required in Python). */
+  /** Property names to look up. */
   readonly names: readonly string[];
   /**
-   * Optional resource-type filter ("event", "user", "groupprofile",
-   * ...). Python default `None`; canonicalization to the App API's
-   * capitalized spelling happens in the B4 client, not here.
+   * Resource-type filter (`"event"`, `"user"`, `"groupprofile"`, …).
+   * Canonicalization to the App API's capitalized spelling happens in
+   * the client.
+   *
+   * @defaultValue `null` (no filter)
    */
   readonly resource_type?: string | null | undefined;
 }
@@ -116,48 +59,66 @@ export interface WorkspaceGetPropertyDefinitionsOptions {
 /** Options bag of `Workspace.exportLexicon` (keyword-only in Python). */
 export interface WorkspaceExportLexiconOptions {
   /**
-   * Export types to request (Python default `None`, which lets the
-   * client apply its own two-entry default list).
+   * Export types to request.
+   *
+   * @defaultValue `null`, which lets the client apply its own two-entry
+   *   default list
    */
   readonly export_types?: readonly string[] | null | undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Data Definitions — Events (`workspace.py:7201-7329`)
-// ---------------------------------------------------------------------------
+// --- Data definitions: events ---
 
 /**
- * Get event definitions from Lexicon by name
- * (`get_event_definitions`, `workspace.py:7201-7233`).
+ * Fetch event definitions from Lexicon by name.
  *
  * @param client - The wire client.
- * @param options - `names` (keyword-only and required in Python).
+ * @param options - The `names` to look up.
  * @returns The `EventDefinition` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
- *   failures per the B0 contract.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+ *   failures.
+ * @example
+ * ```typescript
+ * const [signup] = await ws.getEventDefinitions({ names: ["Signup"] });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_event_definitions
  */
 export async function getEventDefinitions(
   client: MixpanelClient,
   options: WorkspaceGetEventDefinitionsOptions,
 ): Promise<EventDefinition[]> {
   const raw = await client.getEventDefinitions(options.names);
-  return validateResponseModels(EventDefinition, raw.map(native), {
-    endpoint: "get_event_definitions",
-  });
+  return validateResponseModels(
+    EventDefinition,
+    raw.map((item) => toNativeJson(item)),
+    {
+      endpoint: "get_event_definitions",
+    },
+  );
 }
 
 /**
- * Update an event definition in Lexicon (`update_event_definition`,
- * `workspace.py:7235-7270`).
+ * Update an event definition in Lexicon.
  *
+ * @remarks
+ * The body is dumped with `by_alias`: the update models carry the
+ * camelCase aliases the App API requires (`displayName`,
+ * `exampleValue`, `resourceType`).
  * @param client - The wire client.
  * @param eventName - Name of the event to update.
- * @param params - Fields to update (dumped with `by_alias=True`,
- *   `:7266`).
+ * @param params - Fields to update.
  * @returns The updated `EventDefinition`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateEventDefinition(
+ *   "Signup",
+ *   new UpdateEventDefinitionParams({ description: "Account created" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_event_definition
  */
 export async function updateEventDefinition(
   client: MixpanelClient,
@@ -168,20 +129,24 @@ export async function updateEventDefinition(
     eventName,
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(EventDefinition, native(raw), {
+  return validateResponseModel(EventDefinition, toNativeJson(raw), {
     endpoint: "update_event_definition",
   });
 }
 
 /**
- * Delete an event definition from Lexicon
- * (`delete_event_definition`, `workspace.py:7272-7291`).
+ * Delete an event definition from Lexicon.
  *
  * @param client - The wire client.
  * @param eventName - Name of the event to delete.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.deleteEventDefinition("Legacy Signup");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_event_definition
  */
 export async function deleteEventDefinition(
   client: MixpanelClient,
@@ -191,14 +156,20 @@ export async function deleteEventDefinition(
 }
 
 /**
- * Bulk-update event definitions in Lexicon
- * (`bulk_update_event_definitions`, `workspace.py:7293-7329`).
+ * Update several event definitions in Lexicon at once.
  *
  * @param client - The wire client.
- * @param params - Bulk update parameters (dumped with
- *   `by_alias=True`, recursively into each `BulkEventUpdate`).
+ * @param params - The per-event updates, dumped with `by_alias`
+ *   recursively into each entry.
  * @returns The updated `EventDefinition` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.bulkUpdateEventDefinitions(
+ *   new BulkUpdateEventsParams({ events: [{ name: "Signup", hidden: true }] }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.bulk_update_event_definitions
  */
 export async function bulkUpdateEventDefinitions(
   client: MixpanelClient,
@@ -207,25 +178,34 @@ export async function bulkUpdateEventDefinitions(
   const raw = await client.bulkUpdateEventDefinitions(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModels(EventDefinition, raw.map(native), {
-    endpoint: "bulk_update_event_definitions",
-  });
+  return validateResponseModels(
+    EventDefinition,
+    raw.map((item) => toNativeJson(item)),
+    {
+      endpoint: "bulk_update_event_definitions",
+    },
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Data Definitions — Properties (`workspace.py:7331-7456`)
-// ---------------------------------------------------------------------------
+// --- Data definitions: properties ---
 
 /**
- * Get property definitions from Lexicon by name
- * (`get_property_definitions`, `workspace.py:7331-7373`).
+ * Fetch property definitions from Lexicon by name.
  *
  * @param client - The wire client.
- * @param options - `names` (required) and `resource_type` (default
- *   `None`, forwarded as-is — the client owns canonicalization AND the
- *   `is not None` gate).
+ * @param options - The `names` to look up and an optional
+ *   `resource_type`, forwarded as-is (the client owns canonicalization
+ *   and the null gate).
  * @returns The `PropertyDefinition` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const defs = await ws.getPropertyDefinitions({
+ *   names: ["plan"],
+ *   resource_type: "user",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_property_definitions
  */
 export async function getPropertyDefinitions(
   client: MixpanelClient,
@@ -235,21 +215,31 @@ export async function getPropertyDefinitions(
     options.names,
     options.resource_type ?? null,
   );
-  return validateResponseModels(PropertyDefinition, raw.map(native), {
-    endpoint: "get_property_definitions",
-  });
+  return validateResponseModels(
+    PropertyDefinition,
+    raw.map((item) => toNativeJson(item)),
+    {
+      endpoint: "get_property_definitions",
+    },
+  );
 }
 
 /**
- * Update a property definition in Lexicon
- * (`update_property_definition`, `workspace.py:7375-7410`).
+ * Update a property definition in Lexicon.
  *
  * @param client - The wire client.
  * @param propertyName - Name of the property to update.
- * @param params - Fields to update (dumped with `by_alias=True`,
- *   `:7406`).
+ * @param params - Fields to update, dumped with `by_alias`.
  * @returns The updated `PropertyDefinition`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updatePropertyDefinition(
+ *   "plan",
+ *   new UpdatePropertyDefinitionParams({ display_name: "Plan tier" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_property_definition
  */
 export async function updatePropertyDefinition(
   client: MixpanelClient,
@@ -260,20 +250,28 @@ export async function updatePropertyDefinition(
     propertyName,
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(PropertyDefinition, native(raw), {
+  return validateResponseModel(PropertyDefinition, toNativeJson(raw), {
     endpoint: "update_property_definition",
   });
 }
 
 /**
- * Bulk-update property definitions in Lexicon
- * (`bulk_update_property_definitions`, `workspace.py:7412-7456`).
+ * Update several property definitions in Lexicon at once.
  *
  * @param client - The wire client.
- * @param params - Bulk update parameters (dumped with
- *   `by_alias=True`, recursively into each `BulkPropertyUpdate`).
+ * @param params - The per-property updates, dumped with `by_alias`
+ *   recursively into each entry.
  * @returns The updated `PropertyDefinition` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.bulkUpdatePropertyDefinitions(
+ *   new BulkUpdatePropertiesParams({
+ *     properties: [{ name: "plan", resource_type: "user", hidden: true }],
+ *   }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.bulk_update_property_definitions
  */
 export async function bulkUpdatePropertyDefinitions(
   client: MixpanelClient,
@@ -282,29 +280,36 @@ export async function bulkUpdatePropertyDefinitions(
   const raw = await client.bulkUpdatePropertyDefinitions(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModels(PropertyDefinition, raw.map(native), {
-    endpoint: "bulk_update_property_definitions",
-  });
+  return validateResponseModels(
+    PropertyDefinition,
+    raw.map((item) => toNativeJson(item)),
+    {
+      endpoint: "bulk_update_property_definitions",
+    },
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Tags (`workspace.py:7458-7580`)
-// ---------------------------------------------------------------------------
+// --- Tags ---
 
 /**
- * List all Lexicon tags (`list_lexicon_tags`,
- * `workspace.py:7460-7500`).
+ * List every Lexicon tag.
  *
- * The shard's ONE non-forwarding body: the list endpoint may return
- * plain tag-name STRINGS instead of `{id, name}` objects, and Python
- * wraps those as `LexiconTag(id=0, name=x)` — the id=0 sentinel
- * documented at `:7481-7486`. Do not feed that sentinel back to
- * {@link updateLexiconTag}; use the name-based
- * {@link deleteLexiconTag} instead.
- *
+ * @remarks
+ * The list endpoint may return plain tag-name strings instead of
+ * `{id, name}` objects; Python wraps those as
+ * `LexiconTag(id=0, name=x)`, the documented `id=0` sentinel. Do not
+ * feed that sentinel back to {@link updateLexiconTag}; use the
+ * name-based {@link deleteLexiconTag} instead. The `isinstance(x, str)`
+ * test ports as `typeof entry === "string"`: a JSON string token is a
+ * JS string.
  * @param client - The wire client.
  * @returns The `LexiconTag` models, in response order.
- * @throws ResponseValidationError - Malformed non-string entry.
+ * @throws {@link ResponseValidationError} - Malformed non-string entry.
+ * @example
+ * ```typescript
+ * const tags = await ws.listLexiconTags();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_lexicon_tags
  */
 export async function listLexiconTags(
   client: MixpanelClient,
@@ -313,12 +318,12 @@ export async function listLexiconTags(
   const result: LexiconTag[] = [];
   for (const entry of rawList) {
     if (typeof entry === "string") {
-      // List endpoint returns plain tag name strings (no id);
-      // id=0 is a sentinel — see the docstring above.
+      // The list endpoint returns plain tag names (no id); `id: 0` is
+      // the sentinel described in the docblock above.
       result.push(new LexiconTag({ id: 0, name: entry }));
     } else {
       result.push(
-        validateResponseModel(LexiconTag, native(entry), {
+        validateResponseModel(LexiconTag, toNativeJson(entry), {
           endpoint: "list_lexicon_tags",
         }),
       );
@@ -328,35 +333,43 @@ export async function listLexiconTags(
 }
 
 /**
- * Create a new Lexicon tag (`create_lexicon_tag`,
- * `workspace.py:7502-7528`).
+ * Create a Lexicon tag.
  *
  * @param client - The wire client.
- * @param params - Tag creation parameters (name required); dumped
- *   WITHOUT `by_alias` (`:7526`).
+ * @param params - The tag `name`. Dumped without `by_alias`, as Python
+ *   spells it (the flag would be a no-op on the single field).
  * @returns The created `LexiconTag`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const tag = await ws.createLexiconTag(new CreateTagParams({ name: "growth" }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_lexicon_tag
  */
 export async function createLexiconTag(
   client: MixpanelClient,
   params: CreateTagParams,
 ): Promise<LexiconTag> {
   const raw = await client.createLexiconTag(params.modelDumpExcludeNone());
-  return validateResponseModel(LexiconTag, native(raw), {
+  return validateResponseModel(LexiconTag, toNativeJson(raw), {
     endpoint: "create_lexicon_tag",
   });
 }
 
 /**
- * Update a Lexicon tag (`update_lexicon_tag`,
- * `workspace.py:7530-7559`).
+ * Rename a Lexicon tag by id.
  *
  * @param client - The wire client.
- * @param tagId - Tag ID (integer).
- * @param params - Fields to update; dumped WITHOUT `by_alias`
- *   (`:7557`).
+ * @param tagId - The tag id (never the `0` sentinel from
+ *   {@link listLexiconTags}).
+ * @param params - Fields to update; dumped without `by_alias`.
  * @returns The updated `LexiconTag`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateLexiconTag(42, new UpdateTagParams({ name: "growth-2026" }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_lexicon_tag
  */
 export async function updateLexiconTag(
   client: MixpanelClient,
@@ -367,20 +380,24 @@ export async function updateLexiconTag(
     tagId,
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(LexiconTag, native(raw), {
+  return validateResponseModel(LexiconTag, toNativeJson(raw), {
     endpoint: "update_lexicon_tag",
   });
 }
 
 /**
- * Delete a Lexicon tag BY NAME (`delete_lexicon_tag`,
- * `workspace.py:7561-7580`).
+ * Delete a Lexicon tag by name.
  *
  * @param client - The wire client.
  * @param tagName - Name of the tag to delete.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.deleteLexiconTag("growth");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_lexicon_tag
  */
 export async function deleteLexiconTag(
   client: MixpanelClient,
@@ -389,58 +406,71 @@ export async function deleteLexiconTag(
   await client.deleteLexiconTag(tagName);
 }
 
-// ---------------------------------------------------------------------------
-// Tracking & History + Export (`workspace.py:8530-8648`)
-// ---------------------------------------------------------------------------
+// --- Tracking metadata, history and export ---
 
 /**
- * Get tracking metadata for an event (`get_tracking_metadata`,
- * `workspace.py:8530-8556`) — returned VERBATIM; Python performs no
- * model validation (`return client.get_tracking_metadata(...)`).
+ * Fetch the tracking metadata of an event, verbatim (Python performs no
+ * model validation).
  *
  * @param client - The wire client.
  * @param eventName - Name of the event.
  * @returns The opaque metadata record.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * const meta = await ws.getTrackingMetadata("Signup");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_tracking_metadata
  */
 export async function getTrackingMetadata(
   client: MixpanelClient,
   eventName: string,
 ): Promise<Record<string, unknown>> {
   const raw = await client.getTrackingMetadata(eventName);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
- * Get change history for an event definition (`get_event_history`,
- * `workspace.py:8558-8583`) — returned VERBATIM, unvalidated.
+ * Fetch the change history of an event definition, verbatim and
+ * unvalidated.
  *
  * @param client - The wire client.
  * @param eventName - Name of the event.
  * @returns The opaque history entries, in response order.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * const history = await ws.getEventHistory("Signup");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_event_history
  */
 export async function getEventHistory(
   client: MixpanelClient,
   eventName: string,
 ): Promise<Array<Record<string, unknown>>> {
   const raw = await client.getEventHistory(eventName);
-  return raw.map((item) => native(item)) as Array<Record<string, unknown>>;
+  return raw.map((item) => toNativeJson(item)) as Array<
+    Record<string, unknown>
+  >;
 }
 
 /**
- * Get change history for a property definition
- * (`get_property_history`, `workspace.py:8585-8614`) — returned
- * VERBATIM, unvalidated.
+ * Fetch the change history of a property definition, verbatim and
+ * unvalidated.
  *
  * @param client - The wire client.
  * @param propertyName - Name of the property.
- * @param entityType - Entity type ("event", "user", "group", ...).
+ * @param entityType - Entity type (`"event"`, `"user"`, `"group"`, …).
  * @returns The opaque history entries, in response order.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * const history = await ws.getPropertyHistory("plan", "user");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_property_history
  */
 export async function getPropertyHistory(
   client: MixpanelClient,
@@ -448,26 +478,31 @@ export async function getPropertyHistory(
   entityType: string,
 ): Promise<Array<Record<string, unknown>>> {
   const raw = await client.getPropertyHistory(propertyName, entityType);
-  return raw.map((item) => native(item)) as Array<Record<string, unknown>>;
+  return raw.map((item) => toNativeJson(item)) as Array<
+    Record<string, unknown>
+  >;
 }
 
 /**
- * Export Lexicon data definitions (`export_lexicon`,
- * `workspace.py:8618-8648`) — returned VERBATIM, unvalidated. The
- * client owns both the default type list and the `{status: "pending"}`
- * wrapper for the async (plain-string) response.
+ * Export Lexicon data definitions, verbatim and unvalidated. The client
+ * owns both the default type list and the `{status: "pending"}` wrapper
+ * for the asynchronous (plain-string) response.
  *
  * @param client - The wire client.
- * @param options - `export_types` (keyword-only in Python; `None`
- *   default forwarded as-is).
+ * @param options - Optional `export_types`; `null` is forwarded as-is.
  * @returns The opaque export record.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * const exported = await ws.exportLexicon({ export_types: ["events"] });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.export_lexicon
  */
 export async function exportLexicon(
   client: MixpanelClient,
   options: WorkspaceExportLexiconOptions = {},
 ): Promise<Record<string, unknown>> {
   const raw = await client.exportLexicon(options.export_types ?? null);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }

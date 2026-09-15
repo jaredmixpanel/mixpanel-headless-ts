@@ -1,29 +1,12 @@
-// B5-S1 facade coverage for the 12 discovery/lexicon `Workspace`
-// members (`workspace.py:1039-1394`).
-//
-// Provenance: these members carry ZERO corpus vectors (packet §4
-// "Vectors: 0") and Python has no dedicated facade test class for them
-// beyond `TestFacadeAndCli::test_facade_delegates` (translated in
-// `test/services/schema-graph.test.ts`). Per packet Caution #13 the
-// Layer-3 suite is the ONLY behaviour lock for zero-vector members, so
-// this file is ADDITIVE coverage of the delegation contract each member
-// carries in the Python source: which service method it calls, with
-// which arguments, and the two members whose facade body is more than a
-// forward — `clear_discovery_cache` (`:1273-1279`, guarded on the lazy
-// service) and `subproperties` (the `UserWarning` chain).
-//
-// It never substitutes for a translated Python assertion (B3-K2's
-// corpus-mirror precedent, `B3-K2-notes.md:125-128`).
+// ADDITIVE (no Python twin beyond `TestFacadeAndCli::test_facade_delegates`,
+// ported in `test/services/schema-graph.test.ts`): the delegation contract
+// of the 12 discovery/lexicon `Workspace` members — which service method
+// each calls, with which arguments — plus the two with a real facade body,
+// `clearDiscoveryCache` (guarded on the lazy service) and `subproperties`.
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   BookmarkInfo,
   FunnelInfo,
@@ -33,13 +16,16 @@ import {
   SubPropertyInfo,
   TopEvent,
 } from "../../src/types/results/discovery.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
+import { Workspace } from "../../src/workspace.js";
+import {
+  type CannedHandler,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** Build a facade over the mock transport. */
 function workspaceWith(
-  handler: Handler,
+  handler: CannedHandler,
   extra: { warn?: (message: string) => void } = {},
 ): { ws: Workspace; client: MixpanelClient } {
   const { client } = createMockClient(makeSession(), handler);
@@ -47,7 +33,7 @@ function workspaceWith(
     ws: new Workspace({
       session: makeSession(),
       client,
-      ...(extra.warn !== undefined ? { warn: extra.warn } : {}),
+      ...(extra.warn === undefined ? {} : { warn: extra.warn }),
     }),
     client,
   };
@@ -65,13 +51,13 @@ describe("Workspace discovery members", () => {
       Object.assign(seen, request.params);
       return { status: 200, json: ["b", "a"] };
     });
-    expect(
-      await ws.events({
+    await expect(
+      ws.events({
         limit: 3,
         from_date: "2024-01-01",
         to_date: "2024-01-31",
       }),
-    ).toEqual(["a", "b"]);
+    ).resolves.toStrictEqual(["a", "b"]);
     expect(seen["limit"]).toBe("3");
     expect(seen["from_date"]).toBe("2024-01-01");
     expect(seen["to_date"]).toBe("2024-01-31");
@@ -93,7 +79,7 @@ describe("Workspace discovery members", () => {
       status: 200,
       json: { b: 1, a: 1 },
     }));
-    expect(await ws.properties("Purchase")).toEqual(["a", "b"]);
+    await expect(ws.properties("Purchase")).resolves.toStrictEqual(["a", "b"]);
   });
 
   it("propertyValues() delegates with event + limit", async () => {
@@ -102,9 +88,9 @@ describe("Workspace discovery members", () => {
       Object.assign(seen, request.params);
       return { status: 200, json: ["US", "CA"] };
     });
-    expect(
-      await ws.propertyValues("country", { event: "Purchase", limit: 7 }),
-    ).toEqual(["US", "CA"]);
+    await expect(
+      ws.propertyValues("country", { event: "Purchase", limit: 7 }),
+    ).resolves.toStrictEqual(["US", "CA"]);
     expect(seen["event"]).toBe("Purchase");
     expect(seen["limit"]).toBe("7");
   });
@@ -116,7 +102,11 @@ describe("Workspace discovery members", () => {
         status: 200,
         json: [JSON.stringify({ id: "abc" }), JSON.stringify({ id: 123 })],
       }),
-      { warn: (message) => captured.push(message) },
+      {
+        warn: (message) => {
+          captured.push(message);
+        },
+      },
     );
     const subs = await ws.subproperties("cart", { event: "X" });
     expect(subs[0]).toBeInstanceOf(SubPropertyInfo);
@@ -286,13 +276,11 @@ describe("Workspace discovery members", () => {
     expect(result.computed_at).toBe("2026-08-16T12:34:56+00:00");
   });
 
-  // B6-W1 UPDATE: this case used to assert that `use()` / `close()`
-  // threw `UNPORTED_MEMBER`. Both members are now ported (packet §3);
-  // what survives is the lifecycle pair itself — `use()` is the
-  // no-throw zero-axis swap and `close()` resolves (idempotently).
-  it("the lifecycle pair is live (B6-W1 replaced the UNPORTED stubs)", async () => {
+  // `use()` with no axes is a no-throw no-op swap; `close()` resolves
+  // idempotently.
+  it("use() with no axes resolves to the facade and close() is idempotent", async () => {
     const { ws } = workspaceWith(() => ({ status: 200, json: [] }));
-    expect(await ws.use()).toBe(ws);
+    await expect(ws.use()).resolves.toBe(ws);
     await expect(ws.close()).resolves.toBeUndefined();
     await expect(ws.close()).resolves.toBeUndefined();
   });

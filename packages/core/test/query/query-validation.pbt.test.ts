@@ -1,30 +1,20 @@
-/**
- * Layer-3 translation of `tests/unit/test_query_validation_pbt.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 237 LOC,
- * translated in full per b2-packets.md §V1a).
- *
- * Hypothesis `@given` + `@settings(max_examples=100)` translates to
- * fast-check `fc.assert(fc.property(...), { numRuns: 100 })` with the
- * same strategy shapes (phase2 `account.pbt.test.ts` precedent).
- *
- * Verifies that `validateQueryArgs` includes the same time- and
- * group-by-related validation errors produced by `validateTimeArgs` and
- * `validateGroupByArgs` for the same inputs.
- */
-
+// fast-check twins of `tests/unit/test_query_validation_pbt.py`: `validateQueryArgs`
+// reports the same time and group-by errors as `validateTimeArgs` /
+// `validateGroupByArgs` for the same inputs. Hypothesis
+// `@settings(max_examples=100)` → `numRuns: 100` with the same strategy shapes.
 import fc from "fast-check";
-import { describe, it, expect } from "vitest";
-import { GroupBy } from "../../src/types/index.js";
+import { describe, expect, it } from "vitest";
+
+import { codepoints } from "../../src/compat/codepoint.js";
 import { ParamValidationError } from "../../src/errors.js";
 import {
   validateGroupByArgs,
   validateQueryArgs,
   validateTimeArgs,
 } from "../../src/query/validation-args.js";
+import { GroupBy } from "../../src/types/index.js";
 
-// =============================================================================
-// Strategies (test_query_validation_pbt.py:26-84)
-// =============================================================================
+// --- Strategies (test_query_validation_pbt.py) ---
 
 /**
  * Port of `st.from_regex(r"20[2-3][0-9]-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])")`
@@ -68,17 +58,16 @@ const lastValuesArb = fc.integer({ min: -100, max: 5000 });
  * surrogate).
  *
  * fast-check has no Unicode-category generator, so this is a NARROWED
- * stand-in (B2 arbiter fix, b2-review-resolution.md assertions-F1):
+ * stand-in:
  * ASCII letters/digits plus explicit non-ASCII category-L/N members —
  * é (Ll), Ω (Lu), ж (Ll), 中 (Lo), ٤ (Nd), Ⅻ (Nl) and the non-BMP
  * 𝒳 (U+1D4B3, Lu) — every entry strictly inside Python's L/N domain.
  * Full-Unicode cross-language behavior is additionally locked by the
- * Python-side R10.9 fuzz strategies (`_B2_NON_BMP` edges).
+ * Python-side differential-fuzz strategies (non-BMP edges).
  */
-const LN_CHARS: readonly string[] = [
-  ...("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
-    "éΩж中٤Ⅻ𝒳"),
-];
+const LN_CHARS: readonly string[] = codepoints(
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789éΩж中٤Ⅻ𝒳",
+);
 
 /** Port of `property_names` (min_size=1, max_size=30, categories L/N). */
 const propertyNamesArb: fc.Arbitrary<string> = fc
@@ -94,7 +83,7 @@ const propertyTypesArb = fc.constantFrom(
   "number",
   "boolean",
   "datetime",
-) as fc.Arbitrary<"string" | "number" | "boolean" | "datetime">;
+);
 
 /** Port of `bucket_sizes` (None | float in [-10, 100] | NaN | inf). */
 const bucketSizesArb: fc.Arbitrary<number | null> = fc.oneof(
@@ -133,20 +122,24 @@ const GROUP_ERROR_CODES: ReadonlySet<string> = new Set([
   "V24_BUCKET_NOT_FINITE",
 ]);
 
-// =============================================================================
-// Time Validation Equivalence
-// =============================================================================
+// --- Time Validation Equivalence ---
 
-describe("TestTimeValidationEquivalence", () => {
-  it("test_time_errors_match", () => {
+describe("Time validation equivalence", () => {
+  // python: TestTimeValidationEquivalence
+  it("time errors match", () => {
+    // python: test_time_errors_match
     fc.assert(
       fc.property(
         maybeDatesArb,
         maybeDatesArb,
         lastValuesArb,
-        (from_date, to_date, last) => {
+        (fromDate, toDate, last) => {
           const standaloneCodes = new Set(
-            validateTimeArgs({ from_date, to_date, last }).map((e) => e.code),
+            validateTimeArgs({
+              from_date: fromDate,
+              to_date: toDate,
+              last,
+            }).map((e) => e.code),
           );
           const monolithicTimeCodes = new Set(
             validateQueryArgs({
@@ -154,8 +147,8 @@ describe("TestTimeValidationEquivalence", () => {
               math: "total",
               math_property: null,
               per_user: null,
-              from_date,
-              to_date,
+              from_date: fromDate,
+              to_date: toDate,
               last,
               has_formula: false,
               rolling: null,
@@ -167,9 +160,9 @@ describe("TestTimeValidationEquivalence", () => {
           );
           expect(
             standaloneCodes,
-            `Mismatch for from_date=${JSON.stringify(from_date)}, ` +
-              `to_date=${JSON.stringify(to_date)}, last=${String(last)}`,
-          ).toEqual(monolithicTimeCodes);
+            `Mismatch for from_date=${JSON.stringify(fromDate)}, ` +
+              `to_date=${JSON.stringify(toDate)}, last=${String(last)}`,
+          ).toStrictEqual(monolithicTimeCodes);
         },
       ),
       { numRuns: 100 },
@@ -177,12 +170,12 @@ describe("TestTimeValidationEquivalence", () => {
   });
 });
 
-// =============================================================================
-// GroupBy Validation Equivalence
-// =============================================================================
+// --- GroupBy Validation Equivalence ---
 
-describe("TestGroupByValidationEquivalence", () => {
-  it("test_groupby_errors_match", () => {
+describe("Group by validation equivalence", () => {
+  // python: TestGroupByValidationEquivalence
+  it("groupby errors match", () => {
+    // python: test_groupby_errors_match
     fc.assert(
       fc.property(
         propertyNamesArb,
@@ -190,15 +183,15 @@ describe("TestGroupByValidationEquivalence", () => {
         bucketSizesArb,
         bucketBoundsArb,
         bucketBoundsArb,
-        (prop, prop_type, bucket_size, bucket_min, bucket_max) => {
+        (prop, propType, bucketSize, bucketMin, bucketMax) => {
           let g: GroupBy;
           try {
             g = new GroupBy({
               property: prop,
-              property_type: prop_type,
-              bucket_size,
-              bucket_min,
-              bucket_max,
+              property_type: propType,
+              bucket_size: bucketSize,
+              bucket_min: bucketMin,
+              bucket_max: bucketMax,
             });
           } catch (error) {
             // The constructor guard rejected this combination
@@ -234,22 +227,24 @@ describe("TestGroupByValidationEquivalence", () => {
           expect(
             standaloneCodes,
             `Mismatch for GroupBy(${JSON.stringify(prop)}, ` +
-              `type=${JSON.stringify(prop_type)}, size=${String(bucket_size)}, ` +
-              `min=${String(bucket_min)}, max=${String(bucket_max)})`,
-          ).toEqual(monolithicGroupCodes);
+              `type=${JSON.stringify(propType)}, size=${String(bucketSize)}, ` +
+              `min=${String(bucketMin)}, max=${String(bucketMax)})`,
+          ).toStrictEqual(monolithicGroupCodes);
         },
       ),
       { numRuns: 100 },
     );
   });
 
-  it("test_none_groupby_no_errors", () => {
+  it("null groupby no errors", () => {
+    // python: test_none_groupby_no_errors
     const errors = validateGroupByArgs({ group_by: null });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
-  it("test_string_groupby_no_errors", () => {
+  it("string groupby no errors", () => {
+    // python: test_string_groupby_no_errors
     const errors = validateGroupByArgs({ group_by: "country" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });

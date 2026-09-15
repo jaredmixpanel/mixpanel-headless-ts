@@ -1,36 +1,24 @@
 /**
- * `createMixpanelClient` — the client-core factory (Phase-3 packet
- * B4-C1): TS port of `MixpanelAPIClient` construction, session axes,
- * scoping, workspace resolution, and the public `request()` escape
- * hatch (`mixpanel_headless/_internal/api_client.py` C1 ranges).
+ * `createMixpanelClient` — the client factory: `MixpanelAPIClient`
+ * construction, session axes, scoping, workspace resolution and the
+ * public `request()` escape hatch, assembled over an injectable transport
+ * rather than a class singleton. Every shared internal (retry loop,
+ * response handler, `appRequest`, header merge, URL builders, path
+ * scoping, backoff) is imported from its own module; the domain methods
+ * arrive as `create<Domain>Methods(core)` factories spread into the
+ * client. Per-call `AbortSignal`s are curried into signal-aware
+ * request/sleep closures at assembly ({@link ClientCore.executeDeps} /
+ * {@link ClientCore.appDeps}); every cancellation exits as an
+ * `AbortError` `DOMException`.
  *
- * R2.9: a factory over an injectable transport, never a class
- * singleton. R10.8: every shared internal is IMPORTED from its B0
- * module by name (`internals.ts` retry/handler, `app-request.ts`,
- * `headers.ts` 4-layer merge, `url.ts` builders, `scope.ts`,
- * `backoff.ts`) — this file re-implements none of them.
- *
- * Domain wire methods land as `create<Domain>Methods(core)` factories
- * (B4-C2..C5) spread into the assembled client at the marked append-only
- * merge point below; `pagination.ts` (B4-C6) consumes the same
- * {@link ClientCore} seam.
- *
- * R6.7 (B0-ARB carried item 6a): per-call `AbortSignal`s thread through
- * signal-aware `request`/`sleep` closures built HERE at client assembly
- * ({@link ClientCore.executeDeps} / {@link ClientCore.appDeps}) — the B0
- * module signatures are untouched; every cancellation exit normalizes
- * to `DOMException(..., 'AbortError')`.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient
  */
 
+import { accountAuthHeader, type TokenResolver } from "../auth/account.js";
 import {
-  accountAuthHeader,
-  type Account,
-  type TokenResolver,
-} from "../auth/account.js";
-import {
-  sessionReplace,
   type Project,
   type Session,
+  sessionReplace,
   type WorkspaceRef,
 } from "../auth/session.js";
 import {
@@ -38,27 +26,91 @@ import {
   QueryError,
   WorkspaceScopeError,
 } from "../errors.js";
-import { PublicWorkspace } from "../types/entities/common.js";
-import { appRequest, type AppRequestDeps } from "./app-request.js";
-import type { RandomSource } from "./backoff.js";
-import { getUserAgent, requestHeaders } from "./headers.js";
+import { defined } from "../invariant.js";
 import {
-  executeWithRetry,
-  isPlainRecord,
-  type RequestExecutor,
-  type RetryExecutorDeps,
-  type RetryLogger,
-} from "./internals.js";
-import { toNativeJson, type JsonValue } from "./json-value.js";
+  type AlertMethods,
+  createAlertMethods,
+} from "../services/entities/alerts.js";
 import {
-  selectWorkspaceId,
-  workspaceViewFromMetadataEntry,
-  workspaceViewFromPublic,
-  type WorkspaceResolver,
-  type WorkspaceView,
-} from "./me.js";
-import { validateResponseModels } from "./response-validation.js";
-import { maybeScopedPath } from "./scope.js";
+  type AnnotationMethods,
+  createAnnotationMethods,
+} from "../services/entities/annotations.js";
+import {
+  type AnomalyMethods,
+  createAnomalyMethods,
+} from "../services/entities/anomalies.js";
+import {
+  type AuditMethods,
+  createAuditMethods,
+} from "../services/entities/audit.js";
+import {
+  type BookmarkUrlMethods,
+  createBookmarkUrlMethods,
+} from "../services/entities/bookmark-urls.js";
+import {
+  type BookmarkMethods,
+  createBookmarkMethods,
+} from "../services/entities/bookmarks.js";
+import {
+  type BusinessContextMethods,
+  createBusinessContextMethods,
+} from "../services/entities/business-context.js";
+import {
+  type CohortMethods,
+  createCohortMethods,
+} from "../services/entities/cohorts.js";
+import {
+  createCustomEventMethods,
+  type CustomEventMethods,
+} from "../services/entities/custom-events.js";
+import {
+  createCustomPropertyMethods,
+  type CustomPropertyMethods,
+} from "../services/entities/custom-properties.js";
+import {
+  createDashboardMethods,
+  type DashboardMethods,
+} from "../services/entities/dashboards.js";
+import {
+  createDeletionRequestMethods,
+  type DeletionRequestMethods,
+} from "../services/entities/deletion-requests.js";
+import {
+  createDropFilterMethods,
+  type DropFilterMethods,
+} from "../services/entities/drop-filters.js";
+import {
+  createExperimentMethods,
+  type ExperimentMethods,
+} from "../services/entities/experiments.js";
+import {
+  createFlagMethods,
+  type FlagMethods,
+} from "../services/entities/flags.js";
+import {
+  createLexiconMethods,
+  type LexiconMethods,
+} from "../services/entities/lexicon.js";
+import {
+  createLookupTableMethods,
+  type LookupTableMethods,
+} from "../services/entities/lookup-tables.js";
+import {
+  createReplaysSigningMethods,
+  type ReplaysSigningMethods,
+} from "../services/entities/replays-signing.js";
+import {
+  createSchemaEnforcementMethods,
+  type SchemaEnforcementMethods,
+} from "../services/entities/schema-enforcement.js";
+import {
+  createSchemaMethods,
+  type SchemaMethods,
+} from "../services/entities/schemas.js";
+import {
+  createWebhookMethods,
+  type WebhookMethods,
+} from "../services/entities/webhooks.js";
 import {
   createEngageMethods,
   type EngageMethods,
@@ -71,90 +123,36 @@ import {
   createStreamingMethods,
   type StreamingMethods,
 } from "../services/queries/streaming.js";
+import { PublicWorkspace } from "../types/entities/common.js";
+import { appRequest, type AppRequestDeps } from "./app-request.js";
+import type { RandomSource } from "./backoff.js";
+import type {
+  ClientAppRequestOptions,
+  ClientCore,
+  ClientRequestOptions,
+  ClientUseOptions,
+  HttpHandle,
+  QueryHostRequestOptions,
+} from "./core.js";
+import { getUserAgent, requestHeaders } from "./headers.js";
 import {
-  createDashboardMethods,
-  type DashboardMethods,
-} from "../services/entities/dashboards.js";
+  bindFirst,
+  executeWithRetry,
+  isPlainRecord,
+  type RequestExecutor,
+  type RetryExecutorDeps,
+  type RetryLogger,
+} from "./internals.js";
+import { type JsonValue, toNativeJson } from "./json-value.js";
 import {
-  createBookmarkMethods,
-  type BookmarkMethods,
-} from "../services/entities/bookmarks.js";
-import {
-  createBookmarkUrlMethods,
-  type BookmarkUrlMethods,
-} from "../services/entities/bookmark-urls.js";
-import {
-  createCohortMethods,
-  type CohortMethods,
-} from "../services/entities/cohorts.js";
-import {
-  createFlagMethods,
-  type FlagMethods,
-} from "../services/entities/flags.js";
-import {
-  createExperimentMethods,
-  type ExperimentMethods,
-} from "../services/entities/experiments.js";
-import {
-  createAnnotationMethods,
-  type AnnotationMethods,
-} from "../services/entities/annotations.js";
-import {
-  createWebhookMethods,
-  type WebhookMethods,
-} from "../services/entities/webhooks.js";
-import {
-  createAlertMethods,
-  type AlertMethods,
-} from "../services/entities/alerts.js";
-import {
-  createSchemaMethods,
-  type SchemaMethods,
-} from "../services/entities/schemas.js";
-import {
-  createLexiconMethods,
-  type LexiconMethods,
-} from "../services/entities/lexicon.js";
-import {
-  createDropFilterMethods,
-  type DropFilterMethods,
-} from "../services/entities/drop-filters.js";
-import {
-  createCustomPropertyMethods,
-  type CustomPropertyMethods,
-} from "../services/entities/custom-properties.js";
-import {
-  createLookupTableMethods,
-  type LookupTableMethods,
-} from "../services/entities/lookup-tables.js";
-import {
-  createCustomEventMethods,
-  type CustomEventMethods,
-} from "../services/entities/custom-events.js";
-import {
-  createSchemaEnforcementMethods,
-  type SchemaEnforcementMethods,
-} from "../services/entities/schema-enforcement.js";
-import {
-  createAuditMethods,
-  type AuditMethods,
-} from "../services/entities/audit.js";
-import {
-  createAnomalyMethods,
-  type AnomalyMethods,
-} from "../services/entities/anomalies.js";
-import {
-  createDeletionRequestMethods,
-  type DeletionRequestMethods,
-} from "../services/entities/deletion-requests.js";
-import {
-  createBusinessContextMethods,
-  type BusinessContextMethods,
-} from "../services/entities/business-context.js";
-import {
-  createReplaysSigningMethods,
-  type ReplaysSigningMethods,
-} from "../services/entities/replays-signing.js";
+  selectWorkspaceId,
+  type WorkspaceResolver,
+  type WorkspaceView,
+  workspaceViewFromMetadataEntry,
+  workspaceViewFromPublic,
+} from "./me.js";
+import { validateResponseModels } from "./response-validation.js";
+import { maybeScopedPath } from "./scope.js";
 import {
   createRequestExecutor,
   normalizedAbortError,
@@ -166,295 +164,131 @@ import {
   buildUrl,
   DEFAULT_APP_TIMEOUT_S,
   DEFAULT_QUERY_TIMEOUT_S,
-  endpointOverridesProvider,
-  endpointsFor,
-  WORKSPACE_SCOPED_FAMILIES,
   type EndpointKind,
-  type EndpointOverrides,
+  endpointOverridesProvider,
   type EndpointOverridesSource,
+  endpointsFor,
   type Region,
+  WORKSPACE_SCOPED_FAMILIES,
 } from "./url.js";
 
 /**
  * HTTP statuses on a workspace-discovery source that mean "this source
  * can't answer for this credential" rather than a transient failure
- * (`api_client.py:72`). They let auto-resolution fall through to the
- * next source; 5xx / 401 / 429 / network errors still propagate.
+ * They let auto-resolution fall through to the next source; 5xx / 401 /
+ * 429 / network errors still propagate.
  */
 const FALLBACK_HTTP_STATUSES: ReadonlySet<number> = new Set([403, 404]);
 
-/** The env-pair provider seam for header layer 2 (R9.4: `core` never
- * reads `process.env`; the node package wires the real env source). */
+/**
+ * The env-pair provider seam for header layer 2 (`core` never reads
+ * `process.env`; the node package wires the real env source).
+ */
 export type CustomHeaderEnvSource = () => {
   readonly name?: string | undefined;
   readonly value?: string | undefined;
 };
 
-/** Constructor options (Python `MixpanelAPIClient.__init__` kwargs +
- * the TS determinism seams). */
+// Client-core seam types — defined in `core.ts`, re-exported here so
+// the public barrel and existing importers resolve unchanged.
+export type {
+  ClientAppRequestOptions,
+  ClientCore,
+  ClientRequestOptions,
+  ClientUseOptions,
+  HttpHandle,
+  QueryHostRequestOptions,
+} from "./core.js";
+
+/**
+ * Constructor options (Python `MixpanelAPIClient.__init__` kwargs +
+ * the TS determinism seams).
+ */
 export interface MixpanelClientOptions {
   /** Resolved Session (account + project + optional workspace). */
   readonly session: Session;
   /**
-   * Request timeout in seconds for regular requests. When `null`/absent
-   * (the default, Python `timeout: float | None = None`), each request
-   * gets a route-aware timeout sized to outlast the server's own
+   * Request timeout in seconds for regular requests. When `null`, each
+   * request gets a route-aware timeout sized to outlast the server's own
    * deadline (135s on App API routes, 503s otherwise), so the server —
-   * not this client — resolves a slow request. An explicit value
-   * applies to every request.
+   * not this client — resolves a slow request. An explicit value applies
+   * to every request.
+   *
+   * @defaultValue `null`
    */
   readonly timeoutSeconds?: number | null | undefined;
-  /** Request timeout for export operations (Python default 600). */
+  /**
+   * Request timeout in seconds for export operations.
+   *
+   * @defaultValue `600`
+   */
   readonly exportTimeoutSeconds?: number | undefined;
-  /** Maximum retry attempts for rate-limited requests (Python default 3,
-   * `api_client.py:312`). */
+  /**
+   * Maximum retry attempts for rate-limited requests.
+   *
+   * @defaultValue `3`
+   */
   readonly maxRetries?: number | undefined;
-  /** Token resolver for OAuth accounts. Python defaults to the on-disk
-   * resolver; in `core` the default is NONE (the node package supplies
-   * it — R9.1/R9.4), and OAuth auth-header resolution without one
-   * throws the Phase-2 `ParamTypeError`. */
+  /**
+   * Token resolver for OAuth accounts. Python defaults to the on-disk
+   * resolver; in `core` the default is none (the node package supplies
+   * it), and OAuth auth-header resolution without one throws
+   * `ParamTypeError`.
+   *
+   * @defaultValue `null`
+   */
   readonly tokenResolver?: TokenResolver | null | undefined;
-  /** Injectable transport (R2.4; the TS analog of `_transport`). */
+  /**
+   * Injectable transport (the TS analog of `_transport`).
+   *
+   * @defaultValue the global `fetch`
+   */
   readonly fetch?: typeof fetch | undefined;
-  /** Sleep seam in MILLISECONDS (R2.12/R6.3; fake-timer friendly). */
+  /**
+   * Sleep seam in milliseconds (fake-timer friendly).
+   *
+   * @defaultValue a `setTimeout`-backed sleep
+   */
   readonly sleep?: ((ms: number) => Promise<void>) | undefined;
-  /** Uniform-[0,1) RNG for backoff jitter (playbook Discrepancy #1). */
+  /**
+   * Uniform-[0, 1) RNG for backoff jitter.
+   *
+   * @defaultValue `Math.random`
+   */
   readonly random?: RandomSource | undefined;
-  /** Clock seam (unused by C1 paths; threaded for later shards). */
+  /**
+   * Clock seam, read through `ClientCore.now` by the query-host date
+   * defaults, the streaming exports and the discovery service.
+   *
+   * @defaultValue `() => new Date()`
+   */
   readonly now?: (() => Date) | undefined;
-  /** Optional retry-warning logger (R9.5). */
+  /** Optional retry-warning logger. */
   readonly logger?: RetryLogger | undefined;
-  /** Header layer-2 env pair provider (defaults to an empty source). */
+  /**
+   * Header layer-2 env pair provider.
+   *
+   * @defaultValue an empty source (the layer is disabled)
+   */
   readonly getCustomHeaderEnv?: CustomHeaderEnvSource | undefined;
   /**
    * Alternate-host routing (Python PR #235: `MP_API_BASE_URL` /
-   * `MP_APP_BASE_URL`). `apiBaseUrl` routes EVERY API family at one
+   * `MP_APP_BASE_URL`). `apiBaseUrl` routes every API family at one
    * base (`query` → `/api/query`, `export` → `/api/2.0`, `engage` →
    * `/api/query/engage`, `app` → `/api/app`); `appBaseUrl` re-homes only
    * the App API. Pass a static bag, or a provider that is consulted on
-   * EVERY request (the node package wires a `process.env` reader, the
-   * twin of Python's per-request `os.environ` read). Absent → the live
-   * per-region hosts, byte-identical to before.
+   * every request (the node package wires a `process.env` reader, the
+   * twin of Python's per-request `os.environ` read).
+   *
+   * @defaultValue no overrides — the live per-region hosts
    */
   readonly endpointOverrides?: EndpointOverridesSource | undefined;
 }
 
-/** Per-call options of {@link MixpanelClient.request}. */
-export interface ClientRequestOptions {
-  /** Optional query parameters. */
-  readonly params?: Record<string, unknown> | null | undefined;
-  /** Optional JSON request body. */
-  readonly jsonBody?: Record<string, unknown> | null | undefined;
-  /** Optional additional headers (Authorization is added automatically). */
-  readonly headers?: Readonly<Record<string, string>> | null | undefined;
-  /** Optional request timeout in seconds. */
-  readonly timeoutSeconds?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
-  readonly signal?: AbortSignal | undefined;
-}
-
-/** Per-call options of the client's `appRequest` (Python kw-only args). */
-export interface ClientAppRequestOptions {
-  /** Optional query parameters. */
-  readonly params?: Record<string, string> | null | undefined;
-  /** Optional JSON request body (mutually exclusive with `formBody`). */
-  readonly jsonBody?: Record<string, unknown> | null | undefined;
-  /** Optional form-encoded body (mutually exclusive with `jsonBody`). */
-  readonly formBody?: Record<string, string> | null | undefined;
-  /** Return the full response without unwrapping `results` (Python `_raw`). */
-  readonly raw?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
-  readonly signal?: AbortSignal | undefined;
-}
-
-/** Options of the internal query-host request path (Python `_request`
- * kwargs; R2.8 — public but `@internal`). */
-export interface QueryHostRequestOptions {
-  /** Query parameters (MUTATED with injections, like Python). */
-  readonly params?: Record<string, unknown> | null | undefined;
-  /** JSON request body (Python `data=`). */
-  readonly data?: Record<string, unknown> | null | undefined;
-  /** Form-encoded request body. */
-  readonly formData?: Record<string, string> | null | undefined;
-  /** Override the default timeout (seconds). */
-  readonly timeoutSeconds?: number | null | undefined;
-  /** Auto-add `project_id` to query params (Python default True). */
-  readonly injectProjectId?: boolean | undefined;
-  /** Inject the pinned `workspace_id` on Query-host requests (Python
-   * default True; explicit opt-out forces a project-scoped query). */
-  readonly injectWorkspaceId?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
-  readonly signal?: AbortSignal | undefined;
-}
-
-/** Axis-swap options of {@link MixpanelClient.use} (Python kw-only). */
-export interface ClientUseOptions {
-  /** Replacement account. */
-  readonly account?: Account | null | undefined;
-  /** Replacement project (`Project` or numeric-string project ID). */
-  readonly project?: Project | string | null | undefined;
-  /** Replacement workspace (`WorkspaceRef` or positive int). */
-  readonly workspace?: WorkspaceRef | number | null | undefined;
-}
-
 /**
- * The lazily-created connection-pool token — the TS analog of the
- * `httpx.Client` instance whose IDENTITY the R6.2 connection-reuse
- * invariant tracks (`use()` preserves it; `close()` drops it; the next
- * request recreates it).
- */
-export interface HttpHandle {
-  /** The injected fetch this handle serves requests through. */
-  readonly fetchImpl: typeof fetch;
-}
-
-/**
- * The shared internals seam the domain-method factories (B4-C2..C5) and
- * the paginator (B4-C6) build on. Everything here is `@internal`
- * surface (R2.8): public for cross-module access, excluded from the
- * published API docs.
- */
-export interface ClientCore {
-  /** The explicit constructor timeout, or `null` for the route-aware
-   * defaults (Python `self._timeout: float | None`). */
-  readonly timeoutSeconds: number | null;
-  /**
-   * Resolve the read timeout for a request to `url` — TS port of
-   * `_default_timeout` (`api_client.py:489-509`). An explicit
-   * constructor timeout wins; otherwise the default is route-aware and
-   * sized to outlast the server's own read deadline (~120s on App API
-   * routes, 488s on query routes), so the server — never this client —
-   * is the side that resolves a slow request.
-   *
-   * @param url - The full request URL.
-   * @returns The timeout in seconds for the request.
-   */
-  defaultTimeoutSeconds(url: string): number;
-  /** Export-operation timeout in seconds (`self._export_timeout`). */
-  readonly exportTimeoutSeconds: number;
-  /** Maximum 429 retries (`self._max_retries`). */
-  readonly maxRetries: number;
-  /** The injected sleep seam (ms). */
-  readonly sleep: (ms: number) => Promise<void>;
-  /** The injected RNG seam. */
-  readonly random: RandomSource;
-  /** The injected clock seam. */
-  readonly now: () => Date;
-  /** The bound token resolver, or `null`. */
-  readonly tokenResolver: TokenResolver | null;
-  /** Optional retry logger. */
-  readonly logger: RetryLogger | undefined;
-
-  /** @returns The current Session. */
-  session(): Session;
-  /** @returns The bound project id (`session.project.id`). */
-  projectId(): string;
-  /** @returns The bound region (`session.account.region`). */
-  region(): Region;
-  /** @returns The explicit workspace pin, or `null`. */
-  workspaceId(): number | null;
-  /**
-   * The CURRENT override bag (the per-request provider's value —
-   * `endpointOverrides` option, PR #235).
-   *
-   * @returns The override bag (frozen empty bag when none).
-   */
-  endpointOverrides(): EndpointOverrides;
-  /**
-   * The family → base-URL table for the current session's region under
-   * the current overrides (`_endpoints_for(region)`, PR #235).
-   *
-   * @returns The resolved table (the live object when nothing is overridden).
-   */
-  endpoints(): ReadonlyMap<EndpointKind, string>;
-  /**
-   * Build the full URL for an API family + path (B0 `url.ts` by name).
-   *
-   * @param kind - The API family.
-   * @param path - The endpoint path.
-   * @returns The full URL.
-   */
-  buildUrl(kind: EndpointKind, path: string): string;
-  /**
-   * Resolve the Authorization header PER REQUEST (`_get_auth_header`,
-   * `api_client.py:388-416`): service accounts return the cached Basic
-   * header; OAuth variants delegate to the bound resolver every call.
-   *
-   * @returns The header value.
-   */
-  getAuthHeader(): Promise<string>;
-  /**
-   * The B0 4-layer header merge, pre-bound to the CURRENT session
-   * (`headers.ts` `requestHeaders` by name — never re-merged).
-   *
-   * @param extra - Per-call headers.
-   * @returns The merged header set.
-   */
-  requestHeaders(extra: Record<string, string>): Record<string, string>;
-  /**
-   * The lazily-initialized pool token (`_ensure_client`).
-   *
-   * @returns The handle (created on first use).
-   */
-  http(): HttpHandle;
-  /** @returns Whether the handle currently exists (close-state peek). */
-  isHttpOpen(): boolean;
-  /** Drop the pool token (`close()` body). */
-  closeHttp(): void;
-  /**
-   * Build per-call `executeWithRetry` deps with the signal curried into
-   * the transport and sleep closures (R6.7 points 2 and 3).
-   *
-   * @param signal - Optional cancellation signal.
-   * @returns The deps.
-   */
-  executeDeps(signal?: AbortSignal): RetryExecutorDeps;
-  /**
-   * Build per-call `appRequest` deps (same signal currying).
-   *
-   * @param signal - Optional cancellation signal.
-   * @returns The deps.
-   */
-  appDeps(signal?: AbortSignal): AppRequestDeps;
-  /**
-   * Issue one raw (non-buffered) request through the adapter — the
-   * streaming/export seam for B4-C2 and the paginator's raw-transport
-   * path for B4-C6 (per-request auth is the CALLER's job, R2.8).
-   *
-   * @param options - The outbound request (B0 transport shape).
-   * @param signal - Optional cancellation signal.
-   * @returns The raw response wrapper.
-   */
-  rawRequest(
-    options: Parameters<RequestExecutor>[0],
-    signal?: AbortSignal,
-  ): Promise<RawFetchResult>;
-  /**
-   * The query-host request path (`_request`, `api_client.py:822-920`):
-   * project-id injection + explicit-only workspace-pin injection, then
-   * `executeWithRetry` with a per-request auth header.
-   *
-   * @param method - HTTP method.
-   * @param url - Full URL.
-   * @param options - Params/body/injection flags.
-   * @returns Parsed lossless JSON response.
-   */
-  requestQueryHost(
-    method: string,
-    url: string,
-    options?: QueryHostRequestOptions,
-  ): Promise<JsonValue>;
-}
-
-/**
- * The assembled Mixpanel API client (C1 core surface; B4-C2..C5 extend
- * this interface with their domain methods at the marked merge point —
- * C2 landed: query-host + engage + streaming/export; C3 landed:
- * dashboards + bookmarks-v2 + cohorts-app entity CRUD; C4 landed:
- * flags + experiments + annotations + webhooks + alerts; C5 landed:
- * schemas + lexicon + drop filters + custom properties + lookup
- * tables + custom events + schema enforcement + audit + anomalies +
- * deletion requests + business context + replays signing).
+ * The assembled Mixpanel API client: the core surface below plus every
+ * domain-method interface (query host, engage, streaming/export and the
+ * entity CRUD families) merged in at assembly.
  */
 export interface MixpanelClient
   extends
@@ -492,29 +326,33 @@ export interface MixpanelClient
   readonly workspaceId: number | null;
   /** Whether a `/me`-backed workspace resolver is installed. */
   readonly hasWorkspaceResolver: boolean;
-  /** @internal The shared internals seam (B4-C2..C6 factories). */
+  /**
+   * The shared internals seam the domain-method factories consume.
+   *
+   * @internal
+   */
   readonly core: ClientCore;
 
   /**
-   * The current Authorization header value, computed on every access
-   * (Python `current_auth_header` property; a property doing token I/O
-   * becomes a method per R3.1).
+   * Return the current Authorization header value, computed on every
+   * access (Python's `current_auth_header` property; a property doing
+   * token I/O becomes a method).
    *
    * @returns The header value (`Basic ...` or `Bearer ...`).
    */
-  currentAuthHeader(): Promise<string>;
+  currentAuthHeader: () => Promise<string>;
 
   /**
    * Install a `/me`-backed workspace resolver for auto-discovery
-   * (`set_workspace_resolver`, `api_client.py:352-374`).
+   * (`set_workspace_resolver`).
    *
    * @param resolver - The resolver, or `null` to clear.
    */
-  setWorkspaceResolver(resolver: WorkspaceResolver | null): void;
+  setWorkspaceResolver: (resolver: WorkspaceResolver | null) => void;
 
   /**
    * Make an authenticated request to any Mixpanel API endpoint — the
-   * escape hatch (`request`, `api_client.py:921-976`). No `project_id`
+   * escape hatch (`request`). No `project_id`
    * injection (the caller controls the URL); `query_origin` is injected
    * by the retry core.
    *
@@ -522,21 +360,23 @@ export interface MixpanelClient
    * @param url - Full URL to request.
    * @param options - Optional params/body/headers/timeout/signal.
    * @returns Parsed JSON response.
-   * @throws AuthenticationError - Invalid credentials (401).
-   * @throws RateLimitError - Rate limit exceeded after max retries.
-   * @throws QueryError - Invalid parameters (400/403/404/other 4xx).
-   * @throws ServerError - Server-side errors (5xx).
-   * @throws MixpanelHeadlessError - Network/connection errors
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - Rate limit exceeded after the
+   *   maximum retries.
+   * @throws {@link QueryError} - Invalid parameters (400/403/404/other
+   *   4xx).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @throws {@link MixpanelHeadlessError} - Network/connection errors
    *   (`HTTP_ERROR`).
    */
-  request(
+  request: (
     method: string,
     url: string,
     options?: ClientRequestOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
-   * Make an authenticated App API request (`app_request` — the B0
+   * Make an authenticated App API request (`app_request` — the
    * `app-request.ts` implementation reached through this client's
    * per-call deps).
    *
@@ -545,174 +385,194 @@ export interface MixpanelClient
    * @param options - Optional params/body/raw/signal.
    * @returns The `results` field when present (unless `raw`), the full
    *   body otherwise; `{status: "ok"}` for 204.
-   * @throws ParamValidationError - Both body kinds provided (AC1).
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError | MixpanelHeadlessError - Per the B0 contract.
+   * @throws {@link ParamValidationError} - Both body kinds provided
+   *   (`AC1_BODY_MUTUALLY_EXCLUSIVE`).
+   * @throws {@link MixpanelHeadlessError} - Every class
+   *   {@link appRequest} raises (`AuthenticationError`, `RateLimitError`,
+   *   `QueryError`, `ServerError`, `HTTP_ERROR`).
    */
-  appRequest(
+  appRequest: (
     method: string,
     path: string,
     options?: ClientAppRequestOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
-   * @internal The query-host request path (`_request`). See
+   * Issue a query-host request (`_request`). See
    * {@link ClientCore.requestQueryHost}.
    *
    * @param method - HTTP method.
    * @param url - Full URL.
    * @param options - Params/body/injection flags.
    * @returns Parsed lossless JSON response.
+   * @internal
    */
-  requestQueryHost(
+  requestQueryHost: (
     method: string,
     url: string,
     options?: QueryHostRequestOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Swap one or more session axes in place, preserving the HTTP
-   * transport (`use`, `api_client.py:1036-1113`; R6.2).
+   * transport (`use`).
    *
-   * Per Research R5: `use(workspace=W)` is in-memory only;
+   * `use(workspace=W)` is in-memory only;
    * `use(project=P)` / `use(account=A)` clear the resolved-workspace
-   * cache; `use(account=A)` rebuilds the auth header ATOMICALLY (the
+   * cache; `use(account=A)` rebuilds the auth header atomically (the
    * prior session/header survive when the new account's token probe
    * fails). Any call that does not supply `workspace` (including a
    * zero-axis `use()`) clears both `session.workspace` and the pin.
    *
    * @param options - The axes to swap.
-   * @throws OAuthError | ParamTypeError - New-account auth probe
-   *   failures (state unchanged).
+   * @throws {@link OAuthError} - The new account's token probe failed
+   *   (state unchanged).
+   * @throws {@link ParamTypeError} - An OAuth account was supplied with no
+   *   token resolver bound (state unchanged).
    */
-  use(options?: ClientUseOptions): Promise<void>;
+  use: (options?: ClientUseOptions) => Promise<void>;
 
   /**
    * Return the workspace for the current session, lazy-resolving once
-   * (`resolve_workspace`, `api_client.py:1114-1157`).
+   * (`resolve_workspace`).
    *
    * @returns The session's WorkspaceRef (cached per session lifetime).
-   * @throws WorkspaceScopeError - No accessible workspaces.
+   * @throws {@link WorkspaceScopeError} - No accessible workspaces.
    */
-  resolveWorkspace(): Promise<WorkspaceRef>;
+  resolveWorkspace: () => Promise<WorkspaceRef>;
 
   /**
    * Set or clear the explicit workspace ID for scoped requests
-   * (`set_workspace_id`, `api_client.py:1398-1425`). Clearing also
+   * (`set_workspace_id`). Clearing also
    * drops the cached auto-discovered ID.
    *
    * @param workspaceId - Workspace ID to pin, or `null` to clear.
    */
-  setWorkspaceId(workspaceId: number | null): void;
+  setWorkspaceId: (workspaceId: number | null) => void;
 
   /**
    * Resolve the workspace ID for scoped requests
-   * (`resolve_workspace_id`, `api_client.py:1427-1526`): explicit pin →
+   * (`resolve_workspace_id`): explicit pin →
    * cached id → injected `/me` resolver → `/workspaces/public` → the
    * projects metadata index → `WorkspaceScopeError`.
    *
    * @returns The resolved workspace ID (memoized).
-   * @throws WorkspaceScopeError - Code `NO_WORKSPACES` when every
+   * @throws {@link WorkspaceScopeError} - Code `NO_WORKSPACES` when every
    *   source is exhausted.
-   * @throws AuthenticationError | RateLimitError | ServerError |
-   *   QueryError | MixpanelHeadlessError - Non-403/404 discovery
-   *   failures propagate rather than masking as "no workspace".
+   * @throws {@link MixpanelHeadlessError} - Any non-403/404 discovery
+   *   failure (`AuthenticationError`, `RateLimitError`, `ServerError`,
+   *   `QueryError`, `HTTP_ERROR`) propagates rather than masking as "no
+   *   workspace".
    */
-  resolveWorkspaceId(): Promise<number>;
+  resolveWorkspaceId: () => Promise<number>;
 
   /**
-   * Fetch the projects metadata index (`projects_metadata_index`,
-   * `api_client.py:1528-1562`).
+   * Fetch the projects metadata index (`projects_metadata_index`).
    *
    * @returns The metadata payload keyed by project ID, or `{}` when the
    *   response is not a mapping.
    */
-  projectsMetadataIndex(): Promise<Record<string, JsonValue>>;
+  projectsMetadataIndex: () => Promise<Record<string, JsonValue>>;
 
   /**
-   * @internal Resolve a workspace ID from the metadata index
-   * (`_resolve_workspace_from_metadata`, `api_client.py:1564-1635`).
+   * Resolve a workspace ID from the metadata index
+   * (`_resolve_workspace_from_metadata`).
    *
    * @returns The chosen id, or `null` when the index can't answer.
+   * @internal
    */
-  resolveWorkspaceFromMetadata(): Promise<number | null>;
+  resolveWorkspaceFromMetadata: () => Promise<number | null>;
 
   /**
    * Build an optionally workspace-scoped API path
-   * (`maybe_scoped_path` — B0 `scope.ts` over this client's pin state).
+   * (`maybe_scoped_path` — `scope.ts` over this client's pin state).
    *
    * @param domainPath - Domain-relative path (e.g. `"dashboards"`).
    * @returns `/workspaces/{wid}/{path}` when pinned, else
    *   `/projects/{pid}/{path}`.
    */
-  maybeScopedPath(domainPath: string): string;
+  maybeScopedPath: (domainPath: string) => string;
 
   /**
    * Build a workspace-scoped API path, auto-discovering if needed
-   * (`require_scoped_path`, `api_client.py:1666-1694`).
+   * (`require_scoped_path`).
    *
    * @param domainPath - Domain-relative path.
    * @returns `/projects/{pid}/workspaces/{wid}/{domainPath}`.
-   * @throws WorkspaceScopeError - No workspaces found for the project.
+   * @throws {@link WorkspaceScopeError} - No workspaces found for the
+   *   project.
    */
-  requireScopedPath(domainPath: string): Promise<string>;
+  requireScopedPath: (domainPath: string) => Promise<string>;
 
   /**
    * Create a new client for a different project, sharing the transport
-   * seams (`with_project`, `api_client.py:1696-1741`).
+   * seams (`with_project`).
    *
    * @param projectId - The project ID to target.
    * @param workspaceId - Optional workspace ID within the new project.
    * @returns A new client bound to `projectId`.
    */
-  withProject(projectId: string, workspaceId?: number | null): MixpanelClient;
+  withProject: (
+    projectId: string,
+    workspaceId?: number | null,
+  ) => MixpanelClient;
 
   /**
-   * Call `GET /api/app/me` (`me`, `api_client.py:1743-1769`). Not
-   * project-scoped.
+   * Call `GET /api/app/me` (`me`). Not project-scoped.
    *
    * @returns The raw `/me` payload (a non-mapping result is wrapped as
    *   `{results: ...}`).
    */
-  me(): Promise<Record<string, JsonValue>>;
+  me: () => Promise<Record<string, JsonValue>>;
 
   /**
-   * List public workspaces for the current project (`list_workspaces`,
-   * `api_client.py:1771-1807`).
+   * List public workspaces for the current project (`list_workspaces`).
    *
    * @returns Validated {@link PublicWorkspace} models.
-   * @throws ResponseValidationError - A workspace entry fails model
-   *   validation (`RESPONSE_VALIDATION_ERROR`).
-   * @throws MixpanelHeadlessError - Non-list response payload.
+   * @throws {@link ResponseValidationError} - A workspace entry fails
+   *   model validation (`RESPONSE_VALIDATION_ERROR`).
+   * @throws {@link MixpanelHeadlessError} - Non-list response payload.
    */
-  listWorkspaces(): Promise<PublicWorkspace[]>;
+  listWorkspaces: () => Promise<PublicWorkspace[]>;
 
   /**
-   * @internal Force pool-token creation (`_ensure_client` /
-   * `__enter__`); Layer-3 lifecycle tests peek via
-   * {@link isHttpOpen}/{@link httpHandle}.
+   * Force pool-token creation (`_ensure_client` / `__enter__`); the
+   * lifecycle tests peek via {@link isHttpOpen}/{@link httpHandle}.
+   *
+   * @internal
    */
-  ensureHttpOpen(): void;
-
-  /** @internal @returns Whether the pool token exists (`_client is not None`). */
-  isHttpOpen(): boolean;
+  ensureHttpOpen: () => void;
 
   /**
-   * @internal The pool token, lazily created (`_http` property — the
-   * R6.2 identity the transport-preservation tests compare).
+   * Report whether the pool token exists (`_client is not None`).
+   *
+   * @returns `true` while the handle is open.
+   * @internal
+   */
+  isHttpOpen: () => boolean;
+
+  /**
+   * Return the pool token, lazily created (`_http` property — the
+   * identity the transport-preservation tests compare).
    *
    * @returns The handle.
+   * @internal
    */
-  httpHandle(): HttpHandle;
+  httpHandle: () => HttpHandle;
 
   /** Close the HTTP client and release resources (`close`). */
-  close(): Promise<void>;
+  close: () => Promise<void>;
 
-  /** R6.2: `async with` ports as `await using` / explicit `close()`. */
-  [Symbol.asyncDispose](): Promise<void>;
+  /** `async with` ports as `await using` / explicit `close()`. */
+  [Symbol.asyncDispose]: () => Promise<void>;
 }
 
-/** Default sleep seam: real timers, milliseconds (R2.12/R6.3). */
+/**
+ * Sleep on real timers — the default sleep seam.
+ *
+ * @param ms - Milliseconds to wait.
+ * @returns A promise that resolves after the delay.
+ */
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -721,8 +581,7 @@ function defaultSleep(ms: number): Promise<void> {
 
 /**
  * Wrap the injected sleep so a per-call signal can cancel a backoff
- * wait (R6.7 point 3: "into the backoff sleep"), rejecting with a
- * normalized `AbortError` DOMException.
+ * wait, rejecting with a normalized `AbortError` DOMException.
  *
  * @param sleep - The injected base sleep.
  * @param signal - The per-call signal (absent → base sleep unchanged).
@@ -749,21 +608,559 @@ function signalAwareSleep(
           signal.removeEventListener("abort", onAbort);
           resolve();
         },
-        (cause: unknown) => {
+        (error: unknown) => {
           signal.removeEventListener("abort", onAbort);
-          reject(cause instanceof Error ? cause : new Error(String(cause)));
+          reject(error instanceof Error ? error : new Error(String(error)));
         },
       );
     });
   };
 }
 
+/** Options-derived seams, fixed for the client's lifetime. */
+interface ClientConfig {
+  /**
+   * Python `timeout: float | None = None` — `null` means "route-aware
+   * defaults"; an explicit value applies to every request.
+   */
+  readonly timeoutSeconds: number | null;
+  readonly exportTimeoutSeconds: number;
+  readonly maxRetries: number;
+  readonly tokenResolver: TokenResolver | null;
+  readonly fetchImpl: typeof fetch;
+  readonly sleep: (ms: number) => Promise<void>;
+  readonly random: RandomSource;
+  readonly now: () => Date;
+  readonly logger: RetryLogger | undefined;
+  readonly getCustomHeaderEnv: CustomHeaderEnvSource;
+  /**
+   * Python PR #235: the override source is kept (not its value) so a provider is
+   * consulted on every request — Python's `_endpoints_for` reads
+   * `os.environ` per call, never at construction. `withProject` hands
+   * the same source to the derived client.
+   */
+  readonly endpointOverridesSource: EndpointOverridesSource | undefined;
+  readonly getEndpointOverrides: ClientCore["endpointOverrides"];
+}
+
 /**
- * Assemble a Mixpanel API client (the R2.9 factory).
+ * The mutable client state (the Python instance attributes). One bag,
+ * shared by reference between the core and every method, so a `use()`
+ * swap is visible everywhere at once.
+ */
+interface ClientState {
+  session: Session;
+  /**
+   * Python caches the ServiceAccount Basic header at construction; the
+   * TS auth model is async, so the cache fills lazily on first use —
+   * observationally identical (SA header derivation is pure and the
+   * resolver is never consulted for SA, `_get_auth_header`).
+   */
+  cachedBasicHeader: string | null;
+  workspaceId: number | null;
+  cachedWorkspaceId: number | null;
+  resolvedWorkspace: WorkspaceRef | null;
+  meResolver: WorkspaceResolver | null;
+  httpHandle: HttpHandle | null;
+}
+
+/** What every client function receives first (see {@link bindFirst}). */
+interface ClientContext {
+  readonly config: ClientConfig;
+  readonly state: ClientState;
+}
+
+// ----- ClientCore members -----
+
+/**
+ * Resolve the endpoint table for the current session's region under the
+ * current overrides — `_endpoints_for(self._session.account.region)`,
+ * evaluated per call.
+ *
+ * @param ctx - The client context.
+ * @returns The family → base-URL table.
+ */
+function currentEndpoints(
+  ctx: ClientContext,
+): ReadonlyMap<EndpointKind, string> {
+  return endpointsFor(
+    ctx.state.session.account.region,
+    ctx.config.getEndpointOverrides(),
+  );
+}
+
+function ensureHttp(ctx: ClientContext): HttpHandle {
+  ctx.state.httpHandle ??= { fetchImpl: ctx.config.fetchImpl };
+  return ctx.state.httpHandle;
+}
+
+// `_default_timeout`: explicit constructor
+// timeout wins; else route-aware, reading the current session's region
+// (an account swap via `use()` re-routes, exactly like Python's
+// `self._session.account.region` read).
+function defaultTimeoutSeconds(ctx: ClientContext, url: string): number {
+  if (ctx.config.timeoutSeconds !== null) {
+    return ctx.config.timeoutSeconds;
+  }
+  // Family classification (longest prefix, Python PR #235) replaces the old
+  // `startswith(app)` check so App routes on an override host — even a
+  // split `appBaseUrl` nested under the query prefix — keep the App
+  // timeout.
+  if (apiFamilyFor(url, currentEndpoints(ctx)) === "app") {
+    return DEFAULT_APP_TIMEOUT_S;
+  }
+  return DEFAULT_QUERY_TIMEOUT_S;
+}
+
+async function getAuthHeader(ctx: ClientContext): Promise<string> {
+  const account = ctx.state.session.account;
+  if (account.type === "service_account") {
+    ctx.state.cachedBasicHeader ??= await accountAuthHeader(account, {});
+    return ctx.state.cachedBasicHeader;
+  }
+  // OAuth variants re-resolve per call so a refreshed bearer surfaces
+  // without rebuilding the client.
+  return accountAuthHeader(account, {
+    tokenResolver: ctx.config.tokenResolver,
+  });
+}
+
+function coreRequestHeaders(
+  ctx: ClientContext,
+  extra: Record<string, string>,
+): Record<string, string> {
+  const sessionHeaders: Record<string, string> = Object.fromEntries(
+    ctx.state.session.headers,
+  );
+  return requestHeaders(
+    {
+      getUserAgent,
+      getCustomHeaderEnv: ctx.config.getCustomHeaderEnv,
+      sessionHeaders,
+    },
+    extra,
+  );
+}
+
+function executeDeps(
+  ctx: ClientContext,
+  signal?: AbortSignal,
+): RetryExecutorDeps {
+  return {
+    request: createRequestExecutor(ensureHttp(ctx).fetchImpl, signal),
+    sleep: signalAwareSleep(ctx.config.sleep, signal),
+    random: ctx.config.random,
+    maxRetries: ctx.config.maxRetries,
+    defaultTimeoutSeconds: bindFirst(ctx, defaultTimeoutSeconds),
+    requestHeaders: bindFirst(ctx, coreRequestHeaders),
+    projectId: ctx.state.session.project.id,
+    logger: ctx.config.logger,
+  };
+}
+
+function appDeps(ctx: ClientContext, signal?: AbortSignal): AppRequestDeps {
+  return {
+    request: createRequestExecutor(ensureHttp(ctx).fetchImpl, signal),
+    sleep: signalAwareSleep(ctx.config.sleep, signal),
+    random: ctx.config.random,
+    maxRetries: ctx.config.maxRetries,
+    defaultTimeoutSeconds: bindFirst(ctx, defaultTimeoutSeconds),
+    requestHeaders: bindFirst(ctx, coreRequestHeaders),
+    projectId: ctx.state.session.project.id,
+    region: ctx.state.session.account.region,
+    // Snapshot of the provider's current value — `appDeps()` is built per
+    // call, so this is still a per-request read (Python PR #235).
+    endpointOverrides: ctx.config.getEndpointOverrides(),
+    getAuthHeader: bindFirst(ctx, getAuthHeader),
+    logger: ctx.config.logger,
+  };
+}
+
+async function requestQueryHost(
+  ctx: ClientContext,
+  method: string,
+  url: string,
+  callOptions: QueryHostRequestOptions = {},
+): Promise<JsonValue> {
+  const params = callOptions.params ?? {};
+  if (callOptions.injectProjectId !== false) {
+    params["project_id"] = ctx.state.session.project.id;
+  }
+  // `_WORKSPACE_SCOPED_FAMILIES` (Python PR #235): query + engage, classified
+  // by longest prefix — identical to the old `startswith(query)` on the
+  // live table (engage sits under the query prefix) and correct under
+  // split overrides.
+  const family = apiFamilyFor(url, currentEndpoints(ctx));
+  // Explicit-only pin injection: a caller-supplied workspace_id always
+  // wins (setdefault), and no
+  // pin means nothing is injected — never an auto-resolution.
+  if (
+    callOptions.injectWorkspaceId !== false &&
+    family !== null &&
+    WORKSPACE_SCOPED_FAMILIES.has(family) &&
+    ctx.state.workspaceId !== null &&
+    !Object.hasOwn(params, "workspace_id")
+  ) {
+    params["workspace_id"] = ctx.state.workspaceId;
+  }
+  return executeWithRetry(executeDeps(ctx, callOptions.signal), {
+    method,
+    url,
+    params,
+    jsonData: callOptions.data ?? null,
+    formData: callOptions.formData ?? null,
+    headers: { Authorization: await getAuthHeader(ctx) },
+    timeoutSeconds: callOptions.timeoutSeconds ?? null,
+  });
+}
+
+/**
+ * Assemble the {@link ClientCore} seam the domain factories consume.
+ *
+ * @param ctx - The client context.
+ * @returns The core seam, bound to `ctx`.
+ */
+function buildClientCore(ctx: ClientContext): ClientCore {
+  const { config, state } = ctx;
+  return {
+    timeoutSeconds: config.timeoutSeconds,
+    defaultTimeoutSeconds: bindFirst(ctx, defaultTimeoutSeconds),
+    exportTimeoutSeconds: config.exportTimeoutSeconds,
+    maxRetries: config.maxRetries,
+    sleep: config.sleep,
+    random: config.random,
+    now: config.now,
+    tokenResolver: config.tokenResolver,
+    logger: config.logger,
+    session: (): Session => state.session,
+    projectId: (): string => state.session.project.id,
+    region: (): Region => state.session.account.region,
+    workspaceId: (): number | null => state.workspaceId,
+    endpointOverrides: config.getEndpointOverrides,
+    endpoints: bindFirst(ctx, currentEndpoints),
+    buildUrl: (kind: EndpointKind, path: string): string =>
+      buildUrl(
+        state.session.account.region,
+        kind,
+        path,
+        config.getEndpointOverrides(),
+      ),
+    getAuthHeader: bindFirst(ctx, getAuthHeader),
+    requestHeaders: bindFirst(ctx, coreRequestHeaders),
+    http: bindFirst(ctx, ensureHttp),
+    isHttpOpen: (): boolean => state.httpHandle !== null,
+    closeHttp: (): void => {
+      state.httpHandle = null;
+    },
+    executeDeps: bindFirst(ctx, executeDeps),
+    appDeps: bindFirst(ctx, appDeps),
+    rawRequest: (
+      transportOptions: Parameters<RequestExecutor>[0],
+      signal?: AbortSignal,
+    ): Promise<RawFetchResult> =>
+      rawFetch(ensureHttp(ctx).fetchImpl, transportOptions, signal),
+    requestQueryHost: bindFirst(ctx, requestQueryHost),
+  };
+}
+
+// ----- MixpanelClient members -----
+
+async function listWorkspaces(ctx: ClientContext): Promise<PublicWorkspace[]> {
+  const pid = ctx.state.session.project.id;
+  const path = `/projects/${pid}/workspaces/public`;
+  const results = await appRequest(appDeps(ctx), "GET", path);
+  if (!Array.isArray(results)) {
+    throw new MixpanelHeadlessError(
+      `Unexpected response format from list_workspaces: ` +
+        `expected list, got ${typeof results}`,
+    );
+  }
+  return validateResponseModels(
+    PublicWorkspace,
+    results.map((item) => toNativeJson(item)),
+    { endpoint: "list_workspaces" },
+  );
+}
+
+async function projectsMetadataIndex(
+  ctx: ClientContext,
+): Promise<Record<string, JsonValue>> {
+  const payload = await appRequest(
+    appDeps(ctx),
+    "GET",
+    "/projects/metadata/index",
+  );
+  if (!isPlainRecord(payload)) {
+    // Python logs a warning and treats the payload as empty.
+    return {};
+  }
+  return payload;
+}
+
+async function resolveWorkspaceFromMetadata(
+  ctx: ClientContext,
+): Promise<number | null> {
+  const pid = ctx.state.session.project.id;
+  let index: Record<string, JsonValue>;
+  try {
+    index = await projectsMetadataIndex(ctx);
+  } catch (error) {
+    // 403/404 = index genuinely unavailable for this credential — a
+    // clean "this source can't answer". Auth / rate-limit / server /
+    // network errors propagate.
+    if (
+      error instanceof QueryError &&
+      FALLBACK_HTTP_STATUSES.has(error.statusCode)
+    ) {
+      return null;
+    }
+    throw error;
+  }
+  const entry = Object.hasOwn(index, pid) ? index[pid] : undefined;
+  if (entry === undefined || !isPlainRecord(entry)) {
+    return null;
+  }
+  const rawWorkspaces = Object.hasOwn(entry, "workspaces")
+    ? entry["workspaces"]
+    : undefined;
+  if (rawWorkspaces === undefined || !isPlainRecord(rawWorkspaces)) {
+    return null;
+  }
+  const views: WorkspaceView[] = [];
+  for (const raw of Object.values(rawWorkspaces)) {
+    const view = workspaceViewFromMetadataEntry(raw);
+    if (view !== null) {
+      views.push(view);
+    }
+  }
+  if (views.length === 0) {
+    return null;
+  }
+  return selectWorkspaceId(views);
+}
+
+async function resolveWorkspaceId(ctx: ClientContext): Promise<number> {
+  const { state } = ctx;
+  if (state.workspaceId !== null) {
+    return state.workspaceId;
+  }
+  if (state.cachedWorkspaceId !== null) {
+    return state.cachedWorkspaceId;
+  }
+  const pid = state.session.project.id;
+  if (state.meResolver !== null) {
+    const resolved = await state.meResolver(pid);
+    if (resolved !== null) {
+      state.cachedWorkspaceId = resolved;
+      return resolved;
+    }
+  }
+  let publicWorkspaces: PublicWorkspace[];
+  try {
+    publicWorkspaces = await listWorkspaces(ctx);
+  } catch (error) {
+    // A 403/404 means this credential can't read /workspaces/public —
+    // fall through to the metadata index.
+    if (
+      error instanceof QueryError &&
+      FALLBACK_HTTP_STATUSES.has(error.statusCode)
+    ) {
+      publicWorkspaces = [];
+    } else {
+      throw error;
+    }
+  }
+  const publicId = selectWorkspaceId(
+    publicWorkspaces.map((ws) => workspaceViewFromPublic(ws)),
+  );
+  if (publicId !== null) {
+    state.cachedWorkspaceId = publicId;
+    return publicId;
+  }
+  const metadataId = await resolveWorkspaceFromMetadata(ctx);
+  if (metadataId !== null) {
+    state.cachedWorkspaceId = metadataId;
+    return metadataId;
+  }
+  throw new WorkspaceScopeError(
+    `Could not resolve a workspace for project ` +
+      `'${state.session.project.id}'. No workspace is pinned and none was ` +
+      `discoverable via /me, /workspaces/public, or the projects metadata ` +
+      `index. If the project has workspaces, pass one explicitly ` +
+      `(MP_WORKSPACE_ID or Workspace(workspace=...)).`,
+    "NO_WORKSPACES",
+    { project_id: state.session.project.id },
+  );
+}
+
+async function resolveWorkspace(ctx: ClientContext): Promise<WorkspaceRef> {
+  const { state } = ctx;
+  if (state.resolvedWorkspace !== null) {
+    return state.resolvedWorkspace;
+  }
+  const workspaces = await listWorkspaces(ctx);
+  const chosenId = selectWorkspaceId(
+    workspaces.map((ws) => workspaceViewFromPublic(ws)),
+  );
+  if (chosenId === null) {
+    throw new WorkspaceScopeError(
+      `Project ${state.session.project.id} has no accessible workspaces.`,
+    );
+  }
+  // `selectWorkspaceId` picked the id out of this very list.
+  const chosen = defined(
+    workspaces.find((ws) => ws.id === chosenId),
+    "selected workspace",
+  );
+  const ref: WorkspaceRef = {
+    id: chosen.id,
+    name: chosen.name,
+    is_default: chosen.is_default,
+  };
+  state.resolvedWorkspace = ref;
+  state.cachedWorkspaceId = ref.id;
+  return ref;
+}
+
+async function use(
+  ctx: ClientContext,
+  useOptions: ClientUseOptions = {},
+): Promise<void> {
+  const { config, state } = ctx;
+  const account = useOptions.account ?? null;
+  const projectInput = useOptions.project ?? null;
+  const workspaceInput = useOptions.workspace ?? null;
+  const projectObj: Project | null =
+    typeof projectInput === "string" ? { id: projectInput } : projectInput;
+  const workspaceObj: WorkspaceRef | null =
+    typeof workspaceInput === "number"
+      ? { id: workspaceInput }
+      : workspaceInput;
+  // The workspace axis is always passed to replace: a zero-axis use()
+  // clears `session.workspace` (`Session.replace` sentinel semantics).
+  const newSession = sessionReplace(state.session, {
+    account,
+    project: projectObj,
+    workspace: workspaceObj,
+  });
+  // Atomic on success: probe the new account's header before swapping
+  // anything. A failing probe leaves the prior session/header intact.
+  let newCachedBasic: string | null;
+  if (newSession.account.type === "service_account") {
+    newCachedBasic = await accountAuthHeader(newSession.account, {});
+  } else {
+    await accountAuthHeader(newSession.account, {
+      tokenResolver: config.tokenResolver,
+    });
+    newCachedBasic = null;
+  }
+  state.session = newSession;
+  state.cachedBasicHeader = newCachedBasic;
+  if (account !== null || projectObj !== null) {
+    state.resolvedWorkspace = newSession.workspace ?? null;
+    state.cachedWorkspaceId = null;
+  }
+  // Unconditional pin sync: without it,
+  // maybeScopedPath keeps emitting /workspaces/<old>/… and the
+  // query-host injection keeps sending a stale workspace_id.
+  state.workspaceId = newSession.workspace?.id ?? null;
+  if (workspaceObj !== null) {
+    state.workspaceId = workspaceObj.id;
+    state.resolvedWorkspace = workspaceObj;
+  }
+}
+
+// `require_scoped_path`: shared by the public client member and the
+// feature-flag factory (feature flags are the require-scoped domain).
+async function requireScopedPath(
+  ctx: ClientContext,
+  domainPath: string,
+): Promise<string> {
+  const wsId = await resolveWorkspaceId(ctx);
+  return `/projects/${ctx.state.session.project.id}/workspaces/${wsId}/${domainPath}`;
+}
+
+async function request(
+  ctx: ClientContext,
+  method: string,
+  url: string,
+  requestOptions: ClientRequestOptions = {},
+): Promise<JsonValue> {
+  // Python builds {Authorization} then update(headers) — caller
+  // extras win on collision.
+  const headers: Record<string, string> = {
+    Authorization: await getAuthHeader(ctx),
+    ...requestOptions.headers,
+  };
+  return executeWithRetry(executeDeps(ctx, requestOptions.signal), {
+    method,
+    url,
+    params: requestOptions.params ?? null,
+    jsonData: requestOptions.jsonBody ?? null,
+    headers,
+    timeoutSeconds: requestOptions.timeoutSeconds ?? null,
+  });
+}
+
+function clientAppRequest(
+  ctx: ClientContext,
+  method: string,
+  path: string,
+  appOptions: ClientAppRequestOptions = {},
+): Promise<JsonValue> {
+  return appRequest(appDeps(ctx, appOptions.signal), method, path, {
+    params: appOptions.params,
+    jsonBody: appOptions.jsonBody,
+    formBody: appOptions.formBody,
+    raw: appOptions.raw,
+  });
+}
+
+function withProject(
+  ctx: ClientContext,
+  projectId: string,
+  newWorkspaceId: number | null = null,
+): MixpanelClient {
+  const { config, state } = ctx;
+  // Truthy workspace check for the session axis, `is not None` for
+  // the pin — exactly Python's two different guards.
+  const newSession = sessionReplace(state.session, {
+    project: { id: projectId },
+    workspace: newWorkspaceId ? { id: newWorkspaceId } : null,
+  });
+  const newClient = createMixpanelClient({
+    session: newSession,
+    timeoutSeconds: config.timeoutSeconds,
+    exportTimeoutSeconds: config.exportTimeoutSeconds,
+    maxRetries: config.maxRetries,
+    tokenResolver: config.tokenResolver,
+    fetch: config.fetchImpl,
+    sleep: config.sleep,
+    random: config.random,
+    now: config.now,
+    logger: config.logger,
+    getCustomHeaderEnv: config.getCustomHeaderEnv,
+    endpointOverrides: config.endpointOverridesSource,
+  });
+  if (newWorkspaceId !== null) {
+    newClient.setWorkspaceId(newWorkspaceId);
+  }
+  return newClient;
+}
+
+async function me(ctx: ClientContext): Promise<Record<string, JsonValue>> {
+  const result = await appRequest(appDeps(ctx), "GET", "/me");
+  if (!isPlainRecord(result)) {
+    return { results: result };
+  }
+  return result;
+}
+
+/**
+ * Assemble a Mixpanel API client.
  *
  * @param options - Session + seams (see {@link MixpanelClientOptions}).
  * @returns The assembled client.
- *
  * @example
  * ```typescript
  * const client = createMixpanelClient({ session, fetch: harness.fetch });
@@ -772,412 +1169,54 @@ function signalAwareSleep(
  *   "https://mixpanel.com/api/app/test",
  * );
  * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.__init__
  */
 export function createMixpanelClient(
   options: MixpanelClientOptions,
 ): MixpanelClient {
-  // Python `timeout: float | None = None` — `null` means "route-aware
-  // defaults"; an explicit value applies to every request.
-  const timeoutSeconds: number | null = options.timeoutSeconds ?? null;
-  const exportTimeoutSeconds = options.exportTimeoutSeconds ?? 600.0;
-  const maxRetries = options.maxRetries ?? 3;
-  const tokenResolver = options.tokenResolver ?? null;
-  const fetchImpl = options.fetch ?? fetch;
-  const sleep = options.sleep ?? defaultSleep;
-  const random = options.random ?? Math.random;
-  const now = options.now ?? ((): Date => new Date());
-  const logger = options.logger;
-  const getCustomHeaderEnv: CustomHeaderEnvSource =
-    options.getCustomHeaderEnv ??
-    ((): { name?: string; value?: string } => ({}));
-  // PR #235: the override SOURCE is kept (not its value) so a provider is
-  // consulted on every request — Python's `_endpoints_for` reads
-  // `os.environ` per call, never at construction.
   const endpointOverridesSource = options.endpointOverrides;
-  const getEndpointOverrides = endpointOverridesProvider(
+  const config: ClientConfig = {
+    timeoutSeconds: options.timeoutSeconds ?? null,
+    exportTimeoutSeconds: options.exportTimeoutSeconds ?? 600.0,
+    maxRetries: options.maxRetries ?? 3,
+    tokenResolver: options.tokenResolver ?? null,
+    fetchImpl: options.fetch ?? fetch,
+    sleep: options.sleep ?? defaultSleep,
+    random: options.random ?? Math.random,
+    now: options.now ?? ((): Date => new Date()),
+    logger: options.logger,
+    getCustomHeaderEnv:
+      options.getCustomHeaderEnv ??
+      ((): { name?: string; value?: string } => ({})),
     endpointOverridesSource,
-  );
-  /** `_endpoints_for(self._session.account.region)` — per call. */
-  const currentEndpoints = (): ReadonlyMap<EndpointKind, string> =>
-    endpointsFor(session.account.region, getEndpointOverrides());
-
-  // ----- mutable client state (the Python instance attributes) -----
-  let session = options.session;
-  // Python caches the ServiceAccount Basic header at construction; the
-  // TS auth model is async, so the cache fills lazily on first use —
-  // observationally identical (SA header derivation is pure and the
-  // resolver is never consulted for SA, `_get_auth_header`).
-  let cachedBasicHeader: string | null = null;
-  let workspaceId: number | null = session.workspace?.id ?? null;
-  let cachedWorkspaceId: number | null = null;
-  let resolvedWorkspace: WorkspaceRef | null = session.workspace ?? null;
-  let meResolver: WorkspaceResolver | null = null;
-  let httpHandle: HttpHandle | null = null;
-
-  const ensureHttp = (): HttpHandle => {
-    if (httpHandle === null) {
-      httpHandle = { fetchImpl };
-    }
-    return httpHandle;
+    getEndpointOverrides: endpointOverridesProvider(endpointOverridesSource),
   };
-
-  // `_default_timeout` (`api_client.py:489-509`): explicit constructor
-  // timeout wins; else route-aware, reading the CURRENT session's region
-  // (an account swap via `use()` re-routes, exactly like Python's
-  // `self._session.account.region` read).
-  const defaultTimeoutSeconds = (url: string): number => {
-    if (timeoutSeconds !== null) {
-      return timeoutSeconds;
-    }
-    // Family classification (longest prefix, PR #235) replaces the old
-    // `startswith(app)` check so App routes on an override host — even a
-    // split `appBaseUrl` nested under the query prefix — keep the App
-    // timeout.
-    if (apiFamilyFor(url, currentEndpoints()) === "app") {
-      return DEFAULT_APP_TIMEOUT_S;
-    }
-    return DEFAULT_QUERY_TIMEOUT_S;
+  const state: ClientState = {
+    session: options.session,
+    cachedBasicHeader: null,
+    workspaceId: options.session.workspace?.id ?? null,
+    cachedWorkspaceId: null,
+    resolvedWorkspace: options.session.workspace ?? null,
+    meResolver: null,
+    httpHandle: null,
   };
-
-  const getAuthHeader = async (): Promise<string> => {
-    const account = session.account;
-    if (account.type === "service_account") {
-      if (cachedBasicHeader === null) {
-        cachedBasicHeader = await accountAuthHeader(account, {});
-      }
-      return cachedBasicHeader;
-    }
-    // OAuth variants re-resolve per call so a refreshed bearer surfaces
-    // without rebuilding the client (`api_client.py:406-412`).
-    return accountAuthHeader(account, { tokenResolver });
-  };
-
-  const coreRequestHeaders = (
-    extra: Record<string, string>,
-  ): Record<string, string> => {
-    const sessionHeaders: Record<string, string> = {};
-    for (const [name, value] of session.headers) {
-      sessionHeaders[name] = value;
-    }
-    return requestHeaders(
-      { getUserAgent, getCustomHeaderEnv, sessionHeaders },
-      extra,
-    );
-  };
-
-  const executeDeps = (signal?: AbortSignal): RetryExecutorDeps => ({
-    request: createRequestExecutor(ensureHttp().fetchImpl, signal),
-    sleep: signalAwareSleep(sleep, signal),
-    random,
-    maxRetries,
-    defaultTimeoutSeconds,
-    requestHeaders: coreRequestHeaders,
-    projectId: session.project.id,
-    logger,
-  });
-
-  const appDeps = (signal?: AbortSignal): AppRequestDeps => ({
-    request: createRequestExecutor(ensureHttp().fetchImpl, signal),
-    sleep: signalAwareSleep(sleep, signal),
-    random,
-    maxRetries,
-    defaultTimeoutSeconds,
-    requestHeaders: coreRequestHeaders,
-    projectId: session.project.id,
-    region: session.account.region,
-    // Snapshot of the provider's CURRENT value — `appDeps()` is built per
-    // call, so this is still a per-request read (PR #235).
-    endpointOverrides: getEndpointOverrides(),
-    getAuthHeader,
-    logger,
-  });
-
-  const requestQueryHost = async (
-    method: string,
-    url: string,
-    callOptions: QueryHostRequestOptions = {},
-  ): Promise<JsonValue> => {
-    const params = callOptions.params ?? {};
-    if (callOptions.injectProjectId !== false) {
-      params["project_id"] = session.project.id;
-    }
-    // `_WORKSPACE_SCOPED_FAMILIES` (PR #235): query + engage, classified
-    // by longest prefix — identical to the old `startswith(query)` on the
-    // live table (engage sits under the query prefix) and correct under
-    // split overrides.
-    const family = apiFamilyFor(url, currentEndpoints());
-    if (
-      callOptions.injectWorkspaceId !== false &&
-      family !== null &&
-      WORKSPACE_SCOPED_FAMILIES.has(family)
-    ) {
-      // Explicit-only pin injection (`api_client.py:893-902`): a
-      // caller-supplied workspace_id always wins (setdefault), and no
-      // pin means nothing is injected — never an auto-resolution.
-      if (workspaceId !== null && !Object.hasOwn(params, "workspace_id")) {
-        params["workspace_id"] = workspaceId;
-      }
-    }
-    return executeWithRetry(executeDeps(callOptions.signal), {
-      method,
-      url,
-      params,
-      jsonData: callOptions.data ?? null,
-      formData: callOptions.formData ?? null,
-      headers: { Authorization: await getAuthHeader() },
-      timeoutSeconds: callOptions.timeoutSeconds ?? null,
-    });
-  };
-
-  const core: ClientCore = {
-    timeoutSeconds,
-    defaultTimeoutSeconds,
-    exportTimeoutSeconds,
-    maxRetries,
-    sleep,
-    random,
-    now,
-    tokenResolver,
-    logger,
-    session: (): Session => session,
-    projectId: (): string => session.project.id,
-    region: (): Region => session.account.region,
-    workspaceId: (): number | null => workspaceId,
-    endpointOverrides: getEndpointOverrides,
-    endpoints: currentEndpoints,
-    buildUrl: (kind: EndpointKind, path: string): string =>
-      buildUrl(session.account.region, kind, path, getEndpointOverrides()),
-    getAuthHeader,
-    requestHeaders: coreRequestHeaders,
-    http: ensureHttp,
-    isHttpOpen: (): boolean => httpHandle !== null,
-    closeHttp: (): void => {
-      httpHandle = null;
-    },
-    executeDeps,
-    appDeps,
-    rawRequest: (
-      transportOptions: Parameters<RequestExecutor>[0],
-      signal?: AbortSignal,
-    ): Promise<RawFetchResult> =>
-      rawFetch(ensureHttp().fetchImpl, transportOptions, signal),
-    requestQueryHost,
-  };
-
-  const listWorkspaces = async (): Promise<PublicWorkspace[]> => {
-    const pid = session.project.id;
-    const path = `/projects/${pid}/workspaces/public`;
-    const results = await appRequest(appDeps(), "GET", path);
-    if (!Array.isArray(results)) {
-      throw new MixpanelHeadlessError(
-        `Unexpected response format from list_workspaces: ` +
-          `expected list, got ${typeof results}`,
-      );
-    }
-    return validateResponseModels(
-      PublicWorkspace,
-      results.map((item) => toNativeJson(item)),
-      { endpoint: "list_workspaces" },
-    );
-  };
-
-  const projectsMetadataIndex = async (): Promise<
-    Record<string, JsonValue>
-  > => {
-    const payload = await appRequest(
-      appDeps(),
-      "GET",
-      "/projects/metadata/index",
-    );
-    if (!isPlainRecord(payload)) {
-      // Python logs a warning and treats the payload as empty.
-      return {};
-    }
-    return payload;
-  };
-
-  const resolveWorkspaceFromMetadata = async (): Promise<number | null> => {
-    const pid = String(session.project.id);
-    let index: Record<string, JsonValue>;
-    try {
-      index = await projectsMetadataIndex();
-    } catch (exc) {
-      // 403/404 = index genuinely unavailable for this credential — a
-      // clean "this source can't answer". Auth / rate-limit / server /
-      // network errors propagate (`api_client.py:1590-1604`).
-      if (
-        exc instanceof QueryError &&
-        FALLBACK_HTTP_STATUSES.has(exc.statusCode)
-      ) {
-        return null;
-      }
-      throw exc;
-    }
-    const entry = Object.hasOwn(index, pid) ? index[pid] : undefined;
-    if (entry === undefined || !isPlainRecord(entry)) {
-      return null;
-    }
-    const rawWorkspaces = Object.hasOwn(entry, "workspaces")
-      ? entry["workspaces"]
-      : undefined;
-    if (rawWorkspaces === undefined || !isPlainRecord(rawWorkspaces)) {
-      return null;
-    }
-    const views: WorkspaceView[] = [];
-    for (const raw of Object.values(rawWorkspaces)) {
-      const view = workspaceViewFromMetadataEntry(raw);
-      if (view !== null) {
-        views.push(view);
-      }
-    }
-    if (views.length === 0) {
-      return null;
-    }
-    return selectWorkspaceId(views);
-  };
-
-  const resolveWorkspaceId = async (): Promise<number> => {
-    if (workspaceId !== null) {
-      return workspaceId;
-    }
-    if (cachedWorkspaceId !== null) {
-      return cachedWorkspaceId;
-    }
-    const pid = String(session.project.id);
-    if (meResolver !== null) {
-      const resolved = await meResolver(pid);
-      if (resolved !== null) {
-        cachedWorkspaceId = resolved;
-        return resolved;
-      }
-    }
-    let publicWorkspaces: PublicWorkspace[];
-    try {
-      publicWorkspaces = await listWorkspaces();
-    } catch (exc) {
-      // A 403/404 means this credential can't read /workspaces/public —
-      // fall through to the metadata index (`api_client.py:1483-1498`).
-      if (
-        exc instanceof QueryError &&
-        FALLBACK_HTTP_STATUSES.has(exc.statusCode)
-      ) {
-        publicWorkspaces = [];
-      } else {
-        throw exc;
-      }
-    }
-    const publicId = selectWorkspaceId(
-      publicWorkspaces.map((ws) => workspaceViewFromPublic(ws)),
-    );
-    if (publicId !== null) {
-      cachedWorkspaceId = publicId;
-      return publicId;
-    }
-    const metadataId = await resolveWorkspaceFromMetadata();
-    if (metadataId !== null) {
-      cachedWorkspaceId = metadataId;
-      return metadataId;
-    }
-    throw new WorkspaceScopeError(
-      `Could not resolve a workspace for project ` +
-        `'${session.project.id}'. No workspace is pinned and none was ` +
-        `discoverable via /me, /workspaces/public, or the projects metadata ` +
-        `index. If the project has workspaces, pass one explicitly ` +
-        `(MP_WORKSPACE_ID or Workspace(workspace=...)).`,
-      "NO_WORKSPACES",
-      { project_id: session.project.id },
-    );
-  };
-
-  const resolveWorkspace = async (): Promise<WorkspaceRef> => {
-    if (resolvedWorkspace !== null) {
-      return resolvedWorkspace;
-    }
-    const workspaces = await listWorkspaces();
-    const chosenId = selectWorkspaceId(
-      workspaces.map((ws) => workspaceViewFromPublic(ws)),
-    );
-    if (chosenId === null) {
-      throw new WorkspaceScopeError(
-        `Project ${session.project.id} has no accessible workspaces.`,
-      );
-    }
-    const chosen = workspaces.find(
-      (ws) => ws.id === chosenId,
-    ) as PublicWorkspace;
-    const ref: WorkspaceRef = {
-      id: chosen.id,
-      name: chosen.name,
-      is_default: Boolean(chosen.is_default),
-    };
-    resolvedWorkspace = ref;
-    cachedWorkspaceId = ref.id;
-    return ref;
-  };
-
-  const use = async (useOptions: ClientUseOptions = {}): Promise<void> => {
-    const account = useOptions.account ?? null;
-    const projectInput = useOptions.project ?? null;
-    const workspaceInput = useOptions.workspace ?? null;
-    const projectObj: Project | null =
-      typeof projectInput === "string" ? { id: projectInput } : projectInput;
-    const workspaceObj: WorkspaceRef | null =
-      typeof workspaceInput === "number"
-        ? { id: workspaceInput }
-        : workspaceInput;
-    // The workspace axis is ALWAYS passed to replace: a zero-axis use()
-    // clears `session.workspace` (`api_client.py:1079-1081` +
-    // `Session.replace` sentinel semantics).
-    const newSession = sessionReplace(session, {
-      account,
-      project: projectObj,
-      workspace: workspaceObj,
-    });
-    // Atomic-on-success (`api_client.py:1082-1095`): probe the new
-    // account's header BEFORE swapping anything. A failing probe leaves
-    // the prior session/header intact.
-    let newCachedBasic: string | null;
-    if (newSession.account.type === "service_account") {
-      newCachedBasic = await accountAuthHeader(newSession.account, {});
-    } else {
-      await accountAuthHeader(newSession.account, { tokenResolver });
-      newCachedBasic = null;
-    }
-    session = newSession;
-    cachedBasicHeader = newCachedBasic;
-    if (account !== null || projectObj !== null) {
-      resolvedWorkspace = newSession.workspace ?? null;
-      cachedWorkspaceId = null;
-    }
-    // Unconditional pin sync (`api_client.py:1101-1112`): without it,
-    // maybeScopedPath keeps emitting /workspaces/<old>/… and the
-    // query-host injection keeps sending a stale workspace_id.
-    workspaceId = newSession.workspace?.id ?? null;
-    if (workspaceObj !== null) {
-      workspaceId = workspaceObj.id;
-      resolvedWorkspace = workspaceObj;
-    }
-  };
-
-  // `require_scoped_path` (`api_client.py:1666-1694`) as a named
-  // closure: shared by the public client member below AND the C4 flag
-  // factory (feature flags are the require-scoped domain).
-  const requireScopedPath = async (domainPath: string): Promise<string> => {
-    const wsId = await resolveWorkspaceId();
-    return `/projects/${session.project.id}/workspaces/${wsId}/${domainPath}`;
-  };
+  const ctx: ClientContext = { config, state };
+  const core = buildClientCore(ctx);
 
   const client: MixpanelClient = {
-    // === B4 domain-method merge point (append-only; one spread line
-    // per shard — C2..C5; shards touch disjoint lines here). ===
-    ...createQueryHostMethods(core, { resolveWorkspaceId }),
+    // --- Domain-method factories ---
+    ...createQueryHostMethods(core, {
+      resolveWorkspaceId: bindFirst(ctx, resolveWorkspaceId),
+    }),
     ...createEngageMethods(core),
     ...createStreamingMethods(core),
     ...createDashboardMethods(core),
     ...createBookmarkMethods(core),
     ...createBookmarkUrlMethods(core),
     ...createCohortMethods(core),
-    ...createFlagMethods(core, { requireScopedPath }),
+    ...createFlagMethods(core, {
+      requireScopedPath: bindFirst(ctx, requireScopedPath),
+    }),
     ...createExperimentMethods(core),
     ...createAnnotationMethods(core),
     ...createWebhookMethods(core),
@@ -1195,122 +1234,60 @@ export function createMixpanelClient(
     ...createBusinessContextMethods(core),
     ...createReplaysSigningMethods(core),
     get session(): Session {
-      return session;
+      return state.session;
     },
     get projectId(): string {
-      return session.project.id;
+      return state.session.project.id;
     },
     get region(): Region {
-      return session.account.region;
+      return state.session.account.region;
     },
     get workspaceId(): number | null {
-      return workspaceId;
+      return state.workspaceId;
     },
     get hasWorkspaceResolver(): boolean {
-      return meResolver !== null;
+      return state.meResolver !== null;
     },
     core,
-    currentAuthHeader: getAuthHeader,
+    currentAuthHeader: bindFirst(ctx, getAuthHeader),
     setWorkspaceResolver: (resolver: WorkspaceResolver | null): void => {
-      meResolver = resolver;
+      state.meResolver = resolver;
     },
-    request: async (
-      method: string,
-      url: string,
-      requestOptions: ClientRequestOptions = {},
-    ): Promise<JsonValue> => {
-      // Python builds {Authorization} then update(headers) — caller
-      // extras win on collision (`api_client.py:963-965`).
-      const headers: Record<string, string> = {
-        Authorization: await getAuthHeader(),
-      };
-      Object.assign(headers, requestOptions.headers ?? {});
-      return executeWithRetry(executeDeps(requestOptions.signal), {
-        method,
-        url,
-        params: requestOptions.params ?? null,
-        jsonData: requestOptions.jsonBody ?? null,
-        headers,
-        timeoutSeconds: requestOptions.timeoutSeconds ?? null,
-      });
-    },
-    appRequest: (
-      method: string,
-      path: string,
-      appOptions: ClientAppRequestOptions = {},
-    ): Promise<JsonValue> =>
-      appRequest(appDeps(appOptions.signal), method, path, {
-        params: appOptions.params,
-        jsonBody: appOptions.jsonBody,
-        formBody: appOptions.formBody,
-        raw: appOptions.raw,
-      }),
-    requestQueryHost,
-    use,
-    resolveWorkspace,
+    request: bindFirst(ctx, request),
+    appRequest: bindFirst(ctx, clientAppRequest),
+    requestQueryHost: bindFirst(ctx, requestQueryHost),
+    use: bindFirst(ctx, use),
+    resolveWorkspace: bindFirst(ctx, resolveWorkspace),
     setWorkspaceId: (value: number | null): void => {
-      workspaceId = value;
+      state.workspaceId = value;
       if (value === null) {
-        cachedWorkspaceId = null;
+        state.cachedWorkspaceId = null;
       }
     },
-    resolveWorkspaceId,
-    projectsMetadataIndex,
-    resolveWorkspaceFromMetadata,
+    resolveWorkspaceId: bindFirst(ctx, resolveWorkspaceId),
+    projectsMetadataIndex: bindFirst(ctx, projectsMetadataIndex),
+    resolveWorkspaceFromMetadata: bindFirst(ctx, resolveWorkspaceFromMetadata),
     maybeScopedPath: (domainPath: string): string =>
       maybeScopedPath(domainPath, {
-        projectId: session.project.id,
-        workspaceId,
+        projectId: state.session.project.id,
+        workspaceId: state.workspaceId,
       }),
-    requireScopedPath,
-    withProject: (
-      projectId: string,
-      newWorkspaceId: number | null = null,
-    ): MixpanelClient => {
-      // TRUTHY workspace check for the session axis, `is not None` for
-      // the pin — exactly Python's two different guards
-      // (`api_client.py:1725-1740`; watchlist §8 item 6).
-      const newSession = sessionReplace(session, {
-        project: { id: projectId },
-        workspace: newWorkspaceId ? { id: newWorkspaceId } : null,
-      });
-      const newClient = createMixpanelClient({
-        session: newSession,
-        timeoutSeconds,
-        exportTimeoutSeconds,
-        maxRetries,
-        tokenResolver,
-        fetch: fetchImpl,
-        sleep,
-        random,
-        now,
-        logger,
-        getCustomHeaderEnv,
-        endpointOverrides: endpointOverridesSource,
-      });
-      if (newWorkspaceId !== null && newWorkspaceId !== undefined) {
-        newClient.setWorkspaceId(newWorkspaceId);
-      }
-      return newClient;
-    },
-    me: async (): Promise<Record<string, JsonValue>> => {
-      const result = await appRequest(appDeps(), "GET", "/me");
-      if (!isPlainRecord(result)) {
-        return { results: result };
-      }
-      return result;
-    },
-    listWorkspaces,
+    requireScopedPath: bindFirst(ctx, requireScopedPath),
+    withProject: bindFirst(ctx, withProject),
+    me: bindFirst(ctx, me),
+    listWorkspaces: bindFirst(ctx, listWorkspaces),
     ensureHttpOpen: (): void => {
-      ensureHttp();
+      ensureHttp(ctx);
     },
-    isHttpOpen: (): boolean => httpHandle !== null,
-    httpHandle: ensureHttp,
-    close: async (): Promise<void> => {
-      httpHandle = null;
+    isHttpOpen: (): boolean => state.httpHandle !== null,
+    httpHandle: bindFirst(ctx, ensureHttp),
+    close: (): Promise<void> => {
+      state.httpHandle = null;
+      return Promise.resolve();
     },
-    [Symbol.asyncDispose]: async (): Promise<void> => {
-      httpHandle = null;
+    [Symbol.asyncDispose]: (): Promise<void> => {
+      state.httpHandle = null;
+      return Promise.resolve();
     },
   };
 

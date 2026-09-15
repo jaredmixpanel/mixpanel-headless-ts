@@ -1,37 +1,23 @@
-// Layer-3 translation of `tests/pbt/test_session_pbt.py` (202 lines) —
-// B7-A2 packet §2.4 (`b7-packets.md`): the `replace` properties
-// (:97-155), the TypeAdapter-roundtrip property (:157), and the
-// `auth_header` format property (:168+).
-//
-// Strategy shapes preserved: name alphabet `[a-zA-Z0-9_-]{1,64}`,
-// regions us/eu/in, project `^[1-9][0-9]{0,9}$`, workspace 1..2^31−1,
-// non-empty text 1..64. Mechanism substitutions (header-cited, R10.2):
-// - `Session.replace(**kwargs)` → `sessionReplace` (key-presence
-//   sentinel, `auth/session.ts`);
-// - `model_copy` identity assert (`s2 is not s`) → reference inequality
-//   + deep equality;
-// - `model_dump` → `TypeAdapter.validate_python` roundtrip → feeding
-//   the Session's own parts (plain records + `Secret` instances, the
-//   exact values `model_dump` round-trips) back through `parseSession`,
-//   which re-validates like the TypeAdapter. The example-based parse
-//   coverage in `session.test.ts` is NOT this property (packet §2.4:
-//   "translate unless literally duplicate — header-cite either way").
-// - `st.text()` for username/secret/token draws full Unicode; the fc
-//   twin uses `fc.fullUnicodeString`-equivalent (`fc.string` with
-//   unicode units in fast-check 4).
+// `sessionReplace` / `parseSession` / `sessionAuthHeader` properties mirroring
+// the `replace`, TypeAdapter-roundtrip and `auth_header` properties of
+// `tests/pbt/test_session_pbt.py` with the same strategy shapes. `model_copy`
+// identity → reference inequality + deep equality; `model_dump` roundtrip →
+// re-parsing the Session's own parts; `st.text()` → full-Unicode `fc.string`.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
-  parseAccount,
   type Account,
+  parseAccount,
   type TokenResolver,
 } from "../../src/auth/account.js";
 import {
   parseSession,
-  sessionAuthHeader,
-  sessionReplace,
   type Project,
   type Session,
+  sessionAuthHeader,
+  sessionReplace,
   type WorkspaceRef,
 } from "../../src/auth/session.js";
 import { Secret } from "../../src/secret.js";
@@ -132,42 +118,46 @@ const sessions: fc.Arbitrary<Session> = fc
     headers: new Map<string, string>(),
   }));
 
-describe("Session.replace PBT (test_session_pbt.py)", () => {
-  it("test_replace_account_preserves_other_axes", () => {
+describe("Session.replace PBT", () => {
+  it("replace account preserves other axes", () => {
+    // python: test_replace_account_preserves_other_axes
     fc.assert(
       fc.property(sessions, accounts, (s, newAccount) => {
         const s2 = sessionReplace(s, { account: newAccount });
-        expect(s2.account).toEqual(newAccount);
-        expect(s2.project).toEqual(s.project);
-        expect(s2.workspace).toEqual(s.workspace);
+        expect(s2.account).toStrictEqual(newAccount);
+        expect(s2.project).toStrictEqual(s.project);
+        expect(s2.workspace).toStrictEqual(s.workspace);
       }),
     );
   });
 
-  it("test_replace_project_preserves_other_axes", () => {
+  it("replace project preserves other axes", () => {
+    // python: test_replace_project_preserves_other_axes
     fc.assert(
       fc.property(sessions, projects, (s, newProject) => {
         const s2 = sessionReplace(s, { project: newProject });
-        expect(s2.project).toEqual(newProject);
-        expect(s2.account).toEqual(s.account);
-        expect(s2.workspace).toEqual(s.workspace);
+        expect(s2.project).toStrictEqual(newProject);
+        expect(s2.account).toStrictEqual(s.account);
+        expect(s2.workspace).toStrictEqual(s.workspace);
       }),
     );
   });
 
-  it("test_replace_workspace_preserves_other_axes", () => {
+  it("replace workspace preserves other axes", () => {
+    // python: test_replace_workspace_preserves_other_axes
     fc.assert(
       fc.property(sessions, workspaceIds, (s, wsId) => {
         const newWorkspace: WorkspaceRef = { id: wsId };
         const s2 = sessionReplace(s, { workspace: newWorkspace });
-        expect(s2.workspace).toEqual(newWorkspace);
-        expect(s2.account).toEqual(s.account);
-        expect(s2.project).toEqual(s.project);
+        expect(s2.workspace).toStrictEqual(newWorkspace);
+        expect(s2.account).toStrictEqual(s.account);
+        expect(s2.project).toStrictEqual(s.project);
       }),
     );
   });
 
-  it("test_replace_workspace_to_none_clears", () => {
+  it("replace workspace to null clears", () => {
+    // python: test_replace_workspace_to_none_clears
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, { workspace: null });
@@ -176,38 +166,42 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_omitting_workspace_preserves", () => {
+  it("replace omitting workspace preserves it", () => {
+    // python: test_replace_omitting_workspace_preserves
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
-        expect(s2.workspace).toEqual(s.workspace);
+        expect(s2.workspace).toStrictEqual(s.workspace);
       }),
     );
   });
 
-  it("test_replace_returns_new_object", () => {
+  it("replace returns a new object", () => {
+    // python: test_replace_returns_new_object
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
         expect(s2).not.toBe(s);
-        expect(s2).toEqual(s);
+        expect(s2).toStrictEqual(s);
       }),
     );
   });
 
-  it("test_replace_omitting_axes_preserves_all", () => {
+  it("replace omitting axes preserves all", () => {
+    // python: test_replace_omitting_axes_preserves_all
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
-        expect(s2.account).toEqual(s.account);
-        expect(s2.project).toEqual(s.project);
-        expect(s2.workspace).toEqual(s.workspace);
-        expect(s2.headers).toEqual(s.headers);
+        expect(s2.account).toStrictEqual(s.account);
+        expect(s2.project).toStrictEqual(s.project);
+        expect(s2.workspace).toStrictEqual(s.workspace);
+        expect(s2.headers).toStrictEqual(s.headers);
       }),
     );
   });
 
-  it("test_session_typeadapter_roundtrip_preserves_equality", () => {
+  it("the TypeAdapter roundtrip preserves equality", () => {
+    // python: test_session_typeadapter_roundtrip_preserves_equality
     fc.assert(
       fc.property(sessions, (s) => {
         // model_dump → validate_python twin: re-parse the session's own
@@ -218,14 +212,15 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
           workspace: s.workspace,
           headers: s.headers,
         });
-        expect(rebuilt.account).toEqual(s.account);
-        expect(rebuilt.project).toEqual(s.project);
-        expect(rebuilt.workspace).toEqual(s.workspace);
+        expect(rebuilt.account).toStrictEqual(s.account);
+        expect(rebuilt.project).toStrictEqual(s.project);
+        expect(rebuilt.workspace).toStrictEqual(s.workspace);
       }),
     );
   });
 
-  it("test_session_auth_header_format", async () => {
+  it("the session auth header has the Basic/Bearer format", async () => {
+    // python: test_session_auth_header_format
     // A fake TokenResolver is supplied so the OAuth variants don't
     // need real on-disk tokens.
     const fakeResolver: TokenResolver = {
@@ -237,11 +232,9 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
         const header = await sessionAuthHeader(s, {
           tokenResolver: fakeResolver,
         });
-        if (s.account.type === "service_account") {
-          expect(header.startsWith("Basic ")).toBe(true);
-        } else {
-          expect(header.startsWith("Bearer ")).toBe(true);
-        }
+        const expectedScheme =
+          s.account.type === "service_account" ? "Basic " : "Bearer ";
+        expect(header.startsWith(expectedScheme)).toBe(true);
         // Whichever prefix, the value after the space is non-empty.
         const spaceIndex = header.indexOf(" ");
         const prefix = header.slice(0, spaceIndex);

@@ -1,15 +1,15 @@
-// TS-2 (D18 B/TS-2): tests written FIRST from R11.2 semantics + the D13 case
-// list. Every expected string below was produced by CPython `repr(float)`
-// (the oracle) on 2026-08-14. The contract: shortest-round-trip digits,
+// `pythonFloatStr` — CPython `repr(float)`: shortest round-trip digits,
 // exponent notation exactly when the decimal exponent is < -4 or >= 16, a
-// two-digit zero-padded exponent, and a trailing ".0" on integral floats in
-// fixed notation (semantic-trap watchlist item 3).
+// two-digit zero-padded exponent, and a trailing ".0" on integral floats (bare
+// `String(x)` gives "18" for 18.0). No Python test file behind this suite; the
+// expected strings are CPython's and the fast-check properties are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { pythonFloatStr } from "../../src/compat/python-float-str.js";
 
-describe("pythonFloatStr — D13 case list + CPython oracle table", () => {
-  const oracle: [number, string][] = [
+describe("pythonFloatStr — CPython repr(float) table", () => {
+  const oracle: Array<[number, string]> = [
     // Integral floats keep ".0" (str(18.0) == "18.0"; JS String gives "18").
     [18.0, "18.0"],
     [-18.0, "-18.0"],
@@ -105,8 +105,8 @@ function referenceFloatStr(value: number): string {
 
 describe("pythonFloatStr — fast-check properties", () => {
   const finiteDoubles = fc.double({ noNaN: true, noDefaultInfinity: true });
-  // R10.9 mandatory edge set (float-relevant members) + window boundaries.
-  const edgeExamples: [number][] = [
+  // Float-relevant edge values plus the exponent-window boundaries.
+  const edgeExamples: Array<[number]> = [
     [18.0],
     [1.5],
     [-0.0],
@@ -122,15 +122,25 @@ describe("pythonFloatStr — fast-check properties", () => {
     [1.7976931348623157e308],
   ];
 
+  /**
+   * The reference rendering: signed zero spelled out, else the sign plus
+   * the slow reference of the magnitude.
+   *
+   * @param x - A finite double.
+   * @returns The expected `str(x)` text.
+   */
+  function expectedFloatStr(x: number): string {
+    if (x === 0) {
+      return Object.is(x, -0) ? "-0.0" : "0.0";
+    }
+    const sign = x < 0 ? "-" : "";
+    return sign + referenceFloatStr(Math.abs(x));
+  }
+
   it("matches the slow String(x)-based reference for all finite doubles", () => {
     fc.assert(
       fc.property(finiteDoubles, (x) => {
-        if (x === 0) {
-          expect(pythonFloatStr(x)).toBe(Object.is(x, -0) ? "-0.0" : "0.0");
-          return;
-        }
-        const sign = x < 0 ? "-" : "";
-        expect(pythonFloatStr(x)).toBe(sign + referenceFloatStr(Math.abs(x)));
+        expect(pythonFloatStr(x)).toBe(expectedFloatStr(x));
       }),
       { examples: edgeExamples },
     );

@@ -1,26 +1,18 @@
-// Python PR #235 (AIE-925) — the node half of the `MP_API_BASE_URL` /
-// `MP_APP_BASE_URL` alternate-host override. Python reads both variables
-// from `os.environ` on EVERY request (`api_client._endpoints_for`); the
-// core client takes an injected provider, and `createNodeEndpointOverrides`
-// is that provider over `process.env`, read at call time (the `env.ts`
-// module rule: never at construction, never at module load).
-//
-// Sources: tests/unit/test_api_base_url_override.py::
-// TestBuildUrlUnderOverride::test_env_is_read_per_call_not_at_construction
-// (the per-request semantics lock), TestEndpointsForResolver (env-value
-// normalisation through the real `process.env` path), and the
-// `env_workspace` fixture (Workspace built from env inherits the
-// override with no extra flag) — here via `createNodeWorkspace()`.
-//
-// Fixture pattern per `create-node-workspace.test.ts`: isolated `$HOME`,
-// `MP_*` env scrub.
+// createNodeEndpointOverrides: the MP_API_BASE_URL / MP_APP_BASE_URL provider
+// over process.env, read per call. Mirrors
+// tests/unit/test_api_base_url_override.py (per-call semantics, value
+// normalisation, and the env-built Workspace inheriting the override via
+// `createNodeWorkspace()`).
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createMixpanelClient } from "../../core/src/client/client.js";
-import { ENDPOINTS } from "../../core/src/client/url.js";
-import { Secret } from "../../core/src/secret.js";
-import type { Session } from "../../core/src/auth/session.js";
+import {
+  createMixpanelClient,
+  ENDPOINTS,
+  Secret,
+  type Session,
+} from "@mixpanel-headless/core";
+
 import {
   createNodeEndpointOverrides,
   createNodeEnv,
@@ -30,23 +22,15 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const BASE = "http://127.0.0.1:8080";
 
-const cleanups: (() => void)[] = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
+const cleanups: Array<() => void> = [];
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
-  process.env["HOME"] = makeTempDir(cleanups);
+  scrubMpEnv();
+  vi.stubEnv("HOME", makeTempDir(cleanups));
 });
 
 afterEach(() => {
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -70,37 +54,38 @@ function usSession(): Session {
 
 /** Export the SA quad so `createNodeWorkspace()` resolves from env. */
 function exportSaQuad(region = "us"): void {
-  process.env["MP_USERNAME"] = "test_user";
-  process.env["MP_SECRET"] = "test_secret";
-  process.env["MP_PROJECT_ID"] = "12345";
-  process.env["MP_REGION"] = region;
+  vi.stubEnv("MP_USERNAME", "test_user");
+  vi.stubEnv("MP_SECRET", "test_secret");
+  vi.stubEnv("MP_PROJECT_ID", "12345");
+  vi.stubEnv("MP_REGION", region);
 }
 
 describe("createNodeEndpointOverrides", () => {
   it("reads MP_API_BASE_URL / MP_APP_BASE_URL at call time (raw values)", () => {
     const provider = createNodeEndpointOverrides();
-    expect(provider()).toEqual({
+    expect(provider()).toStrictEqual({
       apiBaseUrl: undefined,
       appBaseUrl: undefined,
     });
-    process.env["MP_API_BASE_URL"] = `${BASE}/`;
-    expect(provider()).toEqual({
+    vi.stubEnv("MP_API_BASE_URL", `${BASE}/`);
+    expect(provider()).toStrictEqual({
       apiBaseUrl: `${BASE}/`,
       appBaseUrl: undefined,
     });
-    process.env["MP_APP_BASE_URL"] = "http://app.internal:9000";
-    expect(provider()).toEqual({
+    vi.stubEnv("MP_APP_BASE_URL", "http://app.internal:9000");
+    expect(provider()).toStrictEqual({
       apiBaseUrl: `${BASE}/`,
       appBaseUrl: "http://app.internal:9000",
     });
-    delete process.env["MP_API_BASE_URL"];
-    expect(provider()).toEqual({
+    vi.stubEnv("MP_API_BASE_URL", undefined);
+    expect(provider()).toStrictEqual({
       apiBaseUrl: undefined,
       appBaseUrl: "http://app.internal:9000",
     });
   });
 
-  it("test_env_is_read_per_call_not_at_construction", () => {
+  it("reads the env var per call, not at construction", () => {
+    // python: test_env_is_read_per_call_not_at_construction
     // Python: `MixpanelAPIClient(session)` built BEFORE the var is set
     // still redirects the next `_build_url`; unsetting restores live.
     const client = createMixpanelClient({
@@ -109,11 +94,11 @@ describe("createNodeEndpointOverrides", () => {
     });
     const live = client.core.buildUrl("query", "/segmentation");
     expect(live).toBe("https://mixpanel.com/api/query/segmentation");
-    process.env["MP_API_BASE_URL"] = BASE;
+    vi.stubEnv("MP_API_BASE_URL", BASE);
     expect(client.core.buildUrl("query", "/segmentation")).toBe(
       `${BASE}/api/query/segmentation`,
     );
-    delete process.env["MP_API_BASE_URL"];
+    vi.stubEnv("MP_API_BASE_URL", undefined);
     expect(client.core.buildUrl("query", "/segmentation")).toBe(live);
   });
 
@@ -123,8 +108,8 @@ describe("createNodeEndpointOverrides", () => {
       endpointOverrides: createNodeEndpointOverrides(),
     });
     for (const suffix of ["", "/", "//", "///"]) {
-      process.env["MP_API_BASE_URL"] = `${BASE}${suffix}`;
-      expect(Object.fromEntries(client.core.endpoints())).toEqual({
+      vi.stubEnv("MP_API_BASE_URL", `${BASE}${suffix}`);
+      expect(Object.fromEntries(client.core.endpoints())).toStrictEqual({
         query: `${BASE}/api/query`,
         export: `${BASE}/api/2.0`,
         engage: `${BASE}/api/query/engage`,
@@ -133,13 +118,14 @@ describe("createNodeEndpointOverrides", () => {
     }
   });
 
-  it("test_empty_or_slash_only_value_means_unset", () => {
+  it("treats an empty or slash-only value as unset", () => {
+    // python: test_empty_or_slash_only_value_means_unset
     const client = createMixpanelClient({
       session: usSession(),
       endpointOverrides: createNodeEndpointOverrides(),
     });
     for (const value of ["", "/", "//"]) {
-      process.env["MP_API_BASE_URL"] = value;
+      vi.stubEnv("MP_API_BASE_URL", value);
       expect(client.core.endpoints()).toBe(ENDPOINTS.get("us"));
     }
   });
@@ -149,7 +135,7 @@ describe("createNodeEndpointOverrides", () => {
       session: usSession(),
       endpointOverrides: createNodeEndpointOverrides(),
     });
-    process.env["MP_APP_BASE_URL"] = "http://app.internal:9000/";
+    vi.stubEnv("MP_APP_BASE_URL", "http://app.internal:9000/");
     const table = client.core.endpoints();
     expect(table.get("app")).toBe("http://app.internal:9000/api/app");
     expect(table.get("query")).toBe("https://mixpanel.com/api/query");
@@ -162,7 +148,7 @@ describe("createNodeEndpointOverrides", () => {
     // `effects.env.get` (the `os.environ.get` twin) — same call-time rule.
     const env = createNodeEnv();
     expect(env.get("MP_API_BASE_URL")).toBeUndefined();
-    process.env["MP_API_BASE_URL"] = BASE;
+    vi.stubEnv("MP_API_BASE_URL", BASE);
     expect(env.get("MP_API_BASE_URL")).toBe(BASE);
   });
 });
@@ -170,10 +156,10 @@ describe("createNodeEndpointOverrides", () => {
 describe("createNodeWorkspace inherits the override (env_workspace twin)", () => {
   it("Workspace() from env routes every family at MP_API_BASE_URL", async () => {
     exportSaQuad("eu");
-    process.env["MP_API_BASE_URL"] = `${BASE}/`;
+    vi.stubEnv("MP_API_BASE_URL", `${BASE}/`);
     const urls: string[] = [];
     const recordingFetch: typeof fetch = (input) => {
-      const url = new URL(String(input));
+      const url = new URL(input instanceof Request ? input.url : input);
       urls.push(`${url.origin}${url.pathname}`);
       return Promise.resolve(
         new Response('["Login"]', {
@@ -189,19 +175,19 @@ describe("createNodeWorkspace inherits the override (env_workspace twin)", () =>
     });
     // Region resolved from env is `eu`; the URL is region-independent.
     expect(ws.session.account.region).toBe("eu");
-    expect(await ws.events()).toEqual(["Login"]);
-    expect(urls).toEqual([`${BASE}/api/query/events/names`]);
+    await expect(ws.events()).resolves.toStrictEqual(["Login"]);
+    expect(urls).toStrictEqual([`${BASE}/api/query/events/names`]);
     // Flip mid-life: the same facade follows the current value.
     // (`ws.events()` is cached by the discovery service — go through the
     // wire client so a second request is actually issued.)
-    delete process.env["MP_API_BASE_URL"];
+    vi.stubEnv("MP_API_BASE_URL", undefined);
     await ws.client.getEvents();
     expect(urls[1]).toBe("https://eu.mixpanel.com/api/query/events/names");
   });
 
   it("an explicit clientOptions.endpointOverrides wins over process.env", () => {
     exportSaQuad();
-    process.env["MP_API_BASE_URL"] = BASE;
+    vi.stubEnv("MP_API_BASE_URL", BASE);
     const ws = createNodeWorkspace({
       clientOptions: { endpointOverrides: { apiBaseUrl: "http://pinned:1" } },
     });

@@ -1,33 +1,35 @@
 /**
  * Cohort family + cohort CRUD params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import {
+  type EntityFieldSpecs,
   EntityModel,
-  prepareInit,
-  type EntityFieldSpec,
   type ModelDumpOptions,
+  prepareInit,
 } from "./model-base.js";
 
 /**
- * `_DefinitionFlatteningModel.model_dump` (`types.py:2865-2878`): pop
- * `definition` out of the dump and, when TRUTHY, merge its keys into
+ * Pop `definition` out of a dump and, when truthy, merge its keys into
  * the top level.
  *
- * Added at B6-W3 — the three cohort param models inherit the override
- * in Python, so it belongs on the models here too (the facade must not
- * re-derive it, R10.8). Falsy definitions (`{}`) are dropped entirely,
- * exactly as `if definition:` does; the merged keys land AFTER the
- * declared fields, mirroring `dict.update()` insertion order.
+ * The three cohort param models inherit this override in Python, so it
+ * belongs on the models here too rather than in the facade. Falsy
+ * definitions (`{}`) are dropped entirely, exactly as `if definition:`
+ * does; the merged keys land after the declared fields, mirroring
+ * `dict.update()` insertion order.
  *
  * @param dumped - The plain `exclude_none` dump.
  * @returns The dump with `definition` flattened.
+ * @see mixpanel_headless.types._DefinitionFlatteningModel.model_dump
  */
 function flattenDefinition(
   dumped: Record<string, unknown>,
@@ -41,7 +43,7 @@ function flattenDefinition(
     definition !== null &&
     definition !== undefined &&
     typeof definition === "object" &&
-    Object.keys(definition as Record<string, unknown>).length > 0
+    Object.keys(definition).length > 0
   ) {
     Object.assign(dumped, definition as Record<string, unknown>);
   }
@@ -50,7 +52,7 @@ function flattenDefinition(
 
 /**
  * Constructor input for {@link CohortCreator} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CohortCreatorInit {
   /** Creator user ID. */
@@ -64,18 +66,23 @@ export interface CohortCreatorInit {
 /**
  * Creator information for a cohort.
  *
- * Mirror of Python `mixpanel_headless.types.CohortCreator` (types.py:2753;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const cohortCreator = CohortCreator.fromDict({ id: 42 });
+ * cohortCreator.id; // 42
+ * ```
+ * @see mixpanel_headless.types.CohortCreator
  */
-export class CohortCreator extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CohortCreator extends EntityModel<CohortCreatorInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CohortCreator";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CohortCreatorInit> = [
     { name: "id", kind: "int", nullable: true },
     { name: "name", kind: "str", nullable: true },
     { name: "email", kind: "str", nullable: true },
@@ -92,14 +99,11 @@ export class CohortCreator extends EntityModel {
    * Construct a validated CohortCreator (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CohortCreatorInit) {
-    super(
-      CohortCreator,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CohortCreator, fields);
   }
 
   /**
@@ -108,18 +112,16 @@ export class CohortCreator extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CohortCreator {
-    return new CohortCreator(
-      prepareInit(CohortCreator, raw) as unknown as CohortCreatorInit,
-    );
+    return new CohortCreator(prepareInit(CohortCreator, raw));
   }
 }
 
 /**
  * Constructor input for {@link Cohort} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CohortInit {
   /** Unique cohort identifier. */
@@ -142,32 +144,41 @@ export interface CohortInit {
   readonly created_by?:
     CohortCreator | Readonly<Record<string, unknown>> | null | undefined;
   /** IDs of entities referencing this cohort. */
-  readonly referenced_by?: ReadonlyArray<number> | null | undefined;
+  readonly referenced_by?: readonly number[] | null | undefined;
   /** Whether the cohort is verified. */
   readonly verified?: boolean | undefined;
   /** Last queried timestamp string. */
   readonly last_queried?: string | null | undefined;
   /** IDs of entities directly referencing this cohort. */
-  readonly referenced_directly_by?: ReadonlyArray<number> | undefined;
+  readonly referenced_directly_by?: readonly number[] | undefined;
   /** Active integration IDs. */
-  readonly active_integrations?: ReadonlyArray<number> | undefined;
+  readonly active_integrations?: readonly number[] | undefined;
 }
 
 /**
  * A Mixpanel cohort as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Cohort` (types.py:2779;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const cohort = Cohort.fromDict({
+ *   id: 42,
+ *   name: "Power users",
+ *   description: "Weekly overview",
+ * });
+ * cohort.id; // 42
+ * ```
+ * @see mixpanel_headless.types.Cohort
  */
-export class Cohort extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class Cohort extends EntityModel<CohortInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "Cohort";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CohortInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -203,25 +214,25 @@ export class Cohort extends EntityModel {
   /** Creator information. */
   declare readonly created_by: CohortCreator | null;
   /** IDs of entities referencing this cohort. */
-  declare readonly referenced_by: ReadonlyArray<number> | null;
+  declare readonly referenced_by: readonly number[] | null;
   /** Whether the cohort is verified. */
   declare readonly verified: boolean;
   /** Last queried timestamp string. */
   declare readonly last_queried: string | null;
   /** IDs of entities directly referencing this cohort. */
-  declare readonly referenced_directly_by: ReadonlyArray<number>;
+  declare readonly referenced_directly_by: readonly number[];
   /** Active integration IDs. */
-  declare readonly active_integrations: ReadonlyArray<number>;
+  declare readonly active_integrations: readonly number[];
 
   /**
    * Construct a validated Cohort (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CohortInit) {
-    super(Cohort, fields as unknown as Readonly<Record<string, unknown>>);
+    super(Cohort, fields);
   }
 
   /**
@@ -230,16 +241,16 @@ export class Cohort extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): Cohort {
-    return new Cohort(prepareInit(Cohort, raw) as unknown as CohortInit);
+    return new Cohort(prepareInit(Cohort, raw));
   }
 }
 
 /**
  * Constructor input for {@link CreateCohortParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateCohortParamsInit {
   /** Python field `definition`. */
@@ -261,18 +272,26 @@ export interface CreateCohortParamsInit {
 /**
  * Parameters for creating a new cohort.
  *
- * Mirror of Python `mixpanel_headless.types.CreateCohortParams` (types.py:2881;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateCohortParams({
+ *   name: "Power users",
+ *   description: "Weekly overview",
+ * });
+ * params.name; // "Power users"
+ * ```
+ * @see mixpanel_headless.types.CreateCohortParams
  */
-export class CreateCohortParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateCohortParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateCohortParamsInit> = [
     { name: "definition", nullable: true },
     { name: "name", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -301,27 +320,16 @@ export class CreateCohortParams extends EntityModel {
    * Construct a validated CreateCohortParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateCohortParamsInit) {
-    super(
-      CreateCohortParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateCohortParams, fields);
   }
 
   /**
-   * Strict decode from a raw mapping (accepts the Pydantic
-   * validation-alias set; `$type`/computed keys are dropped).
-   *
-   * @param raw - The raw payload.
-   * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
-   */
-  /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   * the top level, as Python's `_DefinitionFlatteningModel` does.
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.
@@ -332,16 +340,22 @@ export class CreateCohortParams extends EntityModel {
     return flattenDefinition(super.modelDumpExcludeNone(options));
   }
 
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws {@link ResponseValidationError} - On shape violations.
+   */
   static fromDict(raw: unknown): CreateCohortParams {
-    return new CreateCohortParams(
-      prepareInit(CreateCohortParams, raw) as unknown as CreateCohortParamsInit,
-    );
+    return new CreateCohortParams(prepareInit(CreateCohortParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link UpdateCohortParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateCohortParamsInit {
   /** Python field `definition`. */
@@ -363,18 +377,23 @@ export interface UpdateCohortParamsInit {
 /**
  * Parameters for updating an existing cohort.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateCohortParams` (types.py:2922;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateCohortParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateCohortParams
  */
-export class UpdateCohortParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateCohortParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateCohortParamsInit> = [
     { name: "definition", nullable: true },
     { name: "name", kind: "str", nullable: true },
     { name: "description", kind: "str", nullable: true },
@@ -403,27 +422,16 @@ export class UpdateCohortParams extends EntityModel {
    * Construct a validated UpdateCohortParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateCohortParamsInit) {
-    super(
-      UpdateCohortParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateCohortParams, fields);
   }
 
   /**
-   * Strict decode from a raw mapping (accepts the Pydantic
-   * validation-alias set; `$type`/computed keys are dropped).
-   *
-   * @param raw - The raw payload.
-   * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
-   */
-  /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   * the top level, as Python's `_DefinitionFlatteningModel` does.
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.
@@ -434,16 +442,22 @@ export class UpdateCohortParams extends EntityModel {
     return flattenDefinition(super.modelDumpExcludeNone(options));
   }
 
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws {@link ResponseValidationError} - On shape violations.
+   */
   static fromDict(raw: unknown): UpdateCohortParams {
-    return new UpdateCohortParams(
-      prepareInit(UpdateCohortParams, raw) as unknown as UpdateCohortParamsInit,
-    );
+    return new UpdateCohortParams(prepareInit(UpdateCohortParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link BulkUpdateCohortEntry} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkUpdateCohortEntryInit {
   /** Python field `definition`. */
@@ -459,18 +473,23 @@ export interface BulkUpdateCohortEntryInit {
 /**
  * Entry for bulk-updating cohorts.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateCohortEntry` (types.py:2963;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new BulkUpdateCohortEntry({ id: 42, name: "Example" });
+ * params.id; // 42
+ * ```
+ * @see mixpanel_headless.types.BulkUpdateCohortEntry
  */
-export class BulkUpdateCohortEntry extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "BulkUpdateCohortEntry";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<BulkUpdateCohortEntryInit> = [
     { name: "definition", nullable: true },
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
@@ -490,27 +509,16 @@ export class BulkUpdateCohortEntry extends EntityModel {
    * Construct a validated BulkUpdateCohortEntry (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdateCohortEntryInit) {
-    super(
-      BulkUpdateCohortEntry,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(BulkUpdateCohortEntry, fields);
   }
 
   /**
-   * Strict decode from a raw mapping (accepts the Pydantic
-   * validation-alias set; `$type`/computed keys are dropped).
-   *
-   * @param raw - The raw payload.
-   * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
-   */
-  /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   * the top level, as Python's `_DefinitionFlatteningModel` does.
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.
@@ -521,12 +529,15 @@ export class BulkUpdateCohortEntry extends EntityModel {
     return flattenDefinition(super.modelDumpExcludeNone(options));
   }
 
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws {@link ResponseValidationError} - On shape violations.
+   */
   static fromDict(raw: unknown): BulkUpdateCohortEntry {
-    return new BulkUpdateCohortEntry(
-      prepareInit(
-        BulkUpdateCohortEntry,
-        raw,
-      ) as unknown as BulkUpdateCohortEntryInit,
-    );
+    return new BulkUpdateCohortEntry(prepareInit(BulkUpdateCohortEntry, raw));
   }
 }

@@ -1,38 +1,30 @@
 /**
- * Lexicon schema + Schema Registry wire methods — Phase-3 packet B4-C5
- * port of the `MixpanelAPIClient` schemas range
- * (`api_client.py:3294-3649`).
+ * Lexicon schema and Schema Registry wire methods. Two wire paths
+ * coexist: `get_schemas` / `get_schema` ride the query-host request path
+ * (`core.requestQueryHost` with `injectProjectId: false`, so
+ * `query_origin` and the retry loop live there), while the registry CRUD
+ * rides `appRequest` over `maybe_scoped_path` with
+ * `urllib.parse.quote(..., safe="")` path-segment encoding
+ * ({@link pythonQuote}). Results come back verbatim after the guards.
  *
- * Two wire paths coexist in this range, ported verbatim:
- * - `get_schemas`/`get_schema` (`:3294-3392`) ride the C1 `_request`
- *   twin (`core.requestQueryHost` with `inject_project_id=False` —
- *   `query_origin` + retry live THERE, R10.8);
- * - the registry CRUD (`:3398-3649`) rides B0 `appRequest` over
- *   `maybe_scoped_path` with `urllib.parse.quote(..., safe="")`
- *   path-segment encoding ({@link pythonQuote}).
- *
- * Results are returned verbatim after the source's isinstance guards
- * (Caution #11 — no result pre-shaping).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schemas
  */
 
 import { appRequest } from "../../client/app-request.js";
-import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
+import type { ClientCore } from "../../client/core.js";
 import { isPlainRecord } from "../../client/internals.js";
-import { MixpanelHeadlessError } from "../../errors.js";
+import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
-import {
-  expectListResult,
-  expectRecordResult,
-  pythonQuote,
-  pythonTypeNameOf,
-} from "./shared.js";
+import { dictGet } from "../../compat/python-values.js";
+import { MixpanelHeadlessError } from "../../errors.js";
+import { pythonTypeNameOf } from "../shared.js";
+import { expectListResult, expectRecordResult, pythonQuote } from "./shared.js";
 
 /** Options bag of {@link SchemaMethods.getSchemas}. */
 export interface GetSchemasOptions {
   /** Optional entity-type PATH segment ("event", "profile", ...). */
   readonly entity_type?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -40,7 +32,7 @@ export interface GetSchemasOptions {
 export interface ListSchemaRegistryOptions {
   /** Optional entity-type filter ("event", "custom_event", "profile"). */
   readonly entity_type?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -50,55 +42,58 @@ export interface DeleteSchemasOptions {
   readonly entity_type?: string | null | undefined;
   /** Filter by entity name (requires `entity_type`). */
   readonly entity_name?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
 /**
  * The Python `dict.get(key, default)` twin over a `_request` product
- * annotated `dict` (`get_schemas`/`get_schema` — the source calls
- * `.get` without an isinstance guard, so a non-dict body raises
- * AttributeError; the TypeError below is the closest JS analog).
+ * annotated `dict` (`get_schemas` / `get_schema` call `.get` without an
+ * isinstance guard, so a non-dict body raises `AttributeError` in
+ * Python; the `TypeError` below is the closest JS analog).
  *
  * @param result - The parsed response body.
  * @param key - The key to read.
  * @param fallback - The Python default.
  * @returns The member (even when `null` — `.get`'s default applies
- *   only to ABSENT keys), or the fallback.
- * @throws TypeError - Non-record body (the AttributeError analog).
+ *   only to absent keys), or the fallback.
+ * @throws {@link TypeError} - Non-record body (the AttributeError analog).
  */
-function dictGet(
+function resultDictGet(
   result: JsonValue,
   key: string,
   fallback: JsonValue,
 ): JsonValue {
   if (!isPlainRecord(result)) {
-    // TODO(port): Python raises AttributeError("'X' object has no
-    // attribute 'get'") here; no vector or Layer-3 test locks the
-    // non-dict body, so the closest JS error class stands in.
+    // Divergence: Python raises `AttributeError` here; the port raises
+    // `TypeError` with the same message text. No vector reaches a
+    // non-dict body.
     throw new TypeError(
       `'${pythonTypeNameOf(result)}' object has no attribute 'get'`,
     );
   }
-  return Object.hasOwn(result, key) ? (result[key] as JsonValue) : fallback;
+  return dictGet(result, key, fallback) as JsonValue;
 }
 
-/** The C5 schema method surface (mixed into `MixpanelClient`). */
+/** Schema methods mixed into `MixpanelClient`. */
 export interface SchemaMethods {
   /**
-   * List all Lexicon schemas (`get_schemas`, `api_client.py:3294-3343`
-   * — GET `/projects/{pid}/schemas[/{entity_type}]` on the App host
-   * via the `_request` twin, `inject_project_id=False`).
+   * List all Lexicon schemas. Sends GET `/projects/{pid}/schemas[/{entity_type}]`
+   * on the App host via the `_request` twin, `inject_project_id=False`.
    *
    * @param options - Optional `entity_type` path segment + signal.
    * @returns `result.get("results", [])` verbatim.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `executeWithRetry` contract.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schemas
    */
-  getSchemas(options?: GetSchemasOptions): Promise<JsonValue>;
+  getSchemas: (options?: GetSchemasOptions) => Promise<JsonValue>;
 
   /**
-   * Get a single Lexicon schema (`get_schema`, `:3345-3392` — GET
+   * Get a single Lexicon schema (`get_schema` — GET
    * `/projects/{pid}/schemas/{entity_type}?entity_name={name}`),
    * normalized to `{entityType, name, schemaJson}`.
    *
@@ -106,111 +101,125 @@ export interface SchemaMethods {
    * @param name - Entity name.
    * @param signal - Optional cancellation signal.
    * @returns The normalized schema record.
-   * @throws QueryError - Schema not found (404 → QueryError mapping).
+   * @throws {@link QueryError} - Schema not found (404 → QueryError mapping).
    */
-  getSchema(
+  getSchema: (
     entityType: string,
     name: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * List schema-registry entries (`list_schema_registry`,
-   * `:3398-3435` — GET `schemas[/{quoted entity_type}]`).
+   * List schema-registry entries. Sends GET `schemas[/{quoted entity_type}]`.
    *
    * @param options - Optional `entity_type` filter + signal.
    * @returns The entry list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_schema_registry
    */
-  listSchemaRegistry(options?: ListSchemaRegistryOptions): Promise<JsonValue[]>;
+  listSchemaRegistry: (
+    options?: ListSchemaRegistryOptions,
+  ) => Promise<JsonValue[]>;
 
   /**
-   * Create one schema (`create_schema`, `:3437-3478` — POST
-   * `schemas/{et}/{en}` with quoted segments).
+   * Create one schema. Sends POST `schemas/{et}/{en}` with quoted segments.
    *
    * @param entityType - Entity type.
    * @param entityName - Entity name.
    * @param schemaJson - JSON Schema Draft 7 definition (the body).
    * @param signal - Optional cancellation signal.
    * @returns The created schema dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_schema
    */
-  createSchema(
+  createSchema: (
     entityType: string,
     entityName: string,
     schemaJson: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Bulk-create schemas (`create_schemas_bulk`, `:3480-3515` — POST
-   * `schemas`).
+   * Bulk-create schemas. Sends POST `schemas`.
    *
    * @param body - Bulk creation payload.
    * @param signal - Optional cancellation signal.
    * @returns Dict with `added`/`deleted` counts.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_schemas_bulk
    */
-  createSchemasBulk(
+  createSchemasBulk: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update one schema (`update_schema`, `:3517-3558` — PATCH
-   * `schemas/{et}/{en}`, merge semantics).
+   * Update one schema. Sends PATCH `schemas/{et}/{en}`, merge semantics.
    *
    * @param entityType - Entity type.
    * @param entityName - Entity name.
    * @param schemaJson - Partial JSON Schema to merge.
    * @param signal - Optional cancellation signal.
    * @returns The updated schema dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_schema
    */
-  updateSchema(
+  updateSchema: (
     entityType: string,
     entityName: string,
     schemaJson: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Bulk-update schemas (`update_schemas_bulk`, `:3560-3592` — PATCH
-   * `schemas`).
+   * Bulk-update schemas. Sends PATCH `schemas`.
    *
    * @param body - Bulk update payload.
    * @param signal - Optional cancellation signal.
    * @returns Per-entry result list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_schemas_bulk
    */
-  updateSchemasBulk(
+  updateSchemasBulk: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
-   * Delete schemas by type and/or name (`delete_schemas`,
-   * `:3594-3649` — DELETE `schemas[/{et}[/{en}]]`).
+   * Delete schemas by type and/or name. Sends DELETE `schemas[/{et}[/{en}]]`.
    *
    * @param options - Optional `entity_type`/`entity_name` + signal.
    * @returns Dict with the `deleteCount` field.
-   * @throws MixpanelHeadlessError - `entity_name` without
-   *   `entity_type` (guard raised before any request), or a non-dict
-   *   response.
+   * @throws {@link MixpanelHeadlessError} - `entity_name` without `entity_type`
+   *   (guard raised before any request), or a non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_schemas
    */
-  deleteSchemas(
+  deleteSchemas: (
     options?: DeleteSchemasOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**
- * Build the C5 schema methods over the C1 core seam.
+ * Build the schema methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const schemas = createSchemaMethods(core);
+ * const one = await schemas.getSchema("event", "Purchase");
+ * // { entityType: "event", name: "Purchase", schemaJson: { ... } }
+ * ```
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createSchemaMethods(core: ClientCore): SchemaMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -220,8 +229,8 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
   return {
     getSchemas: async (options: GetSchemasOptions = {}): Promise<JsonValue> => {
       const entityType = options.entity_type;
-      // entity_type is a PATH parameter, not a query parameter
-      // (`api_client.py:3319-3323` — interpolated raw, no quote()).
+      // entity_type is a path parameter, not a query parameter,
+      // interpolated raw with no quote().
       const path =
         entityType !== undefined && entityType !== null
           ? `/projects/${core.projectId()}/schemas/${entityType}`
@@ -229,12 +238,12 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       const url = core.buildUrl("app", path);
       const result = await core.requestQueryHost("GET", url, {
         injectProjectId: false,
-        ...(options.signal !== undefined ? { signal: options.signal } : {}),
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
       });
-      // `result.get("results", [])` — note the source's debug-log set
-      // comprehension iterates the product; its failure modes on
-      // non-list results are not replicated (R9.5 — log-only effect).
-      return dictGet(result, "results", []);
+      // `result.get("results", [])`. Python's debug-log set comprehension
+      // also iterates the product; its failure modes on non-list results
+      // are not replicated (a log-only effect, never vector-compared).
+      return resultDictGet(result, "results", []);
     },
 
     getSchema: async (
@@ -249,11 +258,11 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       const result = await core.requestQueryHost("GET", url, {
         params: { entity_name: name },
         injectProjectId: false,
-        ...(signal !== undefined ? { signal } : {}),
+        ...(signal === undefined ? {} : { signal }),
       });
       // Single-schema format is {status: "ok", results: <schemaJson>};
-      // normalize to the list-response shape (`:3386-3392`).
-      const schemaJson = dictGet(result, "results", result);
+      // normalize to the list-response shape.
+      const schemaJson = resultDictGet(result, "results", result);
       return { entityType, name, schemaJson };
     },
 
@@ -261,10 +270,11 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       options: ListSchemaRegistryOptions = {},
     ): Promise<JsonValue[]> => {
       const entityType = options.entity_type;
-      const path =
+      const path = scopedPath(
         entityType !== undefined && entityType !== null
-          ? scopedPath(`schemas/${pythonQuote(entityType)}`)
-          : scopedPath("schemas");
+          ? `schemas/${pythonQuote(entityType)}`
+          : "schemas",
+      );
       const result = await appRequest(
         core.appDeps(options.signal),
         "GET",
@@ -344,7 +354,7 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       if (entityType !== undefined && entityType !== null) {
         base = `schemas/${pythonQuote(entityType)}`;
         if (entityName !== undefined && entityName !== null) {
-          base = `${base}/${pythonQuote(entityName)}`;
+          base += `/${pythonQuote(entityName)}`;
         }
       }
       const path = scopedPath(base);

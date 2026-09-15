@@ -1,38 +1,22 @@
-// Translated aggregator tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports (R10.2) of
-//   tests/unit/test_replay_bundle.py
-//     TestReplayBundleAggregations :325   (all 5)
-//     TestAggregatorFunctions      :459   (all 3)
-// PLUS the four asserts that Phase 2 excluded from
-// `test/types/results/replays.test.ts` pending this shard's TODO(port)
-// closure (that file's headers at :707-710 and :745-748 cite them):
-//     TestReplayBundleProjections::test_elements_df
-//     TestReplayBundleProjections::test_elements_df_normalizes_urls
-//     TestReplayBundleFilters::test_error_sessions
-//     TestReplayBundleFilters::test_sample_determinism
-//
-// pandas frames port as row arrays (C6 `toRows()` precedent), so
-// `df.iloc[0]["count"]` becomes `rows[0].count` and `len(df)` becomes
-// `rows.length`.
-//
-// `sample()`'s CPython parity (decision S3-D1) has its own dedicated
-// probe lock in `test/compat/python-random.test.ts`; the assert here is
-// the Python one (same seed → same sample).
+// ReplayBundle aggregations (top/rage clicks, long pauses), the module-level
+// aggregators, the elements frame, error-session filter and seeded sample().
+// Mirrors tests/unit/test_replay_bundle.py: TestReplayBundleAggregations,
+// TestAggregatorFunctions and the elements_df / error_sessions / sample cases
+// of TestReplayBundleProjections / TestReplayBundleFilters. Frames port as rows.
 import { describe, expect, it } from "vitest";
+
 import {
   longPauses,
   rageClicks,
   topClicks,
 } from "../../src/replays/aggregators.js";
-import {
-  Replay,
-  ReplayBundle,
-  UserAction,
-} from "../../src/types/results/replays.js";
+import { UserAction } from "../../src/replays/user-action.js";
+import { Replay } from "../../src/types/results/replay-models.js";
+import { ReplayBundle } from "../../src/types/results/replays.js";
 
 /**
  * Construct a `UserAction` (Python `_build_action`,
- * `test_replay_bundle.py:49-64`).
+ * `test_replay_bundle.py`).
  *
  * @param overrides - Field overrides applied over the Python defaults.
  * @returns The constructed action.
@@ -59,7 +43,7 @@ function buildAction(
 
 /**
  * Build a `Replay` with the given actions (Python `_make_replay`,
- * `test_replay_bundle.py:67-89`).
+ * `test_replay_bundle.py`).
  *
  * @param replayId - The replay id.
  * @param actions - The action list.
@@ -96,7 +80,7 @@ function makeReplay(replayId: string, actions: UserAction[]): Replay {
 
 /**
  * Build the shared aggregation fixture (Python `_sample_bundle`,
- * `test_replay_bundle.py:194-247`).
+ * `test_replay_bundle.py`).
  *
  * @returns The three-replay bundle.
  */
@@ -174,14 +158,17 @@ function sampleBundle(): ReplayBundle {
   });
 }
 
-describe("bundle aggregation methods (TestReplayBundleAggregations)", () => {
-  it("test_top_clicks", () => {
+describe("bundle aggregation methods", () => {
+  // python: TestReplayBundleAggregations
+  it("top clicks", () => {
+    // python: test_top_clicks
     const out = sampleBundle().topClicks();
     expect(out[0]?.["target_desc"]).toBe("button.signin");
     expect(out[0]?.["count"]).toBe(4);
   });
 
-  it("test_top_clicks_excludes_focus", () => {
+  it("top clicks excludes focus", () => {
+    // python: test_top_clicks_excludes_focus
     const r = makeReplay("r-f", [
       buildAction({
         timestamp: 10,
@@ -203,18 +190,20 @@ describe("bundle aggregation methods (TestReplayBundleAggregations)", () => {
       computed_at: "t",
       project_id: 12345,
     });
-    const out = b.topClicks().filter((row) => row["target_desc"] === "btn");
-    expect(out[0]?.["count"]).toBe(1);
+    const out = b.topClicks().find((row) => row["target_desc"] === "btn");
+    expect(out?.["count"]).toBe(1);
   });
 
-  it("test_rage_clicks", () => {
+  it("rage clicks", () => {
+    // python: test_rage_clicks
     const out = sampleBundle().rageClicks({ threshold: 3, windowMs: 100 });
     expect(out).toHaveLength(1);
     expect(out[0]?.["replay_id"]).toBe("r-2");
     expect(out[0]?.["count"]).toBe(3);
   });
 
-  it("test_rage_clicks_excludes_focus", () => {
+  it("rage clicks excludes focus", () => {
+    // python: test_rage_clicks_excludes_focus
     const base = 1716810000000;
     // Three genuine clicks within the window = one real 3-burst.
     const real = makeReplay(
@@ -255,45 +244,52 @@ describe("bundle aggregation methods (TestReplayBundleAggregations)", () => {
       project_id: 12345,
     });
     const out = b.rageClicks({ threshold: 3, windowMs: 100 });
-    expect(new Set(out.map((row) => row["replay_id"]))).toEqual(
+    expect(new Set(out.map((row) => row["replay_id"]))).toStrictEqual(
       new Set(["r-real"]),
     );
   });
 
-  it("test_long_pauses", () => {
+  it("long pauses", () => {
+    // python: test_long_pauses
     const out = sampleBundle().longPauses(10);
     expect(out.some((row) => row["replay_id"] === "r-2")).toBe(true);
   });
 });
 
-describe("module-level aggregators (TestAggregatorFunctions)", () => {
-  it("test_rage_clicks_module", () => {
+describe("module-level aggregators", () => {
+  // python: TestAggregatorFunctions
+  it("rage clicks module", () => {
+    // python: test_rage_clicks_module
     const out = rageClicks(sampleBundle(), { threshold: 3, windowMs: 100 });
     expect(out).toHaveLength(1);
   });
 
-  it("test_long_pauses_module", () => {
+  it("long pauses module", () => {
+    // python: test_long_pauses_module
     const out = longPauses(sampleBundle(), 10);
     expect(out.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("test_top_clicks_module", () => {
-    expect(topClicks(sampleBundle())[0]?.["target_desc"]).toBe("button.signin");
+  it("top clicks module", () => {
+    // python: test_top_clicks_module
+    expect(topClicks(sampleBundle())[0]?.target_desc).toBe("button.signin");
   });
 });
 
-describe("elements frame — the Phase-2 deferrals (TestReplayBundleProjections)", () => {
-  it("test_elements_df", () => {
+describe("elements frame projections", () => {
+  // python: TestReplayBundleProjections
+  it("elements df", () => {
+    // python: test_elements_df
     const rows = sampleBundle().toElementsRows();
-    if (rows.length > 0) {
-      expect(sampleBundle().elementsRowColumns()).toContain("n_clicks");
-      const row = rows.filter((r) => r["target_desc"] === "button.signin")[0];
-      // 1 click from r1 + 3 from r2 = 4
-      expect(row?.["n_clicks"]).toBe(4);
-    }
+    expect(rows.length).toBeGreaterThan(0);
+    expect(sampleBundle().elementsRowColumns()).toContain("n_clicks");
+    const row = rows.find((r) => r["target_desc"] === "button.signin");
+    // 1 click from r1 + 3 from r2 = 4
+    expect(row?.["n_clicks"]).toBe(4);
   });
 
-  it("test_elements_df_normalizes_urls", () => {
+  it("elements df normalizes URLs", () => {
+    // python: test_elements_df_normalizes_urls
     const r = makeReplay("r-n", [
       buildAction({
         timestamp: 10,
@@ -322,17 +318,20 @@ describe("elements frame — the Phase-2 deferrals (TestReplayBundleProjections)
   });
 });
 
-describe("error-session + sample filters — the Phase-2 deferrals (TestReplayBundleFilters)", () => {
-  it("test_error_sessions", () => {
+describe("error-session and sample filters", () => {
+  // python: TestReplayBundleFilters
+  it("error sessions", () => {
+    // python: test_error_sessions
     const out = sampleBundle().errorSessions();
-    expect(out.replays.map((r) => r.replay_id)).toEqual(["r-3"]);
+    expect(out.replays.map((r) => r.replay_id)).toStrictEqual(["r-3"]);
   });
 
-  it("test_sample_determinism", () => {
+  it("sample determinism", () => {
+    // python: test_sample_determinism
     const b = sampleBundle();
     const a = b.sample(2, 42).replays.map((r) => r.replay_id);
     const c = b.sample(2, 42).replays.map((r) => r.replay_id);
-    expect(a).toEqual(c);
+    expect(a).toStrictEqual(c);
     expect(a).toHaveLength(2);
   });
 });

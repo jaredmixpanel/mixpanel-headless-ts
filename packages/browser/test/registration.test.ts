@@ -1,25 +1,19 @@
-// Layer-3 suite for the browser DCR wrapper (b9-packets.md §3.2 row 3
-// / §3.4 `test_auth_registration.py` row): CredentialStore-cached
-// Dynamic Client Registration over the core `registerClient` POST half
-// (§3.1 hoist of `client_registration.py:96-170`). Cache-hit rule
-// identical to Python: the cached client is returned ONLY when its
-// `redirect_uri` matches (`client_registration.py:92-93`). Error
-// branches (network / 429 / non-success / bad JSON / missing
-// client_id) ride the hoisted core body — canned here, node's B8
-// `client-registration.test.ts` stays the exhaustive lock. R5:
-// assertions key on error CODES.
+// The browser DCR wrapper: CredentialStore-cached registration over the core
+// `registerClient` POST. Cache-hit rule as in Python (the cached client is
+// returned only when its `redirect_uri` matches); the error branches are
+// canned here and locked exhaustively in node's client-registration.test.ts.
 
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SCOPE } from "../../core/src/auth/oauth-constants.js";
-import { OAuthError } from "../../core/src/errors.js";
+import { DEFAULT_SCOPE, OAuthError } from "@mixpanel-headless/core";
+
 import { InMemoryCredentialStore } from "../src/credential-store.js";
-import { ensureBrowserClientRegistered } from "../src/registration.js";
 import { CREDENTIAL_KEYS } from "../src/index.js";
+import { ensureBrowserClientRegistered } from "../src/registration.js";
 import {
+  type BodyCapturingTransport,
   bodyCapturingTransport,
   jsonResponse,
-  type BodyCapturingTransport,
 } from "./flow-helpers.js";
 
 const REDIRECT_URI = "https://app.example.com/oauth/callback";
@@ -53,7 +47,7 @@ describe("ensureBrowserClientRegistered", () => {
     expect(request?.method).toBe("POST");
     expect(request?.url).toBe("https://mixpanel.com/oauth/mcp/register/");
     // Body keys in Python dict insertion order
-    // (`client_registration.py:106-112`) — byte-compare.
+    // (`client_registration.py`) — byte-compare.
     expect(request?.body).toBe(
       JSON.stringify({
         redirect_uris: [REDIRECT_URI],
@@ -69,11 +63,11 @@ describe("ensureBrowserClientRegistered", () => {
     expect(info.redirect_uri).toBe(REDIRECT_URI);
     expect(info.scope).toBe(DEFAULT_SCOPE);
 
-    // Persisted under the region key in the R11.9 pydantic-JSON shape
-    // (`Z` suffix — client_{region}.json twin, §2.1).
-    const raw = await store.get(CREDENTIAL_KEYS.clientInfo("us"));
+    // Persisted under the region key in the pydantic-JSON shape (`Z`
+    // suffix — the client_{region}.json twin).
+    const raw = store.get(CREDENTIAL_KEYS.clientInfo("us"));
     expect(raw).not.toBeNull();
-    const payload = JSON.parse(raw as string) as Record<string, unknown>;
+    const payload = JSON.parse(raw!) as Record<string, unknown>;
     expect(payload["client_id"]).toBe("dcr-client-123");
     expect(payload["created_at"]).toBe("2026-01-15T10:30:00Z");
   });
@@ -99,7 +93,7 @@ describe("ensureBrowserClientRegistered", () => {
     expect(second.client_id).toBe(first.client_id);
   });
 
-  it("re-registers when the cached redirect_uri differs (`client_registration.py:92-93`)", async () => {
+  it("re-registers when the cached redirect_uri differs", async () => {
     const transport = registrationTransport();
     const store = new InMemoryCredentialStore();
     await ensureBrowserClientRegistered({
@@ -141,29 +135,26 @@ describe("ensureBrowserClientRegistered", () => {
     expect(transport.captures[1]?.url).toBe(
       "https://eu.mixpanel.com/oauth/mcp/register/",
     );
-    expect(await store.get(CREDENTIAL_KEYS.clientInfo("us"))).not.toBeNull();
-    expect(await store.get(CREDENTIAL_KEYS.clientInfo("eu"))).not.toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.clientInfo("us"))).not.toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.clientInfo("eu"))).not.toBeNull();
   });
 
   it.each([
     ["unknown region", "uk"],
     ["uppercase region", "US"],
     ["empty region", ""],
-  ])(
-    "raises OAUTH_REGISTRATION_ERROR for %s (`client_registration.py:97-103`)",
-    async (_label, region) => {
-      const transport = registrationTransport();
-      await expect(
-        ensureBrowserClientRegistered({
-          fetch: transport.fetch,
-          region,
-          redirectUri: REDIRECT_URI,
-          store: new InMemoryCredentialStore(),
-        }),
-      ).rejects.toMatchObject({ code: "OAUTH_REGISTRATION_ERROR" });
-      expect(transport.captures).toHaveLength(0);
-    },
-  );
+  ])("raises OAUTH_REGISTRATION_ERROR for %s", async (_label, region) => {
+    const transport = registrationTransport();
+    await expect(
+      ensureBrowserClientRegistered({
+        fetch: transport.fetch,
+        region,
+        redirectUri: REDIRECT_URI,
+        store: new InMemoryCredentialStore(),
+      }),
+    ).rejects.toMatchObject({ code: "OAUTH_REGISTRATION_ERROR" });
+    expect(transport.captures).toHaveLength(0);
+  });
 
   it("maps 429 to OAUTH_REGISTRATION_ERROR with the retry_after detail", async () => {
     const transport = bodyCapturingTransport(
@@ -180,7 +171,7 @@ describe("ensureBrowserClientRegistered", () => {
       store: new InMemoryCredentialStore(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");

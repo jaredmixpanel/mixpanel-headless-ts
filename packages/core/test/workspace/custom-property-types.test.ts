@@ -1,36 +1,11 @@
-// Translated custom-property type + validation tests (B5-S2, packet
-// §3): assertion-for-assertion port of tests/test_custom_property_types.py
-// (R10.2) — 11 of its 12 classes: TestPropertyInput :50,
-// TestInlineCustomProperty :101, TestInlineCustomPropertyNumeric :140,
-// TestCustomPropertyRef :173, TestTypeWidening :227,
-// TestCustomPropertyValidationCP1 :304, …CP2 :326, …CP3 :356,
-// …CP4 :370, …CP5 :388, …CP6 :419, TestCustomPropertyValidationValid
-// :436, …FilterPosition :457, …MeasurementPosition :469,
-// …FunnelRetention :480.
-//
-// HEADER EXCLUSION:
-// - `TestImmutability` :194 asserts
-//   `pytest.raises(dataclasses.FrozenInstanceError)` on attribute
-//   assignment for all three types. The TS ports use `readonly` fields,
-//   which is COMPILE-TIME only — rulebook R4.6 explicitly forbids
-//   `Object.freeze` — so there is no runtime error to observe and the
-//   class has no TS analog. The immutability the Python test protects
-//   (nobody mutates these value objects) is enforced by `tsc` at every
-//   call site instead.
-//
-// OVERLAP NOTE (packet §3, "UNLESS an assert is already locked verbatim
-// by a Phase-2 types test"): `test/types/query-params/filter.test.ts:432`
-// ("property-spec helper types") already locks THREE of the
-// construction asserts (PropertyInput defaults, CustomPropertyRef.id,
-// InlineCustomProperty defaults + the numeric factory). The classes are
-// translated in FULL here anyway — the Python classes carry cases the
-// Phase-2 describe does not (explicit types, the 5-way type
-// parametrize, the user resource_type, full construction, single-input
-// numeric, large ids), and duplicating three cheap asserts is safer for
-// R10.2 completeness than a partial exclusion.
+// `PropertyInput`, `InlineCustomProperty` and `CustomPropertyRef`
+// construction, the widened `Metric` / `GroupBy` / `Filter` property types
+// and the CP1–CP6 fail-fast validation. Mirrors 11 of the 12 classes of
+// `tests/test_custom_property_types.py`; `TestImmutability` is not carried
+// (`readonly` fields are compile-time only — no runtime FrozenInstanceError).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { BookmarkValidationError } from "../../src/errors.js";
 import {
   CustomPropertyRef,
@@ -40,25 +15,14 @@ import {
 } from "../../src/types/query-params/filter.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Metric } from "../../src/types/query-params/metric.js";
-import { mockWorkspaceClient, TEST_SESSION } from "./workspace-test-helpers.js";
-
-/**
- * The `ws` fixture (test file :294-301).
- *
- * @returns The facade under test.
- */
-function makeWs(): Workspace {
-  return new Workspace({
-    session: TEST_SESSION,
-    client: mockWorkspaceClient().client,
-  });
-}
+import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 // ===========================================================================
 // T001: PropertyInput construction
 // ===========================================================================
 
-describe("TestPropertyInput", () => {
+describe("Property input", () => {
+  // python: TestPropertyInput
   it("can be constructed with just a name", () => {
     const pi = new PropertyInput({ name: "price" });
     expect(pi.name).toBe("price");
@@ -109,14 +73,15 @@ describe("TestPropertyInput", () => {
 // T002: InlineCustomProperty construction
 // ===========================================================================
 
-describe("TestInlineCustomProperty", () => {
+describe("Inline custom property", () => {
+  // python: TestInlineCustomProperty
   it("can be constructed with a formula plus a single input", () => {
     const icp = new InlineCustomProperty({
       formula: "A",
       inputs: { A: new PropertyInput({ name: "price" }) },
     });
     expect(icp.formula).toBe("A");
-    expect(Object.keys(icp.inputs).length).toBe(1);
+    expect(Object.keys(icp.inputs)).toHaveLength(1);
     expect(icp.inputs["A"]!.name).toBe("price");
     expect(icp.property_type).toBeNull();
     expect(icp.resource_type).toBe("events");
@@ -133,7 +98,7 @@ describe("TestInlineCustomProperty", () => {
       resource_type: "people",
     });
     expect(icp.formula).toBe("A * B");
-    expect(Object.keys(icp.inputs).length).toBe(2);
+    expect(Object.keys(icp.inputs)).toHaveLength(2);
     expect(icp.property_type).toBe("number");
     expect(icp.resource_type).toBe("people");
   });
@@ -143,14 +108,15 @@ describe("TestInlineCustomProperty", () => {
 // T003: InlineCustomProperty.numeric()
 // ===========================================================================
 
-describe("TestInlineCustomPropertyNumeric", () => {
+describe("Inline custom property numeric", () => {
+  // python: TestInlineCustomPropertyNumeric
   it("creates an all-number property with multiple inputs", () => {
     const icp = InlineCustomProperty.numeric("A * B", {
       A: "price",
       B: "quantity",
     });
     expect(icp.formula).toBe("A * B");
-    expect(Object.keys(icp.inputs).length).toBe(2);
+    expect(Object.keys(icp.inputs)).toHaveLength(2);
     expect(icp.inputs["A"]!.name).toBe("price");
     expect(icp.inputs["A"]!.type).toBe("number");
     expect(icp.inputs["A"]!.resource_type).toBe("event");
@@ -163,7 +129,7 @@ describe("TestInlineCustomPropertyNumeric", () => {
   it("works with a single input", () => {
     const icp = InlineCustomProperty.numeric("A", { A: "revenue" });
     expect(icp.formula).toBe("A");
-    expect(Object.keys(icp.inputs).length).toBe(1);
+    expect(Object.keys(icp.inputs)).toHaveLength(1);
     expect(icp.inputs["A"]!.name).toBe("revenue");
     expect(icp.inputs["A"]!.type).toBe("number");
     expect(icp.property_type).toBe("number");
@@ -174,7 +140,8 @@ describe("TestInlineCustomPropertyNumeric", () => {
 // T004: CustomPropertyRef construction
 // ===========================================================================
 
-describe("TestCustomPropertyRef", () => {
+describe("Custom property ref", () => {
+  // python: TestCustomPropertyRef
   it("stores the given integer id", () => {
     expect(new CustomPropertyRef({ id: 42 }).id).toBe(42);
   });
@@ -188,7 +155,8 @@ describe("TestCustomPropertyRef", () => {
 // Type widening backward compatibility
 // ===========================================================================
 
-describe("TestTypeWidening", () => {
+describe("Type widening", () => {
+  // python: TestTypeWidening
   it("Metric.property still accepts a plain string", () => {
     const m = new Metric({
       event: "Purchase",
@@ -257,10 +225,11 @@ describe("TestTypeWidening", () => {
 // T047-T056: fail-fast validation (CP1-CP6)
 // ===========================================================================
 
-describe("TestCustomPropertyValidationCP1", () => {
+describe("Custom property validation CP1", () => {
+  // python: TestCustomPropertyValidationCP1
   it("CustomPropertyRef(0) in group_by raises", async () => {
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({
           property: new CustomPropertyRef({ id: 0 }),
           property_type: "number",
@@ -268,7 +237,7 @@ describe("TestCustomPropertyValidationCP1", () => {
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({
           property: new CustomPropertyRef({ id: 0 }),
           property_type: "number",
@@ -279,7 +248,7 @@ describe("TestCustomPropertyValidationCP1", () => {
 
   it("CustomPropertyRef(-1) raises", async () => {
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({
           property: new CustomPropertyRef({ id: -1 }),
           property_type: "number",
@@ -287,7 +256,7 @@ describe("TestCustomPropertyValidationCP1", () => {
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({
           property: new CustomPropertyRef({ id: -1 }),
           property_type: "number",
@@ -297,19 +266,20 @@ describe("TestCustomPropertyValidationCP1", () => {
   });
 });
 
-describe("TestCustomPropertyValidationCP2", () => {
+describe("Custom property validation CP2", () => {
+  // python: TestCustomPropertyValidationCP2
   it("an empty formula raises", async () => {
     const icp = new InlineCustomProperty({
       formula: "",
       inputs: { A: new PropertyInput({ name: "price" }) },
     });
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toThrow(/non-empty/);
@@ -317,39 +287,41 @@ describe("TestCustomPropertyValidationCP2", () => {
 
   it("a whitespace-only formula raises", async () => {
     const icp = new InlineCustomProperty({
-      formula: "   ",
+      formula: " ".repeat(3),
       inputs: { A: new PropertyInput({ name: "price" }) },
     });
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toThrow(/non-empty/);
   });
 });
 
-describe("TestCustomPropertyValidationCP3", () => {
+describe("Custom property validation CP3", () => {
+  // python: TestCustomPropertyValidationCP3
   it("an empty inputs dict raises", async () => {
     const icp = new InlineCustomProperty({ formula: "A", inputs: {} });
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toThrow(/at least one input/);
   });
 });
 
-describe("TestCustomPropertyValidationCP4", () => {
+describe("Custom property validation CP4", () => {
+  // python: TestCustomPropertyValidationCP4
   for (const key of ["a", "AB", "1", "aa"]) {
     it(`the input key '${key}' raises`, async () => {
       const icp = new InlineCustomProperty({
@@ -357,12 +329,12 @@ describe("TestCustomPropertyValidationCP4", () => {
         inputs: { [key]: new PropertyInput({ name: "price" }) },
       });
       await expect(
-        makeWs().buildParams("Purchase", {
+        makeStubWorkspace().buildParams("Purchase", {
           group_by: new GroupBy({ property: icp, property_type: "string" }),
         }),
       ).rejects.toBeInstanceOf(BookmarkValidationError);
       await expect(
-        makeWs().buildParams("Purchase", {
+        makeStubWorkspace().buildParams("Purchase", {
           group_by: new GroupBy({ property: icp, property_type: "string" }),
         }),
       ).rejects.toThrow(/uppercase/);
@@ -370,19 +342,20 @@ describe("TestCustomPropertyValidationCP4", () => {
   }
 });
 
-describe("TestCustomPropertyValidationCP5", () => {
+describe("Custom property validation CP5", () => {
+  // python: TestCustomPropertyValidationCP5
   it("a formula longer than 20,000 chars raises", async () => {
     const icp = new InlineCustomProperty({
       formula: "A".repeat(20001),
       inputs: { A: new PropertyInput({ name: "price" }) },
     });
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toThrow(/20,000/);
@@ -393,72 +366,80 @@ describe("TestCustomPropertyValidationCP5", () => {
       formula: "A".repeat(20000),
       inputs: { A: new PropertyInput({ name: "price" }) },
     });
-    const params = await makeWs().buildParams("Purchase", {
+    const params = await makeStubWorkspace().buildParams("Purchase", {
       group_by: new GroupBy({ property: icp, property_type: "string" }),
     });
     expect(Object.hasOwn(params, "sections")).toBe(true);
   });
 });
 
-describe("TestCustomPropertyValidationCP6", () => {
+describe("Custom property validation CP6", () => {
+  // python: TestCustomPropertyValidationCP6
   it("an empty PropertyInput.name raises", async () => {
     const icp = new InlineCustomProperty({
       formula: "A",
       inputs: { A: new PropertyInput({ name: "" }) },
     });
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
     ).rejects.toThrow(/empty property name/);
   });
 });
 
-describe("TestCustomPropertyValidationValid", () => {
+describe("Custom property validation valid", () => {
+  // python: TestCustomPropertyValidationValid
   it("a valid InlineCustomProperty passes", async () => {
     const icp = InlineCustomProperty.numeric("A * B", {
       A: "price",
       B: "quantity",
     });
-    await makeWs().buildParams("Purchase", {
-      group_by: new GroupBy({ property: icp, property_type: "number" }),
-    });
+    await expect(
+      makeStubWorkspace().buildParams("Purchase", {
+        group_by: new GroupBy({ property: icp, property_type: "number" }),
+      }),
+    ).resolves.toBeDefined();
   });
 
   it("a valid CustomPropertyRef passes", async () => {
-    await makeWs().buildParams("Purchase", {
-      group_by: new GroupBy({
-        property: new CustomPropertyRef({ id: 42 }),
-        property_type: "number",
+    await expect(
+      makeStubWorkspace().buildParams("Purchase", {
+        group_by: new GroupBy({
+          property: new CustomPropertyRef({ id: 42 }),
+          property_type: "number",
+        }),
       }),
-    });
+    ).resolves.toBeDefined();
   });
 });
 
-describe("TestCustomPropertyValidationFilterPosition", () => {
+describe("Custom property validation filter position", () => {
+  // python: TestCustomPropertyValidationFilterPosition
   it("CustomPropertyRef(0) in the filter raises", async () => {
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("Purchase", {
+      makeStubWorkspace().buildParams("Purchase", {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
       }),
     ).rejects.toThrow(/positive integer/);
   });
 });
 
-describe("TestCustomPropertyValidationMeasurementPosition", () => {
+describe("Custom property validation measurement position", () => {
+  // python: TestCustomPropertyValidationMeasurementPosition
   it("CustomPropertyRef(0) in Metric.property raises", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "Purchase",
           math: "average",
@@ -467,7 +448,7 @@ describe("TestCustomPropertyValidationMeasurementPosition", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "Purchase",
           math: "average",
@@ -478,10 +459,11 @@ describe("TestCustomPropertyValidationMeasurementPosition", () => {
   });
 });
 
-describe("TestCustomPropertyValidationFunnelRetention", () => {
+describe("Custom property validation funnel retention", () => {
+  // python: TestCustomPropertyValidationFunnelRetention
   it("CustomPropertyRef(0) in funnel group_by raises", async () => {
     await expect(
-      makeWs().buildFunnelParams(["Signup", "Purchase"], {
+      makeStubWorkspace().buildFunnelParams(["Signup", "Purchase"], {
         group_by: new GroupBy({
           property: new CustomPropertyRef({ id: 0 }),
           property_type: "number",
@@ -489,7 +471,7 @@ describe("TestCustomPropertyValidationFunnelRetention", () => {
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildFunnelParams(["Signup", "Purchase"], {
+      makeStubWorkspace().buildFunnelParams(["Signup", "Purchase"], {
         group_by: new GroupBy({
           property: new CustomPropertyRef({ id: 0 }),
           property_type: "number",
@@ -500,7 +482,7 @@ describe("TestCustomPropertyValidationFunnelRetention", () => {
 
   it("CustomPropertyRef(0) in retention group_by raises", async () => {
     await expect(
-      makeWs().buildRetentionParams("Signup", "Login", {
+      makeStubWorkspace().buildRetentionParams("Signup", "Login", {
         group_by: new GroupBy({
           property: new CustomPropertyRef({ id: 0 }),
           property_type: "number",
@@ -508,7 +490,7 @@ describe("TestCustomPropertyValidationFunnelRetention", () => {
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildRetentionParams("Signup", "Login", {
+      makeStubWorkspace().buildRetentionParams("Signup", "Login", {
         group_by: new GroupBy({
           property: new CustomPropertyRef({ id: 0 }),
           property_type: "number",
@@ -519,12 +501,12 @@ describe("TestCustomPropertyValidationFunnelRetention", () => {
 
   it("CustomPropertyRef(0) in funnel where raises", async () => {
     await expect(
-      makeWs().buildFunnelParams(["Signup", "Purchase"], {
+      makeStubWorkspace().buildFunnelParams(["Signup", "Purchase"], {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildFunnelParams(["Signup", "Purchase"], {
+      makeStubWorkspace().buildFunnelParams(["Signup", "Purchase"], {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
       }),
     ).rejects.toThrow(/positive integer/);
@@ -532,12 +514,12 @@ describe("TestCustomPropertyValidationFunnelRetention", () => {
 
   it("CustomPropertyRef(0) in retention where raises", async () => {
     await expect(
-      makeWs().buildRetentionParams("Signup", "Login", {
+      makeStubWorkspace().buildRetentionParams("Signup", "Login", {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildRetentionParams("Signup", "Login", {
+      makeStubWorkspace().buildRetentionParams("Signup", "Login", {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
       }),
     ).rejects.toThrow(/positive integer/);

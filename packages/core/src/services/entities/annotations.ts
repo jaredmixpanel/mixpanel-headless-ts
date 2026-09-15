@@ -1,26 +1,23 @@
 /**
- * Annotation CRUD + tag wire methods (App API) — Phase-3 packet B4-C4
- * port of the `MixpanelAPIClient` annotations range
- * (`api_client.py:5674-5914`).
+ * Annotation CRUD and tag wire methods on the App API (`annotations/`,
+ * workspace-scoped through `maybe_scoped_path`). List filters spell the
+ * camelCase wire params (`fromDate`, `toDate`) from snake_case options
+ * and `,`-join integer tag ids; results come back verbatim after
+ * Python's isinstance guard.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). List filters spell camelCase wire params (`fromDate`,
- * `toDate`) from snake_case kwargs and `,`-join integer tag IDs.
- * Results are returned verbatim after the source's isinstance guard
- * (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_annotations
  */
 
 import { appRequest } from "../../client/app-request.js";
-import type { ClientCore } from "../../client/client.js";
+import type { ClientCore } from "../../client/core.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
+import { truthyList, truthyStr } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
   joinIds,
   paramsOrNone,
-  truthyList,
-  truthyStr,
 } from "./shared.js";
 
 /** Options bag of {@link AnnotationMethods.listAnnotations}. */
@@ -31,108 +28,129 @@ export interface ListAnnotationsOptions {
   readonly to_date?: string | null | undefined;
   /** Tag IDs to filter by (`,`-joined on the wire). */
   readonly tags?: readonly number[] | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C4 annotation method surface (mixed into `MixpanelClient`). */
+/** Annotation methods mixed into `MixpanelClient`. */
 export interface AnnotationMethods {
   /**
-   * List timeline annotations (`list_annotations`,
-   * `api_client.py:5674-5720` — GET `annotations/`).
+   * List timeline annotations. Sends GET `annotations/`.
    *
    * @param options - from_date/to_date/tags filters + signal.
    * @returns The annotation list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_annotations
    */
-  listAnnotations(options?: ListAnnotationsOptions): Promise<JsonValue[]>;
+  listAnnotations: (options?: ListAnnotationsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create an annotation (`create_annotation`, `:5722-5755` — POST
-   * `annotations/`).
+   * Create an annotation. Sends POST `annotations/`.
    *
    * @param body - Annotation data (date, description, ...).
    * @param signal - Optional cancellation signal.
    * @returns The created annotation dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_annotation
    */
-  createAnnotation(
+  createAnnotation: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get an annotation by ID (`get_annotation`, `:5757-5788`).
+   * Get an annotation by ID.
    *
    * @param annotationId - Annotation ID.
    * @param signal - Optional cancellation signal.
    * @returns The annotation dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_annotation
    */
-  getAnnotation(
+  getAnnotation: (
     annotationId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update an annotation (`update_annotation`, `:5790-5824` — PATCH).
+   * Update an annotation. Sends a PATCH.
    *
    * @param annotationId - Annotation ID.
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated annotation dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_annotation
    */
-  updateAnnotation(
+  updateAnnotation: (
     annotationId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete an annotation (`delete_annotation`, `:5826-5851`).
+   * Delete an annotation.
    *
    * @param annotationId - Annotation ID.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_annotation
    */
-  deleteAnnotation(annotationId: number, signal?: AbortSignal): Promise<void>;
+  deleteAnnotation: (
+    annotationId: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
-   * List annotation tags (`list_annotation_tags`, `:5853-5881` — GET
-   * `annotations/tags/`).
+   * List annotation tags. Sends GET `annotations/tags/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The tag list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_annotation_tags
    */
-  listAnnotationTags(signal?: AbortSignal): Promise<JsonValue[]>;
+  listAnnotationTags: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create an annotation tag (`create_annotation_tag`, `:5883-5914` —
-   * POST `annotations/tags/`).
+   * Create an annotation tag. Sends POST `annotations/tags/`.
    *
    * @param body - Tag data (name).
    * @param signal - Optional cancellation signal.
    * @returns The created tag dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_annotation_tag
    */
-  createAnnotationTag(
+  createAnnotationTag: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**
- * Build the C4 annotation methods over the C1 core seam.
+ * Build the annotation methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const annotations = createAnnotationMethods(core);
+ * await annotations.createAnnotation({ date: "2026-01-15", description: "Launch" });
+ * // { id: 7, date: "2026-01-15", description: "Launch", ... }
+ * ```
  */
 export function createAnnotationMethods(core: ClientCore): AnnotationMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

@@ -1,25 +1,27 @@
 /**
  * Custom alert family (E4: derived from the Python models + wire vectors; the vendored alerts/custom contract is ADVISORY).
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
+import { cpLength } from "../../compat/codepoint.js";
 import {
+  type EntityFieldSpecs,
   EntityModel,
-  codepointLength,
   modelFail,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
 
 /**
  * Constructor input for {@link AlertBookmark} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertBookmarkInit {
   /** Bookmark ID. */
@@ -33,18 +35,26 @@ export interface AlertBookmarkInit {
 /**
  * Nested bookmark info for an alert.
  *
- * Mirror of Python `mixpanel_headless.types.AlertBookmark` (types.py:4151;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertBookmark = AlertBookmark.fromDict({
+ *   id: 42,
+ *   name: "Signup funnel",
+ * });
+ * alertBookmark.id; // 42
+ * ```
+ * @see mixpanel_headless.types.AlertBookmark
  */
-export class AlertBookmark extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertBookmark extends EntityModel<AlertBookmarkInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertBookmark";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertBookmarkInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
     { name: "type", kind: "str", nullable: true },
@@ -61,14 +71,11 @@ export class AlertBookmark extends EntityModel {
    * Construct a validated AlertBookmark (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertBookmarkInit) {
-    super(
-      AlertBookmark,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertBookmark, fields);
   }
 
   /**
@@ -77,18 +84,16 @@ export class AlertBookmark extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertBookmark {
-    return new AlertBookmark(
-      prepareInit(AlertBookmark, raw) as unknown as AlertBookmarkInit,
-    );
+    return new AlertBookmark(prepareInit(AlertBookmark, raw));
   }
 }
 
 /**
  * Constructor input for {@link AlertCreator} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertCreatorInit {
   /** User ID. */
@@ -104,18 +109,23 @@ export interface AlertCreatorInit {
 /**
  * Nested creator info for an alert.
  *
- * Mirror of Python `mixpanel_headless.types.AlertCreator` (types.py:4177;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertCreator = AlertCreator.fromDict({ id: 42, first_name: "Ana" });
+ * alertCreator.id; // 42
+ * ```
+ * @see mixpanel_headless.types.AlertCreator
  */
-export class AlertCreator extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertCreator extends EntityModel<AlertCreatorInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertCreator";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertCreatorInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "first_name", kind: "str", nullable: true },
     { name: "last_name", kind: "str", nullable: true },
@@ -135,11 +145,11 @@ export class AlertCreator extends EntityModel {
    * Construct a validated AlertCreator (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertCreatorInit) {
-    super(AlertCreator, fields as unknown as Readonly<Record<string, unknown>>);
+    super(AlertCreator, fields);
   }
 
   /**
@@ -148,18 +158,16 @@ export class AlertCreator extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertCreator {
-    return new AlertCreator(
-      prepareInit(AlertCreator, raw) as unknown as AlertCreatorInit,
-    );
+    return new AlertCreator(prepareInit(AlertCreator, raw));
   }
 }
 
 /**
  * Constructor input for {@link AlertWorkspace} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertWorkspaceInit {
   /** Workspace ID. */
@@ -171,18 +179,23 @@ export interface AlertWorkspaceInit {
 /**
  * Nested workspace info for an alert.
  *
- * Mirror of Python `mixpanel_headless.types.AlertWorkspace` (types.py:4207;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertWorkspace = AlertWorkspace.fromDict({ id: 42, name: "Growth" });
+ * alertWorkspace.id; // 42
+ * ```
+ * @see mixpanel_headless.types.AlertWorkspace
  */
-export class AlertWorkspace extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertWorkspace extends EntityModel<AlertWorkspaceInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertWorkspace";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertWorkspaceInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
   ];
@@ -196,14 +209,11 @@ export class AlertWorkspace extends EntityModel {
    * Construct a validated AlertWorkspace (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertWorkspaceInit) {
-    super(
-      AlertWorkspace,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertWorkspace, fields);
   }
 
   /**
@@ -212,18 +222,16 @@ export class AlertWorkspace extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertWorkspace {
-    return new AlertWorkspace(
-      prepareInit(AlertWorkspace, raw) as unknown as AlertWorkspaceInit,
-    );
+    return new AlertWorkspace(prepareInit(AlertWorkspace, raw));
   }
 }
 
 /**
  * Constructor input for {@link AlertProject} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertProjectInit {
   /** Project ID. */
@@ -235,18 +243,23 @@ export interface AlertProjectInit {
 /**
  * Nested project info for an alert.
  *
- * Mirror of Python `mixpanel_headless.types.AlertProject` (types.py:4229;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertProject = AlertProject.fromDict({ id: 42, name: "Web app" });
+ * alertProject.id; // 42
+ * ```
+ * @see mixpanel_headless.types.AlertProject
  */
-export class AlertProject extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertProject extends EntityModel<AlertProjectInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertProject";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertProjectInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
   ];
@@ -260,11 +273,11 @@ export class AlertProject extends EntityModel {
    * Construct a validated AlertProject (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertProjectInit) {
-    super(AlertProject, fields as unknown as Readonly<Record<string, unknown>>);
+    super(AlertProject, fields);
   }
 
   /**
@@ -273,18 +286,16 @@ export class AlertProject extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertProject {
-    return new AlertProject(
-      prepareInit(AlertProject, raw) as unknown as AlertProjectInit,
-    );
+    return new AlertProject(prepareInit(AlertProject, raw));
   }
 }
 
 /**
  * Constructor input for {@link CustomAlert} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CustomAlertInit {
   /** Alert ID. */
@@ -332,18 +343,27 @@ export interface CustomAlertInit {
 /**
  * Response model for a custom alert.
  *
- * Mirror of Python `mixpanel_headless.types.CustomAlert` (types.py:4251;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const customAlert = CustomAlert.fromDict({
+ *   id: 42,
+ *   name: "Signups dropped",
+ *   frequency: 60,
+ * });
+ * customAlert.id; // 42
+ * ```
+ * @see mixpanel_headless.types.CustomAlert
  */
-export class CustomAlert extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CustomAlert extends EntityModel<CustomAlertInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CustomAlert";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CustomAlertInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
     { name: "bookmark", nullable: true, nested: () => AlertBookmark },
@@ -406,11 +426,11 @@ export class CustomAlert extends EntityModel {
    * Construct a validated CustomAlert (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CustomAlertInit) {
-    super(CustomAlert, fields as unknown as Readonly<Record<string, unknown>>);
+    super(CustomAlert, fields);
   }
 
   /**
@@ -419,18 +439,16 @@ export class CustomAlert extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CustomAlert {
-    return new CustomAlert(
-      prepareInit(CustomAlert, raw) as unknown as CustomAlertInit,
-    );
+    return new CustomAlert(prepareInit(CustomAlert, raw));
   }
 }
 
 /**
  * Constructor input for {@link CreateAlertParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateAlertParamsInit {
   /** ID of linked bookmark. */
@@ -439,7 +457,7 @@ export interface CreateAlertParamsInit {
   readonly name: string;
   /** Trigger condition JSON. */
   readonly condition: Readonly<Record<string, unknown>>;
-  /** Check frequency in seconds. See ``AlertFrequencyPreset`` for common values. */
+  /** Check frequency in seconds. See `AlertFrequencyPreset` for common values. */
   readonly frequency: number;
   /** Start paused or active. */
   readonly paused: boolean;
@@ -453,26 +471,38 @@ export interface CreateAlertParamsInit {
 /**
  * Parameters for creating a new alert.
  *
- * Mirror of Python `mixpanel_headless.types.CreateAlertParams` (types.py:4333;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateAlertParams({
+ *   bookmark_id: 7,
+ *   name: "Signups dropped",
+ *   condition: { operator: "less_than", threshold: 100 },
+ *   frequency: 60,
+ *   paused: false,
+ *   subscriptions: [],
+ * });
+ * params.bookmark_id; // 7
+ * ```
+ * @see mixpanel_headless.types.CreateAlertParams
  */
-export class CreateAlertParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateAlertParams extends EntityModel<CreateAlertParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateAlertParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateAlertParamsInit> = [
     { name: "bookmark_id", required: true, kind: "int" },
     {
       name: "name",
       required: true,
       kind: "str",
-      // Python: Field(max_length=50) — codepoint-counted (R11.6).
-      check: (value, path) => {
-        if (typeof value === "string" && codepointLength(value) > 50) {
+      // Python: Field(max_length=50) — codepoint-counted.
+      check: (value: unknown, path: string): void => {
+        if (typeof value === "string" && cpLength(value) > 50) {
           modelFail(path, "max_length 50");
         }
       },
@@ -490,7 +520,7 @@ export class CreateAlertParams extends EntityModel {
   declare readonly name: string;
   /** Trigger condition JSON. */
   declare readonly condition: Readonly<Record<string, unknown>>;
-  /** Check frequency in seconds. See ``AlertFrequencyPreset`` for common values. */
+  /** Check frequency in seconds. See `AlertFrequencyPreset` for common values. */
   declare readonly frequency: number;
   /** Start paused or active. */
   declare readonly paused: boolean;
@@ -507,14 +537,11 @@ export class CreateAlertParams extends EntityModel {
    * Construct a validated CreateAlertParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateAlertParamsInit) {
-    super(
-      CreateAlertParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateAlertParams, fields);
   }
 
   /**
@@ -523,18 +550,16 @@ export class CreateAlertParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateAlertParams {
-    return new CreateAlertParams(
-      prepareInit(CreateAlertParams, raw) as unknown as CreateAlertParamsInit,
-    );
+    return new CreateAlertParams(prepareInit(CreateAlertParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link UpdateAlertParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateAlertParamsInit {
   /** New name. */
@@ -558,18 +583,23 @@ export interface UpdateAlertParamsInit {
 /**
  * Parameters for updating an alert (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateAlertParams` (types.py:4385;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateAlertParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateAlertParams
  */
-export class UpdateAlertParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateAlertParams extends EntityModel<UpdateAlertParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateAlertParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateAlertParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "bookmark_id", kind: "int", nullable: true },
     { name: "condition", nullable: true },
@@ -602,14 +632,11 @@ export class UpdateAlertParams extends EntityModel {
    * Construct a validated UpdateAlertParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateAlertParamsInit) {
-    super(
-      UpdateAlertParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateAlertParams, fields);
   }
 
   /**
@@ -618,18 +645,16 @@ export class UpdateAlertParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateAlertParams {
-    return new UpdateAlertParams(
-      prepareInit(UpdateAlertParams, raw) as unknown as UpdateAlertParamsInit,
-    );
+    return new UpdateAlertParams(prepareInit(UpdateAlertParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link AlertCount} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertCountInit {
   /** Current alert count. */
@@ -643,18 +668,27 @@ export interface AlertCountInit {
 /**
  * Response model for alert count and limits.
  *
- * Mirror of Python `mixpanel_headless.types.AlertCount` (types.py:4425;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertCount = AlertCount.fromDict({
+ *   anomaly_alerts_count: 3,
+ *   alert_limit: 25,
+ *   is_below_limit: true,
+ * });
+ * alertCount.anomaly_alerts_count; // 3
+ * ```
+ * @see mixpanel_headless.types.AlertCount
  */
-export class AlertCount extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertCount extends EntityModel<AlertCountInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertCount";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertCountInit> = [
     { name: "anomaly_alerts_count", required: true, kind: "int" },
     { name: "alert_limit", required: true, kind: "int" },
     { name: "is_below_limit", required: true, kind: "bool" },
@@ -671,11 +705,11 @@ export class AlertCount extends EntityModel {
    * Construct a validated AlertCount (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertCountInit) {
-    super(AlertCount, fields as unknown as Readonly<Record<string, unknown>>);
+    super(AlertCount, fields);
   }
 
   /**
@@ -684,18 +718,16 @@ export class AlertCount extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertCount {
-    return new AlertCount(
-      prepareInit(AlertCount, raw) as unknown as AlertCountInit,
-    );
+    return new AlertCount(prepareInit(AlertCount, raw));
   }
 }
 
 /**
  * Constructor input for {@link AlertHistoryPagination} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertHistoryPaginationInit {
   /** Next page cursor. */
@@ -709,18 +741,25 @@ export interface AlertHistoryPaginationInit {
 /**
  * Pagination metadata for alert history.
  *
- * Mirror of Python `mixpanel_headless.types.AlertHistoryPagination` (types.py:4453;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertHistoryPagination = AlertHistoryPagination.fromDict({
+ *   next_cursor: "example",
+ * });
+ * alertHistoryPagination.next_cursor; // "example"
+ * ```
+ * @see mixpanel_headless.types.AlertHistoryPagination
  */
-export class AlertHistoryPagination extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertHistoryPagination extends EntityModel<AlertHistoryPaginationInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertHistoryPagination";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertHistoryPaginationInit> = [
     { name: "next_cursor", kind: "str", nullable: true },
     { name: "previous_cursor", kind: "str", nullable: true },
     { name: "page_size", default: () => 20, kind: "int" },
@@ -737,14 +776,11 @@ export class AlertHistoryPagination extends EntityModel {
    * Construct a validated AlertHistoryPagination (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertHistoryPaginationInit) {
-    super(
-      AlertHistoryPagination,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertHistoryPagination, fields);
   }
 
   /**
@@ -753,21 +789,16 @@ export class AlertHistoryPagination extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertHistoryPagination {
-    return new AlertHistoryPagination(
-      prepareInit(
-        AlertHistoryPagination,
-        raw,
-      ) as unknown as AlertHistoryPaginationInit,
-    );
+    return new AlertHistoryPagination(prepareInit(AlertHistoryPagination, raw));
   }
 }
 
 /**
  * Constructor input for {@link AlertHistoryResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertHistoryResponseInit {
   /** History entries. */
@@ -784,18 +815,23 @@ export interface AlertHistoryResponseInit {
 /**
  * Response model for alert history (paginated).
  *
- * Mirror of Python `mixpanel_headless.types.AlertHistoryResponse` (types.py:4479;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertHistoryResponse = AlertHistoryResponse.fromDict({ results: [] });
+ * alertHistoryResponse.results; // []
+ * ```
+ * @see mixpanel_headless.types.AlertHistoryResponse
  */
-export class AlertHistoryResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertHistoryResponse extends EntityModel<AlertHistoryResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertHistoryResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertHistoryResponseInit> = [
     { name: "results", default: () => [] },
     {
       name: "pagination",
@@ -813,14 +849,11 @@ export class AlertHistoryResponse extends EntityModel {
    * Construct a validated AlertHistoryResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertHistoryResponseInit) {
-    super(
-      AlertHistoryResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertHistoryResponse, fields);
   }
 
   /**
@@ -829,21 +862,16 @@ export class AlertHistoryResponse extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertHistoryResponse {
-    return new AlertHistoryResponse(
-      prepareInit(
-        AlertHistoryResponse,
-        raw,
-      ) as unknown as AlertHistoryResponseInit,
-    );
+    return new AlertHistoryResponse(prepareInit(AlertHistoryResponse, raw));
   }
 }
 
 /**
  * Constructor input for {@link AlertScreenshotResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertScreenshotResponseInit {
   /** Signed GCS URL for screenshot. */
@@ -853,18 +881,25 @@ export interface AlertScreenshotResponseInit {
 /**
  * Response model for alert screenshot URL.
  *
- * Mirror of Python `mixpanel_headless.types.AlertScreenshotResponse` (types.py:4503;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertScreenshotResponse = AlertScreenshotResponse.fromDict({
+ *   signed_url: "example",
+ * });
+ * alertScreenshotResponse.signed_url; // "example"
+ * ```
+ * @see mixpanel_headless.types.AlertScreenshotResponse
  */
-export class AlertScreenshotResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertScreenshotResponse extends EntityModel<AlertScreenshotResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertScreenshotResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertScreenshotResponseInit> = [
     { name: "signed_url", required: true, kind: "str" },
   ];
 
@@ -875,14 +910,11 @@ export class AlertScreenshotResponse extends EntityModel {
    * Construct a validated AlertScreenshotResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertScreenshotResponseInit) {
-    super(
-      AlertScreenshotResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertScreenshotResponse, fields);
   }
 
   /**
@@ -891,21 +923,18 @@ export class AlertScreenshotResponse extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertScreenshotResponse {
     return new AlertScreenshotResponse(
-      prepareInit(
-        AlertScreenshotResponse,
-        raw,
-      ) as unknown as AlertScreenshotResponseInit,
+      prepareInit(AlertScreenshotResponse, raw),
     );
   }
 }
 
 /**
  * Constructor input for {@link AlertValidation} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertValidationInit {
   /** Alert ID. */
@@ -921,18 +950,28 @@ export interface AlertValidationInit {
 /**
  * Per-alert validation result.
  *
- * Mirror of Python `mixpanel_headless.types.AlertValidation` (types.py:4522;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const alertValidation = AlertValidation.fromDict({
+ *   alert_id: 1,
+ *   alert_name: "example",
+ *   valid: true,
+ *   reason: "example",
+ * });
+ * alertValidation.alert_id; // 1
+ * ```
+ * @see mixpanel_headless.types.AlertValidation
  */
-export class AlertValidation extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class AlertValidation extends EntityModel<AlertValidationInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "AlertValidation";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<AlertValidationInit> = [
     { name: "alert_id", required: true, kind: "int" },
     { name: "alert_name", required: true, kind: "str" },
     { name: "valid", required: true, kind: "bool" },
@@ -952,14 +991,11 @@ export class AlertValidation extends EntityModel {
    * Construct a validated AlertValidation (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AlertValidationInit) {
-    super(
-      AlertValidation,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(AlertValidation, fields);
   }
 
   /**
@@ -968,22 +1004,20 @@ export class AlertValidation extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AlertValidation {
-    return new AlertValidation(
-      prepareInit(AlertValidation, raw) as unknown as AlertValidationInit,
-    );
+    return new AlertValidation(prepareInit(AlertValidation, raw));
   }
 }
 
 /**
  * Constructor input for {@link ValidateAlertsForBookmarkParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ValidateAlertsForBookmarkParamsInit {
   /** Alert IDs to validate (must not be empty). */
-  readonly alert_ids: ReadonlyArray<number>;
+  readonly alert_ids: readonly number[];
   /** Bookmark type to validate against. */
   readonly bookmark_type: "insights" | "funnels";
   /** Bookmark params JSON. */
@@ -993,38 +1027,48 @@ export interface ValidateAlertsForBookmarkParamsInit {
 /**
  * Parameters for validating alerts against a bookmark.
  *
- * Mirror of Python `mixpanel_headless.types.ValidateAlertsForBookmarkParams` (types.py:4552;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new ValidateAlertsForBookmarkParams({
+ *   alert_ids: [7, 8],
+ *   bookmark_type: "insights",
+ *   bookmark_params: { sections: {} },
+ * });
+ * params.alert_ids; // [7, 8]
+ * ```
+ * @see mixpanel_headless.types.ValidateAlertsForBookmarkParams
  */
-export class ValidateAlertsForBookmarkParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ValidateAlertsForBookmarkParams extends EntityModel<ValidateAlertsForBookmarkParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ValidateAlertsForBookmarkParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "alert_ids",
-      required: true,
-      check: (value, path) => {
-        if (typeof value === "string" && codepointLength(value) < 1)
-          modelFail(path, "min_length 1");
-        if (Array.isArray(value) && value.length < 1)
-          modelFail(path, "min_length 1");
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ValidateAlertsForBookmarkParamsInit> =
+    [
+      {
+        name: "alert_ids",
+        required: true,
+        check: (value: unknown, path: string): void => {
+          if (typeof value === "string" && cpLength(value) < 1)
+            modelFail(path, "min_length 1");
+          if (Array.isArray(value) && value.length === 0)
+            modelFail(path, "min_length 1");
+        },
       },
-    },
-    {
-      name: "bookmark_type",
-      required: true,
-      check: oneOf(["insights", "funnels"]),
-    },
-    { name: "bookmark_params", required: true },
-  ];
+      {
+        name: "bookmark_type",
+        required: true,
+        check: oneOf(["insights", "funnels"]),
+      },
+      { name: "bookmark_params", required: true },
+    ];
 
   /** Alert IDs to validate (must not be empty). */
-  declare readonly alert_ids: ReadonlyArray<number>;
+  declare readonly alert_ids: readonly number[];
   /** Bookmark type to validate against. */
   declare readonly bookmark_type: "insights" | "funnels";
   /** Bookmark params JSON. */
@@ -1034,14 +1078,11 @@ export class ValidateAlertsForBookmarkParams extends EntityModel {
    * Construct a validated ValidateAlertsForBookmarkParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ValidateAlertsForBookmarkParamsInit) {
-    super(
-      ValidateAlertsForBookmarkParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ValidateAlertsForBookmarkParams, fields);
   }
 
   /**
@@ -1050,21 +1091,18 @@ export class ValidateAlertsForBookmarkParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ValidateAlertsForBookmarkParams {
     return new ValidateAlertsForBookmarkParams(
-      prepareInit(
-        ValidateAlertsForBookmarkParams,
-        raw,
-      ) as unknown as ValidateAlertsForBookmarkParamsInit,
+      prepareInit(ValidateAlertsForBookmarkParams, raw),
     );
   }
 }
 
 /**
  * Constructor input for {@link ValidateAlertsForBookmarkResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ValidateAlertsForBookmarkResponseInit {
   /** Per-alert validation results. */
@@ -1078,29 +1116,37 @@ export interface ValidateAlertsForBookmarkResponseInit {
 /**
  * Response model for alert-bookmark validation.
  *
- * Mirror of Python `mixpanel_headless.types.ValidateAlertsForBookmarkResponse` (types.py:4580;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const validateAlertsForBookmarkResponse = ValidateAlertsForBookmarkResponse.fromDict({
+ *   alert_validations: [{ alert_id: 1, alert_name: "example", valid: true }],
+ * });
+ * validateAlertsForBookmarkResponse.alert_validations; // [{ alert_id: 1, … }]
+ * ```
+ * @see mixpanel_headless.types.ValidateAlertsForBookmarkResponse
  */
-export class ValidateAlertsForBookmarkResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ValidateAlertsForBookmarkResponse extends EntityModel<ValidateAlertsForBookmarkResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ValidateAlertsForBookmarkResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    {
-      name: "alert_validations",
-      default: () => [],
-      nested: () => AlertValidation,
-      container: "list",
-    },
-    { name: "invalid_count", default: () => 0, kind: "int" },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ValidateAlertsForBookmarkResponseInit> =
+    [
+      {
+        name: "alert_validations",
+        default: () => [],
+        nested: () => AlertValidation,
+        container: "list",
+      },
+      { name: "invalid_count", default: () => 0, kind: "int" },
+    ];
 
   /** Per-alert validation results. */
-  declare readonly alert_validations: ReadonlyArray<AlertValidation>;
+  declare readonly alert_validations: readonly AlertValidation[];
   /** Count of invalid alerts. */
   declare readonly invalid_count: number;
 
@@ -1108,14 +1154,11 @@ export class ValidateAlertsForBookmarkResponse extends EntityModel {
    * Construct a validated ValidateAlertsForBookmarkResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ValidateAlertsForBookmarkResponseInit) {
-    super(
-      ValidateAlertsForBookmarkResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ValidateAlertsForBookmarkResponse, fields);
   }
 
   /**
@@ -1124,14 +1167,11 @@ export class ValidateAlertsForBookmarkResponse extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ValidateAlertsForBookmarkResponse {
     return new ValidateAlertsForBookmarkResponse(
-      prepareInit(
-        ValidateAlertsForBookmarkResponse,
-        raw,
-      ) as unknown as ValidateAlertsForBookmarkResponseInit,
+      prepareInit(ValidateAlertsForBookmarkResponse, raw),
     );
   }
 }

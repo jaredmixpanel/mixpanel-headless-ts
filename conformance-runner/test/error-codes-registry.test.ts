@@ -1,29 +1,23 @@
-// C8(c) exception/code registry-equality lock (phase2-design C3):
-//
-// 1. `errors.ts` exports EXACTLY the 34 exception class names in the
-//    synced contract artifact, with the same parent-edge set (verified by
-//    walking `Object.getPrototypeOf` chains).
-// 2. The TS `CODED_GUARD_REGISTRY` / `CODED_GUARD_TWIN_CODES` sets
-//    (re-exported from the generated errors-codes.gen.ts) equal the
-//    artifact's sets.
-// 3. Per-class default codes match (each class instantiated with minimal
-//    args; `.code` compared against the artifact's `default_codes`).
-// 4. errors-codes.gen.ts is FRESH: `node scripts/gen-error-codes.mjs
-//    --check` regenerates from the artifact and diffs byte-for-byte
-//    (hand-edit tripwire, phase2-design C5 item 4).
+// Exception/code registry equality against the synced contract artifact:
+// the 34 class names and parent edges, the coded-guard sets re-exported from
+// errors-codes.gen.ts, per-class default codes, and byte-exact freshness of
+// errors-codes.gen.ts.
+
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
-import * as errors from "../../packages/core/src/errors.js";
+
 import {
   CODED_GUARD_REGISTRY,
   CODED_GUARD_TWIN_CODES,
   DEFAULT_ERROR_CODES,
   ERROR_CODES_GENERATED_FROM,
+  errorsModule as errors,
   EXCEPTION_CLASS_PARENTS,
-} from "../../packages/core/src/errors-codes.gen.js";
+} from "@mixpanel-headless/core/internal";
 
 /** The repo root (this file lives in conformance-runner/test). */
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -34,7 +28,7 @@ const ARTIFACT_PATH = resolve(
   "conformance-runner/corpus/contract/error-codes.json",
 );
 
-/** Parsed shape of error-codes.json (P2-1 generator output). */
+/** Parsed shape of error-codes.json (Python generator output). */
 interface ErrorCodesArtifact {
   readonly generated_from: string;
   readonly exception_classes: Readonly<Record<string, string | null>>;
@@ -113,7 +107,7 @@ const INSTANTIATION_TABLE: Readonly<
   ShortLinkResolutionError: () => new errors.ShortLinkResolutionError("m"),
 };
 
-describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
+describe("registry equality vs corpus/contract/error-codes.json", () => {
   it("artifact sanity: 34 classes, 126 registry codes, 9 twin codes", () => {
     expect(Object.keys(artifact.exception_classes)).toHaveLength(34);
     expect(Object.keys(artifact.default_codes)).toHaveLength(34);
@@ -124,7 +118,7 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   it("(a) errors.ts exports exactly the artifact's 34 exception classes", () => {
     const exported = [...exportedClasses.keys()].sort();
     const expected = Object.keys(artifact.exception_classes).sort();
-    expect(exported).toEqual(expected);
+    expect(exported).toStrictEqual(expected);
   });
 
   it("(a) parent-edge set matches (Object.getPrototypeOf walk)", () => {
@@ -134,19 +128,17 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
       const cls = exportedClasses.get(name);
       expect(cls, `class ${name} missing from errors.ts`).toBeDefined();
       const parent = Object.getPrototypeOf(cls) as ErrorClass;
-      if (parentName === null) {
-        // Hierarchy root: parent is the platform Error, not a library class.
-        expect(parent, `${name} must extend Error directly`).toBe(Error);
-      } else {
-        expect(parent, `${name} must extend ${parentName}`).toBe(
-          exportedClasses.get(parentName),
-        );
-      }
+      // Hierarchy root (null parent): the platform Error, not a library class.
+      const expectedParent =
+        parentName === null ? Error : exportedClasses.get(parentName);
+      expect(parent, `${name} must extend ${parentName ?? "Error"}`).toBe(
+        expectedParent,
+      );
     }
   });
 
   it("(b) TS CODED_GUARD_REGISTRY equals the artifact set", () => {
-    expect([...CODED_GUARD_REGISTRY].sort()).toEqual(
+    expect([...CODED_GUARD_REGISTRY].sort()).toStrictEqual(
       [...artifact.coded_guard_registry].sort(),
     );
     // The re-export through errors.ts is the same object.
@@ -154,7 +146,7 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   });
 
   it("(b) TS CODED_GUARD_TWIN_CODES equals the artifact set and is disjoint", () => {
-    expect([...CODED_GUARD_TWIN_CODES].sort()).toEqual(
+    expect([...CODED_GUARD_TWIN_CODES].sort()).toStrictEqual(
       [...artifact.coded_guard_twin_codes].sort(),
     );
     expect(errors.CODED_GUARD_TWIN_CODES).toBe(CODED_GUARD_TWIN_CODES);
@@ -164,7 +156,7 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   });
 
   it("(c) default codes match on freshly constructed instances", () => {
-    expect(Object.keys(INSTANTIATION_TABLE).sort()).toEqual(
+    expect(Object.keys(INSTANTIATION_TABLE).sort()).toStrictEqual(
       Object.keys(artifact.default_codes).sort(),
     );
     for (const [name, expectedCode] of Object.entries(artifact.default_codes)) {
@@ -178,10 +170,10 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   });
 
   it("(c) generated DEFAULT_ERROR_CODES map mirrors the artifact", () => {
-    expect(Object.fromEntries(DEFAULT_ERROR_CODES)).toEqual(
+    expect(Object.fromEntries(DEFAULT_ERROR_CODES)).toStrictEqual(
       artifact.default_codes,
     );
-    expect(Object.fromEntries(EXCEPTION_CLASS_PARENTS)).toEqual(
+    expect(Object.fromEntries(EXCEPTION_CLASS_PARENTS)).toStrictEqual(
       artifact.exception_classes,
     );
     expect(ERROR_CODES_GENERATED_FROM).toBe(artifact.generated_from);
@@ -190,10 +182,12 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   it("(d) errors-codes.gen.ts is freshly generated (regenerate-and-diff)", () => {
     // Exits non-zero (throws) if the committed file differs from a fresh
     // render of the artifact — catches hand edits and stale re-syncs.
-    execFileSync(
-      process.execPath,
-      [resolve(REPO_ROOT, "scripts/gen-error-codes.mjs"), "--check"],
-      { stdio: "pipe" },
-    );
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        [resolve(REPO_ROOT, "scripts/generate-error-codes.mjs"), "--check"],
+        { stdio: "pipe" },
+      ),
+    ).not.toThrow();
   });
 });

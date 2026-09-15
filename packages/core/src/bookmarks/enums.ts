@@ -1,72 +1,49 @@
 /**
- * Port of the 34 `src/mixpanel_headless/_internal/bookmark_enums.py`
- * constant tables (phase2-design C2). All values are sourced from the
- * server-side validation and canonical Pydantic definitions cited in
- * the Python module docstring; they define every valid value the
+ * The 34 constant tables of `bookmark_enums.py`: every valid value the
  * Mixpanel insights query API accepts for each bookmark field, used by
- * the validation engine (Phase-3 B2/B3) to catch invalid values
- * client-side.
+ * the validation engine to catch invalid values client-side. Python
+ * `frozenset[str]` tables become `ReadonlySet<string>` and the dict
+ * constant `MAX_CONVERSION_WINDOW` a `ReadonlyMap<string, number>`, so
+ * membership tests use `.has()` rather than prototype-unsafe object-key
+ * access; member order mirrors the Python source literals for readable
+ * diffs. {@link bookmarkEnumTablesSnapshot} is the serialization view
+ * the enum lock test diffs against the extracted vector file
+ * `conformance-runner/corpus/enums/bookmark_enums.json`. Like its Python
+ * twin, this module is not re-exported from the package barrel.
  *
- * Representation (R4.8, phase2-design C2): Python `frozenset[str]`
- * membership tables become `ReadonlySet<string>` and the dict constant
- * `MAX_CONVERSION_WINDOW` becomes `ReadonlyMap<string, number>` —
- * membership tests use `.has()`, never prototype-unsafe object-key
- * access. `bookmarkEnumTablesSnapshot()` provides the serialization
- * view for the C8(d) lock test
- * (`conformance-runner/test/bookmark-enums-lock.test.ts`) against the
- * extracted vector file
- * `conformance-runner/corpus/enums/bookmark_enums.json` (lists sorted,
- * dict keys sorted — the extractor's normalization).
- *
- * Member order below mirrors the Python source literals (frozensets
- * are unordered in Python; the source spelling is kept for readable
- * diffs). This module mirrors a Python `_internal` module: it is NOT
- * re-exported from the package barrel (`src/index.ts`).
- *
- * The P2-3 `TODO(port)` for the two module-private ints
- * (`_MAX_FUNNEL_STEPS`, `_MAX_HOLDING_CONSTANT`) is CLOSED: B2 shard
- * V1a landed them below and B2 shard V1b removed the marker
- * (b2-packets.md §V1b TS-homes).
+ * @see mixpanel_headless._internal.bookmark_enums
  */
+
+import { compareCodepoints, sortedByCodepoint } from "../compat/codepoint.js";
 
 /**
  * Python source module these tables mirror (locked against the
  * `source_module` field of the extracted vector file).
- *
- * @internal
  */
 export const BOOKMARK_ENUMS_SOURCE_MODULE =
   "mixpanel_headless._internal.bookmark_enums";
 
 /**
- * Maximum number of steps allowed in a funnel query.
+ * Maximum number of steps allowed in a funnel query; consumed by
+ * `validateFunnelArgs` rule F1_MAX_STEPS. Module-private in Python;
+ * exported for intra-package use only.
  *
- * Port of the module-private `_MAX_FUNNEL_STEPS`
- * (`bookmark_enums.py:516`). Landed by the B2 V1a validator shard
- * (b2-packets.md §V1b TS-homes coordination note: V1a reached F1
- * first, so V1a adds the constants and V1b imports); consumed by
- * `validateFunnelArgs` rule F1_MAX_STEPS. Exported for intra-package
- * use only — NOT part of the package barrel.
- *
+ * @see mixpanel_headless._internal.bookmark_enums._MAX_FUNNEL_STEPS
  * @internal
  */
-export const _MAX_FUNNEL_STEPS = 100;
+export const MAX_FUNNEL_STEPS = 100;
 
 /**
- * Maximum number of holding-constant properties allowed.
+ * Maximum number of holding-constant properties allowed; consumed by
+ * `validateFunnelArgs` rule F8_MAX_HOLDING_CONSTANT. Module-private in
+ * Python; exported for intra-package use only.
  *
- * Port of the module-private `_MAX_HOLDING_CONSTANT`
- * (`bookmark_enums.py:519`). Same landing note as
- * {@link _MAX_FUNNEL_STEPS}; consumed by `validateFunnelArgs` rule
- * F8_MAX_HOLDING_CONSTANT. Exported for intra-package use only.
- *
+ * @see mixpanel_headless._internal.bookmark_enums._MAX_HOLDING_CONSTANT
  * @internal
  */
-export const _MAX_HOLDING_CONSTANT = 3;
+export const MAX_HOLDING_CONSTANT = 3;
 
-// =============================================================================
-// Math / aggregation types
-// =============================================================================
+// --- Math / aggregation types ---
 
 /**
  * All valid math/aggregation operators across all contexts (insights,
@@ -213,9 +190,7 @@ export const MATH_NO_PER_USER: ReadonlySet<string> = new Set([
   "unique",
 ]);
 
-// =============================================================================
-// Per-user aggregation
-// =============================================================================
+// --- Per-user aggregation ---
 
 /**
  * Valid per-user aggregation types (maps to `perUserAggregation` in
@@ -230,9 +205,7 @@ export const VALID_PER_USER_AGGREGATIONS: ReadonlySet<string> = new Set([
   "unique_values",
 ]);
 
-// =============================================================================
-// Property types
-// =============================================================================
+// --- Property types ---
 
 /**
  * Valid property data types for filter and group-by clauses.
@@ -253,9 +226,7 @@ export const VALID_PROPERTY_TYPES: ReadonlySet<string> = new Set([
   "unknown",
 ]);
 
-// =============================================================================
-// Time units
-// =============================================================================
+// --- Time units ---
 
 /**
  * Valid time units for time section aggregation. Mirrors the canonical
@@ -297,9 +268,7 @@ export const VALID_QUERY_TIME_UNITS: ReadonlySet<string> = new Set([
   "hour_of_day",
 ]);
 
-// =============================================================================
-// Resource types
-// =============================================================================
+// --- Resource types ---
 
 /**
  * Valid resource types for filters, groups, and show clauses,
@@ -320,9 +289,7 @@ export const VALID_RESOURCE_TYPES: ReadonlySet<string> = new Set([
   "formulas",
 ]);
 
-// =============================================================================
-// Metric / behavior types
-// =============================================================================
+// --- Metric / behavior types ---
 
 /**
  * Valid behavior/metric types in show clause behavior blocks,
@@ -347,9 +314,7 @@ export const VALID_METRIC_TYPES: ReadonlySet<string> = new Set([
   "metric",
 ]);
 
-// =============================================================================
-// Chart types
-// =============================================================================
+// --- Chart types ---
 
 /**
  * Valid chart types for `displayOptions.chartType`, plus
@@ -398,9 +363,7 @@ export const VALID_CHART_TYPES: ReadonlySet<string> = new Set([
   "frequency-curve",
 ]);
 
-// =============================================================================
-// Filter operators
-// =============================================================================
+// --- Filter operators ---
 
 /**
  * Valid filter operators from the canonical operator expression
@@ -456,9 +419,7 @@ export const VALID_FILTER_OPERATORS: ReadonlySet<string> = new Set([
   "was in the next",
 ]);
 
-// =============================================================================
-// Filters determiner
-// =============================================================================
+// --- Filters determiner ---
 
 /**
  * Valid values for `filtersDeterminer` (AND/OR logic for multiple
@@ -469,9 +430,7 @@ export const VALID_FILTERS_DETERMINER: ReadonlySet<string> = new Set([
   "all",
 ]);
 
-// =============================================================================
-// Analysis types
-// =============================================================================
+// --- Analysis types ---
 
 /** Valid analysis types for `displayOptions`. */
 export const VALID_ANALYSIS_TYPES: ReadonlySet<string> = new Set([
@@ -481,12 +440,10 @@ export const VALID_ANALYSIS_TYPES: ReadonlySet<string> = new Set([
   "cumulative",
 ]);
 
-// =============================================================================
-// Date range types
-// =============================================================================
+// --- Date range types ---
 
 /** Valid date range types for time section clauses. */
-export const VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
+const VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
   "in the last",
   "between",
   "since",
@@ -494,9 +451,7 @@ export const VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
   "relative_after",
 ]);
 
-// =============================================================================
-// Funnel-specific constants
-// =============================================================================
+// --- Funnel-specific constants ---
 
 /**
  * Valid funnel step ordering modes: `"loose"` requires steps in order
@@ -521,7 +476,7 @@ export const VALID_CONVERSION_WINDOW_UNITS: ReadonlySet<string> = new Set([
 /**
  * Maximum conversion window duration per unit (all values correspond
  * to approximately 366 days). Python `dict` lookup table →
- * `ReadonlyMap` (R4.8); sourced from
+ * `ReadonlyMap`; sourced from
  * `analytics/api/version_2_0/arb_funnels/validate.py` `_MAX_LENGTHS`.
  */
 export const MAX_CONVERSION_WINDOW: ReadonlyMap<string, number> = new Map([
@@ -534,9 +489,7 @@ export const MAX_CONVERSION_WINDOW: ReadonlyMap<string, number> = new Map([
   ["second", 31708800],
 ]);
 
-// =============================================================================
-// Retention-specific constants
-// =============================================================================
+// --- Retention-specific constants ---
 
 /** Valid time units for retention period grouping. */
 export const VALID_RETENTION_UNITS: ReadonlySet<string> = new Set([
@@ -555,9 +508,7 @@ export const VALID_RETENTION_ALIGNMENT: ReadonlySet<string> = new Set([
   "interval_start",
 ]);
 
-// =============================================================================
-// Flows-specific constants
-// =============================================================================
+// --- Flows-specific constants ---
 
 /** Valid counting methods for flows analysis. */
 export const VALID_FLOWS_COUNT_TYPES: ReadonlySet<string> = new Set([
@@ -593,9 +544,7 @@ export const VALID_FLOWS_CONVERSION_WINDOW_UNITS: ReadonlySet<string> = new Set(
   ["day", "week", "month", "session"],
 );
 
-// =============================================================================
-// Advanced query mode constants
-// =============================================================================
+// --- Advanced query mode constants ---
 
 /** Valid funnel reentry modes for `behavior.funnelReentryMode`. */
 export const VALID_FUNNEL_REENTRY_MODES: ReadonlySet<string> = new Set([
@@ -617,16 +566,13 @@ export const VALID_RETENTION_UNBOUNDED_MODES: ReadonlySet<string> = new Set([
 ]);
 
 /** Valid segment method values for `measurement.segmentMethod`. */
-export const VALID_SEGMENT_METHODS: ReadonlySet<string> = new Set([
-  "all",
-  "first",
-]);
+const VALID_SEGMENT_METHODS: ReadonlySet<string> = new Set(["all", "first"]);
 
 /**
  * Valid time comparison type values for
  * `displayOptions.timeComparison`.
  */
-export const VALID_TIME_COMPARISON_TYPES: ReadonlySet<string> = new Set([
+const VALID_TIME_COMPARISON_TYPES: ReadonlySet<string> = new Set([
   "relative",
   "absolute-start",
   "absolute-end",
@@ -635,7 +581,7 @@ export const VALID_TIME_COMPARISON_TYPES: ReadonlySet<string> = new Set([
 /**
  * Valid time comparison unit values for relative time comparisons.
  */
-export const VALID_TIME_COMPARISON_UNITS: ReadonlySet<string> = new Set([
+const VALID_TIME_COMPARISON_UNITS: ReadonlySet<string> = new Set([
   "day",
   "week",
   "month",
@@ -646,7 +592,7 @@ export const VALID_TIME_COMPARISON_UNITS: ReadonlySet<string> = new Set([
 /**
  * Valid cohort aggregation operators for behavioral cohort conditions.
  */
-export const VALID_COHORT_AGGREGATION_OPERATORS: ReadonlySet<string> = new Set([
+const VALID_COHORT_AGGREGATION_OPERATORS: ReadonlySet<string> = new Set([
   "total",
   "unique",
   "average",
@@ -668,17 +614,12 @@ export const VALID_FREQUENCY_FILTER_OPERATORS: ReadonlySet<string> = new Set([
   "is equal to",
 ]);
 
-// =============================================================================
-// Lock-test registry + serialization view
-// =============================================================================
+// --- Lock-test registry + serialization view ---
 
 /**
  * Registry of all 34 ported constant tables, keyed by their exact
- * Python constant names. `ReadonlyMap` per R4.8; consumed by the
- * serialization view below and by the C8(d) lock test's key-set
- * equality check.
- *
- * @internal
+ * Python constant names; consumed by the serialization view below and
+ * by the enum lock test's key-set equality check.
  */
 export const BOOKMARK_ENUM_TABLES: ReadonlyMap<
   string,
@@ -721,16 +662,19 @@ export const BOOKMARK_ENUM_TABLES: ReadonlyMap<
 ]);
 
 /**
- * Serialization view for the C8(d) snapshot lock: each `ReadonlySet`
- * renders as a sorted string array and each `ReadonlyMap` as a
- * sorted-key plain object — the same normalization the Python
- * extractor applied when writing
- * `conformance/vectors/enums/bookmark_enums.json` (all values are
- * ASCII, so JS code-unit sort and Python codepoint sort agree).
+ * Serialization view for the enum lock test: each `ReadonlySet` renders
+ * as a sorted string array and each `ReadonlyMap` as a sorted-key plain
+ * object — the same normalization the Python extractor applied when
+ * writing `conformance/vectors/enums/bookmark_enums.json` (all values
+ * are ASCII, so JS code-unit sort and Python codepoint sort agree).
  *
- * @internal
  * @returns Constant name → normalized table, for canonical diffing
  *   against the extracted vector file.
+ * @example
+ * ```typescript
+ * bookmarkEnumTablesSnapshot()["VALID_FUNNEL_ORDER"]; // ["any", "loose"]
+ * bookmarkEnumTablesSnapshot()["MAX_CONVERSION_WINDOW"]; // { day: 366, hour: 8784, … }
+ * ```
  */
 export function bookmarkEnumTablesSnapshot(): Readonly<
   Record<string, readonly string[] | Readonly<Record<string, number>>>
@@ -741,10 +685,10 @@ export function bookmarkEnumTablesSnapshot(): Readonly<
   > = {};
   for (const [name, table] of BOOKMARK_ENUM_TABLES) {
     if (table instanceof Set) {
-      snapshot[name] = [...table].sort();
+      snapshot[name] = sortedByCodepoint([...table]);
     } else {
       const entries = [...table.entries()].sort(([a], [b]) =>
-        a < b ? -1 : a > b ? 1 : 0,
+        compareCodepoints(a, b),
       );
       snapshot[name] = Object.fromEntries(entries) as Readonly<
         Record<string, number>

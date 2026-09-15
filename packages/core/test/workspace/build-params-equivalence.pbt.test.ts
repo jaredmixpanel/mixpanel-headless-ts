@@ -1,51 +1,34 @@
-/**
- * Layer-3 translation of the three FACADE-WIRING equivalence classes of
- * `tests/unit/test_bookmark_builders_pbt.py` (B5-S2, packet §3 + §8 —
- * the B3-K2 deferral, `B3-K2-notes.md:120-122`):
- * TestTimeSectionEquivalence :81, TestFilterSectionEquivalence :164,
- * TestGroupSectionEquivalence :228.
- *
- * Each property asserts that the section the params builder emits is
- * IDENTICAL to what the standalone B3 builder returns for the same
- * inputs — i.e. that the facade wires the builders rather than
- * re-implementing them.
- *
- * Hypothesis `@settings(max_examples=N)` → fast-check `numRuns: N`.
- *
- * Fidelity notes:
- * - `date_strs` is `st.from_regex(r"20[2-3][0-9]-(0[1-9]|1[0-2])-(0[1-9]|
- *   [12][0-9]|3[01])", fullmatch=True)` — reproduced as a composed
- *   generator over the same digit ranges (the strings are only compared,
- *   never parsed, so a 2025-02-31 draw is as valid here as in Python).
- * - `property_names` (`st.characters(categories=("L","N"))`) becomes an
- *   explicit letter+digit alphabet spanning Latin / Greek / Cyrillic /
- *   CJK plus a non-BMP letter and non-ASCII digits (strictly inside the
- *   Python categories; the B2 ASSERT-F1 convention).
- * - `_build_query_params` is the exported {@link buildQueryParams}
- *   (R7.2 split); the Python `_make_workspace()` fixture is unused by
- *   the assertions beyond providing that method.
- */
+// Facade-wiring equivalence properties: the time / filter / group sections
+// `buildQueryParams` emits are identical to the standalone builders' output
+// for the same inputs. Mirrors the three equivalence classes of
+// `tests/unit/test_bookmark_builders_pbt.py`; Hypothesis `max_examples`
+// becomes fast-check `numRuns`. Strategy notes sit on each arbitrary below.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
   buildFilterSection,
   buildGroupSection,
   buildTimeSection,
 } from "../../src/bookmarks/builders.js";
+import { Filter } from "../../src/types/query-params/filter.js";
+import { GroupBy } from "../../src/types/query-params/group-by.js";
 import {
   buildQueryParams,
   type BuildQueryParamsOptions,
   type ParamsDict,
 } from "../../src/workspace-query-params.js";
-import { Filter } from "../../src/types/query-params/filter.js";
-import { GroupBy } from "../../src/types/query-params/group-by.js";
 
 // ===========================================================================
-// Strategies (test file :44-56)
+// Strategies
 // ===========================================================================
 
-/** `date_strs` — `20[2-3][0-9]-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])`. */
+/**
+ * `date_strs` — `st.from_regex(r"20[2-3][0-9]-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])")`,
+ * composed over the same digit ranges. The strings are only compared, never
+ * parsed, so a 2025-02-31 draw is as valid here as in Python.
+ */
 const dateStrs: fc.Arbitrary<string> = fc
   .tuple(
     fc.constantFrom("2", "3"),
@@ -55,7 +38,7 @@ const dateStrs: fc.Arbitrary<string> = fc
   )
   .map(
     ([decade, year, month, day]) =>
-      `20${decade}${String(year)}-${`${month}`.padStart(2, "0")}-${`${day}`.padStart(2, "0")}`,
+      `20${decade}${String(year)}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
   );
 
 /** `time_units`. */
@@ -70,7 +53,11 @@ const timeUnits: fc.Arbitrary<string> = fc.constantFrom(
 /** `positive_ints` — 1..365. */
 const positiveInts: fc.Arbitrary<number> = fc.integer({ min: 1, max: 365 });
 
-/** `property_names` — L/N characters, 1..30. */
+/**
+ * `property_names` — `st.characters(categories=("L","N"))`, 1..30 long, as an
+ * explicit letter+digit alphabet strictly inside those categories (Latin /
+ * Greek / Cyrillic / CJK, a non-BMP letter, non-ASCII digits).
+ */
 const propertyNames: fc.Arbitrary<string> = fc
   .array(
     fc.constantFrom(
@@ -111,7 +98,8 @@ const BASE = {
 } as const satisfies BuildQueryParamsOptions;
 
 /**
- * `ws._build_query_params(**BASE, **overrides)`.
+ * `ws._build_query_params(**BASE, **overrides)` — the exported
+ * `buildQueryParams` is the Python private method.
  *
  * @param overrides - The kwargs the Python call overrides.
  * @returns The bookmark params.
@@ -129,7 +117,8 @@ function section(params: ParamsDict, name: string): unknown {
 // build_time_section wiring
 // ===========================================================================
 
-describe("TestTimeSectionEquivalence", () => {
+describe("Time section equivalence", () => {
+  // python: TestTimeSectionEquivalence
   it("relative range: the section matches the standalone builder", () => {
     fc.assert(
       fc.property(timeUnits, positiveInts, (unit, last) => {
@@ -140,7 +129,7 @@ describe("TestTimeSectionEquivalence", () => {
           last,
           unit: unit as never,
         });
-        expect(section(params, "time")).toEqual(direct);
+        expect(section(params, "time")).toStrictEqual(direct);
       }),
       { numRuns: 50 },
     );
@@ -158,7 +147,7 @@ describe("TestTimeSectionEquivalence", () => {
           last: 30,
           unit: unit as never,
         });
-        expect(section(params, "time")).toEqual(direct);
+        expect(section(params, "time")).toStrictEqual(direct);
       }),
       { numRuns: 50 },
     );
@@ -169,13 +158,14 @@ describe("TestTimeSectionEquivalence", () => {
 // build_filter_section wiring
 // ===========================================================================
 
-describe("TestFilterSectionEquivalence", () => {
+describe("Filter section equivalence", () => {
+  // python: TestFilterSectionEquivalence
   it("a single filter: the section matches the standalone builder", () => {
     fc.assert(
       fc.property(propertyNames, propertyNames, (prop, value) => {
         const f = Filter.equals(prop, value);
         const params = build({ where: f });
-        expect(section(params, "filter")).toEqual(buildFilterSection(f));
+        expect(section(params, "filter")).toStrictEqual(buildFilterSection(f));
       }),
       { numRuns: 50 },
     );
@@ -184,8 +174,8 @@ describe("TestFilterSectionEquivalence", () => {
   it("where=null: the section is the builder's empty list", () => {
     const params = build();
     const direct = buildFilterSection(null);
-    expect(section(params, "filter")).toEqual(direct);
-    expect(direct).toEqual([]);
+    expect(section(params, "filter")).toStrictEqual(direct);
+    expect(direct).toStrictEqual([]);
   });
 });
 
@@ -193,12 +183,13 @@ describe("TestFilterSectionEquivalence", () => {
 // build_group_section wiring
 // ===========================================================================
 
-describe("TestGroupSectionEquivalence", () => {
+describe("Group section equivalence", () => {
+  // python: TestGroupSectionEquivalence
   it("a string group_by: the section matches the standalone builder", () => {
     fc.assert(
       fc.property(propertyNames, (prop) => {
         const params = build({ group_by: prop });
-        expect(section(params, "group")).toEqual(buildGroupSection(prop));
+        expect(section(params, "group")).toStrictEqual(buildGroupSection(prop));
       }),
       { numRuns: 50 },
     );
@@ -220,7 +211,7 @@ describe("TestGroupSectionEquivalence", () => {
             bucket_max: bucketMax,
           });
           const params = build({ group_by: g });
-          expect(section(params, "group")).toEqual(buildGroupSection(g));
+          expect(section(params, "group")).toStrictEqual(buildGroupSection(g));
         },
       ),
       { numRuns: 30 },

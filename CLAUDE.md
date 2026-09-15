@@ -5,111 +5,126 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this repo is
 
 A TypeScript port of the Python `mixpanel_headless` library (checkout expected at
-`../mixpanel-headless`), built around a verification rig rather than a from-scratch
-rewrite: a conformance corpus extracted from the Python implementation is replayed
-against the TS port, a cross-language differential oracle is fuzzed against the
-Python one, and vendored JSON-schema referees check payload shapes.
+`../mixpanel-headless`), built around a verification rig: a conformance corpus
+extracted from the Python implementation is replayed against the port, and a
+cross-language differential oracle is fuzzed against the Python one.
 
-The **spec of record lives in-repo under `context/`** (relocated from the Python
-repo, where the port was executed, at the end of Phase 3): the master plan,
-rulebook, api-map, and per-phase design docs / task packets are under
-`context/phase{1,2,3,4}/` (e.g. `context/phase1/design/phase1-design.md` sections
-D11–D16 define this repo; later phases use packet files like
-`context/phase3/design/b9-packets.md`). Commit messages reference those
-packet/requirement IDs (TS-5, P2-4, B9, R9.1, …). Gate-run records are committed
-in `conformance-runner/GATE.md` and `differential/oracle/RUN.md`. The Python repo
-keeps the conformance corpus (`conformance/` — the extraction tooling lives
-there) and the Python-side bug reports; a pointer README remains at its
-`context/`. Remote: `github.com/jaredmixpanel/mixpanel-headless-ts` (private);
-CI (`.github/workflows/ci.yml`) mirrors `npm run check`.
+The human-facing documents are the source of truth; read them before changing anything non-trivial:
+
+- `CONTRIBUTING.md` — toolchain pins, layout, the gate, generated files, corpus
+  refresh, comment/docstring style, test and commit conventions, releasing.
+- `PORTING.md` — the pinned Python revision, naming rules, every known
+  behavioural divergence (with its TS symbol), what the corpus and oracle prove.
+- `docs/history/` — the port's archived process record (frozen); its README has
+  a reading order and a glossary of the identifiers (`R9.1`, `B6-W2`, `P2-4`,
+  `TS-5`, `D11–D16`, `AIE-nnn`) older commits still cite. Never add new
+  references to them; Python provenance is a dotted symbol name only.
+- `conformance-runner/GATE.md` / `differential/oracle/RUN.md` — run records;
+  `scripts/README.md` — every script, its inputs and npm alias.
+
+Remote: `github.com/jaredmixpanel/mixpanel-headless-ts` (private). CI runs
+`npm run check` on Node 22 and 24; `release.yml` runs Changesets on `main`
+(publishing is a no-op while the packages are `private: true`).
 
 ## Commands
 
-Node >= 22 required (the conformance rig's request-side float twin uses
-`JSON.rawJSON`, absent before Node 21; CI runs 24). Install with `npm ci`
-(lockfile-exact).
+Developing needs Node ^22.22.2 or >= 24.15 (`engine-strict`); the packages run
+on >= 22.12. `npm ci` installs lockfile-exact (`.npmrc`: `min-release-age=7`) and
+the lefthook hooks (eslint + prettier at commit, typecheck + `test:fast` at push; `LEFTHOOK=0` skips).
 
-- `npm run check` — **the repo gate**: per-workspace `tsc --noEmit`, eslint,
-  `prettier --check`, full vitest run, browser-bundle smoke. Run before committing.
-- `npm test` — vitest across all workspaces (config in root `vitest.config.ts`).
-- Single test file: `npx vitest run conformance-runner/test/runner.test.ts`
-- Conformance replay CLI: `npm run conformance -- --report json --filter "compat/"`
-  (filter matches vector id prefixes; omit for the full corpus).
-- `npm run oracle` — starts oracle-ts (stdin/stdout line protocol); normally
-  spawned by the Python fuzz harness as `--right "node .../scripts/run-oracle.mjs"`.
-- `npm run fmt` / `npm run fmt:check` — Prettier owns all formatting.
-- `npm run sync:corpus` — re-snapshot the conformance corpus from the Python repo.
-- `npm run vendor:drift` — verify `vendor/mixpanel-contracts` sha256 integrity and
-  (if the analytics checkout is mounted) byte-diff against source.
-- Generators (see "Generated files" below): `npm run generate`,
-  `npm run generate:error-codes`, `npm run generate:api-map`.
+- `npm run check` — **the repo gate**, in order: `tsc -b` (also the build),
+  `pack:check` (publint + attw per tarball), knip (exports/types at error
+  level), eslint, `prettier --check`, `audit:comments -- --summary` (0 process
+  identifiers in comments/titles), `vendor:drift` (sha256 integrity; byte-diff
+  only with `ANALYTICS_ROOT`), `test:coverage` (every vitest project incl. the
+  corpus replay, the `*.test-d.ts` type tests and the pack-and-install test —
+  `MP_SKIP_PACK_TEST=1` skips that locally; global v8 floors 88/88/90/82),
+  browser-bundle smoke. Run before committing.
+- `npm run build` / `typecheck` — both `tsc -b` (packages into gitignored
+  `dist/`, every project checked); after toggling a flag in
+  `tsconfig.lib.json`, run `npx tsc -b --force` once.
+- `npm run lint` — `eslint . --max-warnings 0` (typed, ~30 s); every rule is
+  `error` or `off` with a reason, never `warn`. Ignore list once in `scripts/lib/lint-ignores.mjs`
+  (`tests/ignore-lists.test.ts` syncs `.prettierignore`). `npm run knip`; `npm run fmt` / `fmt:check`.
+- `npm test` — all vitest projects (`core`, `node`, `browser`, `rig`, `corpus`,
+  `differential`, `repo`); `test:fast` = all but the corpus, `test:corpus` =
+  only it; `npx vitest run --project node`; `npx vitest run <file>`.
+- `npm run conformance -- --report json [--filter "compat/"]` — corpus replay
+  CLI; run after any change under `packages/core/src`, confirm 0 `FAIL_*`.
+  `npm run oracle` — oracle-ts stdio bridge (spawned by the Python fuzz harness).
+- `npm run sync:corpus` (`MP_PYTHON_REPO`, `MP_RIG_BRANCH`); `npm run vendor:drift`
+  (`ANALYTICS_ROOT`); `npm run audit:comments` (`:fix -- --dry-run` previews).
+- Generators: `npm run generate:all` (error-codes, api-map, bridge-allowlist);
+  `generate:compat-tables` and `generate:canonical-fixtures` run Python through
+  `uv run --python <pin>` (`scripts/compat-python.pin.json`; other interpreters refused).
+- Releasing: `npx changeset` per change to a published package;
+  `npm run version` / `release` = `changeset version` / `publish` (run by `release.yml`).
 
 ## Layout (npm workspaces)
 
-| Workspace            | Purpose                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| `packages/core`      | Isomorphic port — zero Node deps (R9.1)                                              |
-| `packages/node`      | Node-only surface (config files, env, OAuth callback, fs seams)                      |
-| `packages/browser`   | Browser-only surface (CredentialStore, redirect PKCE) — same purity boundary as core |
-| `conformance-runner` | Replays the Python-extracted vector corpus (D12/D13)                                 |
-| `differential`       | oracle-ts stdio bridge (D14) + ajv bookmark-schema referee (D15a)                    |
+| Workspace            | Purpose                                                                     |
+| -------------------- | --------------------------------------------------------------------------- |
+| `packages/core`      | Isomorphic port — zero Node deps                                            |
+| `packages/node`      | Node-only surface (config files, env, OAuth callback, fs seams)             |
+| `packages/browser`   | Browser-only surface (CredentialStore, redirect PKCE) — same purity as core |
+| `conformance-runner` | Replays the Python-extracted vector corpus (private)                        |
+| `differential`       | oracle-ts stdio bridge + ajv bookmark-schema referee (private)              |
+| `scripts/`, `tests/` | Generators/launchers/codemods/audits (see `scripts/README.md`); repo tests  |
 
-There is **no build step**: `tsc` runs `--noEmit`, vitest executes TS directly, and
-the two CLIs (`scripts/run-conformance.mjs`, `scripts/run-oracle.mjs`) esbuild-bundle
-their entry point into `dist/` on each invocation.
+Cross-workspace imports use the bare specifiers `@mixpanel-headless/core`,
+`@mixpanel-headless/core/internal` (rig/platform plumbing, **not semver-stable**),
+`@mixpanel-headless/node`, `@mixpanel-headless/conformance-runner` — never a
+relative path (only exception: node/browser _tests_ reach
+`packages/core/test-support/`). Package `exports` point at `dist/`; vitest and the
+esbuild launchers map the specifiers back to `src/` (`scripts/lib/workspace-aliases.mjs`).
+`packages/core/src/index.ts` is an explicit
+named list, `src/internal.ts` the rest; `tests/core-public-surface.test.ts`
+locks "nothing `@internal` reachable from `.`" (`stripInternal` is off — see
+`tsconfig.lib.json`; the tsconfig chain is described in CONTRIBUTING.md).
 
-## Core-purity boundary (R9.1 / R9.3)
-
-`packages/core` and `packages/browser` must not import Node built-ins (`node:*`,
-`fs`, `path`, `os`) or `undici`, and must not read the `process` global —
-configuration is injected instead (e.g. browser storage arrives as an injected
-Storage-shaped parameter). Enforced twice: eslint `no-restricted-imports`/`globals`
-rules in `eslint.config.js`, and `scripts/browser-smoke.mjs`, which esbuild-bundles
-both entry points for `platform: "browser"` and fails on any Node dependency in the
-graph. Node-specific code belongs in `packages/node`.
+**Core-purity boundary:** `packages/core` and `packages/browser` must not import
+Node built-ins (`node:*`, `fs`, `path`, `os`) or `undici`, and must not read
+`process` — configuration is injected. Enforced by eslint and by
+`scripts/browser-smoke.mjs` (esbuild for `platform: "browser"`, fails on any
+Node dependency in the graph). Node-specific code belongs in `packages/node`.
 
 ## Conformance rig
 
-- The corpus (`conformance-runner/corpus/`) is a **committed snapshot** of the
-  Python repo's `conformance/vectors/**` plus contract artifacts, pinned by
-  `sourceCommit` in `conformance-runner/corpus.config.json`. The sync script aborts
-  on pin mismatch; a corpus refresh = update the pin, run `npm run sync:corpus`,
-  commit. Never hand-edit corpus files.
-- `conformance-runner/src/runner.ts` dispatches vectors to implementations
-  registered in `src/bindings.ts` (wire vectors go through `src/wire-*.ts` +
-  `vector-fetch.ts`, which serves recorded HTTP interactions and diffs the
-  requests the port actually makes). Verdicts: `PASS`, `FAIL_OUTPUT`,
-  `FAIL_REQUEST`, `FAIL_ERROR`, `PRECISION_LOSS`, `UNPORTED` (mapped but not yet
-  bound), `UNMAPPED_API`. The whole corpus also runs as vitest
-  (`conformance-runner/test/corpus.test.ts`), skipping `UNPORTED` vectors.
-- Python↔TS API naming is resolved through the generated `src/api-map.gen.ts`;
-  authored-only apis (compat._, wirestub._) live in `src/authored-apis.json`,
-  naming exceptions in `src/naming-exceptions.json`. The generator fails hard on
-  names with no exception row — no fuzzy matching.
-- Python-parity semantics (`str()` rendering, `zfill`, float formatting) live in
-  `packages/core/src/compat/`, including a CPython-pinned Unicode printability
-  table so results don't depend on the host JS engine's Unicode version.
-- Cross-language equality goes through the shared canonicalizer
-  (`conformance-runner/src/canonical.ts`) and a lossless, order-preserving JSON
-  model (`lossless-json.ts`) — plain `JSON.parse` reorders integer-like keys and
-  loses float-ness of tokens like `18.0`, both of which matter here.
+- `conformance-runner/corpus/` is a **committed snapshot** pinned by `sourceCommit`
+  in `corpus.config.json` (sync aborts on mismatch). Never hand-edit corpus files.
+- `src/runner.ts` dispatches vectors to the bindings (`src/bindings.ts` façade,
+  `src/bindings/*.ts`; wire vectors via `src/wire-*.ts` + `vector-fetch.ts`).
+  Verdicts: `PASS`, `FAIL_OUTPUT`, `FAIL_REQUEST`, `FAIL_ERROR`,
+  `PRECISION_LOSS`, `UNPORTED`, `UNMAPPED_API`.
+- Python↔TS naming: generated `src/api-map.gen.ts` + `src/naming-exceptions.json`
+  - `src/authored-apis.json` (the generator fails hard on unmapped names); equality
+    goes through `src/canonical.ts` and the order-preserving `lossless-json.ts`.
 
 ## Generated files — never hand-edit
 
-Each has a generator and a byte-exact freshness test; regenerate instead of editing:
+Regenerate instead (full table with inputs and freshness tests in CONTRIBUTING.md):
 
-- `conformance-runner/src/api-map.gen.ts` ← `npm run generate:api-map`
-- `packages/core/src/errors-codes.gen.ts` ← `npm run generate:error-codes`
-- `packages/core/src/compat/non-printable.gen.ts` ← `scripts/generate-non-printable.py`
-- `differential/src/generated/**` ← `npm run generate` (json2ts from vendored schema)
-- `vendor/**` — vendored verbatim with sha256 provenance (`PROVENANCE.json`); re-vendor, don't patch.
+- `*.gen.ts` / `bridge-allowlist.gen.json` ← `npm run generate:all` (byte-exact
+  freshness tests); the compat tables and `canonical-fixtures.json` ←
+  `generate:compat-tables` / `generate:canonical-fixtures`
+  (`tests/generated-tables-provenance.test.ts` pins interpreter, generator sha256, corpus pin).
+- `vendor/**` — vendored verbatim with sha256 provenance; re-vendor, don't patch.
+- `packages/*/CHANGELOG.md` — written by `changeset version` (only `0.1.0` is hand-written).
 
 ## Conventions
 
-- tsconfig is strict everywhere: `exactOptionalPropertyTypes`,
-  `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, NodeNext modules.
-- Task-scoped scratch notes go in `.notes/` (see `.notes/ts5-scratch.md` for the
-  pattern); durable run records go in `GATE.md` / `RUN.md`.
-- Environment overrides for scripts: `MP_PYTHON_REPO` (Python checkout path),
-  `MP_RIG_BRANCH` (corpus sync branch), `ANALYTICS_ROOT` (vendor drift source,
-  read-only).
+- tsconfig is strict everywhere (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`,
+  `noPropertyAccessFromIndexSignature` — use `obj["key"]` — `erasableSyntaxOnly`: no
+  `enum`/`namespace`; `verbatimModuleSyntax`, NodeNext); library builds add `isolatedDeclarations`.
+- Naming: identifiers and constructor/config option bags are camelCase; snake_case
+  only for names that mirror Python or the wire and for query-option bags mirroring Python
+  keyword arguments 1:1 (`namingConvention()` in `eslint.config.js`, `tests/naming-config-bags.test.ts`).
+- Comments explain why, never when/who; Python provenance by dotted symbol
+  (`@see mixpanel_headless.workspace.Workspace.list_dashboards`), never line
+  numbers; deliberate differences are `// Divergence:` + a PORTING.md entry.
+  Test titles are English; the Python name goes in a trailing `// python: test_x`
+  comment (lint-enforced). Full style guide in CONTRIBUTING.md.
+- Scratch notes go in `.notes/` (git-ignored); run records in `GATE.md` / `RUN.md`.
+  Commit as `type(scope): subject`; mechanical changes in their own commit.
+- Agents: `.claude/` is git-ignored and excluded from lint/format/tests; create
+  worktrees **outside** the repo (`git worktree add ../mp-ts-<name> -b <branch>`), never under `.claude/`.

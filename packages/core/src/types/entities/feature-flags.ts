@@ -1,28 +1,30 @@
 /**
  * Feature-flag family + flag CRUD/history params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
-import {
-  EntityModel,
-  oneOf,
-  prepareInit,
-  type EntityFieldSpec,
-} from "./model-base.js";
-import {
+import type {
   FeatureFlagStatus,
   FlagContractStatus,
   ServingMethod,
 } from "../enums.js";
+import {
+  type EntityFieldSpecs,
+  EntityModel,
+  oneOf,
+  prepareInit,
+} from "./model-base.js";
 
 /**
  * Constructor input for {@link FeatureFlag} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface FeatureFlagInit {
   /** Unique identifier (UUID). */
@@ -38,7 +40,7 @@ export interface FeatureFlagInit {
   /** Current lifecycle status. */
   readonly status?: FeatureFlagStatus | undefined;
   /** Tags for organization. */
-  readonly tags?: ReadonlyArray<string> | undefined;
+  readonly tags?: readonly string[] | undefined;
   /** Linked experiment ID if flag backs an experiment. */
   readonly experiment_id?: string | null | undefined;
   /** Flag context identifier. */
@@ -86,18 +88,28 @@ export interface FeatureFlagInit {
 /**
  * A Mixpanel feature flag as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.FeatureFlag` (types.py:3107;
- * model_config: frozen=True, extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const featureFlag = FeatureFlag.fromDict({
+ *   id: "f1a2b3c4",
+ *   project_id: 123456,
+ *   name: "new-checkout",
+ *   key: "new-checkout",
+ * });
+ * featureFlag.id; // "f1a2b3c4"
+ * ```
+ * @see mixpanel_headless.types.FeatureFlag
  */
-export class FeatureFlag extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class FeatureFlag extends EntityModel<FeatureFlagInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "FeatureFlag";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<FeatureFlagInit> = [
     { name: "id", required: true, kind: "str" },
     { name: "project_id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -149,7 +161,7 @@ export class FeatureFlag extends EntityModel {
   /** Current lifecycle status. */
   declare readonly status: FeatureFlagStatus;
   /** Tags for organization. */
-  declare readonly tags: ReadonlyArray<string>;
+  declare readonly tags: readonly string[];
   /** Linked experiment ID if flag backs an experiment. */
   declare readonly experiment_id: string | null;
   /** Flag context identifier. */
@@ -197,11 +209,11 @@ export class FeatureFlag extends EntityModel {
    * Construct a validated FeatureFlag (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: FeatureFlagInit) {
-    super(FeatureFlag, fields as unknown as Readonly<Record<string, unknown>>);
+    super(FeatureFlag, fields);
   }
 
   /**
@@ -210,18 +222,16 @@ export class FeatureFlag extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): FeatureFlag {
-    return new FeatureFlag(
-      prepareInit(FeatureFlag, raw) as unknown as FeatureFlagInit,
-    );
+    return new FeatureFlag(prepareInit(FeatureFlag, raw));
   }
 }
 
 /**
  * Constructor input for {@link CreateFeatureFlagParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateFeatureFlagParamsInit {
   /** Flag name (required). */
@@ -233,7 +243,7 @@ export interface CreateFeatureFlagParamsInit {
   /** Initial status (defaults to disabled). */
   readonly status?: FeatureFlagStatus | null | undefined;
   /** Tags for organization (required by API, defaults to empty list). */
-  readonly tags?: ReadonlyArray<string> | undefined;
+  readonly tags?: readonly string[] | undefined;
   /** Flag context identifier (required by API). */
   readonly context?: string | undefined;
   /** How flag values are delivered (required by API). */
@@ -245,18 +255,27 @@ export interface CreateFeatureFlagParamsInit {
 /**
  * Parameters for creating a new feature flag.
  *
- * Mirror of Python `mixpanel_headless.types.CreateFeatureFlagParams` (types.py:3249;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateFeatureFlagParams({
+ *   name: "New checkout",
+ *   key: "new-checkout",
+ *   description: "Weekly overview",
+ * });
+ * params.name; // "New checkout"
+ * ```
+ * @see mixpanel_headless.types.CreateFeatureFlagParams
  */
-export class CreateFeatureFlagParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateFeatureFlagParams extends EntityModel<CreateFeatureFlagParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateFeatureFlagParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateFeatureFlagParamsInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "key", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -305,7 +324,7 @@ export class CreateFeatureFlagParams extends EntityModel {
   /** Initial status (defaults to disabled). */
   declare readonly status: FeatureFlagStatus | null;
   /** Tags for organization (required by API, defaults to empty list). */
-  declare readonly tags: ReadonlyArray<string>;
+  declare readonly tags: readonly string[];
   /** Flag context identifier (required by API). */
   declare readonly context: string;
   /** How flag values are delivered (required by API). */
@@ -317,14 +336,11 @@ export class CreateFeatureFlagParams extends EntityModel {
    * Construct a validated CreateFeatureFlagParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateFeatureFlagParamsInit) {
-    super(
-      CreateFeatureFlagParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateFeatureFlagParams, fields);
   }
 
   /**
@@ -333,21 +349,18 @@ export class CreateFeatureFlagParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateFeatureFlagParams {
     return new CreateFeatureFlagParams(
-      prepareInit(
-        CreateFeatureFlagParams,
-        raw,
-      ) as unknown as CreateFeatureFlagParamsInit,
+      prepareInit(CreateFeatureFlagParams, raw),
     );
   }
 }
 
 /**
  * Constructor input for {@link UpdateFeatureFlagParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateFeatureFlagParamsInit {
   /** Flag name (required). */
@@ -361,7 +374,7 @@ export interface UpdateFeatureFlagParamsInit {
   /** Optional description. */
   readonly description?: string | null | undefined;
   /** Tags for organization (required by API, defaults to empty list). */
-  readonly tags?: ReadonlyArray<string> | undefined;
+  readonly tags?: readonly string[] | undefined;
   /** Flag context identifier (required by API). */
   readonly context?: string | undefined;
   /** How flag values are delivered (required by API). */
@@ -371,18 +384,28 @@ export interface UpdateFeatureFlagParamsInit {
 /**
  * Parameters for updating an existing feature flag (PUT semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateFeatureFlagParams` (types.py:3324;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateFeatureFlagParams({
+ *   name: "New checkout",
+ *   key: "new-checkout",
+ *   status: "enabled",
+ *   ruleset: {},
+ * });
+ * params.name; // "New checkout"
+ * ```
+ * @see mixpanel_headless.types.UpdateFeatureFlagParams
  */
-export class UpdateFeatureFlagParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateFeatureFlagParams extends EntityModel<UpdateFeatureFlagParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateFeatureFlagParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateFeatureFlagParamsInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "key", required: true, kind: "str" },
     {
@@ -412,7 +435,7 @@ export class UpdateFeatureFlagParams extends EntityModel {
   /** Optional description. */
   declare readonly description: string | null;
   /** Tags for organization (required by API, defaults to empty list). */
-  declare readonly tags: ReadonlyArray<string>;
+  declare readonly tags: readonly string[];
   /** Flag context identifier (required by API). */
   declare readonly context: string;
   /** How flag values are delivered (required by API). */
@@ -422,14 +445,11 @@ export class UpdateFeatureFlagParams extends EntityModel {
    * Construct a validated UpdateFeatureFlagParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateFeatureFlagParamsInit) {
-    super(
-      UpdateFeatureFlagParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateFeatureFlagParams, fields);
   }
 
   /**
@@ -438,21 +458,18 @@ export class UpdateFeatureFlagParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateFeatureFlagParams {
     return new UpdateFeatureFlagParams(
-      prepareInit(
-        UpdateFeatureFlagParams,
-        raw,
-      ) as unknown as UpdateFeatureFlagParamsInit,
+      prepareInit(UpdateFeatureFlagParams, raw),
     );
   }
 }
 
 /**
  * Constructor input for {@link SetTestUsersParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface SetTestUsersParamsInit {
   /** Mapping of variant keys to user distinct IDs. */
@@ -462,18 +479,25 @@ export interface SetTestUsersParamsInit {
 /**
  * Parameters for setting test user variant overrides on a flag.
  *
- * Mirror of Python `mixpanel_headless.types.SetTestUsersParams` (types.py:3380;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new SetTestUsersParams({
+ *   users: { "user-123": "treatment" },
+ * });
+ * params.users; // { "user-123": "treatment" }
+ * ```
+ * @see mixpanel_headless.types.SetTestUsersParams
  */
-export class SetTestUsersParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class SetTestUsersParams extends EntityModel<SetTestUsersParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "SetTestUsersParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<SetTestUsersParamsInit> = [
     { name: "users", required: true },
   ];
 
@@ -484,14 +508,11 @@ export class SetTestUsersParams extends EntityModel {
    * Construct a validated SetTestUsersParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: SetTestUsersParamsInit) {
-    super(
-      SetTestUsersParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(SetTestUsersParams, fields);
   }
 
   /**
@@ -500,18 +521,16 @@ export class SetTestUsersParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): SetTestUsersParams {
-    return new SetTestUsersParams(
-      prepareInit(SetTestUsersParams, raw) as unknown as SetTestUsersParamsInit,
-    );
+    return new SetTestUsersParams(prepareInit(SetTestUsersParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link FlagHistoryParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface FlagHistoryParamsInit {
   /** Pagination cursor. */
@@ -523,18 +542,23 @@ export interface FlagHistoryParamsInit {
 /**
  * Parameters for querying feature flag change history.
  *
- * Mirror of Python `mixpanel_headless.types.FlagHistoryParams` (types.py:3396;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new FlagHistoryParams({ page: "example" });
+ * params.page; // "example"
+ * ```
+ * @see mixpanel_headless.types.FlagHistoryParams
  */
-export class FlagHistoryParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class FlagHistoryParams extends EntityModel<FlagHistoryParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "FlagHistoryParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<FlagHistoryParamsInit> = [
     { name: "page", kind: "str", nullable: true },
     { name: "page_size", kind: "int", nullable: true },
   ];
@@ -548,14 +572,11 @@ export class FlagHistoryParams extends EntityModel {
    * Construct a validated FlagHistoryParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: FlagHistoryParamsInit) {
-    super(
-      FlagHistoryParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(FlagHistoryParams, fields);
   }
 
   /**
@@ -564,22 +585,20 @@ export class FlagHistoryParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): FlagHistoryParams {
-    return new FlagHistoryParams(
-      prepareInit(FlagHistoryParams, raw) as unknown as FlagHistoryParamsInit,
-    );
+    return new FlagHistoryParams(prepareInit(FlagHistoryParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link FlagHistoryResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface FlagHistoryResponseInit {
   /** Array of event arrays. */
-  readonly events: ReadonlyArray<ReadonlyArray<unknown>>;
+  readonly events: ReadonlyArray<readonly unknown[]>;
   /** Total number of events. */
   readonly count: number;
 }
@@ -587,24 +606,32 @@ export interface FlagHistoryResponseInit {
 /**
  * Paginated change history for a feature flag.
  *
- * Mirror of Python `mixpanel_headless.types.FlagHistoryResponse` (types.py:3416;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const flagHistoryResponse = FlagHistoryResponse.fromDict({
+ *   events: [],
+ *   count: 3,
+ * });
+ * flagHistoryResponse.events; // []
+ * ```
+ * @see mixpanel_headless.types.FlagHistoryResponse
  */
-export class FlagHistoryResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class FlagHistoryResponse extends EntityModel<FlagHistoryResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "FlagHistoryResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<FlagHistoryResponseInit> = [
     { name: "events", required: true },
     { name: "count", required: true, kind: "int" },
   ];
 
   /** Array of event arrays. */
-  declare readonly events: ReadonlyArray<ReadonlyArray<unknown>>;
+  declare readonly events: ReadonlyArray<readonly unknown[]>;
   /** Total number of events. */
   declare readonly count: number;
 
@@ -612,14 +639,11 @@ export class FlagHistoryResponse extends EntityModel {
    * Construct a validated FlagHistoryResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: FlagHistoryResponseInit) {
-    super(
-      FlagHistoryResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(FlagHistoryResponse, fields);
   }
 
   /**
@@ -628,21 +652,16 @@ export class FlagHistoryResponse extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): FlagHistoryResponse {
-    return new FlagHistoryResponse(
-      prepareInit(
-        FlagHistoryResponse,
-        raw,
-      ) as unknown as FlagHistoryResponseInit,
-    );
+    return new FlagHistoryResponse(prepareInit(FlagHistoryResponse, raw));
   }
 }
 
 /**
  * Constructor input for {@link FlagLimitsResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface FlagLimitsResponseInit {
   /** Maximum allowed flags. */
@@ -658,18 +677,28 @@ export interface FlagLimitsResponseInit {
 /**
  * Account-level feature flag usage and limits.
  *
- * Mirror of Python `mixpanel_headless.types.FlagLimitsResponse` (types.py:3439;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const flagLimitsResponse = FlagLimitsResponse.fromDict({
+ *   limit: 5,
+ *   is_trial: true,
+ *   current_usage: 2,
+ *   contract_status: "active",
+ * });
+ * flagLimitsResponse.limit; // 5
+ * ```
+ * @see mixpanel_headless.types.FlagLimitsResponse
  */
-export class FlagLimitsResponse extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class FlagLimitsResponse extends EntityModel<FlagLimitsResponseInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "FlagLimitsResponse";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<FlagLimitsResponseInit> = [
     { name: "limit", required: true, kind: "int" },
     { name: "is_trial", required: true, kind: "bool" },
     { name: "current_usage", required: true, kind: "int" },
@@ -693,14 +722,11 @@ export class FlagLimitsResponse extends EntityModel {
    * Construct a validated FlagLimitsResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: FlagLimitsResponseInit) {
-    super(
-      FlagLimitsResponse,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(FlagLimitsResponse, fields);
   }
 
   /**
@@ -709,11 +735,9 @@ export class FlagLimitsResponse extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): FlagLimitsResponse {
-    return new FlagLimitsResponse(
-      prepareInit(FlagLimitsResponse, raw) as unknown as FlagLimitsResponseInit,
-    );
+    return new FlagLimitsResponse(prepareInit(FlagLimitsResponse, raw));
   }
 }

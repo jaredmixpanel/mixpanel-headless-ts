@@ -1,21 +1,14 @@
-// QA follow-up (2026-08-17, post-Phase-3 live QA report): Python's
-// `Workspace()` wires the on-disk token resolver, `/me` cache, and file
-// reader automatically (`workspace.py:424-513`); the TS node package
-// shipped only the pieces (`createNodeWorkspaceSources`,
-// `createNodeAuthEffects`, `MeCache`, `nodeReadFile`) with no composed
-// constructor — so the README's OAuth quick start failed on first query
-// with `TokenResolver is required`. `createNodeWorkspace()` is the
-// parity twin of Python's zero-config `Workspace()` construction.
-//
-// Fixture pattern per `workspace-bridge-materialization.test.ts`:
-// isolated `$HOME` tmp dir, `MP_*` env scrub, 0o600/0o700 modes on
-// POSIX.
+// createNodeWorkspace(): the zero-config twin of Python's `Workspace()`
+// construction, composing the on-disk token resolver, `/me` cache and file
+// reader. Runs over an isolated HOME with the MP_* env scrubbed.
 
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { Workspace } from "../../core/src/workspace.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { CreateBookmarkParams, Workspace } from "@mixpanel-headless/core";
+
 import {
   createNodeWorkspace,
   createNodeWorkspaceSources,
@@ -24,25 +17,17 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
-const cleanups: (() => void)[] = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
+const cleanups: Array<() => void> = [];
 let home = "";
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
   home = makeTempDir(cleanups);
-  process.env["HOME"] = home;
+  vi.stubEnv("HOME", home);
 });
 
 afterEach(() => {
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -97,16 +82,19 @@ function seedOAuthAccount(): void {
 /** Capturing 204 fetch — the `delete_cohort` wire shape (status-only). */
 function capturingFetch(): {
   fetchImpl: typeof fetch;
-  seen: { url: string; auth: string | null }[];
+  seen: Array<{ url: string; auth: string | null }>;
 } {
-  const seen: { url: string; auth: string | null }[] = [];
-  const fetchImpl = (async (
+  const seen: Array<{ url: string; auth: string | null }> = [];
+  const fetchImpl = ((
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> => {
     const headers = new Headers(init?.headers);
-    seen.push({ url: String(input), auth: headers.get("authorization") });
-    return new Response(null, { status: 204 });
+    seen.push({
+      url: input instanceof Request ? input.url : String(input),
+      auth: headers.get("authorization"),
+    });
+    return Promise.resolve(new Response(null, { status: 204 }));
   }) as typeof fetch;
   return { fetchImpl, seen };
 }
@@ -138,7 +126,7 @@ describe("createNodeWorkspace (Python Workspace() zero-config twin)", () => {
       sources: createNodeWorkspaceSources(),
       clientOptions: { fetch: fetchImpl },
     });
-    await expect(ws.deleteCohort(1)).rejects.toThrowError(
+    await expect(ws.deleteCohort(1)).rejects.toThrow(
       /TokenResolver is required/,
     );
   });
@@ -154,5 +142,90 @@ describe("createNodeWorkspace (Python Workspace() zero-config twin)", () => {
     await ws.deleteCohort(2);
 
     expect(seen[0]?.url).toContain("/api/app/projects/67890/cohorts/2");
+  });
+});
+
+/**
+ * Insights params whose only client-side schema finding is the
+ * WARNING-severity `S4_UNKNOWN_CHART_TYPE` (an unknown `sorting` key).
+ */
+const WARNING_ONLY_PARAMS: Readonly<Record<string, unknown>> = {
+  displayOptions: { chartType: "bar" },
+  sections: {
+    show: [{ type: "metric", behavior: { type: "event", name: "Login" } }],
+    time: [],
+  },
+  sorting: { barz: { sortBy: "column", colSortAttrs: [] } },
+};
+
+/** Capture every `process.stderr.write` chunk while `run` executes. */
+async function stderrDuring(run: () => Promise<void>): Promise<string[]> {
+  const lines: string[] = [];
+  const spy = vi
+    .spyOn(process.stderr, "write")
+    .mockImplementation((chunk: string | Uint8Array): boolean => {
+      lines.push(String(chunk));
+      return true;
+    });
+  try {
+    await run();
+  } finally {
+    spy.mockRestore();
+  }
+  return lines;
+}
+
+/**
+ * Trigger the facade's `logger.warning` seam: `create_bookmark` logs the
+ * warning-severity findings BEFORE its wire call, so the 204 stub's
+ * response-shape failure afterwards is irrelevant here and swallowed.
+ */
+async function createWithWarning(ws: Workspace): Promise<void> {
+  await ws
+    .createBookmark(
+      new CreateBookmarkParams({
+        name: "WarnTest",
+        bookmark_type: "insights",
+        params: WARNING_ONLY_PARAMS,
+        dashboard_id: 99,
+      }),
+    )
+    .catch(() => undefined);
+}
+
+describe("createNodeWorkspace logger seam (Python's last-resort handler prints WARNING to stderr)", () => {
+  it("writes facade warnings to stderr when no logger is supplied", async () => {
+    seedOAuthAccount();
+    const { fetchImpl } = capturingFetch();
+    const ws = createNodeWorkspace({ clientOptions: { fetch: fetchImpl } });
+
+    const lines = await stderrDuring(() => createWithWarning(ws));
+
+    expect(lines.some((line) => line.includes("S4_UNKNOWN_CHART_TYPE"))).toBe(
+      true,
+    );
+  });
+
+  it("routes facade warnings to the supplied logger instead of stderr", async () => {
+    seedOAuthAccount();
+    const { fetchImpl } = capturingFetch();
+    const warnings: string[] = [];
+    const ws = createNodeWorkspace({
+      clientOptions: { fetch: fetchImpl },
+      logger: {
+        warning: (message): void => {
+          warnings.push(message);
+        },
+      },
+    });
+
+    const lines = await stderrDuring(() => createWithWarning(ws));
+
+    expect(warnings.some((m) => m.includes("S4_UNKNOWN_CHART_TYPE"))).toBe(
+      true,
+    );
+    expect(lines.some((line) => line.includes("S4_UNKNOWN_CHART_TYPE"))).toBe(
+      false,
+    );
   });
 });

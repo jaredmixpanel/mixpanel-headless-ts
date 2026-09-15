@@ -1,28 +1,26 @@
 /**
- * Custom-alert CRUD + operations wire methods (App API) — Phase-3
- * packet B4-C4 port of the `MixpanelAPIClient` alerts range
- * (`api_client.py:6078-6474`).
+ * Custom-alert CRUD and operations wire methods on the App API
+ * (`alerts/custom/`, workspace-scoped through `maybe_scoped_path`).
+ * `get_alert_history` is the one raw-envelope call and re-shapes the
+ * envelope into `{results, pagination}` with Python's exact branch
+ * ladder; everything else returns the envelope product verbatim after
+ * Python's isinstance guard.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). `get_alert_history` is the one `_raw=True` consumer in the
- * shard — it re-shapes the raw envelope into
- * `{results, pagination}` per the source's exact branch ladder
- * (`:6352-6371`). Everything else returns the envelope product
- * verbatim after the source's isinstance guard (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_alerts
  */
 
 import { appRequest } from "../../client/app-request.js";
-import type { ClientCore } from "../../client/client.js";
+import type { ClientCore } from "../../client/core.js";
 import { isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { pythonStr } from "../../compat/python-str.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { pythonTypeNameOf } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
   paramsOrNone,
-  pythonTypeNameOf,
 } from "./shared.js";
 
 /** Options bag of {@link AlertMethods.listAlerts}. */
@@ -31,10 +29,10 @@ export interface ListAlertsOptions {
   readonly bookmark_id?: number | null | undefined;
   /**
    * If true, list alerts for all users (`is not None` gate — an
-   * explicit `false` IS sent, as `"false"`; `str(x).lower()` twin).
+   * explicit `false` is sent, as `"false"`; `str(x).lower()` twin).
    */
   readonly skip_user_filter?: boolean | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -42,7 +40,7 @@ export interface ListAlertsOptions {
 export interface GetAlertCountOptions {
   /** Optional filter by alert type (wire param `type`). */
   readonly alert_type?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -54,165 +52,188 @@ export interface GetAlertHistoryOptions {
   readonly next_cursor?: string | null | undefined;
   /** Cursor for the previous page. */
   readonly previous_cursor?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C4 alert method surface (mixed into `MixpanelClient`). */
+/** Alert methods mixed into `MixpanelClient`. */
 export interface AlertMethods {
   /**
-   * List custom alerts (`list_alerts`, `api_client.py:6078-6120` —
-   * GET `alerts/custom/`).
+   * List custom alerts. Sends GET `alerts/custom/`.
    *
    * @param options - bookmark_id/skip_user_filter filters + signal.
    * @returns The alert list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_alerts
    */
-  listAlerts(options?: ListAlertsOptions): Promise<JsonValue[]>;
+  listAlerts: (options?: ListAlertsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create a custom alert (`create_alert`, `:6122-6153` — POST
-   * `alerts/custom/`).
+   * Create a custom alert. Sends POST `alerts/custom/`.
    *
    * @param body - Alert creation parameters.
    * @param signal - Optional cancellation signal.
    * @returns The created alert dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_alert
    */
-  createAlert(
+  createAlert: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a custom alert by ID (`get_alert`, `:6155-6186`).
+   * Get a custom alert by ID.
    *
    * @param alertId - Alert ID (integer).
    * @param signal - Optional cancellation signal.
    * @returns The alert dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert
    */
-  getAlert(
+  getAlert: (
     alertId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a custom alert (`update_alert`, `:6188-6220` — PATCH).
+   * Update a custom alert. Sends a PATCH.
    *
    * @param alertId - Alert ID (integer).
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated alert dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_alert
    */
-  updateAlert(
+  updateAlert: (
     alertId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a custom alert (`delete_alert`, `:6222-6244`).
+   * Delete a custom alert.
    *
    * @param alertId - Alert ID (integer).
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_alert
    */
-  deleteAlert(alertId: number, signal?: AbortSignal): Promise<void>;
+  deleteAlert: (alertId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete custom alerts (`bulk_delete_alerts`, `:6246-6268` —
-   * POST `alerts/custom/bulk-delete/` with `{alert_ids}`).
+   * Bulk-delete custom alerts. Sends POST `alerts/custom/bulk-delete/` with
+   * `{alert_ids}`.
    *
    * @param ids - Alert IDs to delete.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_delete_alerts
    */
-  bulkDeleteAlerts(ids: readonly number[], signal?: AbortSignal): Promise<void>;
+  bulkDeleteAlerts: (
+    ids: readonly number[],
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
-   * Get alert count and limits (`get_alert_count`, `:6270-6304` — GET
-   * `alerts/custom/alert-count/`).
+   * Get alert count and limits. Sends GET `alerts/custom/alert-count/`.
    *
    * @param options - alert_type filter + signal.
    * @returns The count dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert_count
    */
-  getAlertCount(
+  getAlertCount: (
     options?: GetAlertCountOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get alert trigger history (`get_alert_history`, `:6306-6371` —
-   * GET `alerts/custom/{id}/history/` with `_raw=True`, then the
-   * source's exact `{results, pagination}` re-shape ladder).
+   * Get alert trigger history. Sends GET `alerts/custom/{id}/history/` with
+   * `_raw=True`, then the source's exact `{results, pagination}` re-shape ladder.
    *
    * @param alertId - Alert ID (integer).
    * @param options - page_size/cursor params + signal.
    * @returns A dict with `results` list and `pagination` metadata.
-   * @throws MixpanelHeadlessError - Missing/malformed `results` shape.
+   * @throws {@link MixpanelHeadlessError} - Missing/malformed `results` shape.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert_history
    */
-  getAlertHistory(
+  getAlertHistory: (
     alertId: number,
     options?: GetAlertHistoryOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Send a test alert notification (`test_alert`, `:6373-6404` — POST
-   * `alerts/custom/test/`).
+   * Send a test alert notification. Sends POST `alerts/custom/test/`.
    *
    * @param body - Alert parameters for the test.
    * @param signal - Optional cancellation signal.
    * @returns The test result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.test_alert
    */
-  testAlert(
+  testAlert: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a signed screenshot URL (`get_alert_screenshot_url`,
-   * `:6406-6437` — GET `alerts/custom/screenshot/` with the
-   * ALWAYS-present `gcs_key` param).
+   * Get a signed screenshot URL. Sends GET `alerts/custom/screenshot/` with the
+   * always-present `gcs_key` param.
    *
    * @param gcsKey - GCS object key for the screenshot.
    * @param signal - Optional cancellation signal.
    * @returns The dict with `signed_url`.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert_screenshot_url
    */
-  getAlertScreenshotUrl(
+  getAlertScreenshotUrl: (
     gcsKey: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Validate alerts against a bookmark
-   * (`validate_alerts_for_bookmark`, `:6439-6474` — POST
-   * `alerts/custom/validate-alerts-for-bookmark/`).
+   * Validate alerts against a bookmark. Sends POST
+   * `alerts/custom/validate-alerts-for-bookmark/`.
    *
    * @param body - Validation parameters.
    * @param signal - Optional cancellation signal.
    * @returns The validation result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.validate_alerts_for_bookmark
    */
-  validateAlertsForBookmark(
+  validateAlertsForBookmark: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**
- * Build the C4 alert methods over the C1 core seam.
+ * Build the alert methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const alerts = createAlertMethods(core);
+ * const open = await alerts.listAlerts({ skip_user_filter: true });
+ * // [{ id: 42, name: "Signups dropped", ... }, ...]
+ * ```
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createAlertMethods(core: ClientCore): AlertMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -232,8 +253,8 @@ export function createAlertMethods(core: ClientCore): AlertMethods {
         options.skip_user_filter !== undefined &&
         options.skip_user_filter !== null
       ) {
-        // `str(skip_user_filter).lower()` — `str(True)` is `"True"`
-        // (R11.7: pythonStr, never String(...)).
+        // `str(skip_user_filter).lower()` — `str(True)` is `"True"`, so
+        // `pythonStr`, never `String(...)`.
         params["skip_user_filter"] = pythonStr(
           options.skip_user_filter,
         ).toLowerCase();
@@ -338,7 +359,7 @@ export function createAlertMethods(core: ClientCore): AlertMethods {
         path,
         { params: paramsOrNone(params), raw: true },
       );
-      // The source's exact branch ladder (`api_client.py:6352-6371`).
+      // Python's exact branch ladder.
       if (isPlainRecord(result)) {
         if (!Object.hasOwn(result, "results")) {
           throw new MixpanelHeadlessError(

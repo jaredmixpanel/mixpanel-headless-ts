@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit by hand.
 // Source: scripts/generate-decimal-digits.py (CPython int() is the oracle).
+// Regenerate with: npm run generate:compat-tables
 // Provenance: CPython 3.14.6, Unicode database 16.0.0, 76 runs / 760 codepoints.
+// Generator sha256: db73d350528ec344dad8c4a4be3b9ea5754667e64b82ba6fcad88b1910d0f401 (scripts/generate-decimal-digits.py).
 //
 // Codepoints CPython int(str)/float(str) accept as decimal digits
 // (the Unicode decimal-digit property consulted by

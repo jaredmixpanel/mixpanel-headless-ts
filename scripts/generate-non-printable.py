@@ -1,18 +1,21 @@
-"""Generate packages/core/src/compat/non-printable.gen.ts (R11.1).
+#!/usr/bin/env python3
+"""Generate packages/core/src/compat/non-printable.gen.ts.
 
 Emits the closed-form table of codepoint ranges CPython's
 ``str.isprintable()`` reports as NON-printable, generated from CPython's
 own ``unicodedata`` — i.e. the reference implementation itself is the
 oracle. Pinning the table makes ``pythonRepr``'s escape decisions
-independent of the JS engine's Unicode database version (the TS-7
-differential run caught V8 Unicode 17 treating Unicode-17-assigned
+independent of the JS engine's Unicode database version (a
+differential run against CPython caught V8 Unicode 17 treating Unicode-17-assigned
 codepoints as printable while CPython 3.14 / Unicode 16 escapes them).
 
-Usage (any CPython matching the port's pinned target):
-    uv run --no-project python scripts/generate-non-printable.py
+Usage (the pinned CPython only — see scripts/compat-python.pin.json):
+    npm run generate:compat-tables
 
 Re-run + commit when the port's target CPython (and thus its Unicode
-database) is upgraded; the provenance header records both versions.
+database) is upgraded; the provenance header records both versions and
+the sha256 of this script (checked by
+tests/generated-tables-provenance.test.ts).
 """
 
 from __future__ import annotations
@@ -20,6 +23,8 @@ from __future__ import annotations
 import sys
 import unicodedata
 from pathlib import Path
+
+from gen_provenance import generator_sha256, require_pinned_interpreter
 
 OUT_PATH = (
     Path(__file__).resolve().parents[1]
@@ -58,12 +63,15 @@ def main() -> int:
     Returns:
         Process exit code (0 on success).
     """
+    require_pinned_interpreter()
     ranges = build_ranges()
     py = ".".join(str(v) for v in sys.version_info[:3])
     body_lines = [
         "// GENERATED FILE — do not edit by hand.",
         "// Source: scripts/generate-non-printable.py (CPython unicodedata is the oracle).",
+        "// Regenerate with: npm run generate:compat-tables",
         f"// Provenance: CPython {py}, Unicode database {unicodedata.unidata_version}, {len(ranges)} ranges.",
+        f"// Generator sha256: {generator_sha256(__file__)} (scripts/generate-non-printable.py).",
         "//",
         "// The inclusive [start, end] codepoint ranges CPython str.isprintable()",
         "// reports as NON-printable (categories Cc, Cf, Cs, Co, Cn, Zl, Zp, Zs,",

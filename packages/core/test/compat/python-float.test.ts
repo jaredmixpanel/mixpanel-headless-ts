@@ -1,12 +1,13 @@
-// B0-1 (P3-4): tests written FIRST from R11.3 semantics. Every expected
-// value below was produced by CPython 3.14.6 `float(str)` (the oracle) on
-// 2026-08-15; the parse-grammar probes are recorded in
-// context/phase3/notes/B0-notes.md (Python repo).
+// `pythonFloat` — CPython `float(str)` parse grammar: decimal/exponent forms,
+// inf/nan spellings, digit-group underscores, Unicode digits and the numeric
+// whitespace set. No Python test file behind this suite; the expected values
+// were produced by CPython 3.14.6 and the fast-check properties are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { MixpanelHeadlessError } from "../../src/errors.js";
+
 import { pythonFloat } from "../../src/compat/python-float.js";
 import { pythonFloatStr } from "../../src/compat/python-float-str.js";
+import { MixpanelHeadlessError } from "../../src/errors.js";
 
 /**
  * Assert `pythonFloat` rejects `text` with `PY_FLOAT_INVALID_LITERAL`.
@@ -75,7 +76,7 @@ describe("pythonFloat — decimal and exponent grammar (CPython float(str))", ()
     expectRejects("0x5");
     expectRejects("0b1");
     expectRejects("1j");
-    expectRejects("𝒳"); // R10.9 non-BMP edge
+    expectRejects("𝒳"); // non-BMP edge
   });
 });
 
@@ -136,9 +137,9 @@ describe("pythonFloat — Unicode digits and whitespace (pinned tables)", () => 
 
   it("strips the numeric whitespace set but not U+001C..U+001F or U+FEFF", () => {
     expect(pythonFloat("\t1.5\n")).toBe(1.5);
-    expect(pythonFloat("\u00a01.5\u3000")).toBe(1.5);
-    expectRejects("\u001c1.5\u001f");
-    expectRejects("\ufeff1.5");
+    expect(pythonFloat("\u00A01.5\u3000")).toBe(1.5);
+    expectRejects("\u001C1.5\u001F");
+    expectRejects("\uFEFF1.5");
   });
 
   it("rejects interior whitespace", () => {
@@ -171,7 +172,7 @@ describe("pythonFloat — properties (fast-check)", () => {
   });
 
   it("is whitespace-wrap invariant over the pinned numeric set", () => {
-    const ws = fc.constantFrom("", " ", "\t", "\u0085", "\u00a0", "\u2003");
+    const ws = fc.constantFrom("", " ", "\t", "\u0085", "\u00A0", "\u2003");
     fc.assert(
       fc.property(
         fc.double({ noNaN: true, noDefaultInfinity: true }),
@@ -189,14 +190,19 @@ describe("pythonFloat — properties (fast-check)", () => {
   it("throws only MixpanelHeadlessError PY_FLOAT_INVALID_LITERAL on rejection", () => {
     fc.assert(
       fc.property(fc.string(), (text) => {
+        let error: unknown = null;
         try {
           pythonFloat(text);
-        } catch (error) {
-          expect(error).toBeInstanceOf(MixpanelHeadlessError);
-          expect((error as MixpanelHeadlessError).code).toBe(
-            "PY_FLOAT_INVALID_LITERAL",
-          );
+        } catch (error_) {
+          error = error_;
         }
+        // Accepted literals are covered by the round-trip properties;
+        // this one constrains rejections only.
+        fc.pre(error !== null);
+        expect(error).toBeInstanceOf(MixpanelHeadlessError);
+        expect((error as MixpanelHeadlessError).code).toBe(
+          "PY_FLOAT_INVALID_LITERAL",
+        );
       }),
     );
   });

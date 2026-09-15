@@ -1,10 +1,7 @@
-// Shared canned-fetch helper for the B9-R2 redirect-flow / DCR suites
-// (b9-packets.md §3.4) — unlike the R1 `helpers.ts` fakeTransport this
-// one CAPTURES REQUEST BODIES (the §3.4 byte-compare locks read the
-// urlencoded form body / JSON DCR body) and lets the handler return an
-// arbitrary `Response` (non-JSON 200, missing fields, …) or throw (the
-// network-reject rows). All traffic is canned (the D2 spike owns the
-// batch's only live budget).
+// Body-capturing canned transport for the redirect-flow and DCR suites:
+// unlike core's `fakeTransport` it records request bodies (the byte-compare
+// locks read the form/JSON body) and lets the handler return any `Response`
+// or throw.
 
 /** The captured view of one request, body included. */
 export interface FlowCapture {
@@ -27,7 +24,7 @@ export interface BodyCapturingTransport {
 }
 
 /**
- * Build a body-capturing canned transport over the R2.4 fetch seam.
+ * Build a body-capturing canned transport over the injected-fetch seam.
  *
  * @param handler - Receives each captured request; returns (or throws)
  *   the canned outcome.
@@ -66,7 +63,7 @@ export function bodyCapturingTransport(
  * @returns The canned response.
  */
 export function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
+  return Response.json(body, {
     status,
     headers: { "content-type": "application/json" },
   });

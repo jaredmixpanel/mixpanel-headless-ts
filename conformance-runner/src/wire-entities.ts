@@ -1,50 +1,29 @@
 /**
- * B4-C3 wire bindings — the 38 packet-C3 api-index names (dashboard
- * CRUD + blueprints/RCA + bookmarks-v2 + cohorts App API), registered
- * inline in the shard commit per the P3-2 b′ fable-batch rule.
+ * `api_client.*` wire bindings for the entity CRUD surface: dashboards,
+ * blueprints/RCA, bookmarks v2 (incl. report links) and the cohorts App
+ * API.
  *
- * Binding honesty (P3-5 §3): every binding is memoized
- * `clientFromSession` + ONE client-method call + kwarg passthrough
- * (absent-stays-absent). The only output adaptations are the C1 codec
- * twins (`runWire`/`coreToVectorJson`); void Python methods return
- * `null` (the recorder's `None`).
- *
- * Oracle note: wire api names have NO oracle `call` surface (P3-2 c/e);
- * registration here is complete.
+ * Every binding is the memoized `clientFromSession` plus one
+ * client-method call and kwarg passthrough (absent stays absent); the
+ * only output adaptations are the `runWire`/`coreToVectorJson` codec
+ * twins, and void Python methods return `null` (the recorder's `None`).
+ * See `wire-client.ts` for the shared client-construction and honesty
+ * rules.
  */
 
-import type { MixpanelClient } from "../../packages/core/src/client/client.js";
+import type { MixpanelClient } from "@mixpanel-headless/core";
+
+import { kwargBag } from "./internal/kwargs.js";
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";
 
 /**
- * Copy the PRESENT members of `call.input` into an options bag under
- * the same Python kwarg names (absent stays absent — R3.5; the B4-C2
- * `kwargBag` twin).
- *
- * @param context - The invocation context.
- * @param names - The kwarg names the method accepts.
- * @returns The options bag.
- */
-function kwargBag(
-  context: InvocationContext,
-  names: readonly string[],
-): Record<string, unknown> {
-  const bag: Record<string, unknown> = {};
-  for (const name of names) {
-    if (Object.hasOwn(context.kwargs, name)) {
-      bag[name] = context.kwargs[name];
-    }
-  }
-  return bag;
-}
-
-/**
- * Register the B4-C3 bindings (38 names).
+ * Register the entity wire bindings.
  *
  * @param implementations - The registry to extend.
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerEntityWireBindings(
   implementations: ImplementationRegistry,
 ): void {
@@ -299,7 +278,7 @@ export function registerEntityWireBindings(
     ),
   );
 
-  // ----- 045-report-links (Python PR #223): slug records + shortlinks -----
+  // ----- report links: slug records + shortlinks -----
   implementations.register(
     "api_client.create_bookmark_url",
     withClient((client, context) =>

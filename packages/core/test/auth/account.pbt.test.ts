@@ -1,16 +1,18 @@
-// fast-check property #2 (phase2-design C9): Account-union
-// exhaustiveness. For arbitrary VALID variant payloads, `parseAccount`
-// narrows to exactly one `type` and the canonical switch handles it —
-// the property instruments a visited-arm set and asserts the `never`
-// default arm is unreachable.
+// Property test: Account-union exhaustiveness. For arbitrary VALID variant
+// payloads, `parseAccount` narrows to exactly one `type` and the canonical
+// switch handles it — the property instruments a visited-arm set and
+// asserts the `never` default arm is unreachable. TS addition; no Python
+// twin.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
+  type Account,
   ACCOUNT_TYPE_VALUES,
+  type AccountType,
   isLongLived,
   parseAccount,
-  type Account,
-  type AccountType,
 } from "../../src/auth/account.js";
 import { ResponseValidationError } from "../../src/errors.js";
 
@@ -47,7 +49,7 @@ const baseArb = fc.record({
 
 /**
  * Drop `undefined`-valued keys so "absent" really means absent (the
- * parse factories distinguish absent from explicit null, R3.9).
+ * parse factories distinguish absent from explicit null).
  *
  * @param record - A candidate payload with possible undefined values.
  * @returns The same payload without the undefined-valued keys.
@@ -79,22 +81,25 @@ const validPayloadArb = fc.oneof(
     ),
 );
 
-describe("fast-check #2 — Account union exhaustiveness", () => {
+describe("Account union exhaustiveness", () => {
   it("parseAccount narrows every valid payload to exactly one arm", () => {
     fc.assert(
       fc.property(validPayloadArb, (payload) => {
         const account = parseAccount(payload);
         const visited: AccountType[] = [];
         switch (account.type) {
-          case "service_account":
+          case "service_account": {
             visited.push(account.type);
             break;
-          case "oauth_browser":
+          }
+          case "oauth_browser": {
             visited.push(account.type);
             break;
-          case "oauth_token":
+          }
+          case "oauth_token": {
             visited.push(account.type);
             break;
+          }
           default: {
             const exhaustive: never = account;
             throw new Error(

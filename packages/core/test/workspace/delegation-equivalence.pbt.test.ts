@@ -1,36 +1,21 @@
-/**
- * B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of
- * `tests/unit/test_delegation_equivalence_pbt.py` — the WHOLE file:
- * `TestFunnelDelegation` (:102), `TestRetentionDelegation` (:152),
- * `TestMathPropertyMatrix` (:204) and `TestEventNameConsistency`
- * (:337).
- *
- * The second CROSS-ENTITY suite W3 owns. It is TIER-INDEPENDENT: every
- * surface it touches (`validateTimeArgs`, `validateFunnelArgs`,
- * `validateRetentionArgs`, `validateQueryArgs`, `validateFlowArgs` plus
- * the `bookmarks/enums.ts` math sets) is B2/B3 code that has been live
- * since those batches, so no facade member is required.
- *
- * Hypothesis `@given` + `@settings(max_examples=100)` translates to
- * fast-check `fc.assert(fc.property(...), { numRuns: 100 })` with the
- * same strategy shapes (`query/query-validation.pbt.test.ts`
- * precedent, whose date/`last` strategies this file re-derives verbatim
- * rather than importing across suites).
- *
- * Python's kwargs become the single options bag each validator takes;
- * the VALUES are identical. `sorted(VALID_MATH_*)` becomes a sorted
- * array over the `ReadonlySet` so the sampled domain matches Python's
- * ordering exactly.
- */
+// Delegation-equivalence properties over the standalone validators: the
+// funnel/retention time codes match `validateTimeArgs`, the math/property
+// matrix drives V1/V2 and F10/F11, and all four validators catch control
+// and invisible event names. Mirrors the whole of
+// `tests/unit/test_delegation_equivalence_pbt.py`; kwargs become option bags.
 
 import fc from "fast-check";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import {
   MATH_PROPERTY_OPTIONAL,
   MATH_REQUIRING_PROPERTY,
   VALID_MATH_FUNNELS,
   VALID_MATH_INSIGHTS,
 } from "../../src/bookmarks/enums.js";
+import { codepoints } from "../../src/compat/codepoint.js";
+import { pythonStrip } from "../../src/compat/index.js";
+import type { ValidationError } from "../../src/errors.js";
 import {
   validateFlowArgs,
   validateFunnelArgs,
@@ -38,16 +23,10 @@ import {
   validateRetentionArgs,
   validateTimeArgs,
 } from "../../src/query/validation-args.js";
-import { pythonStrip } from "../../src/compat/index.js";
-import type { ValidationError } from "../../src/errors.js";
-import type {
-  ConversionWindowUnit,
-  FunnelMathType,
-  MathType,
-} from "../../src/types/literals.js";
+import type { ConversionWindowUnit } from "../../src/types/literals.js";
 
 // =============================================================================
-// Strategies (test_delegation_equivalence_pbt.py:31-95)
+// Strategies (test_delegation_equivalence_pbt.py)
 // =============================================================================
 
 /**
@@ -65,7 +44,7 @@ const validDatesArb: fc.Arbitrary<string> = fc
       `${String(y)}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
   );
 
-/** Port of the `invalid_dates` sampled_from strategy (:39-49). */
+/** Port of the `invalid_dates` sampled_from strategy. */
 const invalidDatesArb: fc.Arbitrary<string> = fc.constantFrom(
   "01/01/2024",
   "Jan 15 2025",
@@ -86,7 +65,7 @@ const maybeDatesArb: fc.Arbitrary<string | null> = fc.oneof(
 /** Port of `last_values = st.integers(min_value=-100, max_value=5000)`. */
 const lastValuesArb = fc.integer({ min: -100, max: 5000 });
 
-/** Port of `TIME_ERROR_CODES` (:54-64). */
+/** Port of `TIME_ERROR_CODES`. */
 const TIME_ERROR_CODES: ReadonlySet<string> = new Set([
   "V7_LAST_POSITIVE",
   "V8_DATE_FORMAT",
@@ -97,40 +76,39 @@ const TIME_ERROR_CODES: ReadonlySet<string> = new Set([
   "V20_LAST_TOO_LARGE",
 ]);
 
-/** Port of `_CONTROL_CHARS` (:67-72) — `_CONTROL_CHAR_RE`'s domain. */
+/** Port of `_CONTROL_CHARS` — `_CONTROL_CHAR_RE`'s domain. */
 const CONTROL_CHARS: readonly string[] = [
   ...Array.from({ length: 0x09 }, (_unused, c) => String.fromCharCode(c)),
-  "\x0b",
-  "\x0c",
+  "\x0B",
+  "\x0C",
   ...Array.from({ length: 0x20 - 0x0e }, (_unused, i) =>
     String.fromCharCode(0x0e + i),
   ),
-  "\x7f",
+  "\x7F",
 ];
 
-/** Port of `_INVISIBLE_CHARS` (:75). */
+/** Port of `_INVISIBLE_CHARS`. */
 const INVISIBLE_CHARS: readonly string[] = [
   " ",
-  "\u200b",
-  "\u200c",
-  "\u200d",
-  "\ufeff",
-  "\u00ad",
+  "\u200B",
+  "\u200C",
+  "\u200D",
+  "\uFEFF",
+  "\u00AD",
   "\u2060",
 ];
 
 /**
  * Representative alphabet for `st.characters(categories=("L", "N"))` —
- * the NARROWED stand-in the B2 arbiter ratified
- * (`query-validation.pbt.test.ts` header): ASCII letters/digits plus
- * explicit non-ASCII category-L/N members, split on code points.
+ * the same narrowed stand-in `query-validation.pbt.test.ts` uses: ASCII
+ * letters/digits plus explicit non-ASCII category-L/N members, split on
+ * code points.
  */
-const LN_CHARS: readonly string[] = [
-  ...("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
-    "éΩж中٤Ⅻ𝒳"),
-];
+const LN_CHARS: readonly string[] = codepoints(
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789éΩж中٤Ⅻ𝒳",
+);
 
-/** Port of `safe_text` (max_size=10, categories L/N, :78-81). */
+/** Port of `safe_text` (max_size=10, categories L/N). */
 const safeTextArb: fc.Arbitrary<string> = fc
   .array(fc.integer({ min: 0, max: LN_CHARS.length - 1 }), {
     minLength: 0,
@@ -184,8 +162,9 @@ function sameCodes(
 // Funnel/Retention Delegation Equivalence
 // =============================================================================
 
-describe("TestFunnelDelegation (test_delegation_equivalence_pbt.py:102)", () => {
-  it("time error codes from standalone match the funnel validator (:111)", () => {
+describe("Funnel delegation", () => {
+  // python: TestFunnelDelegation
+  it("time error codes from standalone match the funnel validator", () => {
     fc.assert(
       fc.property(
         maybeDatesArb,
@@ -222,8 +201,9 @@ describe("TestFunnelDelegation (test_delegation_equivalence_pbt.py:102)", () => 
   });
 });
 
-describe("TestRetentionDelegation (test_delegation_equivalence_pbt.py:152)", () => {
-  it("time error codes from standalone match the retention validator (:161)", () => {
+describe("Retention delegation", () => {
+  // python: TestRetentionDelegation
+  it("time error codes from standalone match the retention validator", () => {
     fc.assert(
       fc.property(
         maybeDatesArb,
@@ -261,8 +241,9 @@ describe("TestRetentionDelegation (test_delegation_equivalence_pbt.py:152)", () 
 // Math/Property Compatibility Matrix
 // =============================================================================
 
-describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () => {
-  it("V1 fires iff math requires a property; V2 iff it rejects one (:212)", () => {
+describe("Math property matrix", () => {
+  // python: TestMathPropertyMatrix
+  it("V1 fires iff math requires a property; V2 iff it rejects one", () => {
     fc.assert(
       fc.property(insightsMathArb, fc.boolean(), (math, hasProperty) => {
         const mathProperty = hasProperty ? "revenue" : null;
@@ -276,7 +257,7 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
         const codes = codesOf(
           validateQueryArgs({
             events: ["TestEvent"],
-            math: math as MathType,
+            math,
             math_property: mathProperty,
             per_user: null,
             from_date: null,
@@ -290,27 +271,23 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
         );
 
         // V1: property-requiring math without property
-        if (MATH_REQUIRING_PROPERTY.has(math) && !hasProperty) {
-          expect(codes.has("V1_MATH_REQUIRES_PROPERTY")).toBe(true);
-        } else {
-          expect(codes.has("V1_MATH_REQUIRES_PROPERTY")).toBe(false);
-        }
+        expect(codes.has("V1_MATH_REQUIRES_PROPERTY")).toBe(
+          MATH_REQUIRING_PROPERTY.has(math) && !hasProperty,
+        );
 
         // V2: non-property math with property
         const rejectsProperty =
           !MATH_REQUIRING_PROPERTY.has(math) &&
           !MATH_PROPERTY_OPTIONAL.has(math);
-        if (rejectsProperty && hasProperty) {
-          expect(codes.has("V2_MATH_REJECTS_PROPERTY")).toBe(true);
-        } else {
-          expect(codes.has("V2_MATH_REJECTS_PROPERTY")).toBe(false);
-        }
+        expect(codes.has("V2_MATH_REJECTS_PROPERTY")).toBe(
+          rejectsProperty && hasProperty,
+        );
       }),
       { numRuns: 100 },
     );
   });
 
-  it("F10 fires iff funnel math requires a property; F11 iff it rejects one (:273)", () => {
+  it("F10 fires iff funnel math requires a property; F11 iff it rejects one", () => {
     fc.assert(
       fc.property(funnelMathArb, fc.boolean(), (math, hasProperty) => {
         const mathProperty = hasProperty ? "revenue" : null;
@@ -325,7 +302,7 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
             steps: ["Signup", "Purchase"],
             conversion_window: cw,
             conversion_window_unit: cwUnit,
-            math: math as FunnelMathType,
+            math,
             math_property: mathProperty,
             exclusions: null,
             holding_constant: null,
@@ -337,21 +314,17 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
         );
 
         // F10: property-requiring math without property
-        if (MATH_REQUIRING_PROPERTY.has(math) && !hasProperty) {
-          expect(codes.has("F10_MATH_MISSING_PROPERTY")).toBe(true);
-        } else {
-          expect(codes.has("F10_MATH_MISSING_PROPERTY")).toBe(false);
-        }
+        expect(codes.has("F10_MATH_MISSING_PROPERTY")).toBe(
+          MATH_REQUIRING_PROPERTY.has(math) && !hasProperty,
+        );
 
         // F11: non-property math with property
         const rejectsProperty =
           !MATH_REQUIRING_PROPERTY.has(math) &&
           !MATH_PROPERTY_OPTIONAL.has(math);
-        if (rejectsProperty && hasProperty) {
-          expect(codes.has("F11_MATH_REJECTS_PROPERTY")).toBe(true);
-        } else {
-          expect(codes.has("F11_MATH_REJECTS_PROPERTY")).toBe(false);
-        }
+        expect(codes.has("F11_MATH_REJECTS_PROPERTY")).toBe(
+          rejectsProperty && hasProperty,
+        );
       }),
       { numRuns: 100 },
     );
@@ -362,8 +335,9 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
 // Event Name Validation Consistency
 // =============================================================================
 
-describe("TestEventNameConsistency (test_delegation_equivalence_pbt.py:337)", () => {
-  it("all four validators detect control chars in event names (:350)", () => {
+describe("Event name consistency", () => {
+  // python: TestEventNameConsistency
+  it("all four validators detect control chars in event names", () => {
     fc.assert(
       fc.property(
         safeTextArb,
@@ -373,14 +347,12 @@ describe("TestEventNameConsistency (test_delegation_equivalence_pbt.py:337)", ()
           const name = prefix + ctrl + suffix;
           if (pythonStrip(name) === "") {
             // Empty-after-strip names trigger different rules; skip
-            // (`if not name.strip()`, :364). R11.7: the guard MUST be
-            // `pythonStrip`, never JS `trim` — CPython's `str.strip()`
-            // treats U+001C..U+001F as whitespace (`"\x1f".isspace()`
-            // is True) while `trim` does not, so a bare `trim` let the
-            // single-`\x1f` name through to the V22 assertion even
-            // though the validator had already short-circuited on V17.
-            // Found as a ~1-in-N `npm run check` flake at B6-W6;
-            // fix recorded in `B6-W6-notes.md` §4.
+            // (`if not name.strip()`). The guard must be `pythonStrip`,
+            // never JS `trim`: CPython's `str.strip()` treats
+            // U+001C..U+001F as whitespace (`"\x1f".isspace()` is True)
+            // while `trim` does not, so a bare `trim` let a single-`\x1f`
+            // name through to the V22 assertion even though the validator
+            // had already short-circuited on V17 (a rare flake).
             return;
           }
 
@@ -435,7 +407,7 @@ describe("TestEventNameConsistency (test_delegation_equivalence_pbt.py:337)", ()
     );
   });
 
-  it("all four validators detect invisible-only event names (:430)", () => {
+  it("all four validators detect invisible-only event names", () => {
     fc.assert(
       fc.property(
         fc.array(fc.constantFrom(...INVISIBLE_CHARS), {

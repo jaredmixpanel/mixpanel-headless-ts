@@ -1,51 +1,29 @@
 /**
- * B4-C2 wire bindings — the 24 packet-C2 api-index names
- * (query-host + engage + streaming/export), registered inline in the
- * shard commit per the P3-2 b′ fable-batch rule.
+ * `api_client.*` wire bindings for the query host, engage and
+ * streaming/export calls.
  *
- * Binding honesty (P3-5 §3): every binding is memoized
- * `clientFromSession` + ONE client-method call + kwarg passthrough
- * (absent-stays-absent). The only output adaptations are the C1 codec
- * twins (`runWire`/`coreToVectorJson`) plus:
- * - streaming generators drained to arrays (the recorder measured
- *   `list(client.export_events(...))` — D4 iterator encoding);
- * - `$type: callback` kwargs served by the shared `RecordingCallback`
+ * Every binding is the memoized `clientFromSession` plus one
+ * client-method call and kwarg passthrough (absent stays absent); see
+ * `wire-client.ts` for the shared client-construction and honesty rules.
+ * Beyond the `runWire`/`coreToVectorJson` codec twins, three output
+ * adaptations:
+ * - streaming generators are drained to arrays (the recorder measured
+ *   `list(client.export_events(...))`);
+ * - `$type: callback` kwargs are served by the shared `RecordingCallback`
  *   stubs (`on_batch` → the method's `onBatch` seam; the runner diffs
- *   the recorded call log, D4.4);
- * - `export_profiles_page` results re-encoded via
+ *   the recorded call log);
+ * - `export_profiles_page` results re-encode via
  *   `ProfilePageResult.toVectorPayload()` (the recorder's dataclass
  *   field walk).
- *
- * Oracle note: wire api names have NO oracle `call` surface (P3-2 c/e);
- * registration here is complete.
  */
 
-import type { MixpanelClient } from "../../packages/core/src/client/client.js";
+import type { MixpanelClient } from "@mixpanel-headless/core";
+
 import { RecordingCallback } from "./codecs.js";
+import { kwargBag } from "./internal/kwargs.js";
+import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";
-import type { JsonValue } from "./json-value.js";
-
-/**
- * Copy the PRESENT members of `call.input` into an options bag under
- * the same Python kwarg names (absent stays absent — R3.5).
- *
- * @param context - The invocation context.
- * @param names - The kwarg names the method accepts.
- * @returns The options bag.
- */
-function kwargBag(
-  context: InvocationContext,
-  names: readonly string[],
-): Record<string, unknown> {
-  const bag: Record<string, unknown> = {};
-  for (const name of names) {
-    if (Object.hasOwn(context.kwargs, name)) {
-      bag[name] = context.kwargs[name];
-    }
-  }
-  return bag;
-}
 
 /**
  * Read an optional `on_batch` recording stub as the `onBatch` seam.
@@ -78,10 +56,11 @@ async function drainAsync(source: AsyncIterable<unknown>): Promise<unknown[]> {
 }
 
 /**
- * Register the B4-C2 bindings (24 names).
+ * Register the query wire bindings.
  *
  * @param implementations - The registry to extend.
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerQueryWireBindings(
   implementations: ImplementationRegistry,
 ): void {

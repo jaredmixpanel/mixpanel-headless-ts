@@ -1,46 +1,56 @@
 /**
- * D6 canonicalization algorithm — TS implementation.
- *
- * Normative spec: `context/phase1/design/phase1-design.md` §D6 (Python
- * twin: `conformance/runner/canonical.py`). Both implementations must be
- * behaviorally identical; parity is verified by the shared
- * `canonical-selftest.json` pairs (D6/D12) executed by both suites.
+ * The canonicalization algorithm the corpus comparison rests on.
  *
  * Given a JSON-like value, {@link canonicalize} produces a canonical JSON
- * string. Comparison between the two runners is string equality of the
- * canonical forms. The rules implemented here:
+ * string; comparison between the two runners is string equality of the
+ * canonical forms, so this module and its Python twin must be behaviourally
+ * identical. Parity is verified by the shared `canonical-selftest.json`
+ * pairs executed by both suites. The numbered rules referenced throughout
+ * this file:
  *
- * 1.  Object keys sorted by Unicode CODEPOINT (not UTF-16 code units);
- *     absent key ≠ key:null — both preserved and compared distinctly.
+ * 1.  Object keys sorted by Unicode codepoint (not UTF-16 code units);
+ *     an absent key and a `null` value are preserved and compared distinctly.
  * 2.  Strings verbatim (no NFC/NFD), minimal-escape JSON form; lone
  *     surrogates rejected.
- * 3.  Numbers rendered from the RAW JSON NUMBER TOKEN ({@link JsonNumber}):
+ * 3.  Numbers rendered from the raw JSON number token ({@link JsonNumber}):
  *     integer tokens render without exponent/fraction; fraction/exponent
  *     tokens render via float rendering even when integral (`18.0` stays
  *     `"18.0"`).
- * 4.  Numeric-string normalization ONLY in segfilter number-filter operand
- *     positions (structural clause; R10.11).
+ * 4.  Numeric-string normalization only in segfilter number-filter operand
+ *     positions (a structural clause, never a global string rewrite).
  * 5.  Floats: ECMAScript `Number::toString` semantics; negative zero
  *     renders `"-0.0"`; `NaN`/`Infinity` are illegal.
- * 6.  Error objects: `message`/`suggestion`/`fix` dropped at KNOWN
+ * 6.  Error objects: `message`/`suggestion`/`fix` dropped at known
  *     error-object levels only ({@link canonicalizeError}).
  * 10. `$type`-tagged inputs are ordinary objects here.
  * 11. bytes values are ordinary `$type`-tagged objects.
  *
  * Rules 7-9 (auth-header pattern match, header-key lowercasing, unordered
  * group sorting) are provided as the comparator helpers
- * {@link headersMatch} and {@link canonicalizeInteractions}, mirroring the
- * Python twin's `headers_match` / `canonicalize_interactions` exactly.
+ * {@link headersMatch} and {@link canonicalizeInteractions}.
+ *
+ * @see conformance.runner.canonical
  */
 
+import { codepoints } from "@mixpanel-headless/core";
+
+import { isPlainObject } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 
-/** Error raised when a value cannot be canonicalized (illegal per D6). */
+/**
+ * Error raised when a value cannot be canonicalized.
+ *
+ * @example
+ * ```ts
+ * canonicalize({ n: Number.NaN });
+ * // throws CanonicalizationError: NaN/Infinity are illegal in canonical JSON
+ * ```
+ */
 export class CanonicalizationError extends Error {
   /**
    * Create a canonicalization error.
    *
-   * @param message - Description of the D6 rule violation.
+   * @param message - Description of the rule violation.
    */
   constructor(message: string) {
     super(message);
@@ -50,20 +60,20 @@ export class CanonicalizationError extends Error {
 
 /**
  * Whether the value in an operand position is subject to numeric-string
- * normalization (D6 rule 4).
+ * normalization (rule 4).
  *
  * - `"no"`: not an operand position.
- * - `"direct"`: the value AT `filter.operand` of a number-typed segfilter.
+ * - `"direct"`: the value at `filter.operand` of a number-typed segfilter.
  * - `"element"`: an element of an array-valued `filter.operand`.
  */
 type OperandPosition = "no" | "direct" | "element";
 
 /** Traversal context threaded through the serializer. */
 interface Context {
-  /** Operand-position state for the CURRENT value (rule 4). */
+  /** Operand-position state for the current value (rule 4). */
   readonly operand: OperandPosition;
   /**
-   * Whether the current OBJECT is the `filter` member of a number-typed
+   * Whether the current object is the `filter` member of a number-typed
    * segfilter entry, i.e. its `operand` member is a normalization position.
    */
   readonly operandActive: boolean;
@@ -73,7 +83,7 @@ interface Context {
 const PLAIN_CONTEXT: Context = { operand: "no", operandActive: false };
 
 /**
- * Produce the canonical JSON string for a value (D6).
+ * Produce the canonical JSON string for a value.
  *
  * @param value - A JSON-like value. Numbers may be {@link JsonNumber} raw
  *   tokens (loaded vectors) or native `number`/`bigint` (live TS library
@@ -81,7 +91,6 @@ const PLAIN_CONTEXT: Context = { operand: "no", operandActive: false };
  * @returns The canonical UTF-8 JSON string.
  * @throws CanonicalizationError - On `NaN`/`Infinity`, lone surrogates,
  *   float-token overflow, `undefined` array elements, or non-JSON values.
- *
  * @example
  * ```typescript
  * canonicalize({ b: new JsonNumber("18.0"), a: null });
@@ -95,17 +104,16 @@ export function canonicalize(value: JsonValue): string {
 /**
  * Canonicalize an `expect.error` value with rule-6 advisory stripping.
  *
- * Drops `message`, `suggestion`, and `fix` at KNOWN ERROR-OBJECT LEVELS
- * ONLY: the top-level error object and each element of its `errors[]`
- * array. NEVER recursive — a server body embedded at
+ * Drops `message`, `suggestion`, and `fix` at known error-object levels
+ * only: the top-level error object and each element of its `errors[]`
+ * array. Never recursive — a server body embedded at
  * `details_contain.response_body` may legitimately contain a `message`
- * member that IS wire data and must survive.
+ * member that is wire data and must survive.
  *
  * @param value - The error value (typically an object with `class`,
  *   `code`, `errors`, `details_contain`, ...).
  * @returns The canonical JSON string of the stripped value.
  * @throws CanonicalizationError - Propagated from {@link canonicalize}.
- *
  * @example
  * ```typescript
  * canonicalizeError({ class: "E", message: "gone", errors: [] });
@@ -116,7 +124,7 @@ export function canonicalizeError(value: JsonValue): string {
   return canonicalize(stripAdvisoryKeys(value));
 }
 
-/** Advisory keys excluded from error comparison (R5.4 / D6 rule 6). */
+/** Advisory keys excluded from error comparison (rule 6). */
 const ADVISORY_KEYS = ["message", "suggestion", "fix"] as const;
 
 /**
@@ -130,7 +138,7 @@ function stripAdvisoryKeys(value: JsonValue): JsonValue {
   if (!isPlainObject(value)) {
     return value;
   }
-  const top: { [key: string]: JsonValue } = {};
+  const top: Record<string, JsonValue> = {};
   for (const [key, member] of Object.entries(value)) {
     if ((ADVISORY_KEYS as readonly string[]).includes(key)) {
       continue;
@@ -143,7 +151,7 @@ function stripAdvisoryKeys(value: JsonValue): JsonValue {
       if (!isPlainObject(element)) {
         return element;
       }
-      const stripped: { [key: string]: JsonValue } = {};
+      const stripped: Record<string, JsonValue> = {};
       for (const [key, member] of Object.entries(element)) {
         if ((ADVISORY_KEYS as readonly string[]).includes(key)) {
           continue;
@@ -201,8 +209,8 @@ function serialize(value: JsonValue, context: Context): string {
  * Serialize an array, propagating rule-4 element positions.
  *
  * When the array itself sits at a `filter.operand` normalization position
- * (`operand: "direct"`), each ELEMENT becomes an `"element"` position;
- * nesting deeper than one level is never normalized (D6 rule 4 names
+ * (`operand: "direct"`), each element becomes an `"element"` position;
+ * nesting deeper than one level is never normalized (rule 4 names
  * "element of `filter.operand` when it is an array" only).
  *
  * @param value - The array to serialize.
@@ -216,7 +224,11 @@ function serializeArray(value: JsonValue[], context: Context): string {
       ? { operand: "element", operandActive: false }
       : PLAIN_CONTEXT;
   const parts: string[] = [];
-  for (const element of value) {
+  // Widened on purpose: live outputs from the library under test are
+  // untyped, and a stray `undefined` must fail loudly here rather than
+  // serialize as the token `undefined` and surface as a puzzling diff.
+  const elements: ReadonlyArray<JsonValue | undefined> = value;
+  for (const element of elements) {
     if (element === undefined) {
       throw new CanonicalizationError("array elements must not be undefined");
     }
@@ -233,8 +245,8 @@ function serializeArray(value: JsonValue[], context: Context): string {
  * `selected_property_type: "number"` marks its object-valued `filter`
  * member as operand-active; inside that filter object, the `operand`
  * member is a normalization position. `undefined`-valued members are
- * treated as ABSENT (matching `JSON.stringify` for live TS outputs);
- * explicit `null` is preserved (absent ≠ null).
+ * treated as absent (matching `JSON.stringify` for live TS outputs);
+ * explicit `null` is preserved (absent and null differ).
  *
  * @param value - The object to serialize.
  * @param context - Rule-4 state for this object.
@@ -242,7 +254,7 @@ function serializeArray(value: JsonValue[], context: Context): string {
  * @throws CanonicalizationError - Propagated from member serialization.
  */
 function serializeObject(
-  value: { [key: string]: JsonValue },
+  value: Record<string, JsonValue>,
   context: Context,
 ): string {
   const qualifies =
@@ -264,7 +276,7 @@ function serializeObject(
 }
 
 /**
- * Render a raw JSON number token canonically (D6 rule 3).
+ * Render a raw JSON number token canonically (rule 3).
  *
  * Integer tokens (no fraction/exponent) render as exact integers via
  * `BigInt` (normalizing `-0` to `0`, preserving digits above 2^53).
@@ -313,30 +325,30 @@ function renderNativeNumber(value: number): string {
 /**
  * Magnitude at which Python `repr(float)` switches to exponent form.
  *
- * Below this, integral floats carry Python's `<digits>.0` marker (D6 rule
+ * Below this, integral floats carry Python's `<digits>.0` marker (rule
  * 3: `18.0` stays `"18.0"`); at or above it the Python twin renders via
- * its repr-exponent → ECMAScript conversion, which produces the plain
- * `String(x)` form with NO `.0` marker (e.g. `1e16` →
- * `"10000000000000000"`). Mirrors `_JS_PLAIN_INTEGRAL_LIMIT` in
- * `conformance/runner/canonical.py`.
+ * its repr-exponent to ECMAScript conversion, which produces the plain
+ * `String(x)` form with no `.0` marker (e.g. `1e16` becomes
+ * `"10000000000000000"`).
+ *
+ * @see conformance.runner.canonical._JS_PLAIN_INTEGRAL_LIMIT
  */
 const JS_PLAIN_INTEGRAL_LIMIT = 1e16;
 
 /**
- * Canonical float rendering (D6 rules 3/5).
+ * Canonical float rendering (rules 3 and 5).
  *
  * ECMAScript `Number::toString` semantics (shortest round-trip, JS
- * exponent thresholds and exponent formatting) with two D6 adjustments
+ * exponent thresholds and exponent formatting) with two adjustments
  * mirroring the Python twin (`repr` + exponent-form conversion):
  * negative zero renders sign-preserving as `"-0.0"` (ECMAScript
- * `String(-0)` is `"0"`), and an integral double BELOW the Python
+ * `String(-0)` is `"0"`), and an integral double below the Python
  * exponent threshold (1e16) gains a trailing `".0"` so float-token
- * provenance survives (`18.0` stays `"18.0"`, D6 rule 3). At or above
+ * provenance survives (`18.0` stays `"18.0"`, rule 3). At or above
  * the threshold no `.0` marker exists in either language.
  *
  * @param value - A finite double reached via a float position.
  * @returns Canonical float text.
- *
  * @example
  * ```typescript
  * renderCanonicalFloat(18); // "18.0"
@@ -358,23 +370,22 @@ export function renderCanonicalFloat(value: number): string {
 
 /**
  * Rule-4 numeric-string normalization for segfilter number-filter
- * operands (R10.11).
+ * operands.
  *
- * Parses the string with the PYTHON float grammar (underscore grouping,
+ * Parses the string with the Python float grammar (underscore grouping,
  * optional leading/trailing whitespace, `inf`/`infinity`/`nan`, forms like
- * `"1."`/`".5"`/`"1.e3"`). Strings that do not parse — OR that parse to a
- * non-finite value (`"inf"`/`"nan"` spellings, overflowing exponents) —
- * are returned UNCHANGED (no normalization; rendering non-finite values
+ * `"1."`/`".5"`/`"1.e3"`). Strings that do not parse, or that parse to a
+ * non-finite value (`"inf"`/`"nan"` spellings, overflowing exponents),
+ * are returned unchanged (no normalization; rendering non-finite values
  * is illegal under rule 5, mirroring the Python twin's `None` return).
  * Parsed finite values render via the rule-5 form
  * ({@link renderCanonicalFloat}) with the trailing `".0"` marker stripped
- * (int-collapse: `"18.0"` → `"18"`, `"-0.0"` → `"-0"`, `"18.50"` →
- * `"18.5"`).
+ * (int-collapse: `"18.0"` becomes `"18"`, `"-0.0"` becomes `"-0"`,
+ * `"18.50"` becomes `"18.5"`).
  *
  * @param value - The operand-position string.
  * @returns The normalized string, or `value` verbatim when unparseable
  *   or non-finite.
- *
  * @example
  * ```typescript
  * normalizeNumericString("18.0"); // "18"
@@ -382,6 +393,7 @@ export function renderCanonicalFloat(value: number): string {
  * normalizeNumericString("inf"); // "inf" (unchanged)
  * normalizeNumericString("not a number"); // "not a number"
  * ```
+ * @see conformance.runner.canonical.normalize_numeric_string
  */
 export function normalizeNumericString(value: string): string {
   const parsed = parsePythonFloat(value);
@@ -397,9 +409,9 @@ export function normalizeNumericString(value: string): string {
  * `float(str)` before parsing.
  */
 const PYTHON_WHITESPACE =
-  "\t\n\u000b\f\r\u001c\u001d\u001e\u001f \u0085\u00a0\u1680" +
-  "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a" +
-  "\u2028\u2029\u202f\u205f\u3000";
+  "\t\n\u000B\f\r\u001C\u001D\u001E\u001F \u0085\u00A0\u1680" +
+  "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A" +
+  "\u2028\u2029\u202F\u205F\u3000";
 
 /** Matches Python-strippable whitespace at both ends of a string. */
 const PYTHON_TRIM = new RegExp(
@@ -412,7 +424,7 @@ const PYTHON_INF_NAN = /^[+-]?(?:inf(?:inity)?|nan)$/i;
 
 /**
  * Python `float()` grammar: decimal forms with optional underscore digit
- * grouping (underscores only BETWEEN digits) and optional exponent.
+ * grouping (underscores only between digits) and optional exponent.
  * Accepts `"1."`, `".5"`, `"1.e3"`, `"1_0.5"`; rejects `"_1"`, `"1_"`,
  * `"1__0"`, `"."`, `"e3"`.
  */
@@ -428,7 +440,7 @@ const PYTHON_FLOAT =
  *   `ValueError`.
  */
 function parsePythonFloat(text: string): number | undefined {
-  const trimmed = text.replace(PYTHON_TRIM, "");
+  const trimmed = text.replaceAll(PYTHON_TRIM, "");
   if (trimmed === "") {
     return undefined;
   }
@@ -442,11 +454,11 @@ function parsePythonFloat(text: string): number | undefined {
   if (!PYTHON_FLOAT.test(trimmed)) {
     return undefined;
   }
-  return Number(trimmed.replace(/_/g, ""));
+  return Number(trimmed.replaceAll("_", ""));
 }
 
 /**
- * Escape a string as minimal-escape JSON (D6 rule 2), rejecting lone
+ * Escape a string as minimal-escape JSON (rule 2), rejecting lone
  * surrogates.
  *
  * Minimal-escape form: only `"` , `\` and control characters are escaped
@@ -457,7 +469,7 @@ function parsePythonFloat(text: string): number | undefined {
  * @param value - The string to escape.
  * @returns The quoted, escaped JSON string token.
  * @throws CanonicalizationError - If `value` contains a lone surrogate
- *   (illegal in vectors; UTF-8 cannot encode it — D6 rule 2).
+ *   (illegal in vectors; UTF-8 cannot encode it — rule 2).
  */
 function escapeJsonString(value: string): string {
   for (const ch of value) {
@@ -472,7 +484,7 @@ function escapeJsonString(value: string): string {
 }
 
 /**
- * Compare two strings by Unicode CODEPOINT order (rule 1).
+ * Compare two strings by Unicode codepoint order (rule 1).
  *
  * Differs from the default UTF-16 code-unit comparison for astral
  * characters (U+10000 and above) vs the U+E000..U+FFFF range (Python
@@ -484,8 +496,8 @@ function escapeJsonString(value: string): string {
  * @returns Negative, zero, or positive per standard comparator contract.
  */
 function compareCodePoints(a: string, b: string): number {
-  const aPoints = Array.from(a);
-  const bPoints = Array.from(b);
+  const aPoints = codepoints(a);
+  const bPoints = codepoints(b);
   const length = Math.min(aPoints.length, bPoints.length);
   for (let i = 0; i < length; i += 1) {
     const ac = (aPoints[i] as string).codePointAt(0) as number;
@@ -498,37 +510,19 @@ function compareCodePoints(a: string, b: string): number {
 }
 
 /**
- * Whether a value is a plain object (JSON object shape).
+ * Compare captured request headers against `headers_contain` (rules
+ * 7-8).
  *
- * Class instances (`Date`, `Map`, ...) are NOT plain objects: their data
- * does not live in enumerable own properties, so serializing them as JSON
- * objects would silently drop it — they are rejected instead.
- *
- * @param value - The candidate value.
- * @returns `true` for non-null, non-array objects whose prototype is
- *   `Object.prototype` or `null` (JSON object shape).
- */
-function isPlainObject(value: unknown): value is { [key: string]: JsonValue } {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const proto: unknown = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-}
-
-/**
- * Compare captured request headers against `headers_contain` (D6 rules
- * 7-8; mirror of the Python twin's `headers_match`).
- *
- * Subset semantics per the vector schema: ONLY listed headers are
+ * Subset semantics per the vector schema: only listed headers are
  * compared; headers present in `actualHeaders` but absent from
- * `headersContain` are ignored (the D5.6 allowlist means transport-added
- * headers never appear in vectors, and a selftest case proves the ignore
- * behavior on both sides). Keys are lowercased on both sides before
- * comparison (rule 8); a `{"pattern": ...}` expected value (always used
- * for `authorization`, D5.2) is matched as an unanchored regex against
- * the actual value (rule 7), and plain-string expected values compare by
- * equality (case-sensitive values, case-insensitive keys).
+ * `headersContain` are ignored (the recorder's header allowlist means
+ * transport-added headers never appear in vectors, and a selftest case
+ * proves the ignore behavior on both sides). Keys are lowercased on both
+ * sides before comparison (rule 8); a `{"pattern": ...}` expected value
+ * (always used for `authorization`, whose secret is never recorded) is
+ * matched as an unanchored regex against the actual value (rule 7), and
+ * plain-string expected values compare by equality (case-sensitive values,
+ * case-insensitive keys).
  *
  * @param headersContain - The vector's expected-header object; values are
  *   strings or `{"pattern": <regex>}` objects.
@@ -536,10 +530,19 @@ function isPlainObject(value: unknown): value is { [key: string]: JsonValue } {
  * @returns `true` when every listed header is present and matches.
  * @throws CanonicalizationError - If an expected value is neither a
  *   string nor a `{"pattern": ...}` object (malformed vector).
+ * @example
+ * ```ts
+ * headersMatch(
+ *   { authorization: { pattern: "^Bearer " }, accept: "application/json" },
+ *   { Authorization: "Bearer tok", Accept: "application/json", host: "x" },
+ * );
+ * // true (keys case-insensitive; `host` is not listed, so it is ignored)
+ * ```
+ * @see conformance.runner.canonical.headers_match
  */
 export function headersMatch(
-  headersContain: { [key: string]: JsonValue },
-  actualHeaders: { [key: string]: string },
+  headersContain: Record<string, JsonValue>,
+  actualHeaders: Record<string, string>,
 ): boolean {
   const actualLower = new Map<string, string>();
   for (const [key, member] of Object.entries(actualHeaders)) {
@@ -570,14 +573,13 @@ export function headersMatch(
 }
 
 /**
- * Canonicalize an interaction list after the rule-9 group sort (D6.9;
- * mirror of the Python twin's `canonicalize_interactions`).
+ * Canonicalize an interaction list after the rule-9 group sort.
  *
- * Interactions WITHOUT `unordered_group` keep their positions; members
+ * Interactions without `unordered_group` keep their positions; members
  * sharing a group id are reordered among the positions the group
  * occupies, sorted (stably, by codepoint order) on the canonical
- * `(method, path, params)` key — the identical sort `emit.py` applies at
- * write time, so comparing two sequences canonicalized here is
+ * `(method, path, params)` key — the identical sort the Python recorder
+ * applies at write time, so comparing two sequences canonicalized here is
  * order-insensitive exactly within groups.
  *
  * @param interactions - Serialized interaction objects in observed order
@@ -587,12 +589,13 @@ export function headersMatch(
  *   list.
  * @throws CanonicalizationError - If any interaction violates the
  *   canonicalization rules.
+ * @see conformance.runner.canonical.canonicalize_interactions
  */
 export function canonicalizeInteractions(interactions: JsonValue[]): string {
   const result: JsonValue[] = [...interactions];
   const groups = new Map<string, number[]>();
-  for (let position = 0; position < interactions.length; position += 1) {
-    const interaction = interactions[position] as JsonValue;
+  for (const [position, interaction_] of interactions.entries()) {
+    const interaction = interaction_;
     if (!isPlainObject(interaction)) {
       continue;
     }
@@ -609,9 +612,9 @@ export function canonicalizeInteractions(interactions: JsonValue[]): string {
       .sort((a, b) =>
         compareCodePoints(interactionSortKey(a), interactionSortKey(b)),
       );
-    positions.forEach((position, index) => {
+    for (const [index, position] of positions.entries()) {
       result[position] = members[index] as JsonValue;
-    });
+    }
   }
   return canonicalize(result);
 }
@@ -642,11 +645,12 @@ function groupIdKey(group: JsonValue | undefined): string | undefined {
 
 /**
  * Compute the canonical `(method, path, params)` key of an interaction
- * (D2/D6 rule 9), mirroring the Python twin's `_interaction_sort_key`.
+ * (rule 9).
  *
  * @param interaction - A serialized interaction object.
  * @returns Canonical JSON of the request's method/path/params triple
  *   (absent members become `null`).
+ * @see conformance.runner.canonical._interaction_sort_key
  */
 function interactionSortKey(interaction: JsonValue): string {
   const request = isPlainObject(interaction)
@@ -675,5 +679,5 @@ function describe(value: unknown): string {
     proto && "constructor" in proto
       ? ((proto.constructor as { name?: string }).name ?? typeof value)
       : typeof value;
-  return String(name);
+  return name;
 }

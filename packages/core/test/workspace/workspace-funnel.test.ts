@@ -1,41 +1,21 @@
-// Translated workspace-funnel tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_funnel.py (R10.2) — ALL 3
-// classes (TestQueryFunnelValidation :108, TestQueryFunnelExecution
-// :233, TestBuildFunnelParamsVsQueryFunnel :381).
-//
-// The Python file also carries a `TestQueryFunnelConfigError` REMOVAL
-// comment (:103) — nothing to translate.
-//
-// Translation notes:
-// - `insights_query.call_args[0][0]` becomes `mock.insightsCalls[0]`.
-// - `pytest.raises(ValueError, match="FunnelStep.event must be a
-//   non-empty")` names Python's `ParamValidationError`, which
-//   dual-inherits `ValueError`; the TS twin is `ParamValidationError`
-//   with the same message.
-// - `result.overall_conversion_rate == pytest.approx(0.12)` becomes
-//   `toBeCloseTo(0.12)`.
-// - `assert not isinstance(params, FunnelQueryResult)` translates
-//   directly.
+// Workspace.queryFunnel: validation, execution against the stubbed insights
+// client, and buildFunnelParams vs queryFunnel parity. Mirrors all three classes
+// of tests/test_workspace_funnel.py. `call_args[0][0]` reads become
+// `mock.insightsCalls[0]`; the `ValueError` on FunnelStep.event is the
+// dual-inheriting ParamValidationError with the same message.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import type { BookmarkValidationError } from "../../src/errors.js";
 import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
+import type { Workspace } from "../../src/workspace.js";
+import { codesOf } from "../../test-support/error-codes.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
-  mockWorkspaceClient,
-  TEST_SESSION,
+  makeStubWorkspace,
   type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :44-66).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
+  mockWorkspaceClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /** Canonical mock response for a two-step funnel query (test file :69). */
 const MOCK_FUNNEL_RESPONSE: Record<string, unknown> = {
@@ -65,111 +45,100 @@ const MOCK_FUNNEL_RESPONSE: Record<string, unknown> = {
   meta: { sampling_factor: 1.0 },
 };
 
-/** Read the collected `BookmarkValidationError` codes. */
-function codesOf(exc: unknown): string[] {
-  return (exc as BookmarkValidationError).errors.map((e) => e.code);
-}
+// --- Validation integration ---
 
-// ===========================================================================
-// T021: validation integration
-// ===========================================================================
-
-describe("TestQueryFunnelValidation", () => {
+describe("Query funnel validation", () => {
+  // python: TestQueryFunnelValidation
   it("a single-step funnel raises F1_MIN_STEPS", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).queryFunnel(["A"]);
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("F1_MIN_STEPS");
-    }
-    expect(mock.insightsCalls.length).toBe(0);
+    const error = await expectRejects(
+      makeStubWorkspace(mock).queryFunnel(["A"]),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("F1_MIN_STEPS");
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("an empty event name is caught at FunnelStep construction", async () => {
     const mock = mockWorkspaceClient();
     await expect(
-      workspaceFactory(mock).queryFunnel(["Signup", ""]),
+      makeStubWorkspace(mock).queryFunnel(["Signup", ""]),
     ).rejects.toThrow(/FunnelStep\.event must be a non-empty/);
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("a negative conversion_window raises F3", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).queryFunnel(["A", "B"], {
+    const error = await expectRejects(
+      makeStubWorkspace(mock).queryFunnel(["A", "B"], {
         conversion_window: -1,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("F3_CONVERSION_WINDOW_POSITIVE");
-    }
-    expect(mock.insightsCalls.length).toBe(0);
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("F3_CONVERSION_WINDOW_POSITIVE");
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("an invalid math type raises B9_INVALID_MATH at Layer 2", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).queryFunnel(["A", "B"], {
+    const error = await expectRejects(
+      makeStubWorkspace(mock).queryFunnel(["A", "B"], {
         math: "invalid_math",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("B9_INVALID_MATH");
-    }
-    expect(mock.insightsCalls.length).toBe(0);
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("B9_INVALID_MATH");
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("an empty event is caught before validation runs", async () => {
     const mock = mockWorkspaceClient();
     await expect(
-      workspaceFactory(mock).queryFunnel([""], { conversion_window: 0 }),
+      makeStubWorkspace(mock).queryFunnel([""], { conversion_window: 0 }),
     ).rejects.toThrow(/FunnelStep\.event must be a non-empty/);
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("multiple validation errors are collected into one error", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).queryFunnel(["ValidEvent"], {
+    const error = await expectRejects(
+      makeStubWorkspace(mock).queryFunnel(["ValidEvent"], {
         conversion_window: 0, // F3: must be positive
         from_date: "bad-date", // V8: invalid format
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const err = exc as BookmarkValidationError;
-      const codes = new Set(codesOf(err));
-      expect(codes.has("F1_MIN_STEPS")).toBe(true); // only 1 step
-      expect(codes.has("F3_CONVERSION_WINDOW_POSITIVE")).toBe(true);
-      expect(err.errorCount).toBeGreaterThanOrEqual(2);
-    }
-    expect(mock.insightsCalls.length).toBe(0);
+      }),
+      "expected BookmarkValidationError",
+    );
+    const err = error as BookmarkValidationError;
+    const codes = new Set(codesOf(err));
+    expect(codes.has("F1_MIN_STEPS")).toBe(true); // only 1 step
+    expect(codes.has("F3_CONVERSION_WINDOW_POSITIVE")).toBe(true);
+    expect(err.errorCount).toBeGreaterThanOrEqual(2);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 });
 
-// ===========================================================================
-// T022: execution path
-// ===========================================================================
+// --- Execution path ---
 
-describe("TestQueryFunnelExecution", () => {
+describe("Query funnel execution", () => {
+  // python: TestQueryFunnelExecution
   /** Build the facade with the canonical funnel response installed. */
   function funnelWs(): { ws: Workspace; mock: MockWorkspaceClient } {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_FUNNEL_RESPONSE);
-    return { ws: workspaceFactory(mock), mock };
+    return { ws: makeStubWorkspace(mock), mock };
   }
 
   it("sends a body with bookmark, project_id and queryLimits", async () => {
     const { ws, mock } = funnelWs();
     await ws.queryFunnel(["Signup", "Purchase"]);
 
-    expect(mock.insightsCalls.length).toBe(1);
+    expect(mock.insightsCalls).toHaveLength(1);
     const body = mock.insightsCalls[0]!;
     expect(Object.hasOwn(body, "bookmark")).toBe(true);
     expect(Object.hasOwn(body, "project_id")).toBe(true);
     expect(Object.hasOwn(body, "queryLimits")).toBe(true);
     expect(body["project_id"]).toBe(12345);
-    expect(body["queryLimits"]).toEqual({ limit: 3000 });
+    expect(body["queryLimits"]).toStrictEqual({ limit: 3000 });
   });
 
   it("the bookmark carries sections and displayOptions", async () => {
@@ -197,14 +166,14 @@ describe("TestQueryFunnelExecution", () => {
     expect(result.computed_at).toBe("2025-01-15T12:00:00");
     expect(result.from_date).toBe("2025-01-01");
     expect(result.to_date).toBe("2025-01-31");
-    expect(result.meta).toEqual({ sampling_factor: 1.0 });
+    expect(result.meta).toStrictEqual({ sampling_factor: 1.0 });
   });
 
   it("steps_data carries the step-level information", async () => {
     const { ws } = funnelWs();
     const result = await ws.queryFunnel(["Signup", "Purchase"]);
 
-    expect(result.steps_data.length).toBe(2);
+    expect(result.steps_data).toHaveLength(2);
 
     const step1 = result.steps_data[0]!;
     expect(step1["event"]).toBe("Signup");
@@ -236,13 +205,12 @@ describe("TestQueryFunnelExecution", () => {
   });
 });
 
-// ===========================================================================
-// T023: build_funnel_params vs query_funnel
-// ===========================================================================
+// --- buildFunnelParams vs queryFunnel ---
 
-describe("TestBuildFunnelParamsVsQueryFunnel", () => {
+describe("Build funnel params vs query funnel", () => {
+  // python: TestBuildFunnelParamsVsQueryFunnel
   it("returns a plain dict, not a result object", async () => {
-    const params = await workspaceFactory(
+    const params = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFunnelParams(["Signup", "Purchase"]);
     expect(typeof params).toBe("object");
@@ -252,34 +220,33 @@ describe("TestBuildFunnelParamsVsQueryFunnel", () => {
   it("produces the same params query_funnel sends", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_FUNNEL_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
 
     const builtParams = await ws.buildFunnelParams(["Signup", "Purchase"]);
     await ws.queryFunnel(["Signup", "Purchase"]);
     const queryParams = mock.insightsCalls[0]!["bookmark"];
 
-    expect(builtParams).toEqual(queryParams);
+    expect(builtParams).toStrictEqual(queryParams);
   });
 
   it("makes no API call", async () => {
     const mock = mockWorkspaceClient();
-    await workspaceFactory(mock).buildFunnelParams(["Signup", "Purchase"]);
-    expect(mock.insightsCalls.length).toBe(0);
+    await makeStubWorkspace(mock).buildFunnelParams(["Signup", "Purchase"]);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("raises BookmarkValidationError for invalid inputs", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).buildFunnelParams(["A"]);
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("F1_MIN_STEPS");
-    }
-    expect(mock.insightsCalls.length).toBe(0);
+    const error = await expectRejects(
+      makeStubWorkspace(mock).buildFunnelParams(["A"]),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("F1_MIN_STEPS");
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("the result has sections and displayOptions", async () => {
-    const params = await workspaceFactory(
+    const params = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFunnelParams(["Signup", "Purchase"]);
     expect(Object.hasOwn(params, "sections")).toBe(true);

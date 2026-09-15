@@ -1,15 +1,18 @@
-// B0-1 (P3-4): tests written FIRST from R11.5/R11.6 semantics. Expected
-// values produced by CPython 3.14.6 `len`/slicing/`sorted` (the oracle)
-// on 2026-08-15.
+// Codepoint-based string helpers (`cpLength`, `codepoints`, `cpSlice`,
+// `sortedByCodepoint`) mirroring Python `len(str)`, `list(str)`, slicing and
+// `sorted()` over strings. No Python test file behind this suite: the expected
+// values were produced by CPython 3.14.6; the fast-check cases are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
+  codepoints,
   cpLength,
   cpSlice,
   sortedByCodepoint,
 } from "../../src/compat/codepoint.js";
 
-describe("cpLength — Python len(str) counts codepoints (R11.6)", () => {
+describe("cpLength — Python len(str) counts codepoints", () => {
   it("counts BMP strings like UTF-16", () => {
     expect(cpLength("")).toBe(0);
     expect(cpLength("abc")).toBe(3);
@@ -17,12 +20,19 @@ describe("cpLength — Python len(str) counts codepoints (R11.6)", () => {
 
   it("counts non-BMP characters once (JS .length counts twice)", () => {
     expect(cpLength("𝒳")).toBe(1);
-    expect("𝒳".length).toBe(2); // the JS contrast
+    expect("𝒳").toHaveLength(2); // the JS contrast
     expect(cpLength("a𝒳b😀")).toBe(4);
   });
 });
 
-describe("cpSlice — Python str slice semantics (R11.6)", () => {
+describe("codepoints — Python list(str) splits by code point", () => {
+  it("keeps surrogate pairs whole", () => {
+    expect(codepoints("a\u{1D518}b")).toStrictEqual(["a", "\u{1D518}", "b"]);
+    expect(codepoints("")).toStrictEqual([]);
+  });
+});
+
+describe("cpSlice — Python str slice semantics", () => {
   it("slices by codepoint index, never splitting surrogate pairs", () => {
     expect(cpSlice("a𝒳b", 0, 2)).toBe("a𝒳");
     expect(cpSlice("𝒳😀𝒴", 1, 2)).toBe("😀");
@@ -76,17 +86,17 @@ describe("cpSlice — Python str slice semantics (R11.6)", () => {
   });
 });
 
-describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
+describe("sortedByCodepoint — Python sorted() string order", () => {
   it("orders by codepoint where UTF-16 unit order disagrees", () => {
     // U+FF61 (｡) < U+1F600 (😀) by codepoint; JS default sort compares
     // UTF-16 units (0xD83D < 0xFF61) and inverts the pair.
-    expect(sortedByCodepoint(["｡", "😀"])).toEqual(["｡", "😀"]);
-    expect(sortedByCodepoint(["😀", "｡"])).toEqual(["｡", "😀"]);
-    expect(["😀", "｡"].sort()).toEqual(["😀", "｡"]); // the JS contrast
+    expect(sortedByCodepoint(["｡", "😀"])).toStrictEqual(["｡", "😀"]);
+    expect(sortedByCodepoint(["😀", "｡"])).toStrictEqual(["｡", "😀"]);
+    expect(["😀", "｡"].sort()).toStrictEqual(["😀", "｡"]); // the JS contrast
   });
 
   it("sorts prefixes first (Python: 'ab' < 'abc')", () => {
-    expect(sortedByCodepoint(["abc", "ab", "a", ""])).toEqual([
+    expect(sortedByCodepoint(["abc", "ab", "a", ""])).toStrictEqual([
       "",
       "a",
       "ab",
@@ -95,7 +105,7 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
   });
 
   it("keeps duplicates and is stable", () => {
-    expect(sortedByCodepoint(["b", "a", "b", "a"])).toEqual([
+    expect(sortedByCodepoint(["b", "a", "b", "a"])).toStrictEqual([
       "a",
       "a",
       "b",
@@ -106,37 +116,36 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
   it("returns a NEW array and leaves the input untouched", () => {
     const input = ["b", "a"];
     const result = sortedByCodepoint(input);
-    expect(result).toEqual(["a", "b"]);
-    expect(input).toEqual(["b", "a"]);
+    expect(result).toStrictEqual(["a", "b"]);
+    expect(input).toStrictEqual(["b", "a"]);
     expect(result).not.toBe(input);
   });
 
   it("handles the empty list", () => {
-    expect(sortedByCodepoint([])).toEqual([]);
+    expect(sortedByCodepoint([])).toStrictEqual([]);
   });
 
   it("is a sorted permutation matching JS sort on BMP-only input (fast-check)", () => {
     fc.assert(
       fc.property(fc.array(fc.string()), (values) => {
         const result = sortedByCodepoint(values);
-        expect([...result].sort()).toEqual([...values].sort());
+        expect([...result].sort()).toStrictEqual([...values].sort());
         // BMP-only strings: codepoint order == UTF-16 order.
-        if (values.every((v) => [...v].every((c) => c.length === 1))) {
-          expect(result).toEqual([...values].sort());
-        }
+        fc.pre(values.every((v) => codepoints(v).every((c) => c.length === 1)));
+        expect(result).toStrictEqual([...values].sort());
       }),
     );
   });
 
   it("output is pairwise ordered under codepoint comparison (fast-check)", () => {
     const cpKey = (s: string): readonly number[] =>
-      [...s].map((c) => c.codePointAt(0) as number);
+      codepoints(s).map((c) => c.codePointAt(0)!);
     const lessOrEqual = (a: string, b: string): boolean => {
       const ka = cpKey(a);
       const kb = cpKey(b);
       for (let i = 0; i < Math.min(ka.length, kb.length); i += 1) {
-        const da = ka[i] as number;
-        const db = kb[i] as number;
+        const da = ka[i]!;
+        const db = kb[i]!;
         if (da !== db) {
           return da < db;
         }
@@ -147,9 +156,7 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
       fc.property(fc.array(fc.string({ unit: "binary" })), (values) => {
         const result = sortedByCodepoint(values);
         for (let i = 1; i < result.length; i += 1) {
-          expect(
-            lessOrEqual(result[i - 1] as string, result[i] as string),
-          ).toBe(true);
+          expect(lessOrEqual(result[i - 1]!, result[i]!)).toBe(true);
         }
       }),
     );

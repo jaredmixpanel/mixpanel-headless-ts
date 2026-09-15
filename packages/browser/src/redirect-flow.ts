@@ -1,123 +1,88 @@
 /**
- * Redirect-based PKCE login flow for browsers — the adaptation of
- * `OAuthFlow.login` (`flow.py:227-393`) to a page-leaving redirect
- * (b9-packets.md §3.2; contract arbiters: `flow.py` for every twinned
- * behavior, R9.3 / plan §4.3 for the redirect-shape adaptation). The
- * redirect LEAVES the page, so login splits into
- * {@link beginLogin} / {@link completeLogin}. No callback server, no
- * paste fallback, no `webbrowser` — the Python steps map as follows
- * (the §3.2 table, verbatim):
+ * Redirect-based PKCE login flow for browsers — `OAuthFlow.login`
+ * adapted to a page-leaving redirect. Because the redirect leaves the
+ * page, login splits into {@link beginLogin} and {@link completeLogin},
+ * and a pending-login record under `CREDENTIAL_KEYS.pendingLogin(region)`
+ * (`{state, verifier, client_id, redirect_uri, created_at}`) substitutes
+ * for Python's in-process locals. There is no callback server, no paste
+ * fallback and no browser launcher: the caller navigates to the
+ * authorize URL and calls `completeLogin` on the return page. These
+ * functions take no `Account` at all, so service-account ingress is
+ * excluded at compile time.
  *
- * | Python `login()` step | Browser twin |
- * |---|---|
- * | PKCE + state generation (`flow.py:268-270`: `PkceChallenge.generate()`, `state = secrets.token_urlsafe(32)`) | `await PkceChallenge.generate()` (core) + `state` = 32 random bytes via `crypto.getRandomValues`, base64url-no-pad (43 chars — same alphabet/length as `token_urlsafe(32)`) |
- * | port probe + `redirect_uri = http://localhost:{port}/callback` | caller-supplied `redirectUri` (the app's own https URL) — REQUIRED option, no default |
- * | DCR `ensure_client_registered` | `ensureBrowserClientRegistered` = core `registerClient` + `CredentialStore` caching (cache-hit rule identical to Python) |
- * | `_build_authorize_url` | core `buildAuthorizeUrl` (§3.1 hoist) — byte-identical output |
- * | callback wait / paste race | `completeLogin(returnUrl)` on the return page |
- * | `exchange_code` | `completeLogin` step 4 via core `postTokenRequest` with the verbatim form fields (`flow.py:428-434`) |
- * | persist via `OAuthStorage` when `persist=True` | ALWAYS persists via the injected `CredentialStore` (in-memory default = no durable persistence unless the caller opts into the localStorage adapter — R9.3 posture) |
- *
- * The pending-login record (JSON under
- * `CREDENTIAL_KEYS.pendingLogin(region)`) is `{state, verifier,
- * client_id, redirect_uri, created_at}` — it substitutes for Python's
- * in-process locals (`flow.py:268-306`); `created_at` renders through
- * the R11.9 tokens-twin formatter (`+00:00`). The key set is fixed and
- * non-numeric with no ordering contract (§7 caution 7).
- *
- * Code reuse (§3.2 note): `OAUTH_PASTE_ERROR` is reused VERBATIM for
- * malformed return URLs — same semantic (an out-of-band-returned
- * redirect URL fails to parse); the name's CLI origin is historical.
- * Only genuinely twin-less branches get browser-local codes
- * (`BROWSER_NO_PENDING_LOGIN`).
- *
- * SA note (§2.3 row 5): these functions take no `Account` at all —
- * state/verifier/client-info only — so service-account ingress is
- * compile-time excluded here.
- *
- * Refresh note (§2.2 disposition / §3.4): browser v1 has NO refresh
- * surface (`flow.py:442-498` stays node-only); the Phase-4 ledger row
- * 8 tracks the D2-ACCEPTED follow-on.
- *
- * D2 spike outcome (b9-packets.md §4.3: **ACCEPTED**): PKCE-in-browser
- * ships ENABLED — DCR accepts third-party https redirect URIs (verified
- * 2026-08-16, live `mcp/register/` 201 for
- * `https://spike-b9.example.com/oauth/callback`); end-to-end browser
- * consent/exchange to be verified in Phase-4 live burn-in. Residual gap
- * (§4.5, unverified without a real browser session): authorize-time
- * `redirect_uri_allowed` enforcement for the registered third-party
- * URI, consent-screen code issuance to that redirect, and the token
- * endpoint's cross-origin CORS posture. Nothing here claims e2e
- * verification. Evidence of record:
- * `context/phase3/notes/B9-spike.md` (Python repo).
+ * @remarks Divergence: Python refreshes expired tokens through the
+ * refresh-token grant; the browser flow has no refresh surface — an
+ * expired token means a fresh login.
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow.login
  */
 
 import {
+  buildAuthorizeUrl,
   CREDENTIAL_KEYS,
   type CredentialStore,
-} from "../../core/src/auth/credential-store.js";
-import { OAUTH_BASE_URLS } from "../../core/src/auth/oauth-constants.js";
-import {
-  buildAuthorizeUrl,
+  OAuthError,
+  type OAuthTokens,
+  parsePastedRedirect,
+  PkceChallenge,
   postTokenRequest,
-} from "../../core/src/auth/oauth-http.js";
+  pythonUtcIsoformat,
+} from "@mixpanel-headless/core";
 import {
   base64UrlEncodeBytes,
-  PkceChallenge,
-} from "../../core/src/auth/pkce.js";
-import { parsePastedRedirect } from "../../core/src/auth/redirect-parse.js";
-import {
-  pythonUtcIsoformat,
-  type OAuthTokens,
-} from "../../core/src/auth/token.js";
-import { OAuthError } from "../../core/src/errors.js";
+  requireOAuthBaseUrl,
+} from "@mixpanel-headless/core/internal";
+
 import { BROWSER_NO_PENDING_LOGIN, BrowserUnsupportedError } from "./errors.js";
 import { ensureBrowserClientRegistered } from "./registration.js";
 import { serializeTokensPayload } from "./token-serialization.js";
 
 /**
- * Default lifetime of the pending-login record (pair-B FB-5,
- * `b9-reviewB-resolution.md`): a record older than this at
- * `completeLogin` time is refused AND consumed
+ * Default lifetime of the pending-login record: a record older than
+ * this at `completeLogin` time is refused and consumed
  * (`BROWSER_NO_PENDING_LOGIN`), so a leaked state/verifier pair does
- * not stay redeemable forever (OAuth BCP short-lived-state posture).
- * 30 minutes bounds the at-rest window while comfortably covering a
- * slow consent/MFA hop; override via
+ * not stay redeemable forever (the OAuth BCP short-lived-state
+ * posture). 30 minutes bounds the at-rest window while comfortably
+ * covering a slow consent/MFA hop; override via
  * {@link CompleteLoginOptions.maxPendingAgeMs}.
  */
-export const DEFAULT_MAX_PENDING_AGE_MS = 30 * 60 * 1000;
+export const DEFAULT_MAX_PENDING_AGE_MS: number = 30 * 60 * 1000;
 
-/** Options bag of {@link beginLogin} (b9-packets.md §3.2 — pasted contract). */
+/** Options bag of {@link beginLogin}. */
 export interface BeginLoginOptions {
   /**
    * Mixpanel data residency region — validated against
    * `OAUTH_BASE_URLS` keys; unknown → `OAuthError`
-   * `OAUTH_CONFIG_ERROR` (`flow.py:164` twin — same code).
+   * `OAUTH_CONFIG_ERROR` (the same code as Python).
    */
   readonly region: "us" | "eu" | "in";
   /**
-   * The app's return URL, registered via DCR. REQUIRED — no default.
+   * The app's return URL, registered via DCR. Required — no default.
    *
-   * SECURITY (pair-B FB-4): this MUST be a compile-time constant of
-   * your application — NEVER derive it from user input, query
-   * parameters (`?returnTo=…`), or any request-controlled value. DCR
-   * registers arbitrary third-party https origins (verified live,
-   * b9-packets.md §9), so an attacker-influenced value here delivers
-   * the authorization code to the attacker's origin. The value is
-   * validated as an absolute URL with an `https:` scheme (`http:` is
-   * allowed only for loopback hosts, RFC 8252 §7.3 — the
-   * `flow.py:54-58` localhost posture); anything else throws
-   * `OAUTH_CONFIG_ERROR`.
+   * Security: this must be a compile-time constant of your application
+   * — never derive it from user input, query parameters
+   * (`?returnTo=…`), or any request-controlled value. DCR registers
+   * arbitrary third-party https origins, so an attacker-influenced
+   * value here delivers the authorization code to the attacker's
+   * origin. The value is validated as an absolute URL with an `https:`
+   * scheme (`http:` is allowed only for loopback hosts, RFC 8252 §7.3 —
+   * the same localhost posture as Python's own redirect URI); anything
+   * else throws `OAUTH_CONFIG_ERROR`.
    */
   readonly redirectUri: string;
-  /** Credential store holding the pending record + DCR cache. */
+  /** Credential store holding the pending record and the DCR cache. */
   readonly store: CredentialStore;
-  /** Injected fetch (R2.4 seam); default `globalThis.fetch`. */
+  /**
+   * Injected fetch.
+   *
+   * @defaultValue `globalThis.fetch`
+   */
   readonly fetch?: typeof fetch;
   /**
    * Epoch-ms clock seam (client-info `created_at`, pending-record
-   * `created_at`, token `expires_at`). Default ambient (§7 caution 5:
-   * tests freeze it; the flow never reads the ambient clock directly).
+   * `created_at`, token `expires_at`). Tests freeze it; the flow never
+   * reads the ambient clock directly.
+   *
+   * @defaultValue `Date.now`
    */
   readonly now?: () => number;
 }
@@ -125,106 +90,95 @@ export interface BeginLoginOptions {
 /** Result of {@link beginLogin}. */
 export interface BeginLoginResult {
   /**
-   * The authorization URL. The CALLER navigates (`location.assign`) —
-   * the library NEVER navigates.
+   * The authorization URL. The caller navigates (`location.assign`) —
+   * the library never navigates.
    */
   readonly authorizeUrl: string;
   /** The CSRF state bound to this login attempt. */
   readonly state: string;
 }
 
-/** Options bag of {@link completeLogin} (§3.2 pasted contract). */
+/** Options bag of {@link completeLogin}. */
 export interface CompleteLoginOptions {
   /** Mixpanel data residency region (same gate as {@link beginLogin}). */
   readonly region: "us" | "eu" | "in";
   /**
-   * The redirect-return: a full URL or query string —
-   * `parsePastedRedirect` grammar (`flow.py:51-117`).
+   * The redirect return: a full URL or query string —
+   * `parsePastedRedirect` grammar.
    */
   readonly returnUrl: string;
   /** The store carrying the pending record from {@link beginLogin}. */
   readonly store: CredentialStore;
-  /** Injected fetch (R2.4 seam); default `globalThis.fetch`. */
+  /**
+   * Injected fetch.
+   *
+   * @defaultValue `globalThis.fetch`
+   */
   readonly fetch?: typeof fetch;
   /**
-   * Epoch-ms clock seam (token `expires_at` + the FB-5 pending-record
-   * age gate). Default ambient.
+   * Epoch-ms clock seam (token `expires_at` and the pending-record age
+   * gate).
+   *
+   * @defaultValue `Date.now`
    */
   readonly now?: () => number;
   /**
-   * Maximum accepted age of the pending-login record (pair-B FB-5);
-   * default {@link DEFAULT_MAX_PENDING_AGE_MS}. An older (or
+   * Maximum accepted age of the pending-login record. An older (or
    * unparseable-`created_at`) record is refused and consumed with
    * `BROWSER_NO_PENDING_LOGIN`.
+   *
+   * @defaultValue {@link DEFAULT_MAX_PENDING_AGE_MS}
    */
   readonly maxPendingAgeMs?: number;
 }
 
-/** The pending-login record shape (module header — fixed key set). */
+/** The pending-login record shape (fixed key set; see module header). */
 interface PendingLoginRecord {
   /** The CSRF state. */
   readonly state: string;
-  /** The PKCE code verifier (held server-side never — stays in store). */
+  /** The PKCE code verifier (never sent anywhere but the token endpoint). */
   readonly verifier: string;
   /** The DCR client id used for the authorize URL. */
   readonly client_id: string;
   /** The redirect URI the authorize URL carried. */
   readonly redirect_uri: string;
-  /** R11.9 tokens-twin timestamp of the begin call. */
+  /** Timestamp of the begin call, in the tokens-file isoformat shape. */
   readonly created_at: string;
 }
 
 /**
- * Validate the region against `OAUTH_BASE_URLS` and return its base
- * URL (`OAuthFlow.__init__` gate twin, `flow.py:160-165` — same code
- * and message shape).
- *
- * @param region - The caller-supplied region.
- * @returns The region's OAuth base URL (trailing slash).
- * @throws OAuthError - `OAUTH_CONFIG_ERROR` for unknown regions.
+ * Loopback hostnames for which plain `http:` redirect URIs are legal
+ * (RFC 8252 §7.3; Python's own localhost redirect posture).
  */
-function requireBaseUrl(region: string): string {
-  if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
-    throw new OAuthError(
-      `Unknown region: ${JSON.stringify(region)}. Must be one of: ` +
-        `${Object.keys(OAUTH_BASE_URLS).sort().join(", ")}`,
-      "OAUTH_CONFIG_ERROR",
-    );
-  }
-  return OAUTH_BASE_URLS[region] as string;
-}
-
-/** Loopback hostnames for which plain `http:` redirect URIs are legal
- * (RFC 8252 §7.3; the `flow.py:54-58` localhost posture). */
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /**
- * Validate the caller-supplied redirect URI (pair-B FB-4,
- * `b9-reviewB-resolution.md`): must be an absolute URL whose scheme is
- * `https:`, or `http:` on a loopback host. This does NOT make a
- * user-input-derived value safe (an attacker-controlled https origin
- * still registers via DCR) — see the {@link BeginLoginOptions.redirectUri}
- * warning; the gate only turns garbage/relative/scheme-confused values
- * into one coded, pre-network error. Browser-local rule with no Python
- * twin (Python generates its own localhost URI, `flow.py:54`); R9.3
- * arbitrated, `OAUTH_CONFIG_ERROR` per the flow's config-shape errors.
+ * Validate the caller-supplied redirect URI: it must be an absolute URL
+ * whose scheme is `https:`, or `http:` on a loopback host. This does
+ * not make a user-input-derived value safe (an attacker-controlled
+ * https origin still registers via DCR) — see the
+ * {@link BeginLoginOptions.redirectUri} warning; the gate only turns
+ * garbage/relative/scheme-confused values into one coded, pre-network
+ * error. Browser-local rule with no Python twin (Python generates its
+ * own localhost URI); `OAUTH_CONFIG_ERROR` matches the flow's other
+ * config-shape errors.
  *
  * @param redirectUri - The caller-supplied redirect URI.
- * @throws OAuthError - `OAUTH_CONFIG_ERROR` for non-absolute,
+ * @throws {@link OAuthError} `OAUTH_CONFIG_ERROR` for non-absolute,
  *   non-https (non-loopback) or unparseable values.
  */
 function validateRedirectUri(redirectUri: string): void {
   let parsed: URL;
   try {
     parsed = new URL(redirectUri);
-  } catch (cause) {
+  } catch (error) {
     throw new OAuthError(
       `redirectUri is not an absolute URL: ${JSON.stringify(redirectUri)}. ` +
         "Pass your app's full return URL (a compile-time constant, " +
         "never user input).",
       "OAUTH_CONFIG_ERROR",
       { field: "redirectUri" },
-      { cause },
+      { cause: error },
     );
   }
   const loopback = LOOPBACK_HOSTNAMES.has(parsed.hostname);
@@ -243,9 +197,9 @@ function validateRedirectUri(redirectUri: string): void {
 }
 
 /**
- * Generate the CSRF state — the `secrets.token_urlsafe(32)` twin
- * (`flow.py:270`): 32 random bytes, base64url without padding
- * (43 chars, same alphabet as Python's output).
+ * Generate the CSRF state — the `secrets.token_urlsafe(32)` twin: 32
+ * random bytes, base64url without padding (43 chars, same alphabet as
+ * Python's output).
  *
  * @returns The state string.
  */
@@ -256,30 +210,30 @@ function generateState(): string {
 }
 
 /**
- * Begin the browser redirect PKCE login (b9-packets.md §3.2):
- * 1. region gate + redirect-URI gate (FB-4)  2. DCR (cached)
- * 3. PKCE + state  4. persist the pending record under
- * `CREDENTIAL_KEYS.pendingLogin(region)`  5. return the authorize URL
- * (core `buildAuthorizeUrl`).
+ * Begin the browser redirect PKCE login: 1. region gate and
+ * redirect-URI gate 2. DCR (cached) 3. PKCE and state 4. persist the
+ * pending record under `CREDENTIAL_KEYS.pendingLogin(region)`
+ * 5. return the authorize URL (core `buildAuthorizeUrl`). The PKCE
+ * challenge, state generation, DCR and authorize URL match Python
+ * step for step; the redirect URI is caller-supplied where Python
+ * probes a localhost port.
  *
- * STORE DURABILITY (pair-B FB-7, `b9-reviewB-e2e.md` F3): the redirect
- * NAVIGATES AWAY from the page, so `completeLogin` runs on a fresh
- * page load — the store passed here MUST survive that navigation or
- * the login can never complete (`BROWSER_NO_PENDING_LOGIN`). The
- * in-memory default store does NOT survive navigation; for the
- * redirect flow use a storage-backed store —
- * `new LocalStorageCredentialStore(sessionStorage)` is the
+ * Store durability: the redirect navigates away from the page, so
+ * `completeLogin` runs on a fresh page load — the store passed here
+ * must survive that navigation or the login can never complete
+ * (`BROWSER_NO_PENDING_LOGIN`). The in-memory default store does not
+ * survive navigation; for the redirect flow use a storage-backed store
+ * — `new LocalStorageCredentialStore(sessionStorage)` is the
  * recommended narrower-exposure option (see the adapter's security
  * warning).
  *
  * @param options - Region / redirect URI / store / seams.
- * @returns The authorize URL (caller navigates) + state.
- * @throws OAuthError - `OAUTH_CONFIG_ERROR` (bad region / bad
- *   redirect URI — FB-4) or `OAUTH_REGISTRATION_ERROR` (DCR failure).
- *
+ * @returns The authorize URL (caller navigates) and the state.
+ * @throws {@link OAuthError} `OAUTH_CONFIG_ERROR` (bad region / bad
+ *   redirect URI) or `OAUTH_REGISTRATION_ERROR` (DCR failure).
  * @example
  * ```typescript
- * // A store that survives the redirect (FB-7):
+ * // A store that survives the redirect:
  * const store = new LocalStorageCredentialStore(sessionStorage);
  * const { authorizeUrl } = await beginLogin({
  *   region: "us",
@@ -288,16 +242,17 @@ function generateState(): string {
  * });
  * location.assign(authorizeUrl);
  * ```
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow.login
  */
 export async function beginLogin(
   options: BeginLoginOptions,
 ): Promise<BeginLoginResult> {
-  // 1. Region gate (`flow.py:160-165` twin) + redirect-URI gate (FB-4).
-  const baseUrl = requireBaseUrl(options.region);
+  // 1. Region gate + redirect-URI gate.
+  const baseUrl = requireOAuthBaseUrl(options.region);
   validateRedirectUri(options.redirectUri);
   const now = options.now ?? Date.now;
 
-  // 2. DCR, CredentialStore-cached (`flow.py:282-288` twin).
+  // 2. DCR, CredentialStore-cached.
   const clientInfo = await ensureBrowserClientRegistered({
     fetch: options.fetch,
     region: options.region,
@@ -306,12 +261,12 @@ export async function beginLogin(
     now,
   });
 
-  // 3. PKCE + state (`flow.py:268-270` twin — §3.2 table row 1).
+  // 3. PKCE + state.
   const pkce = await PkceChallenge.generate();
   const state = generateState();
 
   // 4. Persist the pending record (substitutes for Python's in-process
-  // locals; created_at via the R11.9 tokens-twin formatter).
+  // locals; `created_at` in the tokens-file isoformat shape).
   const pending: PendingLoginRecord = {
     state,
     verifier: pkce.verifier,
@@ -324,8 +279,7 @@ export async function beginLogin(
     JSON.stringify(pending),
   );
 
-  // 5. Authorize URL (`flow.py:290-296` twin) — the library NEVER
-  // navigates.
+  // 5. Authorize URL — the library never navigates.
   return {
     authorizeUrl: buildAuthorizeUrl(baseUrl, {
       clientId: clientInfo.client_id,
@@ -343,8 +297,9 @@ export async function beginLogin(
  * @param store - The credential store.
  * @param region - The region key.
  * @returns The parsed record.
- * @throws BrowserUnsupportedError - `BROWSER_NO_PENDING_LOGIN` when
- *   absent, consumed, or corrupted (twin-less branch — errors.ts note).
+ * @throws {@link BrowserUnsupportedError} `BROWSER_NO_PENDING_LOGIN` when
+ *   absent, consumed, or corrupted (a branch with no Python twin — see
+ *   `errors.ts`).
  */
 async function loadPendingRecord(
   store: CredentialStore,
@@ -378,8 +333,7 @@ async function loadPendingRecord(
     "verifier",
     "client_id",
     "redirect_uri",
-    // FB-5 (pair-B): created_at is now READ (age gate) — validate it
-    // like the other fields instead of carrying it as dead data.
+    // `created_at` feeds the age gate, so it is validated like the rest.
     "created_at",
   ]) {
     if (typeof record[field] !== "string") {
@@ -390,18 +344,17 @@ async function loadPendingRecord(
 }
 
 /**
- * In-flight `completeLogin` registry (pair-B FB-6,
- * `b9-reviewB-e2e.md` F2): the load→parse→delete sequence spans
- * awaits, so two CONCURRENT calls over the same store both redeemed
- * the single-use code (React 18 StrictMode double-invokes exactly this
- * shape). A second concurrent call with the SAME returnUrl now shares
- * the first call's promise (one exchange, one outcome for both); a
- * concurrent call with a DIFFERENT returnUrl waits for the in-flight
- * attempt to settle and then proceeds normally (finding the record
- * consumed → `BROWSER_NO_PENDING_LOGIN`). Scope note: this guards
- * same-realm concurrency only — cross-tab races over a shared
- * localStorage cannot be serialized through the 3-method
- * `CredentialStore` interface (no atomic compare-and-delete exists);
+ * In-flight `completeLogin` registry. The load→parse→delete sequence
+ * spans awaits, so two concurrent calls over the same store would both
+ * redeem the single-use code (React 18 StrictMode double-invokes
+ * exactly this shape). A second concurrent call with the same
+ * `returnUrl` shares the first call's promise (one exchange, one
+ * outcome for both); a concurrent call with a different `returnUrl`
+ * waits for the in-flight attempt to settle and then proceeds normally
+ * (finding the record consumed → `BROWSER_NO_PENDING_LOGIN`). This
+ * guards same-realm concurrency only — cross-tab races over a shared
+ * localStorage cannot be serialized through the three-method
+ * `CredentialStore` interface (no atomic compare-and-delete exists); a
  * documented limitation.
  */
 const inFlightCompletions = new WeakMap<
@@ -413,57 +366,59 @@ const inFlightCompletions = new WeakMap<
 >();
 
 /**
- * Complete the browser redirect PKCE login on the return page
- * (b9-packets.md §3.2): 1. load the pending record + FB-5 age gate
- * (a record older than {@link CompleteLoginOptions.maxPendingAgeMs}
- * is refused AND consumed)  2. parse/validate the return URL
- * (`parsePastedRedirect` — Python codes verbatim; the URL FRAGMENT is
- * stripped first, pair-B FB-8: the documented input is
- * `location.href`, and hash-router fragments are not query text)
- * 3. DELETE the pending record BEFORE the exchange (single-use state —
- * a replay of the same URL hits step 1; a FAILED exchange does not
- * resurrect it either, §6 R2-3: replay after failure is a fresh
- * `beginLogin`)  4. exchange the code (`flow.py:428-434`
- * field-for-field)  5. ALWAYS persist the tokens under
- * `CREDENTIAL_KEYS.tokens(region)` (R11.9 writer shape) and return
- * them. Concurrent duplicate calls share one exchange (FB-6 — see
- * the in-flight registry note).
+ * Complete the browser redirect PKCE login on the return page: 1. load
+ * the pending record and apply the age gate (a record older than
+ * {@link CompleteLoginOptions.maxPendingAgeMs} is refused and consumed)
+ * 2. parse and validate the return URL (`parsePastedRedirect` — Python
+ * codes verbatim; the URL fragment is stripped first because the
+ * documented input is `location.href`, and hash-router fragments are
+ * not query text) 3. delete the pending record before the exchange
+ * (single-use state — a replay of the same URL hits step 1, and a
+ * failed exchange does not resurrect it either: retry after failure is
+ * a fresh `beginLogin`) 4. exchange the code (Python's request field
+ * for field) 5. always persist the tokens under
+ * `CREDENTIAL_KEYS.tokens(region)` and return them. Concurrent
+ * duplicate calls share one exchange (see the in-flight registry note).
  *
- * Step-5 failure disposition (pair-B FB-11 / `b9-reviewB-e2e.md` F5):
- * if the STORE write of step 5 throws, the error propagates and the
- * tokens are NOT returned — the code was already redeemed, so the
- * caller must restart with a fresh `beginLogin`. Choose a reliable
- * store; the shipped localStorage adapter re-throws backend failures
- * as coded `OAUTH_CONFIG_ERROR`.
+ * `OAUTH_PASTE_ERROR` is reused verbatim for malformed return URLs: the
+ * semantic is the same (an out-of-band-returned redirect URL fails to
+ * parse); the name's CLI origin is historical. Only genuinely twin-less
+ * branches get browser-local codes (`BROWSER_NO_PENDING_LOGIN`).
+ *
+ * Step-5 failure disposition: if the store write of step 5 throws, the
+ * error propagates and the tokens are not returned — the code was
+ * already redeemed, so the caller must restart with a fresh
+ * `beginLogin`. Choose a reliable store; the shipped localStorage
+ * adapter re-throws backend failures as coded `OAUTH_CONFIG_ERROR`.
  *
  * @param options - Region / return URL / store / seams.
  * @returns The obtained tokens.
- * @throws OAuthError - `OAUTH_CONFIG_ERROR` (bad region),
- *   `OAUTH_PASTE_ERROR` (empty/malformed/missing code+state,
- *   `flow.py:86,105-106`), `OAUTH_AUTH_DENIED` (provider `error=`
- *   param, `:98`), `OAUTH_STATE_MISMATCH` (`:113`), or
- *   `OAUTH_TOKEN_ERROR` (exchange failure — every classifier branch).
- * @throws BrowserUnsupportedError - `BROWSER_NO_PENDING_LOGIN` when no
- *   pending record exists (replay / expired tab) or the record is
- *   older than the FB-5 lifetime.
- *
+ * @throws {@link OAuthError} `OAUTH_CONFIG_ERROR` (bad region),
+ *   `OAUTH_PASTE_ERROR` (empty/malformed/missing code+state),
+ *   `OAUTH_AUTH_DENIED` (provider `error=` param),
+ *   `OAUTH_STATE_MISMATCH`, or `OAUTH_TOKEN_ERROR` (exchange failure —
+ *   every classifier branch).
+ * @throws {@link BrowserUnsupportedError} `BROWSER_NO_PENDING_LOGIN` when
+ *   no pending record exists (replay / expired tab) or the record is
+ *   older than the accepted lifetime.
  * @example
  * ```typescript
- * // On the redirect return page (fragment-safe — FB-8):
+ * // On the redirect return page (a fragment in the URL is fine):
  * const tokens = await completeLogin({
  *   region: "us",
  *   returnUrl: location.href,
  *   store,
  * });
  * ```
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow.login
  */
 export async function completeLogin(
   options: CompleteLoginOptions,
 ): Promise<OAuthTokens> {
-  const baseUrl = requireBaseUrl(options.region);
+  const baseUrl = requireOAuthBaseUrl(options.region);
   const pendingKey = CREDENTIAL_KEYS.pendingLogin(options.region);
 
-  // FB-6: same-realm concurrency dedup (see the registry JSDoc).
+  // Same-realm concurrency dedup (see the registry doc block).
   let perStore = inFlightCompletions.get(options.store);
   if (perStore === undefined) {
     perStore = new Map();
@@ -492,12 +447,16 @@ export async function completeLogin(
 
 /**
  * The single-attempt body of {@link completeLogin} (steps 1–5; the
- * public wrapper adds the FB-6 in-flight dedup).
+ * public wrapper adds the in-flight dedup).
  *
  * @param options - The caller's options.
  * @param baseUrl - The validated region base URL.
  * @param pendingKey - `CREDENTIAL_KEYS.pendingLogin(region)`.
  * @returns The obtained tokens.
+ * @throws {@link BrowserUnsupportedError} `BROWSER_NO_PENDING_LOGIN` when
+ *   the pending record is absent, corrupted or expired.
+ * @throws {@link OAuthError} From the return-URL parse or the exchange
+ *   (see {@link completeLogin}).
  */
 async function completeLoginInner(
   options: CompleteLoginOptions,
@@ -511,10 +470,10 @@ async function completeLoginInner(
   // 1. Load the pending record.
   const pending = await loadPendingRecord(options.store, options.region);
 
-  // 1b. FB-5 age gate: expired records are refused AND consumed (the
-  // stale verifier must not stay redeemable at rest). `created_at` is
-  // the R11.9 tokens-twin isoformat (`+00:00` offset — Date.parse
-  // handles it); an unparseable stamp counts as expired.
+  // 1b. Age gate: expired records are refused and consumed (the stale
+  // verifier must not stay redeemable at rest). `created_at` is the
+  // tokens-file isoformat (`+00:00` offset — Date.parse handles it); an
+  // unparseable stamp counts as expired.
   const createdAtMs = Date.parse(pending.created_at);
   if (Number.isNaN(createdAtMs) || now() - createdAtMs > maxPendingAgeMs) {
     await options.store.delete(pendingKey);
@@ -533,11 +492,11 @@ async function completeLoginInner(
 
   // 2. Parse the return URL against the pending state (Python codes
   // verbatim — parse failures precede the delete, so the user can
-  // retry with the CORRECT url; only a successful parse consumes the
-  // record). FB-8: strip the URL FRAGMENT first — the browser input
-  // is `location.href`, whose `#…` part is never query text (a `#` in
-  // a query value is always `%23`-encoded); the shared core parser
-  // keeps its CPython `parse_qs` semantics untouched for node.
+  // retry with the correct URL; only a successful parse consumes the
+  // record). Strip the URL fragment first — the browser input is
+  // `location.href`, whose `#…` part is never query text (a `#` in a
+  // query value is always `%23`-encoded); the shared core parser keeps
+  // its CPython `parse_qs` semantics untouched for node.
   const hashIndex = options.returnUrl.indexOf("#");
   const fragmentFree =
     hashIndex === -1
@@ -547,11 +506,10 @@ async function completeLoginInner(
     expectedState: pending.state,
   });
 
-  // 3. Single-use state: DELETE BEFORE the exchange (replay-attack
-  // lock — §3.2 step 3).
+  // 3. Single-use state: delete before the exchange (replay lock).
   await options.store.delete(pendingKey);
 
-  // 4. Exchange (`flow.py:428-434` field-for-field via the §3.1 hoist).
+  // 4. Exchange — Python's `exchange_code` request field for field.
   const tokens = await postTokenRequest(
     fetchImpl,
     baseUrl,
@@ -570,8 +528,10 @@ async function completeLoginInner(
     },
   );
 
-  // 5. ALWAYS persist (R9.3 posture — durable only if the caller chose
-  // the localStorage adapter), R11.9 tokens-twin writer shape.
+  // 5. Always persist, in the tokens-file writer shape — durable only if
+  // the caller chose the localStorage adapter (Python persists only
+  // when `persist=True`; the browser's store is the only place the
+  // tokens can live).
   await options.store.set(
     CREDENTIAL_KEYS.tokens(options.region),
     serializeTokensPayload(tokens),

@@ -1,86 +1,898 @@
 /**
- * @mixpanel-headless/core — isomorphic core of the mixpanel_headless port.
+ * `@mixpanel-headless/core` — the isomorphic TypeScript port of the Python
+ * `mixpanel_headless` library: the {@link Workspace} facade, the wire
+ * client, the auth and account primitives, the entity / result /
+ * query-parameter models and the Python-parity helpers behind them.
  *
- * The module directories are laid out per the D11 design; `compat/` is the
- * first implemented module (TS-2, rulebook §11). Core is pure per R9.1 —
- * no Node built-ins, no undici, no `process` access.
+ * The package is pure — no Node built-ins, no `undici`, no `process`
+ * reads; anything that touches a file system, an environment or a
+ * browser is injected. Three entry points share the code:
+ *
+ * - `@mixpanel-headless/core` (this file): the public, semver-stable
+ *   surface. Every export is listed by name, grouped by area; nothing is
+ *   re-exported wholesale.
+ * - `@mixpanel-headless/core/internal` (`./internal.ts`): plumbing the
+ *   platform packages and the verification rig need; not semver-stable.
+ * - `@mixpanel-headless/node` and `@mixpanel-headless/browser`: the
+ *   platform packages that supply the injected pieces (config files,
+ *   environment, OAuth callback and redirect flows, credential stores).
+ *
+ * Naming: Python `snake_case` methods become `camelCase`; option-bag keys
+ * that mirror Python keyword arguments or wire fields stay `snake_case`
+ * (README "Naming"). Behaviour is locked against Python by the
+ * conformance corpus (`conformance-runner/`) and the differential oracle
+ * (`differential/`); every known deviation is listed in `PORTING.md`.
+ *
+ * @see mixpanel_headless
+ * @packageDocumentation
  */
-export * from "./compat/index.js";
 
-// Phase-2 contract layer (P2-2): error taxonomy + Secret + coercion +
-// invariant. `errors-codes.gen.ts` internals (parent-edge/default-code
-// maps) stay module-scoped for the C8(c) registry test; the two registry
-// sets mirror Python's `exceptions` module surface and re-export via
-// errors.ts.
-export * from "./errors.js";
-export * from "./secret.js";
-export * from "./coerce.js";
-export * from "./invariant.js";
+// --- Facade — `Workspace` and its per-method option types ---
+export type { MeCacheStore } from "./services/me.js";
+export { Workspace } from "./workspace.js";
+export type {
+  WorkspaceGetAlertCountOptions,
+  WorkspaceGetAlertHistoryOptions,
+  WorkspaceListAlertsOptions,
+  WorkspaceListAnnotationsOptions,
+} from "./workspace-members/annotations-webhooks-alerts.js";
+export {
+  validateBookmarkParamsSchema,
+  type ValidateBookmarkParamsSchemaOptions,
+  type WorkspaceGetBookmarkHistoryOptions,
+  type WorkspaceListBookmarksV2Options,
+  type WorkspaceListCohortsFullOptions,
+} from "./workspace-members/bookmarks-cohorts.js";
+export type {
+  WorkspaceListBlueprintTemplatesOptions,
+  WorkspaceListDashboardsOptions,
+} from "./workspace-members/dashboards.js";
+export type {
+  WorkspaceConcludeExperimentOptions,
+  WorkspaceGetFlagHistoryOptions,
+  WorkspaceListExperimentsOptions,
+  WorkspaceListFeatureFlagsOptions,
+} from "./workspace-members/flags-experiments.js";
+export type {
+  WorkspaceDownloadLookupTableOptions,
+  WorkspaceListLookupTablesOptions,
+  WorkspaceUploadLookupTableOptions,
+} from "./workspace-members/governance-data.js";
+export type {
+  WorkspaceExportLexiconOptions,
+  WorkspaceGetEventDefinitionsOptions,
+  WorkspaceGetPropertyDefinitionsOptions,
+} from "./workspace-members/lexicon-tracking.js";
+export type {
+  BusinessContextLevel,
+  BusinessContextScopeOptions,
+} from "./workspace-members/lifecycle.js";
+export {
+  NOOP_LOGGER,
+  type ReportLinkParamsInput,
+  type ResolvedWorkspaceLogger,
+  type WorkspaceCreateReportLinkOptions,
+  type WorkspaceEventCountsOptions,
+  type WorkspaceEventsForReplayOptions,
+  type WorkspaceEventsOptions,
+  type WorkspaceFetchReplayOptions,
+  type WorkspaceFetchReplaysOptions,
+  type WorkspaceFlowQueryOptions,
+  type WorkspaceFrequencyOptions,
+  type WorkspaceFunnelOptions,
+  type WorkspaceFunnelQueryOptions,
+  type WorkspaceLexiconSchemasOptions,
+  type WorkspaceListReplaysOptions,
+  type WorkspaceLogger,
+  type WorkspaceMeOptions,
+  type WorkspaceNumericOptions,
+  type WorkspaceOptions,
+  type WorkspaceProjectsOptions,
+  type WorkspacePropertyCountsOptions,
+  type WorkspacePropertyValuesOptions,
+  type WorkspaceQueryOptions,
+  type WorkspaceQueryReportLinkOptions,
+  type WorkspaceReplaysForUserOptions,
+  type WorkspaceRetentionOptions,
+  type WorkspaceRetentionQueryOptions,
+  type WorkspaceRunFlowParamsOptions,
+  type WorkspaceRunParamsOptions,
+  type WorkspaceRunUserParamsOptions,
+  type WorkspaceSavedReportLinkOptions,
+  type WorkspaceSchemaGraphOptions,
+  type WorkspaceSegmentationNumericOptions,
+  type WorkspaceSegmentationOptions,
+  type WorkspaceSignReplayOptions,
+  type WorkspaceStreamReplayOptions,
+  type WorkspaceSubpropertiesOptions,
+  type WorkspaceTopEventsOptions,
+  type WorkspaceUseOptions,
+  type WorkspaceUserQueryOptions,
+  type WorkspaceWorkspacesOptions,
+} from "./workspace-members/options.js";
+export type {
+  WorkspaceDeleteSchemasOptions,
+  WorkspaceGetSchemaEnforcementOptions,
+  WorkspaceListDataVolumeAnomaliesOptions,
+  WorkspaceListSchemaRegistryOptions,
+} from "./workspace-members/schemas-audit.js";
 
-// Phase-2 contract layer (P2-3): the 37 Literal-alias unions + runtime
-// membership tuples and the 8 Python Enum-class ports (public `__all__`
-// names — phase2-design C2). The bookmarks/ enum tables are Python
-// `_internal` and intentionally NOT re-exported here.
-export * from "./types/index.js";
-export * from "./auth/index.js";
+// --- Client — factory, option types, JSON model, endpoints, /me models ---
+export {
+  type ClientAppRequestOptions,
+  type ClientCore,
+  type ClientRequestOptions,
+  type ClientUseOptions,
+  createMixpanelClient,
+  type CustomHeaderEnvSource,
+  type HttpHandle,
+  type MixpanelClient,
+  type MixpanelClientOptions,
+  type QueryHostRequestOptions,
+} from "./client/client.js";
+export {
+  type EntryPoint,
+  getEntryPoint,
+  setEntryPoint,
+} from "./client/headers.js";
+export {
+  JsonNumber,
+  type JsonValue,
+  toNativeJson,
+} from "./client/json-value.js";
+export {
+  LosslessJsonError,
+  parseLossless,
+  type ParseLosslessOptions,
+} from "./client/lossless-json.js";
+export {
+  MeOrgInfo,
+  type MeOrgInfoInit,
+  MeProjectInfo,
+  type MeProjectInfoInit,
+  MeResponse,
+  type MeResponseInit,
+  MeWorkspaceInfo,
+  type MeWorkspaceInfoInit,
+  type WorkspaceResolver,
+  type WorkspaceView,
+} from "./client/me.js";
+export {
+  type EndpointKind,
+  type EndpointOverrides,
+  endpointOverridesFromEnv,
+  type EndpointOverridesSource,
+  ENDPOINTS,
+} from "./client/url.js";
 
-// Phase-3 B0-2 (R10.8): shared client internals — retry/backoff trio,
-// `_handle_response`/`_execute_with_retry`/`app_request`, header merge,
-// URL builder, JSONL splitter, scoped-path builder, and the lossless
-// response-body parser (GATE-VERDICT R5). Internal plumbing for the B4
-// client assembly; exported per R2.8 (no `private` across modules).
-export * from "./client/index.js";
+// --- Errors, Secret, coercion ---
+export {
+  coerceBool,
+  coerceFloat,
+  coerceInt,
+  coerceInt64,
+  type CoerceKind,
+  type CoerceOptions,
+  coerceStr,
+  resolveWithDefault,
+} from "./coerce.js";
+export {
+  AccountExistsError,
+  AccountInUseError,
+  AccountNotFoundError,
+  APIError,
+  type APIErrorOptions,
+  AuthenticationError,
+  type AuthenticationErrorOptions,
+  BookmarkValidationError,
+  BusinessContextValidationError,
+  ConfigError,
+  DateRangeTooLargeError,
+  type ErrorDict,
+  EventNotFoundError,
+  type HttpErrorContext,
+  type HttpErrorOptions,
+  InvalidArgumentError,
+  type InvalidArgumentErrorOptions,
+  type InvalidArgumentViolation,
+  MixpanelHeadlessError,
+  OAuthError,
+  ParamTypeError,
+  ParamValidationError,
+  ProjectNotFoundError,
+  QueryError,
+  type QueryErrorOptions,
+  RateLimitError,
+  type RateLimitErrorOptions,
+  type RegionProbeAttempt,
+  RegionProbeError,
+  type RegionProbeErrorOptions,
+  RegionProbeNetworkError,
+  ReplayNotFoundError,
+  ReportLinkError,
+  type ReportLinkErrorOptions,
+  ReportLinkNotFoundError,
+  ReportLinkParseError,
+  ReportLinkScopeMismatchError,
+  ResponseValidationError,
+  ServerError,
+  type ServerErrorOptions,
+  SessionReplayAccessError,
+  SessionReplayError,
+  type SessionReplayErrorOptions,
+  ShortLinkResolutionError,
+  SignedURLExpiredError,
+  UnsupportedReplayFormatError,
+  UnsupportedReportLinkError,
+  ValidationError,
+  type ValidationSeverity,
+  WorkspaceScopeError,
+} from "./errors.js";
+export { Secret } from "./secret.js";
 
-// Phase-3 B2 (shard V1b): the ONE public member of the `query/`
-// subtree — Python's `validate_bookmark` (`__init__.py:9`, `__all__`
-// entry `"validate_bookmark"`; phase2-audit A1 deferral, owner B2).
-// The rest of `query/` mirrors Python `_internal` and stays unexported,
-// as do the `bookmarks/` tables and the `bookmark_schema` sorting slice.
-export { validateBookmark } from "./query/validation.js";
-export type { ValidateBookmarkOptions } from "./query/validation.js";
+// --- Entity models (App API request/response dataclasses) ---
+export {
+  AccountSummary,
+  type AccountSummaryInit,
+  AccountTestResult,
+  type AccountTestResultInit,
+  OAuthLoginResult,
+  type OAuthLoginResultInit,
+  Target,
+  type TargetInit,
+} from "./types/entities/accounts.js";
+export {
+  AlertBookmark,
+  type AlertBookmarkInit,
+  AlertCount,
+  type AlertCountInit,
+  AlertCreator,
+  type AlertCreatorInit,
+  AlertHistoryPagination,
+  type AlertHistoryPaginationInit,
+  AlertHistoryResponse,
+  type AlertHistoryResponseInit,
+  AlertProject,
+  type AlertProjectInit,
+  AlertScreenshotResponse,
+  type AlertScreenshotResponseInit,
+  AlertValidation,
+  type AlertValidationInit,
+  AlertWorkspace,
+  type AlertWorkspaceInit,
+  CreateAlertParams,
+  type CreateAlertParamsInit,
+  CustomAlert,
+  type CustomAlertInit,
+  UpdateAlertParams,
+  type UpdateAlertParamsInit,
+  ValidateAlertsForBookmarkParams,
+  type ValidateAlertsForBookmarkParamsInit,
+  ValidateAlertsForBookmarkResponse,
+  type ValidateAlertsForBookmarkResponseInit,
+} from "./types/entities/alerts.js";
+export {
+  Annotation,
+  type AnnotationInit,
+  AnnotationTag,
+  type AnnotationTagInit,
+  AnnotationUser,
+  type AnnotationUserInit,
+  CreateAnnotationParams,
+  type CreateAnnotationParamsInit,
+  CreateAnnotationTagParams,
+  type CreateAnnotationTagParamsInit,
+  UpdateAnnotationParams,
+  type UpdateAnnotationParamsInit,
+} from "./types/entities/annotations.js";
+export {
+  Bookmark,
+  BookmarkHistoryPagination,
+  type BookmarkHistoryPaginationInit,
+  BookmarkHistoryResponse,
+  type BookmarkHistoryResponseInit,
+  type BookmarkInit,
+  BookmarkMetadata,
+  type BookmarkMetadataInit,
+  BookmarkUrl,
+  type BookmarkUrlInit,
+  BulkUpdateBookmarkEntry,
+  type BulkUpdateBookmarkEntryInit,
+  CreateBookmarkParams,
+  type CreateBookmarkParamsInit,
+  UpdateBookmarkParams,
+  type UpdateBookmarkParamsInit,
+} from "./types/entities/bookmarks.js";
+export {
+  BUSINESS_CONTEXT_MAX_CHARS,
+  BusinessContext,
+  BusinessContextChain,
+  type BusinessContextChainInit,
+  type BusinessContextInit,
+} from "./types/entities/business-context.js";
+export {
+  BulkUpdateCohortEntry,
+  type BulkUpdateCohortEntryInit,
+  Cohort,
+  CohortCreator,
+  type CohortCreatorInit,
+  type CohortInit,
+  CreateCohortParams,
+  type CreateCohortParamsInit,
+  UpdateCohortParams,
+  type UpdateCohortParamsInit,
+} from "./types/entities/cohorts.js";
+export {
+  CursorPagination,
+  type CursorPaginationInit,
+  PaginatedResponse,
+  type PaginatedResponseInit,
+  PublicWorkspace,
+  type PublicWorkspaceInit,
+} from "./types/entities/common.js";
+export {
+  BlueprintCard,
+  type BlueprintCardInit,
+  BlueprintConfig,
+  type BlueprintConfigInit,
+  BlueprintFinishParams,
+  type BlueprintFinishParamsInit,
+  BlueprintTemplate,
+  type BlueprintTemplateInit,
+  CreateDashboardParams,
+  type CreateDashboardParamsInit,
+  CreateRcaDashboardParams,
+  type CreateRcaDashboardParamsInit,
+  Dashboard,
+  type DashboardInit,
+  DashboardRow,
+  DashboardRowContent,
+  type DashboardRowContentInit,
+  type DashboardRowInit,
+  RcaSourceData,
+  type RcaSourceDataInit,
+  UpdateDashboardParams,
+  type UpdateDashboardParamsInit,
+  UpdateReportLinkParams,
+  type UpdateReportLinkParamsInit,
+  UpdateTextCardParams,
+  type UpdateTextCardParamsInit,
+} from "./types/entities/dashboards.js";
+export {
+  ComposedPropertyValue,
+  type ComposedPropertyValueInit,
+  CreateCustomEventParams,
+  type CreateCustomEventParamsInit,
+  CreateCustomPropertyParams,
+  type CreateCustomPropertyParamsInit,
+  CreateDropFilterParams,
+  type CreateDropFilterParamsInit,
+  CustomEvent,
+  CustomEventAlternative,
+  type CustomEventAlternativeInit,
+  type CustomEventInit,
+  CustomProperty,
+  type CustomPropertyInit,
+  DropFilter,
+  type DropFilterInit,
+  DropFilterLimitsResponse,
+  type DropFilterLimitsResponseInit,
+  LookupTable,
+  type LookupTableInit,
+  LookupTableUploadUrl,
+  type LookupTableUploadUrlInit,
+  MarkLookupTableReadyParams,
+  type MarkLookupTableReadyParamsInit,
+  UpdateCustomPropertyParams,
+  type UpdateCustomPropertyParamsInit,
+  UpdateDropFilterParams,
+  type UpdateDropFilterParamsInit,
+  UpdateLookupTableParams,
+  type UpdateLookupTableParamsInit,
+  UploadLookupTableParams,
+  type UploadLookupTableParamsInit,
+} from "./types/entities/data-governance.js";
+export {
+  CreateExperimentParams,
+  type CreateExperimentParamsInit,
+  DuplicateExperimentParams,
+  type DuplicateExperimentParamsInit,
+  Experiment,
+  ExperimentConcludeParams,
+  type ExperimentConcludeParamsInit,
+  ExperimentCreator,
+  type ExperimentCreatorInit,
+  ExperimentDecideParams,
+  type ExperimentDecideParamsInit,
+  type ExperimentInit,
+  UpdateExperimentParams,
+  type UpdateExperimentParamsInit,
+} from "./types/entities/experiments.js";
+export {
+  CreateFeatureFlagParams,
+  type CreateFeatureFlagParamsInit,
+  FeatureFlag,
+  type FeatureFlagInit,
+  FlagHistoryParams,
+  type FlagHistoryParamsInit,
+  FlagHistoryResponse,
+  type FlagHistoryResponseInit,
+  FlagLimitsResponse,
+  type FlagLimitsResponseInit,
+  SetTestUsersParams,
+  type SetTestUsersParamsInit,
+  UpdateFeatureFlagParams,
+  type UpdateFeatureFlagParamsInit,
+} from "./types/entities/feature-flags.js";
+export {
+  BulkEventUpdate,
+  type BulkEventUpdateInit,
+  BulkPropertyUpdate,
+  type BulkPropertyUpdateInit,
+  BulkUpdateEventsParams,
+  type BulkUpdateEventsParamsInit,
+  BulkUpdatePropertiesParams,
+  type BulkUpdatePropertiesParamsInit,
+  CreateTagParams,
+  type CreateTagParamsInit,
+  EventDefinition,
+  type EventDefinitionInit,
+  LexiconTag,
+  type LexiconTagInit,
+  PropertyDefinition,
+  type PropertyDefinitionInit,
+  UpdateEventDefinitionParams,
+  type UpdateEventDefinitionParamsInit,
+  UpdatePropertyDefinitionParams,
+  type UpdatePropertyDefinitionParamsInit,
+  UpdateTagParams,
+  type UpdateTagParamsInit,
+} from "./types/entities/lexicon.js";
+export {
+  AuditResponse,
+  type AuditResponseInit,
+  AuditViolation,
+  type AuditViolationInit,
+  BulkAnomalyEntry,
+  type BulkAnomalyEntryInit,
+  BulkCreateSchemasParams,
+  type BulkCreateSchemasParamsInit,
+  BulkCreateSchemasResponse,
+  type BulkCreateSchemasResponseInit,
+  BulkPatchResult,
+  type BulkPatchResultInit,
+  BulkUpdateAnomalyParams,
+  type BulkUpdateAnomalyParamsInit,
+  CreateDeletionRequestParams,
+  type CreateDeletionRequestParamsInit,
+  DataVolumeAnomaly,
+  type DataVolumeAnomalyInit,
+  DeleteSchemasResponse,
+  type DeleteSchemasResponseInit,
+  EventDeletionRequest,
+  type EventDeletionRequestInit,
+  InitSchemaEnforcementParams,
+  type InitSchemaEnforcementParamsInit,
+  PreviewDeletionFiltersParams,
+  type PreviewDeletionFiltersParamsInit,
+  ReplaceSchemaEnforcementParams,
+  type ReplaceSchemaEnforcementParamsInit,
+  SchemaEnforcementConfig,
+  type SchemaEnforcementConfigInit,
+  SchemaEntry,
+  type SchemaEntryInit,
+  UpdateAnomalyParams,
+  type UpdateAnomalyParamsInit,
+  UpdateSchemaEnforcementParams,
+  type UpdateSchemaEnforcementParamsInit,
+} from "./types/entities/schemas.js";
+export {
+  CreateWebhookParams,
+  type CreateWebhookParamsInit,
+  ProjectWebhook,
+  type ProjectWebhookInit,
+  UpdateWebhookParams,
+  type UpdateWebhookParamsInit,
+  WebhookMutationResult,
+  type WebhookMutationResultInit,
+  WebhookTestParams,
+  type WebhookTestParamsInit,
+  WebhookTestResult,
+  type WebhookTestResultInit,
+} from "./types/entities/webhooks.js";
 
-// Phase-3 B5 (shard S3): the three PUBLIC members of `replay_labels.py`
-// (`__init__.py` `__all__` entries `default_label_fn`,
-// `selector_label_fn`, `url_normalizer` — the last three phase2-audit
-// A1 deferrals). The rest of `replays/` mirrors Python `_internal`
-// (`_internal/replays/rrweb_analyzer.py`, `aggregators.py`) and stays
-// unexported, reachable through `src/replays/index.js` for the
-// in-package consumers (`types/results/replays.ts`, `workspace.ts`).
+// --- Result models ---
+export { UserAction, type UserActionFields } from "./replays/user-action.js";
+export {
+  ReportLink,
+  type ReportLinkFields,
+  type ReportLinkQueryResult,
+  ResolvedReport,
+  type ResolvedReportFields,
+} from "./types/report-links.js";
+export {
+  BookmarkInfo,
+  type BookmarkInfoFields,
+  FunnelInfo,
+  type FunnelInfoFields,
+  LexiconDefinition,
+  type LexiconDefinitionFields,
+  LexiconMetadata,
+  type LexiconMetadataFields,
+  LexiconProperty,
+  type LexiconPropertyFields,
+  LexiconSchema,
+  type LexiconSchemaFields,
+  ProfilePageResult,
+  type ProfilePageResultFields,
+  SavedCohort,
+  type SavedCohortFields,
+  SchemaGraphResult,
+  type SchemaGraphResultFields,
+  SubPropertyInfo,
+  type SubPropertyInfoFields,
+  TopEvent,
+  type TopEventFields,
+} from "./types/results/discovery.js";
+export {
+  FlowTreeNode,
+  type FlowTreeNodeFields,
+} from "./types/results/flow-tree.js";
+export {
+  ActivityFeedResult,
+  type ActivityFeedResultFields,
+  CohortInfo,
+  type CohortInfoFields,
+  EventCountsResult,
+  type EventCountsResultFields,
+  FlowsResult,
+  type FlowsResultFields,
+  FrequencyResult,
+  type FrequencyResultFields,
+  FunnelResult,
+  type FunnelResultFields,
+  FunnelResultStep,
+  type FunnelResultStepFields,
+  NumericAverageResult,
+  type NumericAverageResultFields,
+  NumericBucketResult,
+  type NumericBucketResultFields,
+  NumericSumResult,
+  type NumericSumResultFields,
+  PropertyCountsResult,
+  type PropertyCountsResultFields,
+  RetentionResult,
+  type RetentionResultFields,
+  SavedReportResult,
+  type SavedReportResultFields,
+  SegmentationResult,
+  type SegmentationResultFields,
+  UserEvent,
+  type UserEventFields,
+} from "./types/results/live-query.js";
+export {
+  FlowQueryResult,
+  type FlowQueryResultFields,
+  FunnelQueryResult,
+  type FunnelQueryResultFields,
+  QueryResult,
+  type QueryResultFields,
+  RetentionQueryResult,
+  type RetentionQueryResultFields,
+  type UserQueryMode,
+  UserQueryResult,
+  type UserQueryResultFields,
+} from "./types/results/query-engine.js";
+export {
+  Replay,
+  ReplayEvent,
+  type ReplayEventFields,
+  type ReplayFields,
+  ReplaySummary,
+  type ReplaySummaryFields,
+  SignedReplay,
+  type SignedReplayFields,
+} from "./types/results/replay-models.js";
+export {
+  ReplayBundle,
+  type ReplayBundleFields,
+  type ReplayFetchFailure,
+} from "./types/results/replays.js";
+export type {
+  FlowEdge,
+  FlowStepNode,
+  FunnelStepData,
+  QueryMeta,
+  RetentionCohortData,
+} from "./types/results/typed-dicts.js";
+
+// --- Query vocabulary (`types/query-params`) ---
+export {
+  CohortBreakdown,
+  CohortCriteria,
+  CohortDefinition,
+  type DidEventOptions,
+  type DidNotDoEventOptions,
+  type HasPropertyOperator,
+  type HasPropertyType,
+} from "./types/query-params/cohort.js";
+export {
+  type CohortDefinitionLike,
+  CustomPropertyRef,
+  Filter,
+  type FilterFields,
+  type FilterValue,
+  InlineCustomProperty,
+  ListItemGroupMode,
+  PropertyInput,
+  type PropertySpec,
+} from "./types/query-params/filter.js";
+export { FlowStep, type FlowStepFields } from "./types/query-params/flow.js";
+export {
+  FrequencyBreakdown,
+  type FrequencyBreakdownFields,
+  FrequencyFilter,
+  type FrequencyFilterFields,
+} from "./types/query-params/frequency.js";
+export {
+  Exclusion,
+  type ExclusionFields,
+  FunnelStep,
+  type FunnelStepFields,
+  HoldingConstant,
+  type HoldingConstantFields,
+} from "./types/query-params/funnel.js";
+export { GroupBy, type GroupByFields } from "./types/query-params/group-by.js";
+export {
+  CohortMetric,
+  Formula,
+  Metric,
+  type MetricFields,
+  TimeComparison,
+} from "./types/query-params/metric.js";
+export {
+  RetentionEvent,
+  type RetentionEventFields,
+} from "./types/query-params/retention.js";
+
+// --- Literal unions, membership tuples, enums ---
+export {
+  AlertFrequencyPreset,
+  CustomPropertyResourceType,
+  type EnumTableEntry,
+  ExperimentStatus,
+  FeatureFlagStatus,
+  FlagContractStatus,
+  PropertyResourceType,
+  ServingMethod,
+  WebhookAuthType,
+} from "./types/enums.js";
+export {
+  ACCOUNT_TYPE_VALUES,
+  type AccountType,
+  BOOKMARK_TYPE_VALUES,
+  type BookmarkType,
+  COHORT_AGGREGATION_TYPE_VALUES,
+  type CohortAggregationType,
+  CONVERSION_WINDOW_UNIT_VALUES,
+  type ConversionWindowUnit,
+  COUNT_TYPE_VALUES,
+  type CountType,
+  CUSTOM_PROPERTY_TYPE_VALUES,
+  type CustomPropertyType,
+  ENTITY_TYPE_VALUES,
+  type EntityType,
+  FILTER_DATE_UNIT_VALUES,
+  FILTER_OPERATOR_VALUES,
+  FILTER_PROPERTY_TYPE_VALUES,
+  type FilterDateUnit,
+  type FilterOperator,
+  type FilterOperatorInput,
+  type FilterPropertyType,
+  FILTERS_COMBINATOR_VALUES,
+  type FiltersCombinator,
+  FLOW_ANCHOR_TYPE_VALUES,
+  FLOW_CHART_TYPE_VALUES,
+  FLOW_CONVERSION_WINDOW_UNIT_VALUES,
+  FLOW_COUNT_TYPE_VALUES,
+  FLOW_NODE_TYPE_VALUES,
+  FLOW_SESSION_EVENT_VALUES,
+  type FlowAnchorType,
+  type FlowChartType,
+  type FlowConversionWindowUnit,
+  type FlowCountType,
+  type FlowNodeType,
+  type FlowSessionEvent,
+  FREQUENCY_FILTER_OPERATOR_VALUES,
+  type FrequencyFilterOperator,
+  FUNNEL_MATH_TYPE_VALUES,
+  FUNNEL_MODE_VALUES,
+  FUNNEL_ORDER_VALUES,
+  FUNNEL_REENTRY_MODE_VALUES,
+  type FunnelMathType,
+  type FunnelMode,
+  type FunnelOrder,
+  type FunnelReentryMode,
+  HOUR_DAY_UNIT_VALUES,
+  type HourDayUnit,
+  INSIGHTS_MODE_VALUES,
+  type InsightsMode,
+  MATH_TYPE_VALUES,
+  type MathType,
+  PER_USER_AGGREGATION_VALUES,
+  type PerUserAggregation,
+  QUERY_TIME_UNIT_VALUES,
+  type QueryTimeUnit,
+  type Region,
+  REGION_VALUES,
+  REPORT_LINK_TYPE_VALUES,
+  type ReportLinkType,
+  RETENTION_ALIGNMENT_VALUES,
+  RETENTION_MATH_TYPE_VALUES,
+  RETENTION_MODE_VALUES,
+  RETENTION_UNBOUNDED_MODE_VALUES,
+  type RetentionAlignment,
+  type RetentionMathType,
+  type RetentionMode,
+  type RetentionUnboundedMode,
+  SAVED_REPORT_TYPE_VALUES,
+  type SavedReportType,
+  SEGMENT_METHOD_VALUES,
+  type SegmentMethod,
+  TIME_COMPARISON_TYPE_VALUES,
+  TIME_COMPARISON_UNIT_VALUES,
+  TIME_UNIT_VALUES,
+  type TimeComparisonType,
+  type TimeComparisonUnit,
+  type TimeUnit,
+} from "./types/literals.js";
+
+// ── Auth — accounts, sessions, tokens, OAuth primitives, resolver, region probe
+export {
+  type Account,
+  accountAuthHeader,
+  type AccountAuthHeaderOptions,
+  type AccountName,
+  isLongLived,
+  type OAuthBrowserAccount,
+  type OAuthTokenAccount,
+  parseAccount,
+  type ProjectId,
+  type ServiceAccount,
+  type TargetName,
+  type TokenResolver,
+  type WorkspaceId,
+} from "./auth/account.js";
+export {
+  CREDENTIAL_KEYS,
+  type CredentialStore,
+} from "./auth/credential-store.js";
+export { DEFAULT_SCOPE, OAUTH_BASE_URLS } from "./auth/oauth-constants.js";
+export {
+  buildAuthorizeUrl,
+  postTokenRequest,
+  type PostTokenRequestContext,
+  registerClient,
+  type RegisterClientOptions,
+} from "./auth/oauth-http.js";
+export { PkceChallenge } from "./auth/pkce.js";
+export { CallbackResult, parsePastedRedirect } from "./auth/redirect-parse.js";
+export {
+  type ClientFactory,
+  type ProbeClient,
+  probeRegion,
+  probeRegionForCredential,
+  type ProbeRegionForCredentialOptions,
+  type ProbeRegionOptions,
+  type ProbeResponse,
+  type RegionProbeResult,
+} from "./auth/region-probe.js";
+export {
+  type BridgeView,
+  type ResolverConfigSource,
+  type ResolverEnv,
+  type ResolverSources,
+  resolveSession,
+  type ResolveSessionOptions,
+} from "./auth/resolver.js";
+export {
+  type ActiveSession,
+  parseActiveSession,
+  parseProject,
+  parseSession,
+  parseWorkspaceRef,
+  type Project,
+  type Session,
+  sessionAuthHeader,
+  sessionReplace,
+  type SessionReplaceUpdate,
+  type WorkspaceRef,
+} from "./auth/session.js";
+export type { ParseAccountOptions } from "./auth/shared.js";
+export {
+  type OAuthClientInfo,
+  OAuthTokens,
+  type OAuthTokensFields,
+  parseOAuthClientInfo,
+  parseOAuthTokens,
+  pythonUtcIsoformat,
+  type TokenClockOptions,
+} from "./auth/token.js";
+
+// --- Accounts — the injectable effects contract and namespace factories ---
+export {
+  type AddAccountParams,
+  type AddTargetOptions,
+  type ApplySessionUpdate,
+  type AuthEffects,
+  type BridgeEffects,
+  type ConfigWrites,
+  defaultAuthEffects,
+  type MeCacheEffects,
+  type OAuthFlowEffects,
+  type SetActiveUpdate,
+  type TokenStore,
+  UNPORTED_AUTH_SEAMS,
+  type UpdateAccountFields,
+} from "./accounts/auth-effects.js";
+export {
+  loginUnified,
+  type LoginUnifiedOptions,
+} from "./accounts/login-unified.js";
+export {
+  type AccountsNamespace,
+  createAccountsNamespace,
+} from "./accounts/namespace.js";
+export {
+  createSessionNamespace,
+  type SessionNamespace,
+  type SessionUseOptions,
+} from "./accounts/session-namespace.js";
+export {
+  createTargetsNamespace,
+  type TargetsAddOptions,
+  type TargetsNamespace,
+} from "./accounts/targets-namespace.js";
+
+// --- Public members of `query/`, `replays/`, `bookmarks/` ---
+export { inferBookmarkType } from "./bookmarks/infer-type.js";
+export {
+  validateBookmark,
+  type ValidateBookmarkOptions,
+} from "./query/validation-bookmark.js";
 export {
   defaultLabelFn,
   selectorLabelFn,
   urlNormalizer,
 } from "./replays/replay-labels.js";
 
-// Phase-3 B7 (shard A1): the namespace surface behind the four
-// deferred `__all__` names `accounts` / `session` / `targets` /
-// `login_unified` (playbook `:74-79`). Core exports FACTORIES over the
-// injected `AuthEffects` bag plus the throwing `defaultAuthEffects()`;
-// B8 exports the ready-made namespace objects bound to on-disk
-// effects (`b7-packets.md` §3.1-§3.2).
-export * from "./accounts/index.js";
-
-// Phase-3 B6 deferred barrel line (phase2-audit A1 ledger row
-// `Workspace` → B6), landed post-QA 2026-08-17: B6 shipped the facade
-// class but never added its barrel export, so the README quick start
-// (`import { Workspace } from "@mixpanel-headless/core"`) did not
-// compile. The class + constructor-options type only; the rest of
-// `workspace.ts`'s type surface mirrors Python `_internal` re-exports
-// and stays path-imported by the platform packages. (The browser
-// entry's TYPE-only `Workspace` posture — B9 FB-2 — is unaffected:
-// that gate governs `@mixpanel-headless/browser`'s own surface.)
-export { Workspace } from "./workspace.js";
-export type { WorkspaceOptions } from "./workspace.js";
-/** The network-free bookmark-params schema gate (`Workspace._validate_bookmark_params_schema`) that consumers run for dry-run / proposal previews without a session. */
-export { validateBookmarkParamsSchema } from "./workspace.js";
-export type { ValidateBookmarkParamsSchemaOptions } from "./workspace-members/bookmarks-cohorts.js";
-
-// Authored surface for the heads platform (spec 02 §10.1). `bookmarks/`
-// is otherwise `_internal` and deliberately unexported (see that barrel's
-// header); `inferBookmarkType` is the one member downstream asked for by
-// name, so it gets an explicit line rather than opening the module up —
-// the same posture `validateBookmark` takes for `query/` above.
-export { inferBookmarkType } from "./bookmarks/infer-type.js";
-
-/** Package name constant exercised by the skeleton smoke test. */
-export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";
+// --- Python-parity helpers (`compat/`) ---
+export {
+  codepoints,
+  compareCodepoints,
+  compareCodeUnits,
+  cpLength,
+  cpSlice,
+  sortedByCodepoint,
+} from "./compat/codepoint.js";
+export { isPythonDict } from "./compat/python-dict.js";
+export { pythonFloat } from "./compat/python-float.js";
+export { pythonFloatCoerce } from "./compat/python-float-coerce.js";
+export { pythonFloatStr } from "./compat/python-float-str.js";
+export { pythonInt, pythonIntCoerce } from "./compat/python-int.js";
+export { pythonJsonDumps } from "./compat/python-json-dumps.js";
+export { pythonJsonDumpsCanonical } from "./compat/python-json-dumps-canonical.js";
+export {
+  pythonRepr,
+  pythonStr,
+  type PythonValue,
+} from "./compat/python-str.js";
+export { pythonStrip } from "./compat/python-strip.js";
+export {
+  type SplitResult,
+  urljoin,
+  urlsplit,
+  UrlSplitError,
+  urlunsplit,
+} from "./compat/urllib.js";
+export { zfill } from "./compat/zfill.js";

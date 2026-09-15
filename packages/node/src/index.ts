@@ -1,49 +1,39 @@
 /**
- * @mixpanel-headless/node — Node-specific surface (R9.2): TOML config,
- * token files, localhost OAuth callback, bridge file, env resolution.
+ * `@mixpanel-headless/node` — what the Node runtime adds on top of
+ * `@mixpanel-headless/core`: the TOML config file, per-account token
+ * files, the localhost OAuth callback server, the Cowork bridge file
+ * and `process.env` resolution.
  *
- * B8-N3 (b8-packets.md §4.1 row 5) turns the Phase-1 skeleton into the
- * ready-made public surface: `createNodeAuthEffects` (the real
- * {@link AuthEffects} bag), `createNodeResolverSources` (default
- * `ResolverSources` wiring — PURE bridge load),
- * `createNodeWorkspaceSources` (the `Workspace()` STARTUP wiring with
- * the bridge-token materialization side effect, `workspace.py:476-513`
- * — B8-ARB-A SEM-F1), and the `accounts` / `session` /
- * `targets` namespaces + `loginUnified` over the real bag — closing
- * the four Phase-2 `__all__` deferrals at node level (Python's
- * `mp.accounts` / `mp.session` / `mp.targets` /
- * `mp.accounts.login_unified`; the snake_case `login_unified` name
- * maps to `loginUnified` per the standard naming rules).
+ * Core's auth surface is written against an injected {@link AuthEffects}
+ * bag; this package supplies the real one ({@link createNodeAuthEffects})
+ * and the ready-made `accounts` / `session` / `targets` namespaces plus
+ * {@link loginUnified} over it (Python's `mp.accounts`, `mp.session`,
+ * `mp.targets` and `mp.accounts.login_unified`).
  *
- * Freshness rule: each namespace call builds a FRESH default bag so
- * `MP_CONFIG_PATH` / `MP_OAUTH_STORAGE_DIR` / `MP_AUTH_FILE` are read
- * at call time (packet §0.5 / §7 caution 16 — module-load env capture
- * would break test isolation). Callers wanting one pinned bag build it
- * themselves via {@link createNodeAuthEffects} and the core factories.
+ * Freshness rule: every namespace method builds a fresh default bag at
+ * call time, so `MP_CONFIG_PATH`, `MP_OAUTH_STORAGE_DIR` and
+ * `MP_AUTH_FILE` are read when the call happens rather than when the
+ * module loads (a load-time capture would defeat per-test env
+ * isolation). Callers who want one pinned bag build it themselves with
+ * {@link createNodeAuthEffects} and the core factories.
+ *
+ * @packageDocumentation
  */
 
-import type { AuthEffects } from "../../core/src/accounts/auth-effects.js";
 import {
+  type AccountsNamespace,
+  type AccountSummary,
+  type AuthEffects,
+  createAccountsNamespace,
+  createSessionNamespace,
+  createTargetsNamespace,
   loginUnified as coreLoginUnified,
   type LoginUnifiedOptions,
-} from "../../core/src/accounts/login-unified.js";
-import {
-  createAccountsNamespace,
-  type AccountsNamespace,
-} from "../../core/src/accounts/namespace.js";
-import {
-  createSessionNamespace,
   type SessionNamespace,
-} from "../../core/src/accounts/session-namespace.js";
-import {
-  createTargetsNamespace,
   type TargetsNamespace,
-} from "../../core/src/accounts/targets-namespace.js";
-import type { AccountSummary } from "../../core/src/types/entities/accounts.js";
-import { createNodeAuthEffects } from "./auth-effects.js";
+} from "@mixpanel-headless/core";
 
-/** Package name constant exercised by the skeleton smoke test. */
-export const NODE_PACKAGE_NAME = "@mixpanel-headless/node";
+import { createNodeAuthEffects } from "./auth-effects.js";
 
 export {
   createNodeAuthEffects,
@@ -53,23 +43,75 @@ export {
   type NodeFlowSeams,
 } from "./auth-effects.js";
 
-// QA 2026-08-17: the Python `Workspace()` zero-config twin — sources +
-// on-disk token resolver + on-disk MeCache + node:fs read seam in one
-// call (see workspace.ts header for why the pieces alone weren't
-// enough).
+// The zero-config `Workspace()` twin: sources, on-disk token resolver,
+// on-disk MeCache and the `node:fs` read seam in one call.
 export { createNodeWorkspace, type NodeWorkspaceOptions } from "./workspace.js";
 
-// Python PR #235 (AIE-925): `MP_API_BASE_URL` / `MP_APP_BASE_URL` read
-// per request from `process.env` — the node half of the alternate-host
-// override (the core half is `MixpanelClientOptions.endpointOverrides`).
+// `MP_API_BASE_URL` / `MP_APP_BASE_URL` read per request from
+// `process.env` — the node half of the alternate-host override (the core
+// half is `MixpanelClientOptions.endpointOverrides`).
 export {
   createNodeEndpointOverrides,
   createNodeEnv,
   type NodeEnv,
 } from "./env.js";
 
+// --- Facade re-export ---
+// `import { Workspace } from "@mixpanel-headless/node"` is the documented
+// Node entry; the class is core's, re-exported so a Node consumer needs one
+// package.
+export { Workspace, type WorkspaceOptions } from "@mixpanel-headless/core";
+
+// --- Node platform classes ---
+// The TOML config manager, the callback-server OAuth flow, on-disk token
+// storage, the Cowork bridge file trio, the on-disk /me cache and the
+// credential-path error.
+export {
+  type BridgeFile,
+  defaultBridgeSearchPaths,
+  exportBridge,
+  type ExportBridgeOptions,
+  loadBridge,
+  parseBridgeFile,
+  removeBridge,
+  type RemoveBridgeOptions,
+} from "./auth/bridge.js";
+export {
+  findAvailablePort,
+  type LoginOptions,
+  OAuthFlow,
+  type OAuthFlowOptions,
+  type RefreshTokensOptions,
+} from "./auth/flow.js";
+export {
+  accountDir,
+  accountsRoot,
+  ensureAccountDir,
+  OAuthStorage,
+  type OAuthStorageOptions,
+  type StorageLogger,
+  storageRoot,
+} from "./auth/storage.js";
+export {
+  ConfigManager,
+  type ConfigManagerOptions,
+  type ConfigWriteBytes,
+  type CustomHeaderParams,
+  type ManagerClearActive,
+  type ManagerSetActive,
+  type RawConfig,
+} from "./config.js";
+export { CredentialPathError } from "./io-utils.js";
+export {
+  createNodeMeCacheEffects,
+  MeCache,
+  type MeCacheLogger,
+  type MeCacheOptions,
+} from "./me-cache.js";
+export type { MeCacheStore } from "@mixpanel-headless/core";
+
 /**
- * A fresh default bag (call-time env reads — module header).
+ * Build a fresh default bag (the call-time env read of the freshness rule).
  *
  * @returns The fully-wired node effects.
  */
@@ -78,192 +120,78 @@ function freshEffects(): AuthEffects {
 }
 
 /**
- * Ready-made `mp.accounts` twin over the real node bag. Every call
- * delegates to a fresh {@link createNodeAuthEffects} bag (module
- * header freshness rule).
- */
-export const accounts: AccountsNamespace = {
-  /**
-   * List all configured accounts.
-   *
-   * @returns Sorted-by-name summaries.
-   */
-  list: () => createAccountsNamespace(freshEffects()).list(),
-  /**
-   * Add a new account.
-   *
-   * @param name - Account name (`null` only with `derive_name`).
-   * @param options - Typed credential fields.
-   * @returns The new summary.
-   */
-  add: (...args: Parameters<AccountsNamespace["add"]>) =>
-    createAccountsNamespace(freshEffects()).add(...args),
-  /**
-   * Update fields on an existing account.
-   *
-   * @param name - Account to update.
-   * @param options - Fields to rewrite.
-   * @returns The updated summary.
-   */
-  update: (...args: Parameters<AccountsNamespace["update"]>) =>
-    createAccountsNamespace(freshEffects()).update(...args),
-  /**
-   * Remove an account.
-   *
-   * @param name - Account name.
-   * @param options - `force` removes despite target references.
-   * @returns Orphaned target names.
-   */
-  remove: (...args: Parameters<AccountsNamespace["remove"]>) =>
-    createAccountsNamespace(freshEffects()).remove(...args),
-  /**
-   * Switch the active account, clearing the workspace pin.
-   *
-   * @param name - Account to make active.
-   */
-  use: (...args: Parameters<AccountsNamespace["use"]>) =>
-    createAccountsNamespace(freshEffects()).use(...args),
-  /**
-   * Return the named (or active) account summary.
-   *
-   * @param name - Account name; omitted means the active account.
-   * @returns The summary.
-   */
-  show: (...args: Parameters<AccountsNamespace["show"]>) =>
-    createAccountsNamespace(freshEffects()).show(...args),
-  /**
-   * Probe `/me` and report the structured outcome.
-   *
-   * @param name - Account to test; omitted means the active account.
-   * @returns The probe result (never throws).
-   */
-  test: (...args: Parameters<AccountsNamespace["test"]>) =>
-    createAccountsNamespace(freshEffects()).test(...args),
-  /**
-   * Run the PKCE flow for an oauth_browser account.
-   *
-   * @param name - Account to log in.
-   * @param options - Flow options.
-   * @returns The login result.
-   */
-  login: (...args: Parameters<AccountsNamespace["login"]>) =>
-    createAccountsNamespace(freshEffects()).login(...args),
-  /**
-   * Delete the persisted tokens for an account.
-   *
-   * @param name - Account to log out.
-   */
-  logout: (...args: Parameters<AccountsNamespace["logout"]>) =>
-    createAccountsNamespace(freshEffects()).logout(...args),
-  /**
-   * Return a valid bearer token for an account.
-   *
-   * @param name - Account name; omitted means the active account.
-   * @returns The token result.
-   */
-  token: (...args: Parameters<AccountsNamespace["token"]>) =>
-    createAccountsNamespace(freshEffects()).token(...args),
-  /**
-   * Write a v2 Cowork bridge file.
-   *
-   * @param options - Destination + optional account/pins.
-   * @returns The written path.
-   */
-  exportBridge: (...args: Parameters<AccountsNamespace["exportBridge"]>) =>
-    createAccountsNamespace(freshEffects()).exportBridge(...args),
-  /**
-   * Remove a bridge file (idempotent).
-   *
-   * @param options - Optional explicit path.
-   * @returns Whether a file was deleted.
-   */
-  removeBridge: (...args: Parameters<AccountsNamespace["removeBridge"]>) =>
-    createAccountsNamespace(freshEffects()).removeBridge(...args),
-  /**
-   * One-shot login orchestrator (`mp login`).
-   *
-   * @param options - Orchestrator flags.
-   * @returns The new/refreshed account summary.
-   */
-  loginUnified: (...args: Parameters<AccountsNamespace["loginUnified"]>) =>
-    createAccountsNamespace(freshEffects()).loginUnified(...args),
-};
-
-/**
- * Ready-made `mp.session` twin over the real node bag (call-time
- * fresh-bag rule — module header).
- */
-export const session: SessionNamespace = {
-  /**
-   * Read the persisted `[active]` block.
-   *
-   * @returns The active session (may be empty).
-   */
-  show: (...args: Parameters<SessionNamespace["show"]>) =>
-    createSessionNamespace(freshEffects()).show(...args),
-  /**
-   * Write axes (or a target) to `[active]` in one transaction.
-   *
-   * @param options - The axes (or a target).
-   */
-  use: (...args: Parameters<SessionNamespace["use"]>) =>
-    createSessionNamespace(freshEffects()).use(...args),
-};
-
-/**
- * Ready-made `mp.targets` twin over the real node bag (call-time
- * fresh-bag rule — module header).
- */
-export const targets: TargetsNamespace = {
-  /**
-   * List all configured targets sorted by name.
-   *
-   * @returns Sorted target records.
-   */
-  list: (...args: Parameters<TargetsNamespace["list"]>) =>
-    createTargetsNamespace(freshEffects()).list(...args),
-  /**
-   * Add a new target block.
-   *
-   * @param name - Target name.
-   * @param options - account / project / optional workspace.
-   * @returns The constructed target.
-   */
-  add: (...args: Parameters<TargetsNamespace["add"]>) =>
-    createTargetsNamespace(freshEffects()).add(...args),
-  /**
-   * Remove a target block.
-   *
-   * @param name - Target to remove.
-   */
-  remove: (...args: Parameters<TargetsNamespace["remove"]>) =>
-    createTargetsNamespace(freshEffects()).remove(...args),
-  /**
-   * Apply the target — all three axes to `[active]` atomically.
-   *
-   * @param name - Target to apply.
-   */
-  use: (...args: Parameters<TargetsNamespace["use"]>) =>
-    createTargetsNamespace(freshEffects()).use(...args),
-  /**
-   * Return the named target.
-   *
-   * @param name - Target name.
-   * @returns The target record.
-   */
-  show: (...args: Parameters<TargetsNamespace["show"]>) =>
-    createTargetsNamespace(freshEffects()).show(...args),
-};
-
-/**
- * Ready-made `mp.accounts.login_unified` twin over the real node bag
- * (`mp login`'s engine) — the fourth Phase-2 `__all__` deferral.
+ * Build a ready-made namespace whose every method builds a fresh default
+ * bag at call time and forwards to the core namespace built over it.
  *
- * @param options - The orchestrator flags.
- * @returns The new/refreshed account's summary.
- * @throws ConfigError | AccountExistsError | OAuthError |
- *   InvalidArgumentError - Per the core orchestrator's catalog.
+ * @param factory - The core namespace factory.
+ * @param methods - Every method name of the namespace, as a
+ *   `Record<keyof T, true>` so a new core member is a compile error here
+ *   rather than a silently missing wrapper.
+ * @returns The namespace of call-time forwarders.
+ */
+function lazyNamespace<T extends object>(
+  factory: (effects: AuthEffects) => T,
+  methods: Record<keyof T, true>,
+): T {
+  const out: Record<string, unknown> = {};
+  for (const name of Object.keys(methods)) {
+    out[name] = (...args: unknown[]): unknown => {
+      const namespace = factory(freshEffects());
+      const member = Reflect.get(namespace, name) as (
+        ...forwarded: unknown[]
+      ) => unknown;
+      return Reflect.apply(member, namespace, args);
+    };
+  }
+  return out as T;
+}
+
+/** Ready-made `mp.accounts` twin over the default node bag. */
+export const accounts: AccountsNamespace = lazyNamespace(
+  createAccountsNamespace,
+  {
+    list: true,
+    add: true,
+    update: true,
+    remove: true,
+    use: true,
+    show: true,
+    test: true,
+    login: true,
+    logout: true,
+    token: true,
+    exportBridge: true,
+    removeBridge: true,
+    loginUnified: true,
+  },
+);
+
+/** Ready-made `mp.session` twin over the default node bag. */
+export const session: SessionNamespace = lazyNamespace(createSessionNamespace, {
+  show: true,
+  use: true,
+});
+
+/** Ready-made `mp.targets` twin over the default node bag. */
+export const targets: TargetsNamespace = lazyNamespace(createTargetsNamespace, {
+  list: true,
+  add: true,
+  remove: true,
+  use: true,
+  show: true,
+});
+
+/**
+ * Log in (or refresh) an account over the default node bag — the engine
+ * behind `mp login`.
  *
+ * @param options - The login flags (region, credential kind, account
+ *   name, browser opening); defaults mirror `mp login` with no flags.
+ * @returns The new or refreshed account's summary.
+ * @throws {@link ConfigError} | {@link AccountExistsError} |
+ *   {@link OAuthError} | {@link InvalidArgumentError} - Per the core
+ *   orchestrator's catalog.
+ * @see mixpanel_headless.accounts.login_unified
  * @example
  * ```typescript
  * import { loginUnified } from "@mixpanel-headless/node";

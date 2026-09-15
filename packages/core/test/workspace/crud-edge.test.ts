@@ -1,37 +1,11 @@
-// B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of
-// `tests/unit/test_workspace_crud_edge.py` — the WHOLE file:
-// `TestRequestBodySerialization` (:92), `TestEmptyResponseHandling`
-// (:247), `TestWorkspaceMethodDelegation` (:298) and
-// `TestCodedResponseValidationCodes` (:416).
-//
-// This is one of the two CROSS-ENTITY suites W3 owns (the reason the
-// packet sequences W3 last): its cases are parametrized over members
-// belonging to every entity shard.
-//
-// SHARD-ORDER DEFERRAL — RESOLVED AT B6-ARB: the orchestrator
-// dispatched W3 BEFORE W4–W8, so W3 carried the 26 W4–W8-owned
-// `TestCodedResponseValidationCodes` cases as `it.todo(...)` stubs with
-// a per-shard conversion protocol. None of W4–W8 executed it (the B6
-// review pair's shared MAJOR finding), so the arbiter fix task
-// converted ALL 26 into the two-line bodies below
-// (`b6-review-resolution.md` Finding A; charged to the owning shards
-// per P3-3). Zero todos remain.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:73-89)
-// and `_make_results_workspace(results, workspace_id=…)` (:389-413)
-// become the like-named TS helpers. `temp_dir` has no TS analog and is
-// dropped.
+// Cross-entity edge cases of the `Workspace` CRUD members: `by_alias`
+// request-body serialization, empty-response handling, delegation shapes
+// and the `RESPONSE_VALIDATION_ERROR` contract across every entity family.
+// Mirrors `tests/unit/test_workspace_crud_edge.py` (whole file);
+// `httpx.MockTransport` becomes the injected-fetch seam, `temp_dir` is dropped.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../client/client-test-helpers.js";
+
 import { ResponseValidationError } from "../../src/errors.js";
 import {
   BulkUpdateBookmarkEntry,
@@ -41,9 +15,6 @@ import {
   BulkUpdateCohortEntry,
   CreateCohortParams,
 } from "../../src/types/entities/cohorts.js";
-import { CreateCustomEventParams } from "../../src/types/entities/data-governance.js";
-import { CreateTagParams } from "../../src/types/entities/lexicon.js";
-import { CreateWebhookParams } from "../../src/types/entities/webhooks.js";
 import {
   BlueprintCard,
   BlueprintFinishParams,
@@ -53,50 +24,28 @@ import {
   UpdateDashboardParams,
   UpdateReportLinkParams,
 } from "../../src/types/entities/dashboards.js";
+import { CreateCustomEventParams } from "../../src/types/entities/data-governance.js";
+import { CreateTagParams } from "../../src/types/entities/lexicon.js";
+import { CreateWebhookParams } from "../../src/types/entities/webhooks.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  CLIENT_SESSION,
+  createMockClient,
+  FACADE_SESSION,
+  ok,
+} from "../../test-support/client-test-helpers.js";
+import { makeFacadeWorkspace } from "../../test-support/workspace-test-helpers.js";
 import { MINIMAL_FUNNEL_PARAMS } from "./bookmark-fixtures.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`_make_creds`, :59). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :47-56). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace with a mock HTTP transport (`_make_workspace`,
- * :73-89).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
 
 /**
  * Build a Workspace whose transport always returns `results`
- * (`_make_results_workspace`, :389-413).
+ * (`_make_results_workspace`).
  *
  * @param results - The JSON value placed under the `results` envelope
  *   key for every request.
  * @param options - `workspaceId` pins a workspace ID on the client so
  *   workspace-scoped methods skip workspace resolution (the Python
- *   helper's `workspace_id=` keyword, :390).
+ *   helper's `workspace_id=` keyword).
  * @returns The facade.
  */
 function makeResultsWorkspace(
@@ -114,18 +63,8 @@ function makeResultsWorkspace(
 }
 
 /**
- * The 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-/**
- * Assert the generic response-validation contract (`_assert_coded`,
- * :423-429) — class + `.code` only, never message text (R5.4).
+ * Assert the generic response-validation contract (`_assert_coded`) —
+ * class + `.code` only, never message text.
  *
  * @param call - The awaited facade call.
  * @returns Nothing.
@@ -133,7 +72,7 @@ function ok(results: unknown): CannedResponse {
 async function assertCoded(call: Promise<unknown>): Promise<void> {
   const error = await call.then(
     () => null,
-    (exc: unknown) => exc,
+    (error_: unknown) => error_,
   );
   expect(error).toBeInstanceOf(ResponseValidationError);
   expect((error as ResponseValidationError).code).toBe(
@@ -142,13 +81,14 @@ async function assertCoded(call: Promise<unknown>): Promise<void> {
 }
 
 // =============================================================================
-// TestRequestBodySerialization (test_workspace_crud_edge.py:92)
+// Request body serialization
 // =============================================================================
 
-describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => {
-  it("create_bookmark serializes bookmark_type as 'type' (:95)", async () => {
+describe("Request body serialization", () => {
+  // python: TestRequestBodySerialization
+  it("create_bookmark serializes bookmark_type as 'type'", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("bookmarks")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, name: "X", type: "funnels", params: {} });
@@ -174,9 +114,9 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
     expect(body["type"]).toBe("funnels");
   });
 
-  it("create_cohort flattens definition into the body (:141)", async () => {
+  it("create_cohort flattens definition into the body", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("cohorts")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, name: "X" });
@@ -196,9 +136,9 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
     expect(Object.hasOwn(body, "definition")).toBe(false);
   });
 
-  it("finalize_blueprint serializes card_type as 'type' (:170)", async () => {
+  it("finalize_blueprint serializes card_type as 'type'", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("blueprints")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, title: "X" });
@@ -218,9 +158,9 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
     expect(Object.hasOwn(body.cards[0] ?? {}, "card_type")).toBe(false);
   });
 
-  it("create_rca_dashboard serializes source_type as 'type' (:199)", async () => {
+  it("create_rca_dashboard serializes source_type as 'type'", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("rca")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, title: "RCA" });
@@ -242,9 +182,9 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
     expect(Object.hasOwn(body.rca_source_data, "source_type")).toBe(false);
   });
 
-  it("update_report_link serializes link_type as 'type' (:228)", async () => {
+  it("update_report_link serializes link_type as 'type'", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH" && request.url.includes("report-links")) {
         captured["body"] = JSON.parse(request.bodyText);
         return { status: 204 };
@@ -265,36 +205,38 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
 });
 
 // =============================================================================
-// TestEmptyResponseHandling (test_workspace_crud_edge.py:247)
+// Empty response handling
 // =============================================================================
 
-describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
-  it("create_dashboard raises ResponseValidationError on {} (:250)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+describe("Empty response handling", () => {
+  // python: TestEmptyResponseHandling
+  it("create_dashboard raises ResponseValidationError on {}", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await assertCoded(
       ws.createDashboard(new CreateDashboardParams({ title: "X" })),
     );
   });
 
-  it("get_bookmark raises ResponseValidationError on {} (:268)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+  it("get_bookmark raises ResponseValidationError on {}", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await assertCoded(ws.getBookmark(1));
   });
 
-  it("list_dashboards returns [] on an empty results list (:286)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listDashboards()).toEqual([]);
+  it("list_dashboards returns [] on an empty results list", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
+    await expect(ws.listDashboards()).resolves.toStrictEqual([]);
   });
 });
 
 // =============================================================================
-// TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)
+// Workspace method delegation
 // =============================================================================
 
-describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () => {
-  it("bulk_update_bookmarks sends entries with no None fields (:301)", async () => {
+describe("Workspace method delegation", () => {
+  // python: TestWorkspaceMethodDelegation
+  it("bulk_update_bookmarks sends entries with no None fields", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (
         request.method === "POST" &&
         request.url.includes("bookmarks/bulk-update")
@@ -309,14 +251,14 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
       new BulkUpdateBookmarkEntry({ id: 1, name: "Renamed" }),
     ]);
 
-    expect(captured["body"]).toEqual({
+    expect(captured["body"]).toStrictEqual({
       bookmarks: [{ id: 1, name: "Renamed" }],
     });
   });
 
-  it("bulk_update_cohorts flattens definition into each entry (:318)", async () => {
+  it("bulk_update_cohorts flattens definition into each entry", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (
         request.method === "POST" &&
         request.url.includes("cohorts/bulk-update")
@@ -340,9 +282,9 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
     expect(Object.hasOwn(entry, "definition")).toBe(false);
   });
 
-  it("update_dashboard sends only non-None fields (:342)", async () => {
+  it("update_dashboard sends only non-None fields", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH" && request.url.includes("dashboards")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, title: "New" });
@@ -352,12 +294,12 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
 
     await ws.updateDashboard(1, new UpdateDashboardParams({ title: "New" }));
 
-    expect(captured["body"]).toEqual({ title: "New" });
+    expect(captured["body"]).toStrictEqual({ title: "New" });
   });
 
-  it("list_bookmarks_v2 with no args sends no type/ids params (:365)", async () => {
+  it("list_bookmarks_v2 with no args sends no type/ids params", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.url.includes("/bookmarks")) {
         captured["url"] = request.url;
       }
@@ -373,58 +315,58 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
 });
 
 // =============================================================================
-// TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)
+// Coded response validation codes
 // =============================================================================
 
-describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", () => {
-  it("dashboards family (list member): invalid item is wrapped (:431)", async () => {
+describe("Coded response validation codes", () => {
+  // python: TestCodedResponseValidationCodes
+  it("dashboards family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listDashboards());
   });
 
-  it("bookmarks family (list member): invalid item is wrapped (:438)", async () => {
+  it("bookmarks family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listBookmarksV2());
   });
 
-  it("cohorts family (single member): {} response is wrapped (:445)", async () => {
+  it("cohorts family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getCohort(1));
   });
 
-  it("cohorts family (list member): invalid item is wrapped (:452)", async () => {
+  it("cohorts family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listCohortsFull());
   });
 
-  // ---- W4–W8 members (todo conversion executed at B6-ARB, Finding A) ----
-  // The two flags cases pin `workspace_id=777` exactly as Python does
-  // (:461, :468) — feature flags are workspace-scoped.
-  it("flags family (single member): {} response is wrapped (:459)", async () => {
+  // The two flags cases pin `workspace_id=777` exactly as Python does —
+  // feature flags are workspace-scoped.
+  it("flags family (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}, { workspaceId: 777 }).getFeatureFlag("f1"),
     );
   });
 
-  it("flags family (list member): invalid item is wrapped (:466)", async () => {
+  it("flags family (list member): invalid item is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace([{}], { workspaceId: 777 }).listFeatureFlags(),
     );
   });
 
-  it("experiments family (single member): {} response is wrapped (:473)", async () => {
+  it("experiments family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getExperiment("e1"));
   });
 
-  it("experiments family (list member): invalid item is wrapped (:480)", async () => {
+  it("experiments family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listExperiments());
   });
 
-  it("annotations family (single member): {} response is wrapped (:487)", async () => {
+  it("annotations family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getAnnotation(1));
   });
 
-  it("annotations family (list member): invalid item is wrapped (:494)", async () => {
+  it("annotations family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listAnnotations());
   });
 
-  it("webhooks family (single member): {} response is wrapped (:501)", async () => {
+  it("webhooks family (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}).createWebhook(
         new CreateWebhookParams({ name: "W", url: "https://x.test/h" }),
@@ -432,31 +374,31 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     );
   });
 
-  it("webhooks family (list member): invalid item is wrapped (:508)", async () => {
+  it("webhooks family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listWebhooks());
   });
 
-  it("alerts family (single member): {} response is wrapped (:515)", async () => {
+  it("alerts family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getAlert(1));
   });
 
-  it("alerts family (list member): invalid item is wrapped (:522)", async () => {
+  it("alerts family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listAlerts());
   });
 
-  it("lexicon definitions (events): invalid item is wrapped (:529)", async () => {
+  it("lexicon definitions (events): invalid item is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace([{}]).getEventDefinitions({ names: ["x"] }),
     );
   });
 
-  it("lexicon definitions (properties): invalid item is wrapped (:536)", async () => {
+  it("lexicon definitions (properties): invalid item is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace([{}]).getPropertyDefinitions({ names: ["p"] }),
     );
   });
 
-  it("lexicon tags (single member): {} response is wrapped (:543)", async () => {
+  it("lexicon tags (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}).createLexiconTag(
         new CreateTagParams({ name: "T" }),
@@ -464,27 +406,27 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     );
   });
 
-  it("lexicon tags (list member): invalid item is wrapped (:550)", async () => {
+  it("lexicon tags (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listLexiconTags());
   });
 
-  it("drop filters (single member): {} response is wrapped (:557)", async () => {
+  it("drop filters (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getDropFilterLimits());
   });
 
-  it("drop filters (list member): invalid item is wrapped (:564)", async () => {
+  it("drop filters (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listDropFilters());
   });
 
-  it("custom properties (single member): {} response is wrapped (:571)", async () => {
+  it("custom properties (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getCustomProperty("cp1"));
   });
 
-  it("custom properties (list member): invalid item is wrapped (:578)", async () => {
+  it("custom properties (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listCustomProperties());
   });
 
-  it("lookup tables (single member): type-invalid url is wrapped (:585)", async () => {
+  it("lookup tables (single member): type-invalid url is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({
         url: 123,
@@ -494,11 +436,11 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     );
   });
 
-  it("lookup tables (list member): invalid item is wrapped (:592)", async () => {
+  it("lookup tables (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listLookupTables());
   });
 
-  it("custom events (single member): {} response is wrapped (:599)", async () => {
+  it("custom events (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}).createCustomEvent(
         new CreateCustomEventParams({ name: "CE", alternatives: ["A"] }),
@@ -506,23 +448,23 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     );
   });
 
-  it("custom events (list member): invalid item is wrapped (:608)", async () => {
+  it("custom events (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listCustomEvents());
   });
 
-  it("schemas family (single member): {} response is wrapped (:615)", async () => {
+  it("schemas family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).deleteSchemas());
   });
 
-  it("schemas family (list member): invalid item is wrapped (:622)", async () => {
+  it("schemas family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listSchemaRegistry());
   });
 
-  it("governance monitoring (cancel): invalid entry is wrapped (:629)", async () => {
+  it("governance monitoring (cancel): invalid entry is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).cancelDeletionRequest(42));
   });
 
-  it("governance monitoring (list): invalid item is wrapped (:636)", async () => {
+  it("governance monitoring (list): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listDeletionRequests());
   });
 });

@@ -1,24 +1,23 @@
-// Layer-3 translation of `tests/unit/test_naming.py` (153 lines, 13
-// tests) — B7-A1 packet §3.4 (`b7-packets.md`).
-//
-// Mechanism substitution (header-cited per R10.2): Python's
-// `MeResponse(organizations={id: MeOrgInfo(...)})` fixtures build the
-// TS `MeResponse` model with nested raw records (the model coerces via
-// `fieldSpecs.nested`). One extra guard (packet Caution #12): the
-// post-fold ASCII invariant that makes `.slice` a safe truncation.
+// `slugify` and `defaultAccountName`, mirroring `tests/unit/test_naming.py`.
+// Python's `MeResponse(organizations={id: MeOrgInfo(...)})` fixtures build
+// the TS model from nested raw records (coerced via `fieldSpecs.nested`).
+// One extra guard: the post-fold ASCII invariant that makes `.slice` a safe
+// truncation.
 
 import { describe, expect, it } from "vitest";
-import { MeResponse } from "../../src/client/me.js";
-import { defaultAccountName, slugify } from "../../src/accounts/naming.js";
 
-/** `_me_with_org` (`test_naming.py:93-97`). */
+import { defaultAccountName, slugify } from "../../src/accounts/naming.js";
+import { MeResponse } from "../../src/client/me.js";
+
+/** `_me_with_org`. */
 function meWithOrg(orgId: string, name: string): MeResponse {
   return new MeResponse({
     organizations: { [orgId]: { id: Number(orgId), name } },
   });
 }
 
-describe("TestSlugify (test_naming.py:24)", () => {
+describe("Slugify", () => {
+  // python: TestSlugify
   const table: ReadonlyArray<readonly [string | null, string]> = [
     ["Acme Corp", "acme-corp"],
     ["ACME, Inc.", "acme-inc"],
@@ -31,7 +30,7 @@ describe("TestSlugify (test_naming.py:24)", () => {
     ["Mixpanel 🎉 Co", "mixpanel-co"],
   ];
 
-  it.each(table)("FR-015 table: slugify(%j) === %j", (input, expected) => {
+  it.each(table)("slugify(%j) === %j", (input, expected) => {
     expect(slugify(input)).toBe(expected);
   });
 
@@ -67,13 +66,11 @@ describe("TestSlugify (test_naming.py:24)", () => {
       "Mixpanel 🎉",
     ]) {
       const result = slugify(value);
-      if (result !== "") {
-        expect(result).toMatch(pattern);
-      }
+      expect(result).toMatch(pattern);
     }
   });
 
-  it("the pre-truncation string is pure ASCII (Caution #12 invariant)", () => {
+  it("the pre-truncation string is pure ASCII", () => {
     // Locks the safety of `.slice(0, 32)`: after the ASCII fold every
     // remaining unit is a single code point, so the truncation cannot
     // split a surrogate pair.
@@ -86,7 +83,8 @@ describe("TestSlugify (test_naming.py:24)", () => {
   });
 });
 
-describe("TestDefaultAccountName (test_naming.py:100)", () => {
+describe("Default account name", () => {
+  // python: TestDefaultAccountName
   it("empty existing set returns the base slug unchanged", () => {
     const me = meWithOrg("100", "Acme Corp");
     expect(defaultAccountName(me, new Set())).toBe("acme-corp");
@@ -136,10 +134,8 @@ describe("TestDefaultAccountName (test_naming.py:100)", () => {
 
   it("first org wins when multiple (insertion order)", () => {
     // Python asserts INSERTION order (`next(iter(...))`), which the
-    // ordered `MeResponse.organizations` Map now preserves for ANY
-    // key order (B8-MAPFIX, `user-ratifications.md:14-22` — the
-    // former Caution #13 ascending-id caveat is closed; out-of-order
-    // fixtures are locked in `naming-order.test.ts`).
+    // ordered `MeResponse.organizations` Map preserves for ANY key
+    // order; out-of-order fixtures are locked in `naming-order.test.ts`.
     const me = new MeResponse({
       organizations: {
         "100": { id: 100, name: "Alpha" },

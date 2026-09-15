@@ -1,7 +1,8 @@
-// Unit tests for the D6 canonicalizer. These pin the TS implementation to
-// the normative D6 rules; cross-language parity is verified separately by
-// the shared canonical-selftest.json suite (canonical-selftest.test.ts).
+// Unit tests for the canonicalizer; cross-language parity is verified
+// separately by the shared canonical-selftest.json suite.
+
 import { describe, expect, it } from "vitest";
+
 import {
   CanonicalizationError,
   canonicalize,
@@ -48,18 +49,18 @@ describe("canonicalize: objects (rule 1)", () => {
 
 describe("canonicalize: strings (rule 2)", () => {
   it("emits verbatim non-ASCII with minimal escaping", () => {
-    expect(canonicalize("héllo\nwörld")).toBe('"héllo\\nwörld"');
+    expect(canonicalize("héllo\nwörld")).toBe(String.raw`"héllo\nwörld"`);
   });
 
   it("escapes control characters", () => {
-    expect(canonicalize(String.fromCharCode(1))).toBe('"\\u0001"');
-    expect(canonicalize("\t")).toBe('"\\t"');
+    expect(canonicalize(String.fromCharCode(1))).toBe(String.raw`"\u0001"`);
+    expect(canonicalize("\t")).toBe(String.raw`"\t"`);
   });
 
   it("rejects lone surrogates", () => {
-    expect(() => canonicalize("a\ud800b")).toThrow(CanonicalizationError);
+    expect(() => canonicalize("a\uD800b")).toThrow(CanonicalizationError);
     // A well-formed surrogate PAIR is fine.
-    expect(canonicalize("𝄞")).toBe(`"${"𝄞"}"`);
+    expect(canonicalize("𝄞")).toBe(`"𝄞"`);
   });
 });
 

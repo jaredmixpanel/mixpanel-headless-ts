@@ -1,7 +1,7 @@
 # Mixpanel Headless for TypeScript
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
-[![Node](https://img.shields.io/badge/node-%3E%3D20-339933)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.12-339933)](https://nodejs.org/)
 [![Runtime](https://img.shields.io/badge/runtime-Node%20%2B%20Browser-blue)](#which-package-do-i-need)
 
 > **⚠️ Pre-release software.** These packages are not yet published to npm and APIs may
@@ -12,7 +12,7 @@
 discovery, entity management, streaming data extraction, and session replay analysis.
 Fully typed, isomorphic (Node.js and browser), and continuously verified against the
 battle-tested [Python `mixpanel_headless`](https://github.com/mixpanel/mixpanel-headless)
-library it ports — 3,262 conformance vectors, zero divergence.
+library it ports — 3,453 conformance vectors, zero divergence.
 
 ```typescript
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -58,11 +58,11 @@ shapes. Mixpanel Headless wraps all of it in one consistent, typed surface:
 
 ## Which package do I need?
 
-| Package                      | Runtime      | What's inside                                                                                                                                                                                          |
-| ---------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@mixpanel-headless/node`    | Node.js ≥ 20 | Everything for servers, scripts, and CI: config-file accounts (`~/.mp/config.toml`), env-var auth, programmatic OAuth login, and ready-made `accounts` / `session` / `targets` management. Start here. |
-| `@mixpanel-headless/browser` | Browsers     | Bearer-token and redirect-PKCE auth, injectable credential storage, and a `Workspace` factory gated to browser-safe capabilities.                                                                      |
-| `@mixpanel-headless/core`    | Both         | The isomorphic engine: the `Workspace` facade, query builders, result types, and the error hierarchy. Zero Node dependencies — the platform packages wire it up for you.                               |
+| Package                      | Runtime         | What's inside                                                                                                                                                                                          |
+| ---------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@mixpanel-headless/node`    | Node.js ≥ 22.12 | Everything for servers, scripts, and CI: config-file accounts (`~/.mp/config.toml`), env-var auth, programmatic OAuth login, and ready-made `accounts` / `session` / `targets` management. Start here. |
+| `@mixpanel-headless/browser` | Browsers        | Bearer-token and redirect-PKCE auth, injectable credential storage, and a `Workspace` factory gated to browser-safe capabilities.                                                                      |
+| `@mixpanel-headless/core`    | Both            | The isomorphic engine: the `Workspace` facade, query builders, result types, and the error hierarchy. Zero Node dependencies — the platform packages wire it up for you.                               |
 
 All packages are ESM, ship TypeScript types, and share the same `Workspace` API — code
 written against core runs in either environment.
@@ -745,22 +745,74 @@ names with three rules:
 | `funnel.overall_conversion_rate`         | `funnel.overall_conversion_rate`               | Result fields stay snake_case                                    |
 
 **Parity is verified, not aspirational.** Every release replays a conformance corpus of
-**3,262 test vectors extracted from the Python implementation** — covering outputs,
+**3,453 test vectors extracted from the Python implementation** — covering outputs,
 error behavior, and the exact HTTP requests made — with zero failures, and a
 cross-language differential oracle continuously fuzzes the two implementations against
-each other. Even Python-specific rendering quirks (float formatting, `str()` semantics)
+each other (run records: [`conformance-runner/GATE.md`](conformance-runner/GATE.md) and
+[`differential/oracle/RUN.md`](differential/oracle/RUN.md)). Even Python-specific rendering quirks (float formatting, `str()` semantics)
 are reproduced so results match byte-for-byte across languages.
+
+### Naming
+
+The rule behind the table: **identifiers are camelCase, data is spelled the way
+Python spells it.**
+
+- **Constructor and config option bags are camelCase** (and always were):
+  `new Workspace({ session, tokenResolver })` takes `WorkspaceOptions`, and
+  `MixpanelClientOptions`, `OAuthFlowOptions`, `MeCacheOptions` and the browser
+  store options follow suit. So do methods, classes, functions and constants.
+- **Per-call option bags mirror Python keyword arguments in snake_case**:
+  `ws.fetchReplay(id, { retention_days, cdn_concurrency })` takes
+  `WorkspaceFetchReplayOptions`, the 1:1 image of
+  `Workspace.fetch_replay(replay_id, retention_days=…, cdn_concurrency=…)`;
+  likewise `ws.query("Login", { from_date, to_date })`. TypeScript-only additions
+  to such a bag (`signal`, `onBatch`, `maxPages`) stay camelCase.
+- **Data keeps Python's spelling**: entity/result/param fields
+  (`funnel.overall_conversion_rate`), bookmark params, error `details`, and
+  on-disk records (`default_project`, `token_env`).
+
+The split lets Python code and the Python guides transliterate mechanically while
+everything that is "just JavaScript" reads like JavaScript. `eslint.config.js`
+enforces it (`namingConvention`) and `tests/naming-config-bags.test.ts` locks
+which bags are which.
 
 ## Requirements
 
-- **Node.js ≥ 20** for `@mixpanel-headless/node`; any evergreen browser for
-  `@mixpanel-headless/browser`.
+- **Node.js ≥ 22.12** to _use_ `@mixpanel-headless/node`; any evergreen browser
+  for `@mixpanel-headless/browser`. _Developing_ this repository needs a newer
+  Node — see [Toolchain pins](#toolchain-pins-developing-the-repo).
 - **ESM only.** All packages are native ES modules.
 - **TypeScript optional but rewarding** — the packages ship complete types under
   `strict`; plain JavaScript works fine.
 
----
+### Toolchain pins (developing the repo)
 
-_Developing the port itself? This README covers the consumer surface — see
-[`CLAUDE.md`](CLAUDE.md) for the repository layout, the conformance rig, and the
-`npm run check` gate._
+Developing the repository needs a newer Node than using the packages does, and
+`typescript` is pinned to a tilde range on purpose — see
+[CONTRIBUTING.md → Toolchain pins](CONTRIBUTING.md#toolchain-pins).
+
+## Development
+
+This README covers the consumer surface. To work on the port itself:
+
+```bash
+git clone git@github.com:jaredmixpanel/mixpanel-headless-ts.git && cd mixpanel-headless-ts
+npm ci           # lockfile-exact; installs the git hooks
+npm run check    # the gate: build, packaging, lint, format, archaeology, vendor, tests + coverage, browser smoke
+```
+
+- **The gate** (`npm run check`) is what CI runs on Node 22 and 24; it is green
+  before every commit. Its test step replays the whole conformance corpus.
+- **Conformance CLI**: `npm run conformance -- --report json` replays the
+  Python-extracted vectors and prints the verdict summary (3,453 vectors,
+  0 failures at the current pin); `--filter <substring>` narrows by vector id.
+- **Differential oracle**: `npm run oracle` is the stdio bridge the Python fuzz
+  harness drives (`--right "node …/scripts/run-oracle.mjs"`); the last run is
+  28,091 examples with 0 divergences.
+- **Run records**: [`conformance-runner/GATE.md`](conformance-runner/GATE.md)
+  (corpus pin history and totals) and
+  [`differential/oracle/RUN.md`](differential/oracle/RUN.md) (oracle runs).
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): layout, toolchain pins, the gate in
+  detail, generated files, corpus refresh, comment and test conventions,
+  releasing. [`PORTING.md`](PORTING.md): the pinned Python revision, naming,
+  every known divergence, and what the corpus and oracle do and do not prove.

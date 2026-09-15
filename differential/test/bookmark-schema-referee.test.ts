@@ -1,8 +1,8 @@
-// Referee (a) unit test — replays the recon referee-assets.md §1 payload
-// triple (positive + 2 negative controls) through the ajv Ajv2020 harness.
-// The expected verdicts were proven against the SAME schema bytes with
-// Python jsonschema Draft202012Validator (transcript in the recon file);
-// verdict parity here is the cross-language referee contract (TS-8).
+// Referee unit test: a positive payload and two negative controls through
+// the ajv Ajv2020 harness. The expected verdicts were proven against the
+// same schema bytes with Python jsonschema Draft202012Validator, so verdict
+// parity here is the cross-language referee contract.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -21,7 +21,7 @@ describe("vendored bookmark.json schema", () => {
     const schema = loadBookmarkSchema();
     expect(schema["title"]).toBe("InsightsBookmarkParams");
     expect(schema["additionalProperties"]).toBe(false);
-    expect(schema["required"]).toEqual(["displayOptions", "sections"]);
+    expect(schema["required"]).toStrictEqual(["displayOptions", "sections"]);
   });
 
   it("compiles under Ajv2020 strict:false despite 11 tsType keywords", () => {
@@ -35,7 +35,7 @@ describe("vendored bookmark.json schema", () => {
 describe("referee verdicts on the recon known-payload triple", () => {
   it("accepts the minimal valid insights payload", () => {
     const verdict = refereeBookmarkPayload(KNOWN_VALID_INSIGHTS_PAYLOAD);
-    expect(verdict.errors).toEqual([]);
+    expect(verdict.errors).toStrictEqual([]);
     expect(verdict.valid).toBe(true);
   });
 

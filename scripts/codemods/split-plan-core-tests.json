@@ -1,0 +1,444 @@
+[
+  {
+    "source": "packages/core/test/bookmarks/builders.test.ts",
+    "fixtures": "packages/core/test/bookmarks/builders-fixtures.ts",
+    "targets": {
+      "packages/core/test/bookmarks/builders-time.test.ts": [
+        "buildTimeSection",
+        "buildDateRange",
+        "buildTimeComparison"
+      ],
+      "packages/core/test/bookmarks/builders-filter-entry.test.ts": [
+        "buildFilterSection",
+        "buildFilterEntry",
+        "buildFilterEntry — new filter operators (T030)",
+        "patchCustomPropertyFiltersForTransform",
+        "Filter.listContains → buildFilterEntry",
+        "buildFilterEntry — custom properties"
+      ],
+      "packages/core/test/bookmarks/builders-group-section.test.ts": [
+        "buildGroupSection",
+        "buildGroupSection — data_group_id threading",
+        "GroupBy.listItem → buildGroupSection",
+        "coded guards — buildGroupSection (BB1)",
+        "buildComposedProperties",
+        "buildGroupSection — custom properties"
+      ],
+      "packages/core/test/bookmarks/builders-frequency.test.ts": [
+        "buildFrequencyGroupEntry",
+        "buildFrequencyFilterEntry (platform-native clause)",
+        "buildGroupSection — FrequencyBreakdown dispatch",
+        "buildFilterSection — FrequencyFilter dispatch"
+      ],
+      "packages/core/test/bookmarks/builders-flow.test.ts": [
+        "buildFlowPropertyFilter",
+        "coded guards — buildFlowPropertyFilter (BB2/BB3)"
+      ],
+      "packages/core/test/bookmarks/builders-cohort.test.ts": [
+        "buildFlowCohortFilter (NEW — corpus-vector mirrors)",
+        "buildGroupSection — CohortBreakdown entries (NEW)"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/workspace/workspace-report-links.test.ts",
+    "fixtures": "packages/core/test/workspace/workspace-report-links-fixtures.ts",
+    "targets": {
+      "packages/core/test/workspace/workspace-report-links-create.test.ts": [
+        "TestCreateReportLinkFromDict (test_workspace_report_links.py:129)",
+        "TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
+        "TestCreateReportLinkValidation (test_workspace_report_links.py:310)",
+        "TestCreateReportLinkWorkspacePrecedence (test_workspace_report_links.py:347)",
+        "TestCreateReportLinkUrlShape (test_workspace_report_links.py:407)",
+        "TestCreateReportLinkValidatesBeforePost (test_workspace_report_links.py:1433)"
+      ],
+      "packages/core/test/workspace/workspace-report-links-resolve.test.ts": [
+        "TestResolveSlugLinks (test_workspace_report_links.py:476)",
+        "TestResolveBookmarkLinks (test_workspace_report_links.py:631)",
+        "TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)",
+        "TestResolveShortLinks (test_workspace_report_links.py:1118)",
+        "TestResolveSlugWithUnknownServerType (test_workspace_report_links.py:1450)"
+      ],
+      "packages/core/test/workspace/workspace-report-links-query.test.ts": [
+        "TestQueryReportLink (test_workspace_report_links.py:962)",
+        "TestSavedReportLink (test_workspace_report_links.py:1250)",
+        "TestQueryReportLinkScopeOnResolvedInput (test_workspace_report_links.py:1360)"
+      ],
+      "packages/core/test/workspace/workspace-report-links-scope.test.ts": [
+        "TestWorkspaceScope (test_workspace_report_links.py:1489)"
+      ]
+    },
+    "inlineThreshold": 0
+  },
+  {
+    "source": "packages/core/test/client/client-entities-data-governance.test.ts",
+    "inlineThreshold": 20,
+    "targets": {
+      "packages/core/test/client/client-entities-lexicon.test.ts": [
+        "TestGetEventDefinitions",
+        "TestUpdateEventDefinition",
+        "TestDeleteEventDefinition",
+        "TestBulkUpdateEventDefinitions",
+        "TestGetPropertyDefinitions",
+        "TestUpdatePropertyDefinition",
+        "TestBulkUpdatePropertyDefinitions",
+        "TestListLexiconTags",
+        "TestCreateLexiconTag",
+        "TestUpdateLexiconTag",
+        "TestDeleteLexiconTag",
+        "TestGetTrackingMetadata",
+        "TestGetEventHistory",
+        "TestGetPropertyHistory",
+        "TestExportLexicon",
+        "TestExportLexiconAsyncStringResponse"
+      ],
+      "packages/core/test/client/client-entities-custom-properties.test.ts": [
+        "TestListCustomProperties",
+        "TestCreateCustomProperty",
+        "TestGetCustomProperty",
+        "TestUpdateCustomProperty",
+        "TestDeleteCustomProperty",
+        "TestValidateCustomProperty"
+      ],
+      "packages/core/test/client/client-entities-drop-filters.test.ts": [
+        "TestListDropFilters",
+        "TestCreateDropFilter",
+        "TestUpdateDropFilter",
+        "TestDeleteDropFilter",
+        "TestGetDropFilterLimits"
+      ],
+      "packages/core/test/client/client-entities-lookup-tables.test.ts": [
+        "TestListLookupTables",
+        "TestGetLookupUploadUrl",
+        "TestUploadToSignedUrl",
+        "TestRegisterLookupTable",
+        "TestMarkLookupTableReady",
+        "TestGetLookupUploadStatus",
+        "TestUpdateLookupTable",
+        "TestDeleteLookupTables",
+        "TestDownloadLookupTable",
+        "TestGetLookupDownloadUrl",
+        "TestGetLookupUploadUrlMissingKeys",
+        "TestUploadToSignedUrlNetworkFailure",
+        "TestRegisterLookupTableNonJsonResponse"
+      ],
+      "packages/core/test/client/client-entities-custom-events.test.ts": [
+        "TestCreateCustomEvent",
+        "TestUpdateCustomEvent",
+        "TestDeleteCustomEvent"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/workspace/governance-data.test.ts",
+    "fixtures": "packages/core/test/workspace/governance-data-fixtures.ts",
+    "targets": {
+      "packages/core/test/workspace/governance-data-drop-filters.test.ts": [
+        "TestListDropFilters",
+        "TestCreateDropFilter",
+        "TestUpdateDropFilter",
+        "TestDeleteDropFilter",
+        "TestGetDropFilterLimits"
+      ],
+      "packages/core/test/workspace/governance-data-custom-properties.test.ts": [
+        "TestListCustomProperties",
+        "TestCreateCustomProperty",
+        "TestGetCustomProperty",
+        "TestUpdateCustomProperty",
+        "TestDeleteCustomProperty",
+        "TestValidateCustomProperty",
+        "ADDITIVE: list_custom_properties displayFormula corruption branch"
+      ],
+      "packages/core/test/workspace/governance-data-custom-events.test.ts": [
+        "TestCreateCustomEvent",
+        "TestListCustomEvents",
+        "TestUpdateCustomEvent",
+        "TestDeleteCustomEvent",
+        "ADDITIVE: CreateCustomEventParams.toFormBody"
+      ],
+      "packages/core/test/workspace/governance-data-lookup-tables.test.ts": [
+        "TestListLookupTables",
+        "TestUploadLookupTable",
+        "TestMarkLookupTableReady",
+        "TestGetLookupUploadUrl",
+        "TestGetLookupUploadStatus",
+        "TestUpdateLookupTable",
+        "TestDeleteLookupTables",
+        "TestDownloadLookupTable",
+        "TestGetLookupDownloadUrl",
+        "ADDITIVE: upload_lookup_table seams and poll arms",
+        "ADDITIVE: lossless int64 lookup-table ids"
+      ],
+      "packages/core/test/workspace/governance-data-delegation.test.ts": [
+        "ADDITIVE: delegation contracts"
+      ]
+    },
+    "inlineThreshold": 0
+  },
+  {
+    "source": "packages/core/test/query/user-validators.test.ts",
+    "fixtures": "packages/core/test/query/user-validators-fixtures.ts",
+    "targets": {
+      "packages/core/test/query/user-validators-args.test.ts": [
+        "TestValidateUserArgsValid",
+        "TestValidateUserArgsMutualExclusion",
+        "TestValidateUserArgsBasic",
+        "TestValidateUserArgsCohortDependency"
+      ],
+      "packages/core/test/query/user-validators-args-rules.test.ts": [
+        "TestValidateUserArgsAggregateRules",
+        "TestValidateUserArgsModeSpecific",
+        "TestValidateUserArgsPercentileRules",
+        "TestValidateUserArgsMultipleViolations",
+        "TestValidateUserArgsErrorShape",
+        "TestValidateUserArgsWhereTypeCheck",
+        "TestValidateUserArgsU7WithInCohortFilter"
+      ],
+      "packages/core/test/query/user-validators-params.test.ts": [
+        "TestValidateUserParamsValid",
+        "TestValidateUserParamsUP1",
+        "TestValidateUserParamsUP2",
+        "TestValidateUserParamsUP3",
+        "TestValidateUserParamsUP4",
+        "TestValidateUserParamsMultipleViolations",
+        "today clock seam (TS-only — no Python twin)"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/query/validation-funnel.test.ts",
+    "inlineThreshold": 30,
+    "targets": {
+      "packages/core/test/query/validation-funnel.test.ts": [
+        "TestValidateFunnelArgsF1",
+        "TestValidateFunnelArgsF2",
+        "TestValidateFunnelArgsF3",
+        "TestValidateFunnelArgsF4",
+        "TestValidateFunnelArgsF5",
+        "TestValidateFunnelArgsF6",
+        "TestValidateFunnelArgsMultipleErrors",
+        "TestValidateFunnelArgsExclusionRanges",
+        "TestValidateFunnelArgsF7"
+      ],
+      "packages/core/test/query/validation-funnel-limits.test.ts": [
+        "TestValidateFunnelArgsF1Max",
+        "TestValidateFunnelArgsF3Max",
+        "TestValidateFunnelArgsF4Negative",
+        "TestValidateFunnelArgsF4ControlChars",
+        "TestValidateFunnelArgsF2ControlChars",
+        "TestValidateFunnelArgsF8MaxHolding",
+        "TestValidateFunnelArgsF9SessionMath",
+        "TestValidateFunnelArgsF3Type",
+        "TestValidateFunnelArgsF10MathProperty",
+        "TestValidateFunnelArgsF11MathRejectsProperty",
+        "TestValidateFunnelArgsF12ReentryMode",
+        "TestF8bHoldingConstantPropertyValidation",
+        "TestDataGroupIdValidationFunnel"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/client/client-engage.test.ts",
+    "targets": {
+      "packages/core/test/client/client-engage-params.test.ts": [
+        "TestProfileExport",
+        "TestEngageParameterValidation",
+        "TestEngageParameterEdgeCases",
+        "TestEngageDistinctIdParameter",
+        "TestEngageGroupIdParameter",
+        "TestEngageBehaviorsParameter",
+        "TestEngageIncludeAllUsersParameter"
+      ],
+      "packages/core/test/client/client-engage-pages.test.ts": [
+        "TestExportProfilesPage",
+        "TestExportProfilesPagePagination",
+        "TestCodedExportProfilesCodes",
+        "TestExportProfilesPageNewParams",
+        "TestExportProfilesPageFilterByCohort"
+      ],
+      "packages/core/test/client/client-engage-stats.test.ts": [
+        "TestEngageStats"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/report-links.test.ts",
+    "fixtures": "packages/core/test/report-links-fixtures.ts",
+    "targets": {
+      "packages/core/test/report-links.test.ts": [
+        "TestConstants",
+        "TestWebHost",
+        "TestIsSlug",
+        "TestGenerateSlug",
+        "TestBuilders",
+        "TestTableInvariants"
+      ],
+      "packages/core/test/report-links-parse.test.ts": [
+        "TestParseTable",
+        "TestParserTolerance"
+      ],
+      "packages/core/test/compat/urllib.test.ts": [
+        "compat/urllib (CPython urlsplit / urlunsplit / urljoin twins)"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/client/client-query-host.test.ts",
+    "targets": {
+      "packages/core/test/client/client-query-host.test.ts": [
+        "TestSegmentation",
+        "TestDiscovery",
+        "TestFunnelAndRetention",
+        "TestSegmentationSum",
+        "TestSegmentationAverage",
+        "TestFrequency",
+        "TestSegmentationNumeric",
+        "TestQuerySavedReport"
+      ],
+      "packages/core/test/client/client-query-activity-feed.test.ts": [
+        "TestActivityFeed (request contract)",
+        "TestActivityFeed (phase008)",
+        "TestPhase008ErrorHandling"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/types/query-params/cohort.test.ts",
+    "targets": {
+      "packages/core/test/types/query-params/cohort-criteria.test.ts": [
+        "operator maps (test_cohort_definition.py::TestOperatorMaps)",
+        "CohortCriteria.didEvent shapes",
+        "CohortCriteria.didEvent guards (source order)",
+        "CohortCriteria.didNotDoEvent",
+        "CohortCriteria.hasProperty / propertyIsSet / propertyIsNotSet",
+        "CohortCriteria.inCohort / notInCohort",
+        "CohortCriteria aggregation serialization",
+        "CohortCriteria.hasProperty unknown-operator parity (P2-9 gate finding)"
+      ],
+      "packages/core/test/types/query-params/cohort-definition.test.ts": [
+        "CohortDefinition composition + toDict",
+        "toDict isolation (deep-copy semantics)",
+        "sanitizeRawCohort (tests/test_types_cohort_behaviors.py::TestSanitizeRawCohort)",
+        "CohortBreakdown (tests/test_types_cohort_behaviors.py)",
+        "buildEventSelector edge behavior",
+        "C9 guard-totality property (fast-check #4)"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/workspace/query-params.test.ts",
+    "fixtures": "packages/core/test/workspace/query-params-fixtures.ts",
+    "targets": {
+      "packages/core/test/workspace/query-params.test.ts": [
+        "TestBasicParams",
+        "TestAggregationParams",
+        "TestFilterParams",
+        "TestGroupParams",
+        "TestMultiEventParams",
+        "TestFormulaParams"
+      ],
+      "packages/core/test/workspace/query-params-modes.test.ts": [
+        "TestAnalysisModeParams",
+        "TestModeParams",
+        "TestPerMetricFilters",
+        "TestGroupByTypeError",
+        "TestFiltersCombinatorParams",
+        "TestFormulaObjectParams",
+        "TestBuildParams"
+      ],
+      "packages/core/test/workspace/query-params-math.test.ts": [
+        "TestDateFilterParams",
+        "TestMultiFormulaParams",
+        "TestPercentileParams",
+        "TestHistogramParams",
+        "TestNewMathTypesInBuildParams",
+        "TestSegmentMethodInBuildParams",
+        "TestFrequencyBreakdownInBuildParams",
+        "TestFrequencyFilterInBuildParams",
+        "TestDataGroupIdInsights"
+      ]
+    },
+    "inlineThreshold": 0
+  },
+  {
+    "source": "packages/core/test/workspace/workspace-replays.test.ts",
+    "fixtures": "packages/core/test/workspace/workspace-replays-fixtures.ts",
+    "targets": {
+      "packages/core/test/workspace/workspace-replays-list.test.ts": [
+        "list_replays argument validation (TestListReplaysValidation)",
+        "list_replays → discover kwargs (TestListReplaysQueryCall)",
+        "missing retention defaults to 30 with a warning (TestRetentionWarning)",
+        "the 5-property cap (TestEventsForReplayValidation)"
+      ],
+      "packages/core/test/workspace/workspace-replays-fetch.test.ts": [
+        "fetch_replay signs, fetches, joins (TestFetchReplay)",
+        "replays_for_user composition (TestReplaysForUser)",
+        "sign wiring (TestSignReplaysWiring)",
+        "events window passthrough (TestEventsForReplaysWindow)",
+        "fetch_replays per-replay isolation (TestFetchReplaysResilience)",
+        "replays_for_user default limit (TestReplaysForUserLimit)",
+        "fetch_replays retention threading + batching (TestFetchReplaysBatching)",
+        "replays_for_user threads retention (TestReplaysForUserThreadsRetention)",
+        "coded replay guards (TestCodedReplayGuardCodes)",
+        "FID-F5: fetch_replay window derivation missing-timestamp class"
+      ]
+    },
+    "inlineThreshold": 0
+  },
+  {
+    "source": "packages/core/test/query/validation-retention.test.ts",
+    "inlineThreshold": 20,
+    "targets": {
+      "packages/core/test/query/validation-retention.test.ts": [
+        "TestValidateRetentionR1",
+        "TestValidateRetentionR2",
+        "TestValidateRetentionR7R8R9",
+        "TestValidateRetentionDelegation",
+        "TestValidateRetentionR5R6"
+      ],
+      "packages/core/test/query/validation-retention-rules.test.ts": [
+        "TestValidateRetentionMultiError",
+        "TestValidateRetentionR10",
+        "TestValidateRetentionR5c",
+        "TestValidateRetentionR11",
+        "TestValidateRetentionR12",
+        "TestValidateRetentionR13UnboundedMode",
+        "TestValidateRetentionR5Boolean",
+        "TestDataGroupIdValidationRetention"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/types/query-params/filter.test.ts",
+    "fixtures": "packages/core/test/types/query-params/filter-fixtures.ts",
+    "targets": {
+      "packages/core/test/types/query-params/filter-factories.test.ts": [
+        "Filter constructor (__post_init__ parity)",
+        "Filter scalar factories (operator/value/type mapping)",
+        "Filter date factories",
+        "Filter cohort factories",
+        "Filter.listContains",
+        "property-spec helper types"
+      ],
+      "packages/core/test/types/query-params/filter-construction.test.ts": [
+        "ListItemGroupMode guards",
+        "C9 guard-totality property (fast-check #4)",
+        "Filter.inCohort with an inline CohortDefinition (P2-9 gate finding)",
+        "Filter direct construction (PR #236 operator validation)",
+        "filterUnchecked (codec / guard-probe bypass, Python _filter_unchecked)"
+      ]
+    }
+  },
+  {
+    "source": "packages/core/test/workspace/crud-bookmarks-cohorts.test.ts",
+    "fixtures": "packages/core/test/workspace/crud-fixtures.ts",
+    "targets": {
+      "packages/core/test/workspace/crud-bookmarks.test.ts": [
+        "TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)"
+      ],
+      "packages/core/test/workspace/crud-cohorts.test.ts": [
+        "TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)"
+      ]
+    }
+  }
+]

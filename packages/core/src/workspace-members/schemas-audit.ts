@@ -1,164 +1,110 @@
 /**
- * B6-W8 member module — the `Workspace` schema-registry, schema-
- * enforcement, data-audit, data-volume-anomaly and event-deletion
- * members (`workspace.py:8651-9331`, all Phase 028: registry
- * :8651-8874, enforcement :8876-9024, auditing :9026-9105, anomalies
- * :9107-9199, deletion requests :9201-9331).
+ * Schema-registry, schema-enforcement, data-audit, data-volume-anomaly
+ * and event-deletion members of the `Workspace` facade. Each function is
+ * the body of one facade method — options-bag mapping, the params dump,
+ * the like-named client call and result-model validation with the
+ * endpoint name Python passes. Path-segment quoting of entity names, the
+ * `results.anomalies` extraction and raw-envelope handling belong to the
+ * client, not here.
  *
- * Packet contract (`b6-packets.md` §2/§10): the `workspace.ts` B6-W8
- * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
- * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone} /
- * W8-D1 {@link EntityModel.modelDump}), the like-named B4-C5 client
- * method (`services/entities/{schemas,schema-enforcement,audit,
- * anomalies,deletion-requests}.ts`, composed onto the client at
- * `client.ts:1077+`) and result-model construction via
- * `validateResponseModel(s)` with the exact `endpoint=` string Python
- * passes. No request assembly, no header merging, no URL building, no
- * status branching (R10.8 — compose, never re-implement). In
- * particular the `urllib.parse.quote(..., safe="")` path-segment
- * encoding of `entity_type`/`entity_name`, the `results.anomalies`
- * extraction and the `_raw=True` envelope handling all live in the B4
- * client and are NOT re-derived here.
- *
- * Shard-wide observations from the Python re-read (all 20 bodies read
- * line-by-line at HEAD 2026-08-16):
- *
- * - **17 of 20 members are pure forwards.** The composite pair is
- *   {@link runAudit} (`:9050-9067`) and {@link runAuditEventsOnly}
- *   (`:9088-9104`), whose identical bodies unpack the client's
- *   `[violations, metadata]` 2-element array — ported
- *   branch-for-branch below; the third non-forward is
- *   {@link deleteSchemas} and its guard.
- * - **One facade-local guard**: {@link deleteSchemas} raises
- *   `MixpanelHeadlessError` when `entity_name` is given without
- *   `entity_type` (`:8864-8868`), BEFORE `_require_api_client()` and
- *   therefore before any request (the packet Caution #4 ordering
- *   twin). Code is the `exceptions.py` constructor default
- *   `UNKNOWN_ERROR` (packet Caution #8).
- * - **Three dump spellings.** The registry/enforcement/deletion
- *   writers use `model_dump(exclude_none=True, by_alias=True)`
- *   (`:8754`, `:8824`, `:8940`, `:8970`, `:9002`, `:9262`, `:9329`);
- *   the two anomaly writers use a PLAIN `model_dump(by_alias=True)`
- *   (`:9169`, `:9198`) — which KEEPS `None` values; and
- *   `create_schema`/`update_schema` pass their `schema_json` dict
- *   through with no dump at all. The facade mirrors each source
- *   spelling exactly rather than harmonizing them (W8-D1).
- * - **ZERO empty-response guards** (`if raw is None: raise …`) in the
- *   whole 681-line range — verified by grep, matching the W5/W6/W7
- *   precedent. The shared `requireResponse` helper is therefore
- *   deliberately unused; adding it would invent a branch Python does
- *   not have.
- * - **Nine opaque passthroughs**: `create_schema` (`:8720`),
- *   `update_schema` (`:8791`), the four `*_schema_enforcement`
- *   writers (`:8939`, `:8969`, `:9001`, `:9023`), the two anomaly
- *   writers (`:9169`, `:9198`) and `preview_deletion_filters`
- *   (`:9328`) return the client's payload verbatim under
- *   `dict[str, Any]` / `list[dict[str, Any]]` annotations with no
- *   model validation.
- * - **No `int(str)`, no `.strip()`, no date construction** anywhere in
- *   the range, so R11.7 / watchlist #5 have no site to bite. The one
- *   truthiness guard (`if not raw`, `:9053`/`:9090`) ports as an
- *   explicit length check (watchlist #6), and the one
- *   `isinstance(x, dict)` (`:9063`/`:9100`) ports via `isPlainRecord`
- *   (watchlist #13).
- *
- * W8-D2 (recorded divergence, no vector coverage): when the audit
- * metadata carries `{"computed_at": null}`, Python's
- * `metadata.get("computed_at", "")` yields `None` and the
- * `AuditResponse(...)` construction raises a BARE
- * `pydantic.ValidationError` — an out-of-contract leak (Discrepancy
- * #8 territory: the declared `Raises:` list does not include it). The
- * TS twin raises the port's standard wrapper for that same pydantic
- * failure, `ResponseValidationError` / `RESPONSE_VALIDATION_ERROR`.
- * Same trigger, same rejection, different class name; no corpus
- * vector exercises it.
+ * @see mixpanel_headless.workspace.Workspace
  */
 
-import { isPlainRecord } from "../client/internals.js";
-import type { JsonValue } from "../client/json-value.js";
 import type { MixpanelClient } from "../client/client.js";
+import { isPlainRecord } from "../client/internals.js";
+import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
 } from "../client/response-validation.js";
 import { MixpanelHeadlessError } from "../errors.js";
-import { pythonTypeNameOf } from "../services/entities/shared.js";
+import { pythonTypeNameOf } from "../services/shared.js";
 import {
   AuditResponse,
   AuditViolation,
+  type BulkCreateSchemasParams,
   BulkCreateSchemasResponse,
   BulkPatchResult,
+  type BulkUpdateAnomalyParams,
+  type CreateDeletionRequestParams,
   DataVolumeAnomaly,
   DeleteSchemasResponse,
   EventDeletionRequest,
-  SchemaEntry,
-  SchemaEnforcementConfig,
-  type BulkCreateSchemasParams,
-  type BulkUpdateAnomalyParams,
-  type CreateDeletionRequestParams,
   type InitSchemaEnforcementParams,
   type PreviewDeletionFiltersParams,
   type ReplaceSchemaEnforcementParams,
+  SchemaEnforcementConfig,
+  SchemaEntry,
   type UpdateAnomalyParams,
   type UpdateSchemaEnforcementParams,
 } from "../types/entities/schemas.js";
-import { native } from "./shared.js";
 
-// ---------------------------------------------------------------------------
-// Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
-// spelling per packet Caution #6, since the recorder replays kwargs by
-// name).
-// ---------------------------------------------------------------------------
+// --- Options bags (keys keep the Python keyword spelling) ---
 
 /** Options bag of `Workspace.listSchemaRegistry` (keyword-only in Python). */
 export interface WorkspaceListSchemaRegistryOptions {
   /**
-   * Filter by entity type ("event", "custom_event", "profile");
-   * Python default `None`, which returns all schemas.
+   * Filter by entity type (`"event"`, `"custom_event"`, `"profile"`).
+   *
+   * @defaultValue `null` (every schema)
    */
   readonly entity_type?: string | null | undefined;
 }
 
 /** Options bag of `Workspace.deleteSchemas` (both keyword-only). */
 export interface WorkspaceDeleteSchemasOptions {
-  /** Filter by entity type (Python default `None`). */
+  /**
+   * Filter by entity type.
+   *
+   * @defaultValue `null`
+   */
   readonly entity_type?: string | null | undefined;
-  /** Filter by entity name — REQUIRES `entity_type` (`:8864`). */
+  /**
+   * Filter by entity name; requires `entity_type`.
+   *
+   * @defaultValue `null`
+   */
   readonly entity_name?: string | null | undefined;
 }
 
 /** Options bag of `Workspace.getSchemaEnforcement` (keyword-only). */
 export interface WorkspaceGetSchemaEnforcementOptions {
   /**
-   * Comma-separated field names to return (e.g. "ruleEvent,state");
-   * Python default `None` returns all fields.
+   * Comma-separated field names to return (e.g. `"ruleEvent,state"`).
+   *
+   * @defaultValue `null` (every field)
    */
   readonly fields?: string | null | undefined;
 }
 
 /** Options bag of `Workspace.listDataVolumeAnomalies` (keyword-only). */
 export interface WorkspaceListDataVolumeAnomaliesOptions {
-  /** Optional filters (status, limit, event_id, …); default `None`. */
+  /**
+   * Query-string filters (`status`, `limit`, `event_id`, …).
+   *
+   * @defaultValue `null`
+   */
   readonly query_params?: Readonly<Record<string, string>> | null | undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Schema Registry CRUD (`workspace.py:8651-8874`)
-// ---------------------------------------------------------------------------
+// --- Schema registry ---
 
 /**
- * List schema-registry entries (`list_schema_registry`,
- * `workspace.py:8654-8687`).
+ * List the schema-registry entries.
  *
  * @param client - The wire client.
- * @param options - `entity_type` filter (keyword-only in Python;
- *   forwarded as `null` when absent — the client owns the gate).
+ * @param options - Optional `entity_type` filter, forwarded as `null`
+ *   when absent (the client owns the gate).
  * @returns The `SchemaEntry` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | RateLimitError | QueryError |
- *   ServerError - Wire failures per the B0 contract.
+ * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
+ *   {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * const schemas = await ws.listSchemaRegistry({ entity_type: "event" });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_schema_registry
  */
 export async function listSchemaRegistry(
   client: MixpanelClient,
@@ -167,23 +113,36 @@ export async function listSchemaRegistry(
   const rawList = await client.listSchemaRegistry({
     entity_type: options.entity_type ?? null,
   });
-  return validateResponseModels(SchemaEntry, rawList.map(native), {
-    endpoint: "list_schema_registry",
-  });
+  return validateResponseModels(
+    SchemaEntry,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "list_schema_registry",
+    },
+  );
 }
 
 /**
- * Create a single schema definition (`create_schema`,
- * `workspace.py:8689-8720`) — the response is returned VERBATIM.
+ * Create a single schema definition and return the response verbatim.
  *
  * @param client - The wire client.
- * @param entityType - Entity type ("event", "custom_event", "profile").
- * @param entityName - Entity name (event name or "$user" for profile).
- * @param schemaJson - JSON Schema Draft 7 definition (no dump: the
- *   parameter is already a plain mapping).
- * @returns The created schema dict.
- * @throws AuthenticationError | QueryError | RateLimitError |
- *   ServerError - Wire failures.
+ * @param entityType - Entity type (`"event"`, `"custom_event"`,
+ *   `"profile"`).
+ * @param entityName - Entity name (an event name, or `"$user"` for
+ *   profiles).
+ * @param schemaJson - JSON Schema Draft 7 definition; passed through
+ *   without a model dump because it is already a plain mapping.
+ * @returns The created schema record.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} |
+ *   {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * await ws.createSchema("event", "Signup", {
+ *   type: "object",
+ *   properties: { plan: { type: "string" } },
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_schema
  */
 export async function createSchema(
   client: MixpanelClient,
@@ -192,18 +151,24 @@ export async function createSchema(
   schemaJson: Readonly<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
   const raw = await client.createSchema(entityType, entityName, schemaJson);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
- * Bulk-create schemas (`create_schemas_bulk`,
- * `workspace.py:8722-8758`).
+ * Create several schemas in one request.
  *
  * @param client - The wire client.
- * @param params - Bulk creation parameters (dumped with
- *   `exclude_none=True, by_alias=True`, `:8754`).
- * @returns The `added`/`deleted` counts.
- * @throws ResponseValidationError - Malformed payload.
+ * @param params - The entries to create, dumped with `exclude_none` and
+ *   `by_alias`.
+ * @returns The `added` / `deleted` counts.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const counts = await ws.createSchemasBulk(
+ *   new BulkCreateSchemasParams({ entries, truncate: false }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_schemas_bulk
  */
 export async function createSchemasBulk(
   client: MixpanelClient,
@@ -212,21 +177,26 @@ export async function createSchemasBulk(
   const raw = await client.createSchemasBulk(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(BulkCreateSchemasResponse, native(raw), {
+  return validateResponseModel(BulkCreateSchemasResponse, toNativeJson(raw), {
     endpoint: "create_schemas_bulk",
   });
 }
 
 /**
- * Update a single schema definition with merge semantics
- * (`update_schema`, `workspace.py:8760-8791`) — response VERBATIM.
+ * Merge a partial schema into an existing definition and return the
+ * response verbatim.
  *
  * @param client - The wire client.
  * @param entityType - Entity type.
  * @param entityName - Entity name.
- * @param schemaJson - Partial JSON Schema to merge with the existing one.
- * @returns The updated schema dict.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @param schemaJson - Partial JSON Schema to merge into the existing one.
+ * @returns The updated schema record.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * await ws.updateSchema("event", "Signup", { required: ["plan"] });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_schema
  */
 export async function updateSchema(
   client: MixpanelClient,
@@ -235,18 +205,24 @@ export async function updateSchema(
   schemaJson: Readonly<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
   const raw = await client.updateSchema(entityType, entityName, schemaJson);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
- * Bulk-update schemas, merge semantics per entry
- * (`update_schemas_bulk`, `workspace.py:8793-8828`).
+ * Merge several partial schemas in one request.
  *
  * @param client - The wire client.
- * @param params - Bulk update parameters (dumped with
- *   `exclude_none=True, by_alias=True`, `:8824`).
+ * @param params - The entries to merge, dumped with `exclude_none` and
+ *   `by_alias`.
  * @returns The per-entry results, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const results = await ws.updateSchemasBulk(
+ *   new BulkCreateSchemasParams({ entries }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_schemas_bulk
  */
 export async function updateSchemasBulk(
   client: MixpanelClient,
@@ -255,22 +231,33 @@ export async function updateSchemasBulk(
   const rawList = await client.updateSchemasBulk(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModels(BulkPatchResult, rawList.map(native), {
-    endpoint: "update_schemas_bulk",
-  });
+  return validateResponseModels(
+    BulkPatchResult,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "update_schemas_bulk",
+    },
+  );
 }
 
 /**
- * Delete schemas by entity type and/or name (`delete_schemas`,
- * `workspace.py:8830-8874`).
+ * Delete schemas by entity type and/or name.
  *
+ * @remarks
+ * `entity_name` without `entity_type` is refused before any request is
+ * made, because the server would interpret it as "delete every schema".
+ * The code is the constructor default `UNKNOWN_ERROR`, as in Python.
  * @param client - The wire client.
- * @param options - `entity_type` / `entity_name` filters (both
- *   keyword-only in Python).
+ * @param options - Optional `entity_type` / `entity_name` filters.
  * @returns The `delete_count` response.
- * @throws MixpanelHeadlessError - `entity_name` without `entity_type`
- *   (code `UNKNOWN_ERROR`; raised BEFORE any request, `:8864-8868`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - `entity_name` given without
+ *   `entity_type` (code `UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.deleteSchemas({ entity_type: "event", entity_name: "Signup" });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_schemas
  */
 export async function deleteSchemas(
   client: MixpanelClient,
@@ -288,23 +275,25 @@ export async function deleteSchemas(
     entity_type: entityType,
     entity_name: entityName,
   });
-  return validateResponseModel(DeleteSchemasResponse, native(raw), {
+  return validateResponseModel(DeleteSchemasResponse, toNativeJson(raw), {
     endpoint: "delete_schemas",
   });
 }
 
-// ---------------------------------------------------------------------------
-// Schema Enforcement (`workspace.py:8876-9024`)
-// ---------------------------------------------------------------------------
+// --- Schema enforcement ---
 
 /**
- * Get the current schema-enforcement configuration
- * (`get_schema_enforcement`, `workspace.py:8879-8911`).
+ * Fetch the current schema-enforcement configuration.
  *
  * @param client - The wire client.
- * @param options - `fields` filter (keyword-only in Python).
+ * @param options - Optional `fields` filter.
  * @returns The enforcement configuration.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const config = await ws.getSchemaEnforcement({ fields: "ruleEvent,state" });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_schema_enforcement
  */
 export async function getSchemaEnforcement(
   client: MixpanelClient,
@@ -313,20 +302,26 @@ export async function getSchemaEnforcement(
   const raw = await client.getSchemaEnforcement({
     fields: options.fields ?? null,
   });
-  return validateResponseModel(SchemaEnforcementConfig, native(raw), {
+  return validateResponseModel(SchemaEnforcementConfig, toNativeJson(raw), {
     endpoint: "get_schema_enforcement",
   });
 }
 
 /**
- * Initialize schema enforcement (`init_schema_enforcement`,
- * `workspace.py:8913-8941`) — response VERBATIM.
+ * Initialize schema enforcement and return the response verbatim.
  *
  * @param client - The wire client.
- * @param params - Init parameters (dumped with `exclude_none=True,
- *   by_alias=True`, `:8940`).
+ * @param params - Init parameters, dumped with `exclude_none` and
+ *   `by_alias`.
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * await ws.initSchemaEnforcement(
+ *   new InitSchemaEnforcementParams({ rule_event: "Signup" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.init_schema_enforcement
  */
 export async function initSchemaEnforcement(
   client: MixpanelClient,
@@ -335,19 +330,25 @@ export async function initSchemaEnforcement(
   const raw = await client.initSchemaEnforcement(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
- * Partially update the enforcement configuration
- * (`update_schema_enforcement`, `workspace.py:8943-8971`) — response
- * VERBATIM.
+ * Partially update the enforcement configuration and return the
+ * response verbatim.
  *
  * @param client - The wire client.
- * @param params - Partial update parameters (dumped with
- *   `exclude_none=True, by_alias=True`, `:8970`).
+ * @param params - The fields to change, dumped with `exclude_none` and
+ *   `by_alias`.
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * await ws.updateSchemaEnforcement(
+ *   new UpdateSchemaEnforcementParams({ notification_emails: ["data@example.com"] }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_schema_enforcement
  */
 export async function updateSchemaEnforcement(
   client: MixpanelClient,
@@ -356,19 +357,25 @@ export async function updateSchemaEnforcement(
   const raw = await client.updateSchemaEnforcement(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
- * Fully replace the enforcement configuration
- * (`replace_schema_enforcement`, `workspace.py:8973-9003`) — response
- * VERBATIM.
+ * Replace the whole enforcement configuration and return the response
+ * verbatim.
  *
  * @param client - The wire client.
- * @param params - Complete replacement parameters (dumped with
- *   `exclude_none=True, by_alias=True`, `:9002`).
+ * @param params - The complete replacement, dumped with `exclude_none`
+ *   and `by_alias`.
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * await ws.replaceSchemaEnforcement(
+ *   new ReplaceSchemaEnforcementParams({ events: [], common_properties: [] }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.replace_schema_enforcement
  */
 export async function replaceSchemaEnforcement(
   client: MixpanelClient,
@@ -377,51 +384,54 @@ export async function replaceSchemaEnforcement(
   const raw = await client.replaceSchemaEnforcement(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
- * Delete the enforcement configuration (`delete_schema_enforcement`,
- * `workspace.py:9005-9021`) — response VERBATIM.
+ * Delete the enforcement configuration and return the response
+ * verbatim.
  *
  * @param client - The wire client.
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * await ws.deleteSchemaEnforcement();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_schema_enforcement
  */
 export async function deleteSchemaEnforcement(
   client: MixpanelClient,
 ): Promise<Record<string, unknown>> {
   const raw = await client.deleteSchemaEnforcement();
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
-// ---------------------------------------------------------------------------
-// Data Auditing (`workspace.py:9026-9105`) — the shard's two composite
-// bodies, ported branch-for-branch.
-// ---------------------------------------------------------------------------
+// --- Data auditing ---
 
 /**
- * Unpack the `[violations, metadata]` array both audit members receive
- * (`workspace.py:9050-9067` and the identical `:9088-9104`).
+ * Assemble an `AuditResponse` from the `[violations, metadata]` array
+ * both audit members receive.
  *
- * Branch order mirrors Python exactly: empty list → an empty
- * `AuditResponse`; non-list first element → `MixpanelHeadlessError`;
- * otherwise validate each violation and read `computed_at` off the
- * metadata (absent / non-dict metadata → `{}` → `""`).
- *
- * @param raw - The client's raw 2-element array.
+ * @remarks
+ * Branch order mirrors Python: an empty list yields an empty
+ * `AuditResponse`; a non-list first element raises; otherwise every
+ * violation is validated and `computed_at` is read off the metadata
+ * (absent or non-dict metadata reads as `{}`, hence `""`).
+ * @param raw - The client's raw two-element array.
  * @param endpoint - The Python member name passed as `endpoint=`.
  * @returns The assembled `AuditResponse`.
- * @throws MixpanelHeadlessError - Non-list first element (code
+ * @throws {@link MixpanelHeadlessError} - Non-list first element (code
  *   `UNKNOWN_ERROR`).
- * @throws ResponseValidationError - A malformed violation entry.
+ * @throws {@link ResponseValidationError} - A malformed violation entry,
+ *   or a `computed_at` that is present but `null`.
  */
 function auditResponseFrom(
   raw: readonly JsonValue[],
   endpoint: string,
 ): AuditResponse {
-  // `if not raw:` over a list — an explicit emptiness check, never
-  // `if (!raw)` (watchlist #6).
+  // Python's `if not raw:` over a list — an explicit emptiness check,
+  // never `if (!raw)` (an empty array is truthy in JS).
   if (raw.length === 0) {
     return new AuditResponse({ violations: [], computed_at: "" });
   }
@@ -432,19 +442,26 @@ function auditResponseFrom(
         `got ${pythonTypeNameOf(head)}`,
     );
   }
-  const violations = validateResponseModels(AuditViolation, head.map(native), {
-    endpoint,
-  });
+  const violations = validateResponseModels(
+    AuditViolation,
+    head.map((item) => toNativeJson(item)),
+    {
+      endpoint,
+    },
+  );
   // `raw[1] if len(raw) > 1 and isinstance(raw[1], dict) else {}` —
-  // prototype discrimination, never `typeof` (watchlist #13).
-  const second = raw.length > 1 ? raw[1] : undefined;
+  // prototype discrimination, never `typeof`.
+  const second = raw[1];
   const metadata = isPlainRecord(second)
-    ? (native(second) as Record<string, unknown>)
+    ? (toNativeJson(second) as Record<string, unknown>)
     : {};
+  // `metadata.get("computed_at", "")` — the default fires on absence
+  // only, so a recorded `null` reaches the model.
+  // Divergence: on `{"computed_at": null}` Python leaks a bare
+  // `pydantic.ValidationError`; the port raises the standard
+  // `ResponseValidationError` / `RESPONSE_VALIDATION_ERROR` (PORTING.md).
   return new AuditResponse({
     violations,
-    // `metadata.get("computed_at", "")` — the default fires on ABSENCE
-    // only (a recorded `null` reaches the model; see W8-D2).
     computed_at: (Object.hasOwn(metadata, "computed_at")
       ? metadata["computed_at"]
       : "") as string,
@@ -452,14 +469,19 @@ function auditResponseFrom(
 }
 
 /**
- * Run a full data audit — events plus properties (`run_audit`,
- * `workspace.py:9029-9067`).
+ * Run a full data audit — events plus properties.
  *
  * @param client - The wire client.
- * @returns The audit response (violations + `computed_at`).
- * @throws MixpanelHeadlessError - Unexpected audit-response shape.
- * @throws ResponseValidationError - A malformed violation entry.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @returns The audit response (violations plus `computed_at`).
+ * @throws {@link MixpanelHeadlessError} - Unexpected audit-response shape.
+ * @throws {@link ResponseValidationError} - A malformed violation entry.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * const audit = await ws.runAudit();
+ * console.log(audit.violations.length, audit.computed_at);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.run_audit
  */
 export async function runAudit(client: MixpanelClient): Promise<AuditResponse> {
   const raw = await client.runAudit();
@@ -467,14 +489,18 @@ export async function runAudit(client: MixpanelClient): Promise<AuditResponse> {
 }
 
 /**
- * Run an events-only data audit (`run_audit_events_only`,
- * `workspace.py:9069-9103`).
+ * Run an events-only data audit.
  *
  * @param client - The wire client.
  * @returns The audit response (event violations only).
- * @throws MixpanelHeadlessError - Unexpected audit-response shape.
- * @throws ResponseValidationError - A malformed violation entry.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link MixpanelHeadlessError} - Unexpected audit-response shape.
+ * @throws {@link ResponseValidationError} - A malformed violation entry.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * const audit = await ws.runAuditEventsOnly();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.run_audit_events_only
  */
 export async function runAuditEventsOnly(
   client: MixpanelClient,
@@ -483,18 +509,22 @@ export async function runAuditEventsOnly(
   return auditResponseFrom(raw, "run_audit_events_only");
 }
 
-// ---------------------------------------------------------------------------
-// Data Volume Anomalies (`workspace.py:9107-9199`)
-// ---------------------------------------------------------------------------
+// --- Data-volume anomalies ---
 
 /**
- * List detected data-volume anomalies (`list_data_volume_anomalies`,
- * `workspace.py:9110-9141`).
+ * List the detected data-volume anomalies.
  *
  * @param client - The wire client.
- * @param options - `query_params` filters (keyword-only in Python).
+ * @param options - Optional `query_params` filters.
  * @returns The `DataVolumeAnomaly` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const anomalies = await ws.listDataVolumeAnomalies({
+ *   query_params: { status: "open" },
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_data_volume_anomalies
  */
 export async function listDataVolumeAnomalies(
   client: MixpanelClient,
@@ -503,38 +533,54 @@ export async function listDataVolumeAnomalies(
   const rawList = await client.listDataVolumeAnomalies({
     query_params: options.query_params ?? null,
   });
-  return validateResponseModels(DataVolumeAnomaly, rawList.map(native), {
-    endpoint: "list_data_volume_anomalies",
-  });
+  return validateResponseModels(
+    DataVolumeAnomaly,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "list_data_volume_anomalies",
+    },
+  );
 }
 
 /**
- * Update the status of a single anomaly (`update_anomaly`,
- * `workspace.py:9143-9169`) — response VERBATIM.
+ * Update the status of a single anomaly and return the response
+ * verbatim.
  *
  * @param client - The wire client.
- * @param params - Update parameters (the PLAIN `model_dump(
- *   by_alias=True)` at `:9169` — `None`s are KEPT, W8-D1).
+ * @param params - Update parameters, dumped with `by_alias` but without
+ *   `exclude_none` — Python keeps the `None` values here.
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * await ws.updateAnomaly(new UpdateAnomalyParams({ id: 17, status: "resolved" }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_anomaly
  */
 export async function updateAnomaly(
   client: MixpanelClient,
   params: UpdateAnomalyParams,
 ): Promise<Record<string, unknown>> {
   const raw = await client.updateAnomaly(params.modelDump({ byAlias: true }));
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
- * Bulk-update anomaly statuses (`bulk_update_anomalies`,
- * `workspace.py:9171-9198`) — response VERBATIM.
+ * Update the status of several anomalies and return the response
+ * verbatim.
  *
  * @param client - The wire client.
- * @param params - Bulk update parameters (the PLAIN `model_dump(
- *   by_alias=True)` at `:9198` — `None`s are KEPT, W8-D1).
+ * @param params - Bulk update parameters, dumped with `by_alias` but
+ *   without `exclude_none` — Python keeps the `None` values here.
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * await ws.bulkUpdateAnomalies(
+ *   new BulkUpdateAnomalyParams({ anomalies: [{ id: 17 }], status: "resolved" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.bulk_update_anomalies
  */
 export async function bulkUpdateAnomalies(
   client: MixpanelClient,
@@ -543,39 +589,56 @@ export async function bulkUpdateAnomalies(
   const raw = await client.bulkUpdateAnomalies(
     params.modelDump({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
-// ---------------------------------------------------------------------------
-// Event Deletion Requests (`workspace.py:9201-9331`)
-// ---------------------------------------------------------------------------
+// --- Event deletion requests ---
 
 /**
- * List all event deletion requests (`list_deletion_requests`,
- * `workspace.py:9204-9227`).
+ * List every event deletion request.
  *
  * @param client - The wire client.
  * @returns The `EventDeletionRequest` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const requests = await ws.listDeletionRequests();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_deletion_requests
  */
 export async function listDeletionRequests(
   client: MixpanelClient,
 ): Promise<EventDeletionRequest[]> {
   const rawList = await client.listDeletionRequests();
-  return validateResponseModels(EventDeletionRequest, rawList.map(native), {
-    endpoint: "list_deletion_requests",
-  });
+  return validateResponseModels(
+    EventDeletionRequest,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "list_deletion_requests",
+    },
+  );
 }
 
 /**
- * Create a new event deletion request (`create_deletion_request`,
- * `workspace.py:9229-9266`) — the API returns the updated FULL list.
+ * Create an event deletion request. The API answers with the full,
+ * updated list of requests.
  *
  * @param client - The wire client.
- * @param params - Deletion parameters (dumped with
- *   `exclude_none=True, by_alias=True`, `:9262`).
+ * @param params - Deletion parameters, dumped with `exclude_none` and
+ *   `by_alias`.
  * @returns Every deletion request after creation.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const requests = await ws.createDeletionRequest(
+ *   new CreateDeletionRequestParams({
+ *     event_name: "Legacy Signup",
+ *     from_date: "2025-01-01",
+ *     to_date: "2025-01-31",
+ *   }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_deletion_request
  */
 export async function createDeletionRequest(
   client: MixpanelClient,
@@ -584,41 +647,59 @@ export async function createDeletionRequest(
   const rawList = await client.createDeletionRequest(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModels(EventDeletionRequest, rawList.map(native), {
-    endpoint: "create_deletion_request",
-  });
+  return validateResponseModels(
+    EventDeletionRequest,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "create_deletion_request",
+    },
+  );
 }
 
 /**
- * Cancel a pending deletion request (`cancel_deletion_request`,
- * `workspace.py:9268-9294`) — the API returns the updated FULL list.
+ * Cancel a pending deletion request. The API answers with the full,
+ * updated list of requests.
  *
  * @param client - The wire client.
- * @param requestId - Deletion request ID to cancel (positional in
- *   Python).
+ * @param requestId - Id of the deletion request to cancel.
  * @returns Every deletion request after cancellation.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const requests = await ws.cancelDeletionRequest(310);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.cancel_deletion_request
  */
 export async function cancelDeletionRequest(
   client: MixpanelClient,
   requestId: number,
 ): Promise<EventDeletionRequest[]> {
   const rawList = await client.cancelDeletionRequest(requestId);
-  return validateResponseModels(EventDeletionRequest, rawList.map(native), {
-    endpoint: "cancel_deletion_request",
-  });
+  return validateResponseModels(
+    EventDeletionRequest,
+    rawList.map((item) => toNativeJson(item)),
+    {
+      endpoint: "cancel_deletion_request",
+    },
+  );
 }
 
 /**
- * Preview what events a deletion filter would match
- * (`preview_deletion_filters`, `workspace.py:9296-9331`) — read-only,
- * and the list is returned VERBATIM (no model validation).
+ * Preview which events a deletion filter would match. Read-only; the
+ * list is returned verbatim without model validation.
  *
  * @param client - The wire client.
- * @param params - Preview parameters (dumped with
- *   `exclude_none=True, by_alias=True`, `:9329`).
- * @returns The expanded/normalized filters.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @param params - Preview parameters, dumped with `exclude_none` and
+ *   `by_alias`.
+ * @returns The expanded, normalized filters.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * const preview = await ws.previewDeletionFilters(
+ *   new PreviewDeletionFiltersParams({ event_name: "Legacy Signup" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.preview_deletion_filters
  */
 export async function previewDeletionFilters(
   client: MixpanelClient,
@@ -627,5 +708,7 @@ export async function previewDeletionFilters(
   const rawList = await client.previewDeletionFilters(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return rawList.map(native) as Array<Record<string, unknown>>;
+  return rawList.map((item) => toNativeJson(item)) as Array<
+    Record<string, unknown>
+  >;
 }

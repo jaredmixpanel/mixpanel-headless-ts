@@ -1,8 +1,11 @@
-// invariant() tests (R6.8): throws the hierarchy base on violation,
-// narrows the condition type on success.
+// `invariant()`: throws the hierarchy base on violation and narrows the
+// condition type on success. TS-only helper; no Python twin.
+
 import { describe, expect, it } from "vitest";
+
 import { MixpanelHeadlessError } from "../src/errors.js";
 import { invariant } from "../src/invariant.js";
+import { expectThrows } from "../test-support/raises.js";
 
 describe("invariant", () => {
   it("passes silently on truthy conditions", () => {
@@ -12,15 +15,16 @@ describe("invariant", () => {
   });
 
   it("throws MixpanelHeadlessError (code UNKNOWN_ERROR) on falsy", () => {
-    try {
-      invariant(false, "the invariant text");
-      expect.unreachable();
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(MixpanelHeadlessError);
-      const err = exc as MixpanelHeadlessError;
-      expect(err.code).toBe("UNKNOWN_ERROR");
-      expect(err.message).toBe("the invariant text");
-    }
+    // Widened so the `asserts` signature does not mark the next line
+    // unreachable (allowUnreachableCode: false).
+    const condition = false as boolean;
+    const error = expectThrows(() =>
+      invariant(condition, "the invariant text"),
+    );
+    expect(error).toBeInstanceOf(MixpanelHeadlessError);
+    const err = error as MixpanelHeadlessError;
+    expect(err.code).toBe("UNKNOWN_ERROR");
+    expect(err.message).toBe("the invariant text");
   });
 
   it("throws on every falsy JS value", () => {

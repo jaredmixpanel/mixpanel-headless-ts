@@ -1,17 +1,20 @@
-// Layer-3 translation — Phase-3 packet B4-C3 entity-CRUD locks.
-// Source: tests/unit/test_api_client_crud.py (ALL classes —
-// dashboards/blueprints/RCA/advanced, bookmarks v2, cohorts App API).
-//
-// The Python fixture builds an oauth_token session
-// (make_session(project_id="12345", region="us",
-// oauth_token="test-oauth-token")); `with client:` context blocks are
+// Entity CRUD through the assembled client: dashboards (organisation,
+// blueprints, RCA/advanced), bookmarks v2 (CRUD, bulk ops, history) and
+// cohorts on the App API. Mirrors every class of
+// tests/unit/test_api_client_crud.py; Python's `with client:` blocks are
 // plain awaits here (the TS client needs no enter/exit around calls).
-import { describe, expect, it } from "vitest";
-import { toNativeJson } from "../../src/client/json-value.js";
-import { createMockClient, makeSession } from "./client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
-/** The `oauth_credentials` fixture twin (test_api_client_crud.py:31-34). */
+import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
+import { toNativeJson } from "../../src/client/json-value.js";
+import {
+  createMockClient,
+  makeSession,
+  parseBody,
+} from "../../test-support/client-test-helpers.js";
+
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -20,13 +23,10 @@ function oauthCredentials(): Session {
   });
 }
 
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
-}
-
-describe("TestListDashboards", () => {
-  it("test_returns_dashboard_list", async () => {
+describe("List dashboards", () => {
+  // python: TestListDashboards
+  it("returns dashboard list", async () => {
+    // python: test_returns_dashboard_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -45,20 +45,20 @@ describe("TestListDashboards", () => {
     expect(result[1]?.["title"]).toBe("Dashboard 2");
   });
 
-  it("test_filters_by_ids", async () => {
+  it("filters by IDs", async () => {
+    // python: test_filters_by_ids
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
       return { status: 200, json: { status: "ok", results: [] } };
     });
     await client.listDashboards({ ids: [1, 2] });
-    expect(
-      capturedUrls[0]?.includes("ids=1%2C2") ||
-        capturedUrls[0]?.includes("ids=1,2"),
-    ).toBe(true);
+    const url = capturedUrls[0] ?? "";
+    expect(url.includes("ids=1%2C2") || url.includes("ids=1,2")).toBe(true);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -68,18 +68,21 @@ describe("TestListDashboards", () => {
     expect(capturedUrls[0]).toContain("/projects/12345/dashboards");
   });
 
-  it("test_empty_result", async () => {
+  it("empty result", async () => {
+    // python: test_empty_result
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
     }));
     const result = await client.listDashboards();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 });
 
-describe("TestCreateDashboard", () => {
-  it("test_creates_dashboard", async () => {
+describe("Create dashboard", () => {
+  // python: TestCreateDashboard
+  it("creates dashboard", async () => {
+    // python: test_creates_dashboard
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -92,13 +95,15 @@ describe("TestCreateDashboard", () => {
       await client.createDashboard({ title: "New" }),
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("POST");
-    expect(captured[0]?.[1]).toEqual({ title: "New" });
+    expect(captured[0]?.[1]).toStrictEqual({ title: "New" });
     expect(result["id"]).toBe(1);
   });
 });
 
-describe("TestGetDashboard", () => {
-  it("test_gets_dashboard_by_id", async () => {
+describe("Get dashboard", () => {
+  // python: TestGetDashboard
+  it("gets dashboard by ID", async () => {
+    // python: test_gets_dashboard_by_id
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -116,8 +121,10 @@ describe("TestGetDashboard", () => {
   });
 });
 
-describe("TestUpdateDashboard", () => {
-  it("test_updates_dashboard", async () => {
+describe("Update dashboard", () => {
+  // python: TestUpdateDashboard
+  it("updates dashboard", async () => {
+    // python: test_updates_dashboard
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -134,8 +141,10 @@ describe("TestUpdateDashboard", () => {
   });
 });
 
-describe("TestDeleteDashboard", () => {
-  it("test_deletes_dashboard", async () => {
+describe("Delete dashboard", () => {
+  // python: TestDeleteDashboard
+  it("deletes dashboard", async () => {
+    // python: test_deletes_dashboard
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -146,8 +155,10 @@ describe("TestDeleteDashboard", () => {
   });
 });
 
-describe("TestBulkDeleteDashboards", () => {
-  it("test_bulk_deletes_dashboards", async () => {
+describe("Bulk delete dashboards", () => {
+  // python: TestBulkDeleteDashboards
+  it("bulk deletes dashboards", async () => {
+    // python: test_bulk_deletes_dashboards
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -156,12 +167,14 @@ describe("TestBulkDeleteDashboards", () => {
     await client.bulkDeleteDashboards([1, 2, 3]);
     expect(captured[0]?.[0]).toBe("POST");
     expect(captured[0]?.[1]).toContain("/dashboards/bulk-delete");
-    expect(captured[0]?.[2]).toEqual({ dashboard_ids: [1, 2, 3] });
+    expect(captured[0]?.[2]).toStrictEqual({ dashboard_ids: [1, 2, 3] });
   });
 });
 
-describe("TestDashboardOrganization", () => {
-  it("test_favorite_dashboard", async () => {
+describe("Dashboard organization", () => {
+  // python: TestDashboardOrganization
+  it("favorite dashboard", async () => {
+    // python: test_favorite_dashboard
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -172,7 +185,8 @@ describe("TestDashboardOrganization", () => {
     expect(captured[0]?.[1]).toContain("/dashboards/1/favorites");
   });
 
-  it("test_unfavorite_dashboard", async () => {
+  it("unfavorite dashboard", async () => {
+    // python: test_unfavorite_dashboard
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -183,7 +197,8 @@ describe("TestDashboardOrganization", () => {
     expect(captured[0]?.[1]).toContain("/dashboards/1/favorites");
   });
 
-  it("test_pin_dashboard", async () => {
+  it("pin dashboard", async () => {
+    // python: test_pin_dashboard
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -194,7 +209,8 @@ describe("TestDashboardOrganization", () => {
     expect(captured[0]?.[1]).toContain("/dashboards/1/pin");
   });
 
-  it("test_unpin_dashboard", async () => {
+  it("unpin dashboard", async () => {
+    // python: test_unpin_dashboard
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -205,7 +221,8 @@ describe("TestDashboardOrganization", () => {
     expect(captured[0]?.[1]).toContain("/dashboards/1/pin");
   });
 
-  it("test_remove_report_from_dashboard", async () => {
+  it("remove report from dashboard", async () => {
+    // python: test_remove_report_from_dashboard
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -219,7 +236,7 @@ describe("TestDashboardOrganization", () => {
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("PATCH");
     expect(captured[0]?.[1]).toContain("/dashboards/1");
-    expect(captured[0]?.[2]).toEqual({
+    expect(captured[0]?.[2]).toStrictEqual({
       content: {
         action: "delete",
         content_type: "report",
@@ -230,7 +247,8 @@ describe("TestDashboardOrganization", () => {
     expect(result["id"]).toBe(1);
   });
 
-  it("test_add_report_to_dashboard", async () => {
+  it("add report to dashboard", async () => {
+    // python: test_add_report_to_dashboard
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -244,7 +262,7 @@ describe("TestDashboardOrganization", () => {
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("PATCH");
     expect(captured[0]?.[1]).toContain("/dashboards/1");
-    expect(captured[0]?.[2]).toEqual({
+    expect(captured[0]?.[2]).toStrictEqual({
       content: {
         action: "create",
         content_type: "report",
@@ -256,8 +274,10 @@ describe("TestDashboardOrganization", () => {
   });
 });
 
-describe("TestBlueprintOperations", () => {
-  it("test_list_blueprint_templates", async () => {
+describe("Blueprint operations", () => {
+  // python: TestBlueprintOperations
+  it("list blueprint templates", async () => {
+    // python: test_list_blueprint_templates
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -272,7 +292,8 @@ describe("TestBlueprintOperations", () => {
     expect(result[0]?.["title_key"]).toBe("onboarding");
   });
 
-  it("test_list_blueprint_templates_with_reports", async () => {
+  it("list blueprint templates with reports", async () => {
+    // python: test_list_blueprint_templates_with_reports
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -282,7 +303,8 @@ describe("TestBlueprintOperations", () => {
     expect(capturedUrls[0]).toContain("include_reports=true");
   });
 
-  it("test_list_blueprint_templates_dict_of_dicts", async () => {
+  it("list blueprint templates dict of dicts", async () => {
+    // python: test_list_blueprint_templates_dict_of_dicts
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -300,12 +322,13 @@ describe("TestBlueprintOperations", () => {
     >;
     expect(result).toHaveLength(2);
     const names = new Set(result.map((t) => t["name"]));
-    expect(names).toEqual(new Set(["onboarding", "marketing"]));
+    expect(names).toStrictEqual(new Set(["onboarding", "marketing"]));
     const onboarding = result.find((t) => t["name"] === "onboarding");
     expect(onboarding?.["title_key"]).toBe("Get Started");
   });
 
-  it("test_update_blueprint_cohorts", async () => {
+  it("update blueprint cohorts", async () => {
+    // python: test_update_blueprint_cohorts
     const captured: unknown[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push(parseBody(request.bodyText));
@@ -314,12 +337,13 @@ describe("TestBlueprintOperations", () => {
     await client.updateBlueprintCohorts([
       { placeholder: "new_users", cohort_id: 42 },
     ]);
-    expect(captured[0]).toEqual({
+    expect(captured[0]).toStrictEqual({
       cohorts: [{ placeholder: "new_users", cohort_id: 42 }],
     });
   });
 
-  it("test_create_blueprint", async () => {
+  it("create blueprint", async () => {
+    // python: test_create_blueprint
     const captured: unknown[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push(parseBody(request.bodyText));
@@ -331,11 +355,12 @@ describe("TestBlueprintOperations", () => {
     const result = toNativeJson(
       await client.createBlueprint("onboarding"),
     ) as Record<string, unknown>;
-    expect(captured[0]).toEqual({ template_type: "onboarding" });
+    expect(captured[0]).toStrictEqual({ template_type: "onboarding" });
     expect(result["id"]).toBe(1);
   });
 
-  it("test_get_blueprint_config", async () => {
+  it("get blueprint config", async () => {
+    // python: test_get_blueprint_config
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { variables: { event: "Signup" } } },
@@ -347,7 +372,8 @@ describe("TestBlueprintOperations", () => {
     expect(result["variables"]?.["event"]).toBe("Signup");
   });
 
-  it("test_finalize_blueprint", async () => {
+  it("finalize blueprint", async () => {
+    // python: test_finalize_blueprint
     const captured: Array<Record<string, unknown>> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push(parseBody(request.bodyText) as Record<string, unknown>);
@@ -367,8 +393,10 @@ describe("TestBlueprintOperations", () => {
   });
 });
 
-describe("TestDashboardAdvanced", () => {
-  it("test_create_rca_dashboard", async () => {
+describe("Dashboard advanced", () => {
+  // python: TestDashboardAdvanced
+  it("create rca dashboard", async () => {
+    // python: test_create_rca_dashboard
     const captured: Array<Record<string, unknown>> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push(parseBody(request.bodyText) as Record<string, unknown>);
@@ -387,16 +415,18 @@ describe("TestDashboardAdvanced", () => {
     expect(result["id"]).toBe(99);
   });
 
-  it("test_get_bookmark_dashboard_ids", async () => {
+  it("get bookmark dashboard IDs", async () => {
+    // python: test_get_bookmark_dashboard_ids
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [1, 2, 3] },
     }));
     const result = toNativeJson(await client.getBookmarkDashboardIds(42));
-    expect(result).toEqual([1, 2, 3]);
+    expect(result).toStrictEqual([1, 2, 3]);
   });
 
-  it("test_get_dashboard_erf", async () => {
+  it("get dashboard erf", async () => {
+    // python: test_get_dashboard_erf
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { metrics: [] } },
@@ -408,7 +438,8 @@ describe("TestDashboardAdvanced", () => {
     expect(Object.hasOwn(result, "metrics")).toBe(true);
   });
 
-  it("test_update_report_link", async () => {
+  it("update report link", async () => {
+    // python: test_update_report_link
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -417,10 +448,11 @@ describe("TestDashboardAdvanced", () => {
     await client.updateReportLink(1, 42, { type: "embedded" });
     expect(captured[0]?.[0]).toBe("PATCH");
     expect(captured[0]?.[1]).toContain("/dashboards/1/report-links/42");
-    expect(captured[0]?.[2]).toEqual({ type: "embedded" });
+    expect(captured[0]?.[2]).toStrictEqual({ type: "embedded" });
   });
 
-  it("test_update_text_card", async () => {
+  it("update text card", async () => {
+    // python: test_update_text_card
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -429,12 +461,14 @@ describe("TestDashboardAdvanced", () => {
     await client.updateTextCard(1, 99, { markdown: "# Hello" });
     expect(captured[0]?.[0]).toBe("PATCH");
     expect(captured[0]?.[1]).toContain("/dashboards/1/text-cards/99");
-    expect(captured[0]?.[2]).toEqual({ markdown: "# Hello" });
+    expect(captured[0]?.[2]).toStrictEqual({ markdown: "# Hello" });
   });
 });
 
-describe("TestListBookmarksV2", () => {
-  it("test_returns_bookmark_list", async () => {
+describe("List bookmarks V2", () => {
+  // python: TestListBookmarksV2
+  it("returns bookmark list", async () => {
+    // python: test_returns_bookmark_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -452,7 +486,8 @@ describe("TestListBookmarksV2", () => {
     expect(result[0]?.["name"]).toBe("Report 1");
   });
 
-  it("test_filters_by_type", async () => {
+  it("filters by type", async () => {
+    // python: test_filters_by_type
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -462,7 +497,8 @@ describe("TestListBookmarksV2", () => {
     expect(capturedUrls[0]).toContain("type=funnels");
   });
 
-  it("test_filters_by_ids", async () => {
+  it("filters by IDs", async () => {
+    // python: test_filters_by_ids
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -473,8 +509,10 @@ describe("TestListBookmarksV2", () => {
   });
 });
 
-describe("TestBookmarkCRUD", () => {
-  it("test_create_bookmark", async () => {
+describe("Bookmark CRUD", () => {
+  // python: TestBookmarkCRUD
+  it("create bookmark", async () => {
+    // python: test_create_bookmark
     const captured: Array<Record<string, unknown>> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push(parseBody(request.bodyText) as Record<string, unknown>);
@@ -497,7 +535,8 @@ describe("TestBookmarkCRUD", () => {
     expect(captured[0]?.["name"]).toBe("New Report");
   });
 
-  it("test_get_bookmark", async () => {
+  it("get bookmark", async () => {
+    // python: test_get_bookmark
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -514,7 +553,8 @@ describe("TestBookmarkCRUD", () => {
     expect(result["id"]).toBe(42);
   });
 
-  it("test_update_bookmark", async () => {
+  it("update bookmark", async () => {
+    // python: test_update_bookmark
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -530,7 +570,8 @@ describe("TestBookmarkCRUD", () => {
     expect(result["name"]).toBe("Updated");
   });
 
-  it("test_delete_bookmark", async () => {
+  it("delete bookmark", async () => {
+    // python: test_delete_bookmark
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -540,7 +581,8 @@ describe("TestBookmarkCRUD", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_bulk_delete_bookmarks", async () => {
+  it("bulk delete bookmarks", async () => {
+    // python: test_bulk_delete_bookmarks
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -549,29 +591,34 @@ describe("TestBookmarkCRUD", () => {
     await client.bulkDeleteBookmarks([1, 2]);
     expect(captured[0]?.[0]).toBe("POST");
     expect(captured[0]?.[1]).toContain("/bookmarks/bulk-delete");
-    expect(captured[0]?.[2]).toEqual({ bookmark_ids: [1, 2] });
+    expect(captured[0]?.[2]).toStrictEqual({ bookmark_ids: [1, 2] });
   });
 
-  it("test_bulk_update_bookmarks", async () => {
+  it("bulk update bookmarks", async () => {
+    // python: test_bulk_update_bookmarks
     const captured: unknown[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push(parseBody(request.bodyText));
       return { status: 204 };
     });
     await client.bulkUpdateBookmarks([{ id: 1, name: "Renamed" }]);
-    expect(captured[0]).toEqual({ bookmarks: [{ id: 1, name: "Renamed" }] });
+    expect(captured[0]).toStrictEqual({
+      bookmarks: [{ id: 1, name: "Renamed" }],
+    });
   });
 
-  it("test_bookmark_linked_dashboard_ids", async () => {
+  it("bookmark linked dashboard IDs", async () => {
+    // python: test_bookmark_linked_dashboard_ids
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [10, 20, 30] },
     }));
     const result = toNativeJson(await client.bookmarkLinkedDashboardIds(1));
-    expect(result).toEqual([10, 20, 30]);
+    expect(result).toStrictEqual([10, 20, 30]);
   });
 
-  it("test_get_bookmark_history", async () => {
+  it("get bookmark history", async () => {
+    // python: test_get_bookmark_history
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -589,7 +636,8 @@ describe("TestBookmarkCRUD", () => {
     expect(Object.hasOwn(result, "results")).toBe(true);
   });
 
-  it("test_get_bookmark_history_with_pagination", async () => {
+  it("get bookmark history with pagination", async () => {
+    // python: test_get_bookmark_history_with_pagination
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -606,7 +654,8 @@ describe("TestBookmarkCRUD", () => {
     expect(capturedUrls[0]).toContain("page_size=10");
   });
 
-  it("test_get_bookmark_history_preserves_pagination", async () => {
+  it("get bookmark history preserves pagination", async () => {
+    // python: test_get_bookmark_history_preserves_pagination
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -632,8 +681,10 @@ describe("TestBookmarkCRUD", () => {
   });
 });
 
-describe("TestListCohortsApp", () => {
-  it("test_returns_cohort_list", async () => {
+describe("List cohorts app", () => {
+  // python: TestListCohortsApp
+  it("returns cohort list", async () => {
+    // python: test_returns_cohort_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -651,7 +702,8 @@ describe("TestListCohortsApp", () => {
     expect(result[0]?.["name"]).toBe("Power Users");
   });
 
-  it("test_filters_by_data_group_id", async () => {
+  it("filters by data group ID", async () => {
+    // python: test_filters_by_data_group_id
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -661,7 +713,8 @@ describe("TestListCohortsApp", () => {
     expect(capturedUrls[0]).toContain("data_group_id=abc");
   });
 
-  it("test_filters_by_ids", async () => {
+  it("filters by IDs", async () => {
+    // python: test_filters_by_ids
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -672,8 +725,10 @@ describe("TestListCohortsApp", () => {
   });
 });
 
-describe("TestCohortCRUD", () => {
-  it("test_get_cohort", async () => {
+describe("Cohort CRUD", () => {
+  // python: TestCohortCRUD
+  it("get cohort", async () => {
+    // python: test_get_cohort
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -690,7 +745,8 @@ describe("TestCohortCRUD", () => {
     expect(result["id"]).toBe(42);
   });
 
-  it("test_create_cohort", async () => {
+  it("create cohort", async () => {
+    // python: test_create_cohort
     const captured: Array<Record<string, unknown>> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push(parseBody(request.bodyText) as Record<string, unknown>);
@@ -706,7 +762,8 @@ describe("TestCohortCRUD", () => {
     expect(captured[0]?.["name"]).toBe("New Cohort");
   });
 
-  it("test_update_cohort", async () => {
+  it("update cohort", async () => {
+    // python: test_update_cohort
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -722,7 +779,8 @@ describe("TestCohortCRUD", () => {
     expect(result["name"]).toBe("Updated");
   });
 
-  it("test_delete_cohort", async () => {
+  it("delete cohort", async () => {
+    // python: test_delete_cohort
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -732,7 +790,8 @@ describe("TestCohortCRUD", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_bulk_delete_cohorts", async () => {
+  it("bulk delete cohorts", async () => {
+    // python: test_bulk_delete_cohorts
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -741,16 +800,19 @@ describe("TestCohortCRUD", () => {
     await client.bulkDeleteCohorts([1, 2]);
     expect(captured[0]?.[0]).toBe("POST");
     expect(captured[0]?.[1]).toContain("/cohorts/bulk-delete");
-    expect(captured[0]?.[2]).toEqual({ cohort_ids: [1, 2] });
+    expect(captured[0]?.[2]).toStrictEqual({ cohort_ids: [1, 2] });
   });
 
-  it("test_bulk_update_cohorts", async () => {
+  it("bulk update cohorts", async () => {
+    // python: test_bulk_update_cohorts
     const captured: unknown[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push(parseBody(request.bodyText));
       return { status: 204 };
     });
     await client.bulkUpdateCohorts([{ id: 1, name: "Renamed" }]);
-    expect(captured[0]).toEqual({ cohorts: [{ id: 1, name: "Renamed" }] });
+    expect(captured[0]).toStrictEqual({
+      cohorts: [{ id: 1, name: "Renamed" }],
+    });
   });
 });

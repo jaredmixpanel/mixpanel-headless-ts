@@ -1,0 +1,15 @@
+// Repo maintenance scripts (plain ESM `.mjs`). `allowJs` puts them in a
+// project so tooling (typed lint via projectService) can see them.
+// `checkJs` is off: the scripts carry JSDoc for readers, not type
+// annotations for the checker (untyped callback parameters would be
+// implicit-any errors), and the tests under tests/ exercise them.
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["node"]
+  },
+  "include": ["**/*.mjs", "**/*.d.mts"]
+}

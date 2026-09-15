@@ -1,39 +1,31 @@
-// PERMANENT promotion of the B7-A2 R10.9 harness's full-precedence-
-// chain coverage (`throwaway/b7-a2/resolver-truth.ts`, gate-deleted),
-// per the pair-A arbiter ruling `b7-reviewA-resolution.md` ASR-F3:
-// under the no-second-oracle auth posture (playbook Risk 7) the batch
-// must keep a randomized env > param > target > bridge > config lock
-// after gate cleanup. This file is a SPEC-CITED ADDITION, not a Python
-// translation — `tests/pbt/test_resolver_pbt.py` carries only 5 narrow
-// single-source properties (mirrored 1:1 in `resolver.pbt.test.ts`);
-// the exhaustive per-axis bitmaps and the 15-dimension full-chain fuzz
-// below exist only on the TS side as a compensating control.
-//
-// Winner oracle = the independent `firstPresent` mini-model (never the
-// library's own chain code). Seed pinned to the harness RUN record
-// (20260816) for determinism; failures reproduce byte-identically.
+// Full env > param > target > bridge > config precedence lock for the
+// resolver: exhaustive per-axis presence bitmaps plus a 15-dimension
+// randomized full-chain fuzz, each judged by the independent `firstPresent`
+// mini-model, never the library's own chain code. TS addition — the Python
+// `test_resolver_pbt.py` properties live in `resolver.pbt.test.ts`.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
+import { type Account, parseAccount } from "../../src/auth/account.js";
 import {
+  type BridgeView,
   envWorkspaceId,
   resolveAccountAxis,
   resolveProjectAxis,
-  resolveSession,
-  type BridgeView,
   type ResolverConfigSource,
   type ResolverEnv,
   type ResolverSources,
+  resolveSession,
 } from "../../src/auth/resolver.js";
-import { parseAccount, type Account } from "../../src/auth/account.js";
 import type { ActiveSession } from "../../src/auth/session.js";
-import { Target } from "../../src/types/entities/accounts.js";
 import {
   AccountNotFoundError,
   ConfigError,
   MixpanelHeadlessError,
   ParamValidationError,
 } from "../../src/errors.js";
+import { Target } from "../../src/types/entities/accounts.js";
 
 /**
  * Run a thunk, capture the thrown error's class + code.
@@ -127,9 +119,9 @@ function sa(name: string, defaultProject?: string): Account {
     region: "us",
     username: "u",
     secret: "s",
-    ...(defaultProject !== undefined
-      ? { default_project: defaultProject }
-      : {}),
+    ...(defaultProject === undefined
+      ? {}
+      : { default_project: defaultProject }),
   });
 }
 
@@ -213,7 +205,7 @@ describe("account axis — 2^6 exhaustive presence bitmap vs firstPresent", () =
       expect(
         resolved === null ? null : resolved.name,
         `account-axis mask=${String(mask)}`,
-      ).toEqual(winner);
+      ).toStrictEqual(winner);
     }
   });
 });
@@ -246,7 +238,7 @@ describe("project axis — 2^4 bitmap × 3 account states vs firstPresent", () =
           [explicitP, "222222"],
           [targetP, "333333"],
           [bridgeP, "444444"],
-          [account !== null && account.default_project != null, "555555"],
+          [account?.default_project != null, "555555"],
         ]);
         const resolved = resolveProjectAxis({
           explicit: explicitP ? "222222" : null,
@@ -255,7 +247,9 @@ describe("project axis — 2^4 bitmap × 3 account states vs firstPresent", () =
           account,
           env: envP ? { MP_PROJECT_ID: "111111" } : {},
         });
-        expect(resolved, `project-axis mask=${String(mask)}`).toEqual(winner);
+        expect(resolved, `project-axis mask=${String(mask)}`).toStrictEqual(
+          winner,
+        );
       }
     },
   );
@@ -316,7 +310,7 @@ describe("workspace axis — 2^5 exhaustive via the full resolveSession", () => 
       expect(
         session.workspace?.id ?? null,
         `workspace-axis mask=${String(mask)}`,
-      ).toEqual(winner);
+      ).toStrictEqual(winner);
     }
   });
 });
@@ -351,7 +345,7 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
       outcomeOf(() =>
         resolveSession({ account: "team" }, src({ MP_REGION: "mars" }, config)),
       ),
-    ).toEqual({ cls: "ConfigError", code: "CONFIG_ERROR" });
+    ).toStrictEqual({ cls: "ConfigError", code: "CONFIG_ERROR" });
   });
 
   it("empty-string env for EVERY var falls through, never errors", () => {
@@ -365,16 +359,20 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
       MP_WORKSPACE_ID: "",
     };
     const session = resolveSession({}, src(allEmpty, config));
-    expect([session.account.name, session.project.id]).toEqual(["team", "1"]);
+    expect([session.account.name, session.project.id]).toStrictEqual([
+      "team",
+      "1",
+    ]);
   });
 
   it("a partial SA quad falls through silently, each member missing", () => {
     const config = teamConfig();
     const quad = { ...SA_QUAD } as Record<string, string>;
     for (const missing of Object.keys(quad)) {
-      const partial = { ...quad };
-      delete partial[missing];
-      const session = resolveSession({}, src(partial as ResolverEnv, config));
+      const partial = Object.fromEntries(
+        Object.entries(quad).filter(([key]) => key !== missing),
+      );
+      const session = resolveSession({}, src(partial, config));
       expect(session.account.name, `missing ${missing}`).toBe("team");
     }
   });
@@ -387,7 +385,7 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
     ).toBe("service_account");
   });
 
-  it("pythonInt grammar acceptances reach the workspace axis (R11.7)", () => {
+  it("pythonInt grammar acceptances reach the workspace axis", () => {
     expect(envWorkspaceId({ MP_WORKSPACE_ID: "1_0" })).toBe(10);
     expect(envWorkspaceId({ MP_WORKSPACE_ID: " +42 " })).toBe(42);
     expect(envWorkspaceId({ MP_WORKSPACE_ID: "٤٢" })).toBe(42);
@@ -409,10 +407,10 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
         },
       },
     );
-    expect([merged.headers.get("X-H"), merged.headers.get("X-B")]).toEqual([
-      "bridge",
-      "only",
-    ]);
+    expect([
+      merged.headers.get("X-H"),
+      merged.headers.get("X-B"),
+    ]).toStrictEqual(["bridge", "only"]);
   });
 });
 
@@ -602,7 +600,7 @@ describe("full-chain fuzz — resolveSession vs the mini-model", () => {
             actual = { error: String(error) };
           }
         }
-        expect(actual).toEqual(expected);
+        expect(actual).toStrictEqual(expected);
       }),
       { seed: 20260816, numRuns: 600 },
     );

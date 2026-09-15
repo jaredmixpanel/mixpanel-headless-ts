@@ -1,89 +1,105 @@
 /**
- * The `mp.targets` namespace — TS port of
- * `mixpanel_headless/targets.py` (whole file; B7-A1 packet §3.1,
- * `b7-packets.md`).
+ * Factory for the `targets` namespace. Targets are saved
+ * (account, project, workspace?) triples used as named cursor
+ * positions; `use(name)` writes all three axes to `[active]` in a
+ * single config save. Core exports the factory over the injected
+ * {@link AuthEffects} bag; `@mixpanel-headless/node` exports the
+ * ready-made object bound to on-disk effects.
  *
- * Targets are saved (account, project, workspace?) triples used as
- * named cursor positions; `use(name)` writes all three axes to
- * `[active]` in a single config save. Factory over the injected
- * {@link AuthEffects} bag (R9.4); B8 exports the ready-made object.
+ * @see mixpanel_headless.targets
  */
 
 import type { Target } from "../types/entities/accounts.js";
 import type { AuthEffects } from "./auth-effects.js";
 
-/** Options bag of {@link TargetsNamespace.add} (Python kwonly, R3.8). */
+/**
+ * Options bag of {@link TargetsNamespace.add}; keys mirror the Python
+ * keyword-only parameters.
+ */
 export interface TargetsAddOptions {
-  /** Referenced account name (must exist). */
+  /** Referenced account name; must exist. */
   readonly account: string;
   /** Project ID (digit string). */
   readonly project: string;
-  /** Optional workspace ID. */
+  /**
+   * Workspace ID (positive integer) pinned by the target.
+   *
+   * @defaultValue `null`
+   */
   readonly workspace?: number | null | undefined;
 }
 
-/** The `mp.targets` surface (`targets.py` `__all__`). */
+/**
+ * The `targets` namespace: named (account, project, workspace?) triples
+ * applied to `[active]` in one write.
+ *
+ * @see mixpanel_headless.targets
+ */
 export interface TargetsNamespace {
   /**
-   * Return all configured targets sorted by name (`list`,
-   * `targets.py:25-31`).
+   * Return every configured target, sorted by name.
    *
-   * @returns Sorted target records.
+   * @returns The target records.
+   * @see mixpanel_headless.targets.list
    */
-  list(): Target[];
+  list: () => Target[];
 
   /**
-   * Add a new target block (`add`, `targets.py:34-57`).
+   * Add a new target block.
    *
-   * @param name - Target name (block key).
-   * @param options - account / project / optional workspace.
+   * @param name - Target name (the config block key).
+   * @param options - The referenced `account`, the `project` and an
+   *   optional `workspace`.
    * @returns The constructed target.
-   * @throws ConfigError - Duplicate name, missing account, or
-   *   validation failure.
+   * @throws {@link ConfigError} - When the name is taken, the account is
+   *   missing, or validation fails.
+   * @see mixpanel_headless.targets.add
    */
-  add(name: string, options: TargetsAddOptions): Target;
+  add: (name: string, options: TargetsAddOptions) => Target;
 
   /**
-   * Remove a target block (`remove`, `targets.py:60-69`).
+   * Remove a target block.
    *
    * @param name - Target to remove.
-   * @throws ConfigError - Target does not exist.
+   * @throws {@link ConfigError} - When the target does not exist.
+   * @see mixpanel_headless.targets.remove
    */
-  remove(name: string): void;
+  remove: (name: string) => void;
 
   /**
-   * Apply the target — write all three axes to `[active]` atomically
-   * (`use`, `targets.py:72-81`; ONE `applyTarget` transaction, packet
-   * §3.3).
+   * Apply a target: write all three axes to `[active]` in one
+   * `applyTarget` transaction.
    *
    * @param name - Target to apply.
-   * @throws ConfigError - Target does not exist OR its referenced
-   *   account is gone.
+   * @throws {@link ConfigError} - When the target does not exist, or its
+   *   referenced account is gone.
+   * @see mixpanel_headless.targets.use
    */
-  use(name: string): void;
+  use: (name: string) => void;
 
   /**
-   * Return the named target (`show`, `targets.py:84-96`).
+   * Return the named target.
    *
    * @param name - Target name.
    * @returns The target record.
-   * @throws ConfigError - Target does not exist.
+   * @throws {@link ConfigError} - When the target does not exist.
+   * @see mixpanel_headless.targets.show
    */
-  show(name: string): Target;
+  show: (name: string) => Target;
 }
 
 /**
- * Build the `mp.targets` namespace over an effect bag.
+ * Build the `targets` namespace over an effect bag.
  *
- * @param effects - The injected effects (config writes).
+ * @param effects - The injected effects; only `config` is used.
  * @returns The namespace object.
- *
  * @example
  * ```typescript
  * const targets = createTargetsNamespace(effects);
  * targets.add("ecom", { account: "team", project: "3018488" });
- * targets.use("ecom");
+ * targets.use("ecom"); // [active] now points at team / 3018488
  * ```
+ * @see mixpanel_headless.targets
  */
 export function createTargetsNamespace(effects: AuthEffects): TargetsNamespace {
   return {

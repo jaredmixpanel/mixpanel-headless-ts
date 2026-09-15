@@ -1,37 +1,24 @@
-// The query vocabulary on the browser entry point.
-//
-// Pages built against the browser bundle construct their queries
-// client-side: a control changes, the page rebuilds params with
-// `Filter` / `Metric` / `FunnelStep` / `CohortDefinition` / … and
-// re-queries. Those builders are pure core dataclasses (no transport,
-// no credentials), but until now none of them were re-exported from
-// `@mixpanel-headless/browser`, so the bundled IIFE global had no
-// runtime presence for the vocabulary the README tells a consumer to
-// import. This suite pins them onto the entry point.
-//
-// It also pins the two gates that must survive the addition:
-//   - identity with core (the values are THE core classes, so the
-//     purity proof that covers `packages/core` covers them here), and
-//   - drift: every runtime export of core's `query-params` barrel is
-//     present on the browser barrel, so a new core export — function or
-//     not — cannot silently reopen the gap this suite closed.
-//
-// The same treatment covers the two identity helpers a page needs to
-// name what it built: `pythonJsonDumpsCanonical` and `inferBookmarkType`
-// (heads spec 02 §3.3).
+// The query vocabulary on the browser entry point: the pure core builders
+// (`Filter`, `Metric`, `FunnelStep`, `CohortDefinition`, …) and the two
+// identity helpers are re-exported so the bundled global carries them, are
+// the core values themselves, and cannot drift from core's query-params
+// barrel. No Python twin.
 
 import { describe, expect, it } from "vitest";
 
-import * as browserEntry from "../src/index.js";
-import * as coreQueryParams from "../../core/src/types/query-params/index.js";
-import { CreateAnnotationParams as coreCreateAnnotationParams } from "../../core/src/types/entities/annotations.js";
-import { inferBookmarkType as coreInferBookmarkType } from "../../core/src/bookmarks/infer-type.js";
-import { pythonJsonDumpsCanonical as corePythonJsonDumpsCanonical } from "../../core/src/compat/python-json-dumps-canonical.js";
-import { Workspace } from "../../core/src/workspace.js";
+import {
+  CreateAnnotationParams as coreCreateAnnotationParams,
+  inferBookmarkType as coreInferBookmarkType,
+  pythonJsonDumpsCanonical as corePythonJsonDumpsCanonical,
+  Workspace,
+} from "@mixpanel-headless/core";
+import { queryParamsModule as coreQueryParams } from "@mixpanel-headless/core/internal";
+
 import {
   mockWorkspaceClient,
   TEST_SESSION,
-} from "../../core/test/workspace/workspace-test-helpers.js";
+} from "../../core/test-support/workspace-test-helpers.js";
+import * as browserEntry from "../src/index.js";
 import {
   CohortBreakdown,
   CohortCriteria,
@@ -155,8 +142,8 @@ describe("browser entry — the re-exports are the core values themselves", () =
       }
       if (entry[name] !== value) notIdentical.push(name);
     }
-    expect(missing).toEqual([]);
-    expect(notIdentical).toEqual([]);
+    expect(missing).toStrictEqual([]);
+    expect(notIdentical).toStrictEqual([]);
   });
 
   it("carries no transport: no builder exposes a fetch/transport seam", () => {
@@ -258,7 +245,7 @@ describe("browser entry — identity helpers (core re-exports)", () => {
     // same posture `packages/core/test/bookmarks/infer-type.test.ts`
     // takes. The builders are pure, so the mocked client is never
     // called. `Workspace` is path-imported from core because the browser
-    // barrel exports it TYPE-only (FB-2) — that gate is unaffected here.
+    // barrel exports it type-only — that gate is unaffected here.
     const entry = browserEntry as unknown as Record<string, unknown>;
     const infer = entry["inferBookmarkType"] as (value: unknown) => unknown;
     const ws = new Workspace({

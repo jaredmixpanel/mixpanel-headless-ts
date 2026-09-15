@@ -1,7 +1,9 @@
-// Unit tests for OAuthTokens/OAuthClientInfo (packet P2-4, phase2-design
-// C4): parse factories, the tz-aware expiry validator (Fix 25 parity),
-// the 30-second expiry buffer, and fromTokenResponse.
+// OAuthTokens / OAuthClientInfo: parse factories, the tz-aware expiry
+// validator, the 30-second expiry buffer and `fromTokenResponse`. TS unit
+// tests over `token.py`'s documented behaviour; no Python suite is mirrored.
+
 import { describe, expect, it } from "vitest";
+
 import {
   OAuthTokens,
   parseOAuthClientInfo,
@@ -53,7 +55,7 @@ describe("parseOAuthTokens", () => {
     expect(tokens.access_token).toBe(secret);
   });
 
-  it("REJECTS naive expires_at (tz-aware validator, Fix 25)", () => {
+  it("REJECTS naive expires_at (tz-aware validator)", () => {
     expect(() =>
       parseOAuthTokens({
         ...TOKENS_PAYLOAD,
@@ -77,8 +79,9 @@ describe("parseOAuthTokens", () => {
 
   it("rejects missing/malformed required fields", () => {
     for (const field of ["access_token", "expires_at", "scope", "token_type"]) {
-      const broken: Record<string, unknown> = { ...TOKENS_PAYLOAD };
-      delete broken[field];
+      const broken: Record<string, unknown> = Object.fromEntries(
+        Object.entries(TOKENS_PAYLOAD).filter(([key]) => key !== field),
+      );
       expect(() => parseOAuthTokens(broken)).toThrow(ResponseValidationError);
     }
     expect(() =>
@@ -130,6 +133,22 @@ describe("OAuthTokens.fromTokenResponse", () => {
     expect(tokens.refresh_token).toBeNull();
     // 10s < 30s buffer -> already expired (Python docstring example).
     expect(tokens.isExpired()).toBe(true);
+  });
+
+  it("renders non-string members as Python str() would", () => {
+    // `token.py` does `str(data[...])`; a JSON object lands as
+    // `{'x': 1}` on both sides, never as `[object Object]`.
+    const tokens = OAuthTokens.fromTokenResponse({
+      access_token: 12345,
+      refresh_token: true,
+      expires_in: 3600,
+      scope: { x: 1 },
+      token_type: null,
+    });
+    expect(tokens.access_token.reveal()).toBe("12345");
+    expect(tokens.refresh_token?.reveal()).toBe("True");
+    expect(tokens.scope).toBe("{'x': 1}");
+    expect(tokens.token_type).toBe("None");
   });
 
   it("rejects missing required keys and non-integer expires_in", () => {

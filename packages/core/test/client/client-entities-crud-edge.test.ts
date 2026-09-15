@@ -1,24 +1,24 @@
-// Layer-3 translation — Phase-3 packet B4-C3 entity-CRUD edge locks.
-// Source: tests/unit/test_api_client_crud_edge.py (ALL classes —
-// app_request unwrapping, list-method response handling, response type
-// validation, duplicate bookmark/dashboard lookups, 204 voids, error
-// propagation, workspace-scoped paths).
-//
-// TestAppRequestUnwrapping re-locks the B0 `appRequest` envelope through
-// the C1 client method (the Python file exercises it via
-// `client.app_request`), so it lives here with its siblings rather than
-// in the B0 suite (same source file, one home — R10.2).
+// Entity-CRUD edge behaviour through the assembled client: `appRequest`
+// envelope unwrapping, list-method response handling, response type
+// validation, the duplicate bookmark-dashboard lookups, 204 voids, error
+// propagation and workspace-scoped paths. Mirrors every class of
+// tests/unit/test_api_client_crud_edge.py.
+
 import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
+import { toNativeJson } from "../../src/client/json-value.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
   QueryError,
 } from "../../src/errors.js";
-import { toNativeJson } from "../../src/client/json-value.js";
-import { createMockClient, makeSession } from "./client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
+import {
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture twin (test_api_client_crud_edge.py:36-38). */
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -27,8 +27,10 @@ function oauthCredentials(): Session {
   });
 }
 
-describe("TestAppRequestUnwrapping", () => {
-  it("test_unwraps_results_list", async () => {
+describe("App request unwrapping", () => {
+  // python: TestAppRequestUnwrapping
+  it("unwraps results list", async () => {
+    // python: test_unwraps_results_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [1, 2, 3] },
@@ -36,10 +38,11 @@ describe("TestAppRequestUnwrapping", () => {
     const result = toNativeJson(
       await client.appRequest("GET", "/projects/12345/test"),
     );
-    expect(result).toEqual([1, 2, 3]);
+    expect(result).toStrictEqual([1, 2, 3]);
   });
 
-  it("test_unwraps_results_dict", async () => {
+  it("unwraps results dict", async () => {
+    // python: test_unwraps_results_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { id: 1 } },
@@ -47,10 +50,11 @@ describe("TestAppRequestUnwrapping", () => {
     const result = toNativeJson(
       await client.appRequest("GET", "/projects/12345/test"),
     );
-    expect(result).toEqual({ id: 1 });
+    expect(result).toStrictEqual({ id: 1 });
   });
 
-  it("test_no_results_key_returns_full_body", async () => {
+  it("no results key returns full body", async () => {
+    // python: test_no_results_key_returns_full_body
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { data: "x" },
@@ -58,67 +62,75 @@ describe("TestAppRequestUnwrapping", () => {
     const result = toNativeJson(
       await client.appRequest("GET", "/projects/12345/test"),
     );
-    expect(result).toEqual({ data: "x" });
+    expect(result).toStrictEqual({ data: "x" });
   });
 
-  it("test_204_returns_status_ok", async () => {
+  it("204 returns status ok", async () => {
+    // python: test_204_returns_status_ok
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 204,
     }));
     const result = toNativeJson(
       await client.appRequest("DELETE", "/projects/12345/test"),
     );
-    expect(result).toEqual({ status: "ok" });
+    expect(result).toStrictEqual({ status: "ok" });
   });
 });
 
-describe("TestListMethodResponseHandling", () => {
-  it("test_list_dashboards_returns_unwrapped_list", async () => {
+describe("List method response handling", () => {
+  // python: TestListMethodResponseHandling
+  it("list dashboards returns unwrapped list", async () => {
+    // python: test_list_dashboards_returns_unwrapped_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [{ id: 1 }] },
     }));
     const result = toNativeJson(await client.listDashboards());
-    expect(result).toEqual([{ id: 1 }]);
+    expect(result).toStrictEqual([{ id: 1 }]);
   });
 
-  it("test_list_dashboards_empty", async () => {
+  it("list dashboards empty", async () => {
+    // python: test_list_dashboards_empty
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
     }));
     const result = await client.listDashboards();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
-  it("test_list_bookmarks_v2_returns_unwrapped_list", async () => {
+  it("list bookmarks V2 returns unwrapped list", async () => {
+    // python: test_list_bookmarks_v2_returns_unwrapped_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [{ id: 10, name: "Report" }] },
     }));
     const result = toNativeJson(await client.listBookmarksV2());
-    expect(result).toEqual([{ id: 10, name: "Report" }]);
+    expect(result).toStrictEqual([{ id: 10, name: "Report" }]);
   });
 
-  it("test_list_cohorts_app_returns_unwrapped_list", async () => {
+  it("list cohorts app returns unwrapped list", async () => {
+    // python: test_list_cohorts_app_returns_unwrapped_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [{ id: 5, name: "Power Users" }] },
     }));
     const result = toNativeJson(await client.listCohortsApp());
-    expect(result).toEqual([{ id: 5, name: "Power Users" }]);
+    expect(result).toStrictEqual([{ id: 5, name: "Power Users" }]);
   });
 
-  it("test_list_blueprint_templates_returns_unwrapped_list", async () => {
+  it("list blueprint templates returns unwrapped list", async () => {
+    // python: test_list_blueprint_templates_returns_unwrapped_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [{ template_type: "company_kpis" }] },
     }));
     const result = toNativeJson(await client.listBlueprintTemplates());
-    expect(result).toEqual([{ template_type: "company_kpis" }]);
+    expect(result).toStrictEqual([{ template_type: "company_kpis" }]);
   });
 
-  it("test_list_blueprint_templates_skips_non_dict_entries", async () => {
+  it("list blueprint templates skips non dict entries", async () => {
+    // python: test_list_blueprint_templates_skips_non_dict_entries
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -141,37 +153,44 @@ describe("TestListMethodResponseHandling", () => {
     expect(result[0]?.["title_key"]).toBe("OK");
   });
 
-  it("test_list_dashboards_non_list_raises", async () => {
+  it("list dashboards non list raises", async () => {
+    // python: test_list_dashboards_non_list_raises
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: "unexpected" },
     }));
-    const err: unknown = await client.listDashboards().catch((e: unknown) => e);
+    const err: unknown = await client
+      .listDashboards()
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(MixpanelHeadlessError);
     expect((err as Error).message).toContain("expected list");
   });
 });
 
-describe("TestResponseTypeValidation", () => {
-  it("test_create_dashboard_returns_dict", async () => {
+describe("Response type validation", () => {
+  // python: TestResponseTypeValidation
+  it("create dashboard returns dict", async () => {
+    // python: test_create_dashboard_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { id: 1, title: "X" } },
     }));
     const result = toNativeJson(await client.createDashboard({ title: "X" }));
-    expect(result).toEqual({ id: 1, title: "X" });
+    expect(result).toStrictEqual({ id: 1, title: "X" });
   });
 
-  it("test_get_dashboard_returns_dict", async () => {
+  it("get dashboard returns dict", async () => {
+    // python: test_get_dashboard_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { id: 42, title: "My Dash" } },
     }));
     const result = toNativeJson(await client.getDashboard(42));
-    expect(result).toEqual({ id: 42, title: "My Dash" });
+    expect(result).toStrictEqual({ id: 42, title: "My Dash" });
   });
 
-  it("test_create_bookmark_returns_dict", async () => {
+  it("create bookmark returns dict", async () => {
+    // python: test_create_bookmark_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -186,64 +205,73 @@ describe("TestResponseTypeValidation", () => {
         params: {},
       }),
     );
-    expect(result).toEqual({ id: 99, name: "DAU", type: "insights" });
+    expect(result).toStrictEqual({ id: 99, name: "DAU", type: "insights" });
   });
 
-  it("test_get_cohort_returns_dict", async () => {
+  it("get cohort returns dict", async () => {
+    // python: test_get_cohort_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { id: 7, name: "Churned" } },
     }));
     const result = toNativeJson(await client.getCohort(7));
-    expect(result).toEqual({ id: 7, name: "Churned" });
+    expect(result).toStrictEqual({ id: 7, name: "Churned" });
   });
 
-  it("test_bookmark_linked_ids_returns_list", async () => {
+  it("bookmark linked IDs returns list", async () => {
+    // python: test_bookmark_linked_ids_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [1, 2] },
     }));
     const result = toNativeJson(await client.bookmarkLinkedDashboardIds(42));
-    expect(result).toEqual([1, 2]);
+    expect(result).toStrictEqual([1, 2]);
   });
 
-  it("test_create_dashboard_non_dict_raises", async () => {
+  it("create dashboard non dict raises", async () => {
+    // python: test_create_dashboard_non_dict_raises
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [1, 2] },
     }));
     const err: unknown = await client
       .createDashboard({ title: "X" })
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(MixpanelHeadlessError);
     expect((err as Error).message).toContain("expected dict");
   });
 
-  it("test_get_bookmark_non_dict_raises", async () => {
+  it("get bookmark non dict raises", async () => {
+    // python: test_get_bookmark_non_dict_raises
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [1, 2] },
     }));
-    const err: unknown = await client.getBookmark(42).catch((e: unknown) => e);
+    const err: unknown = await client
+      .getBookmark(42)
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(MixpanelHeadlessError);
     expect((err as Error).message).toContain("expected dict");
   });
 
-  it("test_bookmark_linked_ids_non_list_raises", async () => {
+  it("bookmark linked IDs non list raises", async () => {
+    // python: test_bookmark_linked_ids_non_list_raises
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { id: 1 } },
     }));
     const err: unknown = await client
       .bookmarkLinkedDashboardIds(42)
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(MixpanelHeadlessError);
     expect((err as Error).message).toContain("expected list");
   });
 });
 
-describe("TestDuplicateBookmarkDashboardMethods", () => {
-  it("test_get_bookmark_dashboard_ids_path", async () => {
+describe("Duplicate bookmark dashboard methods", () => {
+  // python: TestDuplicateBookmarkDashboardMethods
+  it("get bookmark dashboard IDs path", async () => {
+    // python: test_get_bookmark_dashboard_ids_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -253,7 +281,8 @@ describe("TestDuplicateBookmarkDashboardMethods", () => {
     expect(capturedUrls[0]).toContain("/dashboards/bookmarks/42/dashboard-ids");
   });
 
-  it("test_bookmark_linked_dashboard_ids_path", async () => {
+  it("bookmark linked dashboard IDs path", async () => {
+    // python: test_bookmark_linked_dashboard_ids_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -263,54 +292,64 @@ describe("TestDuplicateBookmarkDashboardMethods", () => {
     expect(capturedUrls[0]).toContain("/bookmarks/42/linked-dashboard-ids");
   });
 
-  it("test_both_return_list_of_ints", async () => {
+  it("both return list of ints", async () => {
+    // python: test_both_return_list_of_ints
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [1, 2, 3] },
     }));
     const resultA = toNativeJson(await client.getBookmarkDashboardIds(42));
     const resultB = toNativeJson(await client.bookmarkLinkedDashboardIds(42));
-    expect(resultA).toEqual([1, 2, 3]);
-    expect(resultB).toEqual([1, 2, 3]);
+    expect(resultA).toStrictEqual([1, 2, 3]);
+    expect(resultB).toStrictEqual([1, 2, 3]);
   });
 
-  it("test_both_handle_empty_results", async () => {
+  it("both handle empty results", async () => {
+    // python: test_both_handle_empty_results
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
     }));
     const resultA = await client.getBookmarkDashboardIds(42);
     const resultB = await client.bookmarkLinkedDashboardIds(42);
-    expect(resultA).toEqual([]);
-    expect(resultB).toEqual([]);
+    expect(resultA).toStrictEqual([]);
+    expect(resultB).toStrictEqual([]);
   });
 });
 
-describe("TestVoidOperationResponses", () => {
-  it("test_delete_dashboard_204", async () => {
+describe("Void operation responses", () => {
+  // python: TestVoidOperationResponses
+  it("delete dashboard 204", async () => {
+    // python: test_delete_dashboard_204
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 204,
     }));
-    await client.deleteDashboard(1); // Should not raise
+    await expect(client.deleteDashboard(1)).resolves.toBeUndefined();
   });
 
-  it("test_favorite_dashboard_204", async () => {
+  it("favorite dashboard 204", async () => {
+    // python: test_favorite_dashboard_204
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 204,
     }));
-    await client.favoriteDashboard(1); // Should not raise
+    await expect(client.favoriteDashboard(1)).resolves.toBeUndefined();
   });
 
-  it("test_bulk_delete_dashboards_204", async () => {
+  it("bulk delete dashboards 204", async () => {
+    // python: test_bulk_delete_dashboards_204
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 204,
     }));
-    await client.bulkDeleteDashboards([1, 2, 3]); // Should not raise
+    await expect(
+      client.bulkDeleteDashboards([1, 2, 3]),
+    ).resolves.toBeUndefined();
   });
 });
 
-describe("TestErrorPropagation", () => {
-  it("test_list_dashboards_401", async () => {
+describe("Error propagation", () => {
+  // python: TestErrorPropagation
+  it("list dashboards 401", async () => {
+    // python: test_list_dashboards_401
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 401,
       json: { error: "Unauthorized" },
@@ -320,7 +359,8 @@ describe("TestErrorPropagation", () => {
     );
   });
 
-  it("test_create_bookmark_400", async () => {
+  it("create bookmark 400", async () => {
+    // python: test_create_bookmark_400
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 400,
       json: { error: "Invalid bookmark type" },
@@ -330,7 +370,8 @@ describe("TestErrorPropagation", () => {
     ).rejects.toBeInstanceOf(QueryError);
   });
 
-  it("test_get_cohort_404", async () => {
+  it("get cohort 404", async () => {
+    // python: test_get_cohort_404
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 404,
       json: { error: "Not found" },
@@ -339,8 +380,10 @@ describe("TestErrorPropagation", () => {
   });
 });
 
-describe("TestWorkspaceScopedPaths", () => {
-  it("test_list_dashboards_project_scoped", async () => {
+describe("Workspace scoped paths", () => {
+  // python: TestWorkspaceScopedPaths
+  it("list dashboards project scoped", async () => {
+    // python: test_list_dashboards_project_scoped
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -350,7 +393,8 @@ describe("TestWorkspaceScopedPaths", () => {
     expect(capturedUrls[0]).toContain("/projects/12345/dashboards");
   });
 
-  it("test_list_dashboards_workspace_scoped", async () => {
+  it("list dashboards workspace scoped", async () => {
+    // python: test_list_dashboards_workspace_scoped
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -361,7 +405,8 @@ describe("TestWorkspaceScopedPaths", () => {
     expect(capturedUrls[0]).toContain("/workspaces/789/dashboards");
   });
 
-  it("test_list_bookmarks_v2_project_scoped", async () => {
+  it("list bookmarks V2 project scoped", async () => {
+    // python: test_list_bookmarks_v2_project_scoped
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -371,7 +416,8 @@ describe("TestWorkspaceScopedPaths", () => {
     expect(capturedUrls[0]).toContain("/projects/12345/bookmarks");
   });
 
-  it("test_list_cohorts_app_project_scoped", async () => {
+  it("list cohorts app project scoped", async () => {
+    // python: test_list_cohorts_app_project_scoped
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);

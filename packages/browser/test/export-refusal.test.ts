@@ -1,26 +1,25 @@
-// Layer-3 suite for the Export-API browser exclusion (b9-packets.md
-// §2.4; contract arbiter plan §4.3 tier table: "Export is Node-only" —
-// the D2 spike found data.mixpanel.com / data-eu / data-in serve NO
-// CORS headers, so browser calls are dead on arrival). The exclusion
-// is enforced at the TRANSPORT: the factory wraps the injected fetch
-// with a guard that refuses any request to an export-host origin with
-// a coded BrowserUnsupportedError BEFORE any network attempt — one
-// documented error instead of an opaque CORS TypeError.
-// R5: assertions key on the CODE.
+// Export API exclusion in the browser: the export hosts serve no CORS
+// headers, so the factory wraps the injected fetch with a guard that refuses
+// export-host origins with a coded BrowserUnsupportedError before any
+// network attempt. No Python twin; assertions key on the code.
 
 import { describe, expect, it } from "vitest";
 
 import {
-  ENDPOINTS,
   type EndpointOverrides,
   type EndpointOverridesSource,
-} from "../../core/src/client/url.js";
+  ENDPOINTS,
+} from "@mixpanel-headless/core";
+
+import {
+  type FakeTransport,
+  fakeTransport,
+} from "../../core/test-support/client-test-helpers.js";
 import {
   BROWSER_EXPORT_UNSUPPORTED,
   BrowserUnsupportedError,
   createBrowserWorkspace,
 } from "../src/index.js";
-import { fakeTransport, type FakeTransport } from "./helpers.js";
 
 /**
  * Build a workspace over a canned transport.
@@ -44,10 +43,10 @@ const EXPORT_ORIGINS: string[] = [...ENDPOINTS.values()].map(
   (table) => new URL(table.get("export")!).origin,
 );
 
-describe("§2.4 (b) — every export host is refused with BROWSER_EXPORT_UNSUPPORTED", () => {
+describe("every export host is refused with BROWSER_EXPORT_UNSUPPORTED", () => {
   it("the region table yields the three known export origins", () => {
     expect(EXPORT_ORIGINS).toHaveLength(3);
-    expect(new Set(EXPORT_ORIGINS)).toEqual(
+    expect(new Set(EXPORT_ORIGINS)).toStrictEqual(
       new Set([
         "https://data.mixpanel.com",
         "https://data-eu.mixpanel.com",
@@ -77,7 +76,7 @@ describe("§2.4 (b) — every export host is refused with BROWSER_EXPORT_UNSUPPO
   );
 });
 
-describe("§2.4 (a) — Query-host and App-host requests pass through untouched", () => {
+describe("Query-host and App-host requests pass through untouched", () => {
   it("Query-host traffic flows (getEvents)", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: [] }));
     const ws = makeWorkspace(transport);
@@ -99,7 +98,7 @@ describe("§2.4 (a) — Query-host and App-host requests pass through untouched"
   });
 });
 
-describe("§2.4 (c) — the guard wraps WHATEVER fetch the caller injected (R2.4 preserved)", () => {
+describe("the guard wraps whatever fetch the caller injected", () => {
   it("allowed requests reach the injected double; refused ones never do", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: [] }));
     const ws = makeWorkspace(transport);
@@ -113,7 +112,7 @@ describe("§2.4 (c) — the guard wraps WHATEVER fetch the caller injected (R2.4
   });
 });
 
-// ── AIE-926 (PR #11 follow-up): the verdict derives from the EFFECTIVE
+// ── The verdict derives from the effective
 // endpoint table per request. `endpointOverrides.apiBaseUrl` re-homes
 // the export family at `{apiBaseUrl}/api/2.0` — a user-controlled host
 // (normally a CORS-capable proxy), which is exactly where browser export
@@ -176,7 +175,7 @@ async function requestError(
   }
 }
 
-describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", () => {
+describe("the export guard evaluates the effective endpoint table", () => {
   it("no overrides: the effective export base IS a live origin and is refused", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: {} }));
     const ws = makeWorkspace(transport);
@@ -187,7 +186,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     expect((thrown as BrowserUnsupportedError).code).toBe(
       BROWSER_EXPORT_UNSUPPORTED,
     );
-    expect((thrown as BrowserUnsupportedError).details).toEqual({
+    expect((thrown as BrowserUnsupportedError).details).toStrictEqual({
       origin: "https://data.mixpanel.com",
     });
     expect(transport.captures).toHaveLength(0);
@@ -211,7 +210,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     const ws = makeOverrideWorkspace(transport, { apiBaseUrl: PROXY });
     const exportBase = ws.client.core.endpoints().get("export");
     expect(exportBase).toBe(`${PROXY}/api/2.0`);
-    await ws.client.request("GET", `${exportBase}/export`);
+    await ws.client.request("GET", `${exportBase!}/export`);
     expect(transport.captures).toHaveLength(1);
     expect(pathOf(transport.captures[0]!.url)).toBe(`${PROXY}/api/2.0/export`);
   });
@@ -222,7 +221,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     const url = ws.client.core.buildUrl("export", "/export");
     expect(url).toBe(`${PROXY}/api/2.0/export`);
     await ws.client.request("GET", url);
-    expect(transport.captures.map((c) => new URL(c.url).origin)).toEqual([
+    expect(transport.captures.map((c) => new URL(c.url).origin)).toStrictEqual([
       PROXY,
     ]);
   });
@@ -237,7 +236,9 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
       expect((thrown as BrowserUnsupportedError).code).toBe(
         BROWSER_EXPORT_UNSUPPORTED,
       );
-      expect((thrown as BrowserUnsupportedError).details).toEqual({ origin });
+      expect((thrown as BrowserUnsupportedError).details).toStrictEqual({
+        origin,
+      });
       expect(transport.captures).toHaveLength(0);
     },
   );
@@ -374,12 +375,14 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
 
   it("relative / unparseable URLs pass through to the inner fetch untouched", async () => {
     const seen: unknown[] = [];
-    const rawFetch = (async (input: RequestInfo | URL): Promise<Response> => {
+    const rawFetch = ((input: RequestInfo | URL): Promise<Response> => {
       seen.push(input);
-      return new Response("{}", {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      return Promise.resolve(
+        new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
     }) as typeof fetch;
     const ws = createBrowserWorkspace({
       token: "tok-123",
@@ -392,7 +395,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     await ws.client.request("GET", "not a url at all");
     // The core appends its `query_origin` marker; the guard itself
     // neither rejected nor rewrote either input.
-    expect(seen.map((s) => String(s).split("?")[0])).toEqual([
+    expect(seen.map((s) => String(s).split("?", 1)[0])).toStrictEqual([
       "/api/2.0/export",
       "not a url at all",
     ]);

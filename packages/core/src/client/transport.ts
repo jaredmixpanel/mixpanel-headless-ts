@@ -1,33 +1,17 @@
 /**
- * The fetch transport adapter — the B4-C1 implementation of the B0
- * {@link RequestExecutor} seam (`internals.ts`), replacing httpx's wire
- * layer.
- *
- * Contract (R2.10/R2.11/R2.12/R6.7):
- * - every transport-level failure (fetch `TypeError`, non-abort
- *   `DOMException`, undici `UND_ERR_*`) normalizes to
- *   {@link MixpanelHttpError} — never a bare catch;
- * - cancellations pass through as `DOMException` name `AbortError`
- *   (R6.7 "normalized on exit" — they must NOT read as HTTP errors);
- * - `redirect: 'manual'` on every request — httpx raises on 3xx where
- *   fetch would silently follow;
- * - the executor takes Python-named `timeoutSeconds` and owns nothing
- *   time-based itself (retry sleeps live in the B0 loops, R2.12).
- *
- * Serialization twins (vector-locked byte shapes):
- * - query params via httpx's `urlencode(..., doseq=True)` semantics —
- *   {@link quotePlus} percent-encoding with `+` for spaces, repeated
- *   keys for list values, httpx primitive rendering (`True → "true"`,
- *   `None → ""`);
- * - form bodies via the same `quotePlus` grammar (the recorded
- *   `body_text` fields are exact-byte comparisons);
- * - JSON bodies via `JSON.stringify` (request-side diffs compare
- *   canonically after lossless parsing, so whitespace is free), with a
- *   `bigint` member emitted as its exact digit run — the carrier for
- *   int64 ids beyond 2^53 ({@link stringifyJsonBody}).
+ * The fetch transport adapter — the {@link RequestExecutor} implementation
+ * that replaces httpx's wire layer. Every transport-level failure (fetch
+ * `TypeError`, non-abort `DOMException`, undici `UND_ERR_*`) normalizes to
+ * {@link MixpanelHttpError}; cancellations pass through as an `AbortError`
+ * `DOMException` and never read as HTTP errors; requests are sent with
+ * `redirect: 'manual'` because httpx raises on 3xx where fetch would
+ * follow. Wire shapes twin httpx byte for byte: `quote_plus` params and
+ * form bodies ({@link quotePlus}), JSON bodies with `bigint` members as
+ * exact digit runs ({@link stringifyJsonBody}). Retry sleeps live in the
+ * retry loops, not here.
  */
 
-import { pythonFloatStr } from "../compat/index.js";
+import { pythonFloatStr, pythonStrOf } from "../compat/index.js";
 import {
   MixpanelHttpError,
   type RequestExecutor,
@@ -35,7 +19,7 @@ import {
   type WireResponse,
 } from "./internals.js";
 
-/** Characters urllib's `quote_plus` never escapes (ALWAYS_SAFE set). */
+/** Characters urllib's `quote_plus` never escapes (its `_ALWAYS_SAFE` set). */
 const QUOTE_PLUS_SAFE = new Set(
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-~",
 );
@@ -45,12 +29,16 @@ const QUOTE_PLUS_SAFE = new Set(
  * default safe set: ALPHA / DIGIT / `_.-~` pass through, space becomes
  * `+`, everything else is `%XX` uppercase-hex over the UTF-8 bytes.
  *
- * `encodeURIComponent` is NOT equivalent (it passes `!'()*`, which
+ * @remarks
+ * `encodeURIComponent` is not equivalent (it passes `!'()*`, which
  * Python escapes) — the recorded form `body_text` fields are byte-exact
  * comparisons, so the grammar must match urllib char-for-char.
- *
  * @param text - The text to encode.
  * @returns The encoded text.
+ * @example
+ * ```typescript
+ * quotePlus("a b&c*"); // "a+b%26c%2A"
+ * ```
  */
 export function quotePlus(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -73,15 +61,22 @@ export function quotePlus(text: string): string {
  * `primitive_value_to_str` does: `True → "true"`, `False → "false"`,
  * `None → ""`, everything else `str(value)`.
  *
- * Number rendering note: integers render as decimal digits; non-integral
+ * @remarks
+ * Number rendering: integers render as decimal digits; non-integral
  * numbers use the CPython float repr ({@link pythonFloatStr}) so a
- * fractional param spells exactly what Python sent. An INTEGRAL Python
+ * fractional param spells exactly what Python sent. An integral Python
  * float param (`10.0` → `"10.0"`) is not representable from a plain JS
- * number — no C1 surface passes float params; C2 threads float-ness via
- * its own call shapes where a vector requires it.
- *
+ * number; the core client passes no float params, and the query-host
+ * methods thread float-ness through their own call shapes where a vector
+ * requires it.
  * @param value - The primitive value.
  * @returns The wire string.
+ * @example
+ * ```typescript
+ * primitiveParamValue(true); // "true"
+ * primitiveParamValue(null); // ""
+ * primitiveParamValue(0.1); // "0.1"
+ * ```
  */
 export function primitiveParamValue(value: unknown): string {
   if (value === true) {
@@ -96,7 +91,10 @@ export function primitiveParamValue(value: unknown): string {
   if (typeof value === "number") {
     return Number.isInteger(value) ? String(value) : pythonFloatStr(value);
   }
-  return String(value);
+  // `urlencode` → `str(value)` for everything else (typed callers never
+  // pass containers; a stray one renders as Python would, not as
+  // `[object Object]`).
+  return pythonStrOf(value);
 }
 
 /**
@@ -105,6 +103,11 @@ export function primitiveParamValue(value: unknown): string {
  *
  * @param data - The mapping to serialize.
  * @returns The `k=v&k2=v2` text (empty string for an empty mapping).
+ * @example
+ * ```typescript
+ * urlEncodePairs({ event: ["a", "b"], unit: "day" });
+ * // "event=a&event=b&unit=day"
+ * ```
  */
 export function urlEncodePairs(
   data: Readonly<Record<string, unknown>>,
@@ -126,6 +129,11 @@ export function urlEncodePairs(
  * @param url - The base URL (may already carry a query string).
  * @param params - The query params (empty mapping appends nothing).
  * @returns The final URL.
+ * @example
+ * ```typescript
+ * appendQueryParams("https://mixpanel.com/api/query/events", { unit: "day" });
+ * // "https://mixpanel.com/api/query/events?unit=day"
+ * ```
  */
 export function appendQueryParams(
   url: string,
@@ -139,7 +147,7 @@ export function appendQueryParams(
 }
 
 /**
- * Whether a merged header set already names `Content-Type`
+ * Report whether a merged header set already names `Content-Type`
  * (case-insensitive, like httpx's header merge — an explicit caller
  * header wins over the body-derived default).
  *
@@ -153,12 +161,16 @@ function hasContentType(headers: Readonly<Record<string, string>>): boolean {
 }
 
 /**
- * Normalize the abort reason to the R6.7 contract: every cancellation
- * path throws `DOMException(..., 'AbortError')` — a plain `Error` from
+ * Normalize the abort reason: every cancellation path throws
+ * `DOMException(..., 'AbortError')` — a plain `Error` from
  * a signal reason would evade name-based checks.
  *
  * @param reason - The signal's abort reason (may be anything).
  * @returns The `AbortError` DOMException to throw.
+ * @example
+ * ```typescript
+ * normalizedAbortError(new Error("stop")).name; // "AbortError"
+ * ```
  */
 export function normalizedAbortError(reason: unknown): DOMException {
   if (reason instanceof DOMException && reason.name === "AbortError") {
@@ -168,8 +180,8 @@ export function normalizedAbortError(reason: unknown): DOMException {
 }
 
 /**
- * Whether a fetch rejection is a cancellation (passes through under
- * R6.7 rather than normalizing to {@link MixpanelHttpError}).
+ * Report whether a fetch rejection is a cancellation (passes through rather
+ * than normalizing to {@link MixpanelHttpError}).
  *
  * @param cause - The rejection value.
  * @returns `true` for `AbortError` DOMExceptions.
@@ -178,17 +190,19 @@ function isAbortRejection(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === "AbortError";
 }
 
-/** Everything the raw fetch step produces (C2's streaming path consumes
- * the `Response`; the {@link RequestExecutor} view reads the text). */
+/**
+ * Everything the raw fetch step produces (the streaming exports consume
+ * the `Response`; the {@link RequestExecutor} view reads the text).
+ */
 export interface RawFetchResult {
   /** The platform `Response` (body unread). */
   readonly response: Response;
   /**
    * Stop the request-timeout clock (idempotent). Streaming callers
-   * invoke this once headers arrive: body reads are NOT clock-bounded
-   * (deviation D-B4ARB-1 — httpx read-timeouts are per-read, so a
-   * healthy long-running export stream must not be killed by a total
-   * wall clock). Caller-signal abort forwarding stays live.
+   * invoke this once headers arrive. Divergence: body reads are not
+   * clock-bounded — httpx read timeouts are per-read, so a healthy
+   * long-running export stream must not be killed by a total wall
+   * clock. Caller-signal abort forwarding stays live.
    */
   readonly stopTimeout: () => void;
   /**
@@ -201,31 +215,46 @@ export interface RawFetchResult {
 /**
  * Issue one request through the injected fetch with the full adapter
  * contract applied (URL/query/body serialization, `redirect: 'manual'`,
- * R2.10 normalization, R6.7 abort passthrough) and hand back the RAW
- * `Response` — the seam C2's streaming exports consume (they must not
+ * failure normalization, abort passthrough) and hand back the raw
+ * `Response` — the seam the streaming exports consume (they must not
  * buffer the body).
  *
- * Timeout enforcement (B4-ARB W-F2 — Python `timeout=... or
- * self._timeout` on every httpx call): `options.timeoutSeconds` arms a
- * clock that aborts the request when it fires. httpx timeouts are
+ * @remarks
+ * Timeout enforcement (Python passes `timeout=... or self._timeout` on
+ * every httpx call): `options.timeoutSeconds` arms a clock that aborts
+ * the request when it fires. Divergence: httpx timeouts are
  * per-operation (connect/read/write each get the budget); fetch has no
- * per-read primitive, so the TS clock covers the headers phase here and
- * — for buffered callers — the body read, via the returned handles
- * (deviation D-B4ARB-1, sanctioned in b4-review-resolution.md). A fired
- * clock rejects like httpx.TimeoutException ⊂ httpx.HTTPError: it
- * normalizes to {@link MixpanelHttpError} and is therefore retried and
- * then wrapped as `HTTP_ERROR` by the B0 loops.
- *
- * @param fetchImpl - The injected fetch (R2.4).
+ * per-read primitive, so the clock covers the headers phase here and —
+ * for buffered callers — the body read, via the returned handles. A
+ * fired clock rejects like `httpx.TimeoutException` (an
+ * `httpx.HTTPError`): it normalizes to {@link MixpanelHttpError} and is
+ * therefore retried and then wrapped as `HTTP_ERROR` by the retry loops.
+ * @param fetchImpl - The injected fetch.
  * @param options - The outbound request.
- * @param signal - Optional per-call cancellation signal (R6.7 point 2:
- *   "into the request").
+ * @param signal - Optional per-call cancellation signal.
  * @returns The raw response wrapper (plus the timeout/release handles).
- * @throws MixpanelHttpError - Any transport-level failure (R2.10),
+ * @throws {@link MixpanelHttpError} - Any transport-level failure,
  *   including a fired request-timeout clock.
- * @throws DOMException - Name `AbortError` on cancellation (R6.7) —
- *   EVERY caller-initiated abort exits this way, custom reasons
- *   included (B4-ARB W-F3).
+ * @throws {@link DOMException} - Name `AbortError` on cancellation — every
+ *   caller-initiated abort exits this way, custom reasons included.
+ * @example
+ * ```typescript
+ * const { response, stopTimeout, release } = await rawFetch(fetch, {
+ *   method: "GET",
+ *   url: "https://data.mixpanel.com/api/2.0/export",
+ *   params: { from_date: "2026-01-01", to_date: "2026-01-02" },
+ *   jsonBody: null,
+ *   formBody: null,
+ *   headers: { Authorization: "Basic …" },
+ *   timeoutSeconds: 503,
+ * });
+ * stopTimeout(); // headers arrived; stream the body without a wall clock
+ * try {
+ *   for await (const line of iterJsonlLines(response.body!)) { /* … *\/ }
+ * } finally {
+ *   release();
+ * }
+ * ```
  */
 export async function rawFetch(
   fetchImpl: typeof fetch,
@@ -250,7 +279,7 @@ export async function rawFetch(
   }
   // One controller merges the caller signal and the timeout clock; the
   // caller signal's reason is forwarded verbatim so a caller abort is
-  // distinguishable (checked FIRST in the catch below).
+  // distinguishable (checked first in the catch below).
   const controller = new AbortController();
   const forwardAbort = (): void => {
     controller.abort(signal?.reason);
@@ -278,10 +307,12 @@ export async function rawFetch(
     (timer as unknown as { unref?: () => void }).unref?.();
   }
   const stopTimeout = (): void => {
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
+    if (timer === null) {
+      return;
     }
+
+    clearTimeout(timer);
+    timer = null;
   };
   const release = (): void => {
     stopTimeout();
@@ -292,20 +323,20 @@ export async function rawFetch(
     response = await fetchImpl(url, {
       method: options.method,
       headers,
-      ...(body !== null ? { body } : {}),
+      ...(body === null ? {} : { body }),
       redirect: "manual",
       signal: controller.signal,
     });
-  } catch (cause) {
+  } catch (error) {
     release();
     if (signal?.aborted === true) {
-      // R6.7 / W-F3: caller cancellation wins and ALWAYS exits as a
-      // DOMException named AbortError, whatever the abort reason was.
+      // Caller cancellation wins and always exits as a DOMException
+      // named AbortError, whatever the abort reason was.
       throw normalizedAbortError(signal.reason);
     }
-    if (cause instanceof TypeError || cause instanceof DOMException) {
-      // R2.10: the adapter owns the fetch TypeError / DOMException /
-      // UND_ERR_* mapping — the B0 retry loops catch MixpanelHttpError
+    if (error instanceof TypeError || error instanceof DOMException) {
+      // The adapter owns the fetch TypeError / DOMException /
+      // UND_ERR_* mapping — the retry loops catch MixpanelHttpError
       // (the `httpx.HTTPError` analog) and wrap it as HTTP_ERROR.
       // A non-caller AbortError/TimeoutError lands here too: with the
       // caller signal quiet, the only abort source is the timeout clock
@@ -315,28 +346,40 @@ export async function rawFetch(
       // wrapper text is useless, so the underlying cause's message wins
       // when present — that is where undici (and the conformance
       // harness) carry the real failure description.
-      const inner: unknown = (cause as { cause?: unknown }).cause;
+      const inner: unknown = (error as { cause?: unknown }).cause;
       const description =
         inner instanceof Error && inner.message !== ""
           ? inner.message
-          : cause.message;
-      throw new MixpanelHttpError(description, { cause });
+          : error.message;
+      throw new MixpanelHttpError(description, { cause: error });
     }
-    throw cause;
+    throw error;
   }
   return { response, stopTimeout, release };
 }
 
 /**
- * Build the B0 {@link RequestExecutor} over an injected fetch — the
+ * Build the {@link RequestExecutor} over an injected fetch — the
  * text-buffering view of {@link rawFetch} that `executeWithRetry` /
  * `appRequest` / `handleResponse` consume.
  *
- * @param fetchImpl - The injected fetch (R2.4).
+ * @param fetchImpl - The injected fetch.
  * @param signal - Optional per-call cancellation signal, curried in at
- *   client assembly (R6.7 without touching B0 signatures — the
- *   B0-ARB carried item 6a mechanism).
+ *   client assembly so the executor's own signature stays signal-free.
  * @returns The executor.
+ * @example
+ * ```typescript
+ * const request = createRequestExecutor(fetch, controller.signal);
+ * const { status, text } = await request({
+ *   method: "GET",
+ *   url: "https://mixpanel.com/api/app/me",
+ *   params: {},
+ *   jsonBody: null,
+ *   formBody: null,
+ *   headers: { Authorization: "Bearer …" },
+ *   timeoutSeconds: 135,
+ * });
+ * ```
  */
 export function createRequestExecutor(
   fetchImpl: typeof fetch,
@@ -350,25 +393,25 @@ export function createRequestExecutor(
     let text: string;
     try {
       text = await response.text();
-    } catch (cause) {
+    } catch (error) {
       if (signal?.aborted === true) {
-        // R6.7 / W-F3: caller cancellation always exits as AbortError.
+        // Caller cancellation always exits as AbortError.
         throw normalizedAbortError(signal.reason);
       }
-      if (isAbortRejection(cause)) {
+      if (isAbortRejection(error)) {
         // Not caller-initiated: the request-timeout clock fired during
         // the body read (httpx.ReadTimeout analog).
         throw new MixpanelHttpError(
           `Request timed out after ${options.timeoutSeconds} seconds`,
-          { cause },
+          { cause: error },
         );
       }
       // Body-read failures are transport errors in httpx too
       // (`httpx.ReadError` while consuming the stream).
       throw new MixpanelHttpError(
-        `transport body read failure: ${String(cause)}`,
+        `transport body read failure: ${String(error)}`,
         {
-          cause,
+          cause: error,
         },
       );
     } finally {
@@ -388,21 +431,26 @@ interface RawJsonCapableJson {
 }
 
 /**
- * `JSON.stringify` for a request body whose members may be `bigint`s —
- * the carrier for int64 ids beyond 2^53 (lookup-table `data-group-id`s
- * such as `-8644926364725811123`, which `update_lookup_table` and
+ * Serialize a request body whose members may be `bigint`s — the carrier
+ * for int64 ids beyond 2^53 (lookup-table `data-group-id`s such as
+ * `-8644926364725811123`, which `update_lookup_table` and
  * `delete_lookup_tables` send in the JSON body).
  *
+ * @remarks
  * A `bigint` member is emitted as its exact digit run via
  * `JSON.rawJSON` (ES2024; Node ≥ 21 and evergreen browsers), where
  * Python writes the same bare integer token. Bodies without a `bigint`
  * serialize byte-identically to plain `JSON.stringify` (the replacer
  * returns every other member unchanged).
- *
  * @param value - The JSON body.
  * @returns The serialized body text.
- * @throws TypeError - A `bigint` member on an engine without
+ * @throws {@link TypeError} - A `bigint` member on an engine without
  *   `JSON.rawJSON` (plain `JSON.stringify` would throw for it too).
+ * @example
+ * ```typescript
+ * stringifyJsonBody({ data_group_id: -8644926364725811123n, name: "x" });
+ * // '{"data_group_id":-8644926364725811123,"name":"x"}'
+ * ```
  */
 export function stringifyJsonBody(value: unknown): string {
   const rawJSON = (JSON as RawJsonCapableJson).rawJSON;

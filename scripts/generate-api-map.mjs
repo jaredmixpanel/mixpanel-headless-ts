@@ -1,33 +1,31 @@
-// generate-api-map.mjs — write conformance-runner/src/api-map.gen.ts
-// (design D12 / naming-map §5, task TS-4).
+#!/usr/bin/env node
+// generate-api-map.mjs — write conformance-runner/src/api-map.gen.ts, the
+// table that maps every Python dotted call.api in the corpus to its TS home.
 //
-// Four inputs — the three per phase1-design D12 plus the TS-6 authored
-// supplement:
+// Four inputs:
 //   1. conformance-runner/corpus/typescript-port-api-map.json — authority
-//      for WORKSPACE member names/params/kwonly (R7.3). ts_signature
-//      strings are NON-NORMATIVE sketches and are never consumed
-//      (naming-map §4).
+//      for Workspace member names/params/kwonly. Its ts_signature strings
+//      are non-normative sketches and are never consumed.
 //   2. conformance-runner/corpus/api-index.json — authority for every
-//      non-Workspace entry point and the "module known" UNPORTED universe
-//      (D4.4).
-//   3. conformance-runner/src/naming-exceptions.json — naming-map §4 table
-//      (exact rows first, then `<prefix>.*` module wildcards + the
-//      mechanical §3 snake->camel transform, leading underscore dropped
-//      per R7.6).
+//      non-Workspace entry point and the "module known" UNPORTED universe.
+//   3. conformance-runner/src/naming-exceptions.json — the naming table:
+//      exact rows first, then `<prefix>.*` module wildcards, then the
+//      mechanical snake->camel transform with the leading underscore
+//      dropped.
 //   4. conformance-runner/src/authored-apis.json — api-index-shaped entries
-//      for the hand-authored D13 gate apis (compat.*, wirestub.*), which the
+//      for the hand-authored gate apis (compat.*, wirestub.*), which the
 //      recorded-vector api-index can never carry, plus extra known_modules
-//      for authored adapters left UNPORTED on purpose (task TS-6).
+//      for authored adapters deliberately left UNPORTED.
 //
 // Output is deterministic (sorted keys, sha256 stamps of all four inputs)
 // so re-running on unchanged inputs is byte-identical; the freshness/parity
 // test (test/api-map.test.ts) recomputes every entry through src/naming.ts
 // and fails on drift between this script and the runtime naming module.
 //
-// The generator FAILS HARD when any api-index name resolves through no
-// exception row (silent fuzzy matching is forbidden, naming-map §4) and
-// when a workspace.* signature in api-index disagrees with the api-map.json
-// member (two authorities must agree or the corpus is stale).
+// The generator fails hard when any api-index name resolves through no
+// exception row (silent fuzzy matching is forbidden) and when a workspace.*
+// signature in api-index disagrees with the api-map.json member (two
+// authorities must agree or the corpus is stale).
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -45,7 +43,12 @@ const EXCEPTIONS_PATH = resolve(RUNNER_DIR, "src", "naming-exceptions.json");
 const AUTHORED_APIS_PATH = resolve(RUNNER_DIR, "src", "authored-apis.json");
 const OUTPUT_PATH = resolve(RUNNER_DIR, "src", "api-map.gen.ts");
 
-/** Read a file and return { text, json, sha256 }. */
+/**
+ * Read and parse one JSON input, stamping it with the sha256 of its bytes.
+ *
+ * @param {string} path - Absolute path of the JSON file.
+ * @returns {{ json: unknown, sha256: string }} The parsed document and the hex digest of the raw text.
+ */
 function loadInput(path) {
   const text = readFileSync(path, "utf8");
   return {
@@ -54,7 +57,13 @@ function loadInput(path) {
   };
 }
 
-/** Mechanical snake->camel (naming-map §3; mirror of src/naming.ts). */
+/**
+ * Convert a snake_case Python identifier to camelCase, dropping one leading
+ * underscore (mirror of conformance-runner/src/naming.ts).
+ *
+ * @param {string} name - Python identifier; must be non-empty after the underscore strip and contain no empty segments.
+ * @returns {string} The camelCase identifier.
+ */
 function snakeToCamel(name) {
   let source = name;
   if (source.startsWith("_")) {
@@ -66,7 +75,7 @@ function snakeToCamel(name) {
     );
   }
   const segments = source.split("_");
-  if (segments.some((segment) => segment === "")) {
+  if (segments.includes("")) {
     throw new Error(
       `unexpected empty segment in identifier: ${JSON.stringify(name)}`,
     );
@@ -75,7 +84,15 @@ function snakeToCamel(name) {
   return head + rest.map((s) => s[0].toUpperCase() + s.slice(1)).join("");
 }
 
-/** Resolve one dotted python api via the §4 exceptions table. */
+/**
+ * Resolve one dotted Python api to its TS home through the naming-exceptions
+ * rows: an exact row wins, else the module wildcard plus the mechanical
+ * transform.
+ *
+ * @param {string} pythonApi - Dotted Python api name, e.g. `workspace.list_dashboards`.
+ * @param {Array<{ python: string, ts: string }>} apiRows - The `scope === "api"` rows of naming-exceptions.json.
+ * @returns {{ tsModule: string, tsName: string } | undefined} The TS module and member name, or `undefined` when no row covers the name.
+ */
 function resolveTsApiName(pythonApi, apiRows) {
   const exact = apiRows.find((row) => row.python === pythonApi);
   if (exact !== undefined) {
@@ -93,7 +110,7 @@ function resolveTsApiName(pythonApi, apiRows) {
   const finalSegment = pythonApi.slice(lastDot + 1);
   const wildcard = apiRows.find((row) => row.python === `${moduleKey}.*`);
   if (wildcard === undefined) {
-    return undefined;
+    return;
   }
   if (!wildcard.ts.endsWith(".*")) {
     throw new Error(`wildcard row for ${moduleKey} must end in '.*'`);
@@ -114,8 +131,8 @@ const workspaceMembers = new Map(
   apiMapJson.json.workspace_members.map((member) => [member.name, member]),
 );
 
-// Merge the authored supplement into the api-index universe (TS-6/D13).
-// A name in BOTH sources means the supplement went stale after a corpus
+// Merge the authored supplement into the api-index universe.
+// A name in both sources means the supplement went stale after a corpus
 // re-extraction started recording it — fail hard rather than pick one.
 const universe = { ...apiIndex.json };
 for (const [pythonApi, entry] of Object.entries(authoredApis.json.entries)) {
@@ -135,7 +152,7 @@ for (const pythonApi of Object.keys(universe).sort()) {
   let params = indexEntry.params;
   let kwonly = indexEntry.kwonly;
   if (pythonApi.startsWith("workspace.")) {
-    // api-map.json is the Workspace-member authority (D12 input 1).
+    // api-map.json is the Workspace-member authority (input 1).
     const memberName = pythonApi.slice("workspace.".length);
     const member = workspaceMembers.get(memberName);
     if (member === undefined) {
@@ -183,63 +200,61 @@ if (errors.length > 0) {
 
 const knownModules = [
   ...new Set([
-    ...entries.map((e) => e.pythonApi.split(".")[0]),
+    ...entries.map((e) => e.pythonApi.split(".", 1)[0]),
     ...authoredApis.json.known_modules,
   ]),
 ].sort();
 
-const lines = [];
-lines.push("// GENERATED FILE — DO NOT EDIT.");
-lines.push("// Regenerate with: npm run generate:api-map");
-lines.push("//");
-lines.push(
+const lines = [
+  "// GENERATED FILE — DO NOT EDIT.",
+  "// Regenerate with: npm run generate:api-map",
+  "//",
   "// Maps every Python dotted call.api in the corpus api-index (plus the",
-);
-lines.push("// authored D13 gate supplement) to its TS home (design D12/D13,");
-lines.push("// naming-map §5). Inputs + sha256 provenance stamps:");
-lines.push(`//   corpus/typescript-port-api-map.json  ${apiMapJson.sha256}`);
-lines.push(`//   corpus/api-index.json                ${apiIndex.sha256}`);
-lines.push(`//   src/naming-exceptions.json           ${exceptions.sha256}`);
-lines.push(`//   src/authored-apis.json               ${authoredApis.sha256}`);
-lines.push(
+  "// authored supplement in src/authored-apis.json) to its TS home.",
+  "// Inputs + sha256 provenance stamps:",
+  `//   corpus/typescript-port-api-map.json  ${apiMapJson.sha256}`,
+  `//   corpus/api-index.json                ${apiIndex.sha256}`,
+  `//   src/naming-exceptions.json           ${exceptions.sha256}`,
+  `//   src/authored-apis.json               ${authoredApis.sha256}`,
   'import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";',
-);
-lines.push("");
-lines.push(
-  "/** sha256 stamps of the four generation inputs (D12 provenance). */",
-);
-lines.push("export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {");
-lines.push(`  apiMapJson: "${apiMapJson.sha256}",`);
-lines.push(`  apiIndexJson: "${apiIndex.sha256}",`);
-lines.push(`  namingExceptionsJson: "${exceptions.sha256}",`);
-lines.push(`  authoredApisJson: "${authoredApis.sha256}",`);
-lines.push("};");
-lines.push("");
-lines.push("/** Python module prefixes known to the corpus api-index or the");
-lines.push(' * authored supplement — the "module known" universe for the');
-lines.push(" * UNPORTED verdict (D12/TS-6). */");
-lines.push("export const KNOWN_PYTHON_MODULES: readonly string[] = [");
+  "",
+  "/** sha256 stamps of the four generation inputs. */",
+  "export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {",
+  `  apiMapJson: "${apiMapJson.sha256}",`,
+  `  apiIndexJson: "${apiIndex.sha256}",`,
+  `  namingExceptionsJson: "${exceptions.sha256}",`,
+  `  authoredApisJson: "${authoredApis.sha256}",`,
+  "};",
+  "",
+  "/** Python module prefixes known to the corpus api-index or the",
+  ' * authored supplement — the "module known" universe for the',
+  " * UNPORTED verdict. */",
+  "export const KNOWN_PYTHON_MODULES: readonly string[] = [",
+];
 for (const moduleName of knownModules) {
   lines.push(`  "${moduleName}",`);
 }
-lines.push("];");
-lines.push("");
-lines.push("/** Every corpus call.api -> TS home + signature shape. */");
-lines.push("export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {");
+lines.push(
+  "];",
+  "",
+  "/** Every corpus call.api -> TS home + signature shape. */",
+  "export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {",
+);
 for (const entry of entries) {
-  lines.push(`  "${entry.pythonApi}": {`);
-  lines.push(`    pythonApi: "${entry.pythonApi}",`);
-  lines.push(`    pythonModule: "${entry.pythonModule}",`);
-  lines.push(`    tsModule: "${entry.tsModule}",`);
-  lines.push(`    tsName: "${entry.tsName}",`);
-  lines.push(`    kind: "${entry.kind}",`);
-  lines.push(`    capability: "${entry.capability}",`);
-  lines.push(`    params: ${JSON.stringify(entry.params)},`);
-  lines.push(`    kwonly: ${JSON.stringify(entry.kwonly)},`);
-  lines.push("  },");
+  lines.push(
+    `  "${entry.pythonApi}": {`,
+    `    pythonApi: "${entry.pythonApi}",`,
+    `    pythonModule: "${entry.pythonModule}",`,
+    `    tsModule: "${entry.tsModule}",`,
+    `    tsName: "${entry.tsName}",`,
+    `    kind: "${entry.kind}",`,
+    `    capability: "${entry.capability}",`,
+    `    params: ${JSON.stringify(entry.params)},`,
+    `    kwonly: ${JSON.stringify(entry.kwonly)},`,
+    "  },",
+  );
 }
-lines.push("};");
-lines.push("");
+lines.push("};", "");
 
 writeFileSync(OUTPUT_PATH, lines.join("\n"));
 console.log(

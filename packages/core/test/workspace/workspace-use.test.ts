@@ -1,50 +1,36 @@
-// Layer-3 translation of `tests/unit/test_workspace_use.py` — the
-// B6-W1 classes (`TestUseWorkspace` :56, `TestUseProject` :72,
-// `TestHTTPTransportPreservation` :132, `TestTargetMutualExclusion`
-// :169, `TestUseUpdatesSessionAndClearsCaches` :255) plus the B7-A1
-// de-deferred classes (`b7-packets.md` §3.4 / Caution #18 — this
-// header now lists ZERO B7 deferrals): `TestUseAccount` (:89),
-// `TestPersist` (:190), `TestUseAccountEnvVarPriority` (:221),
-// `TestUseTargetEnvOverride` (:346),
-// `TestUseAccountWorkspaceEnvValidation` (:384), and the four
-// previously seam-stubbed cases inside the W1 classes
-// (`test_target_alone_applies_three_axes` :176,
-// `test_use_target_also_clears_caches` :301,
-// `test_use_account_updates_me_cache_account_name` :311,
-// `test_use_target_updates_me_cache_account_name` :333) — all driven
-// through the REAL `resolverSeamsFromEffects` over the in-memory
-// effect fakes (the tmp-config fixture re-expression, §3.4 header
-// rule). The W1 seam-residue locks below are kept as-is.
-//
-// Construction in the W1 sections uses the session-bypass constructor;
-// the B7 sections construct through the resolver axes where Python
-// does (`Workspace(account="team", project="3713224")`).
+// Workspace.use(): workspace / project / target / account switches, HTTP
+// transport preservation, target mutual exclusion, session updates and cache
+// clearing, persistence and env-var precedence. Mirrors
+// tests/unit/test_workspace_use.py; the seam-stubbed sections use the
+// session-bypass constructor, the real-seam sections resolverSeamsFromEffects.
 
 import { describe, expect, it, vi } from "vitest";
-import { Workspace, type ResolverSeams } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-} from "../client/client-test-helpers.js";
-import type { Account } from "../../src/auth/account.js";
-import type { Session } from "../../src/auth/session.js";
-import { Secret } from "../../src/secret.js";
-import { MixpanelHeadlessError, ConfigError } from "../../src/errors.js";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
-import { createTargetsNamespace } from "../../src/accounts/targets-namespace.js";
 import {
   persistActiveToConfig,
   resolverSeamsFromEffects,
   resolverSourcesFromEffects,
 } from "../../src/accounts/resolver-seams.js";
+import { createTargetsNamespace } from "../../src/accounts/targets-namespace.js";
+import type { Account } from "../../src/auth/account.js";
+import type { Session } from "../../src/auth/session.js";
+import { ConfigError, MixpanelHeadlessError } from "../../src/errors.js";
+import { Secret } from "../../src/secret.js";
+import { Workspace } from "../../src/workspace.js";
+import type { ResolverSeams } from "../../src/workspace-members/lifecycle.js";
 import {
+  type CannedResponse,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
+import {
+  type EffectsBundle,
   makeEffects,
   setEnv,
-  type EffectsBundle,
 } from "../accounts/fake-auth-effects.js";
 
-/** The `team` account of the `two_accounts` fixture (:33-54). */
+/** The `team` account of the `two_accounts` fixture. */
 const TEAM_SESSION: Session = makeSession({
   name: "team",
   region: "us",
@@ -66,7 +52,7 @@ const OTHER_ACCOUNT: Account = {
 /**
  * Build a facade over a mock client (no request is expected).
  *
- * @param seams - Optional resolver-seam overrides (B7's surface).
+ * @param seams - Optional resolver-seam overrides.
  * @returns The facade plus the client it is bound to.
  */
 function makeWorkspace(seams?: Partial<ResolverSeams>): {
@@ -78,12 +64,13 @@ function makeWorkspace(seams?: Partial<ResolverSeams>): {
   const ws = new Workspace({
     session: TEAM_SESSION,
     client,
-    ...(seams !== undefined ? { seams } : {}),
+    ...(seams === undefined ? {} : { seams }),
   });
   return { ws, client };
 }
 
-describe("TestUseWorkspace (test_workspace_use.py:56)", () => {
+describe("Use workspace", () => {
+  // python: TestUseWorkspace
   it("use({workspace: N}) updates ws.workspace.id", async () => {
     const { ws } = makeWorkspace();
 
@@ -96,11 +83,12 @@ describe("TestUseWorkspace (test_workspace_use.py:56)", () => {
   it("use() returns self for fluent chaining", async () => {
     const { ws } = makeWorkspace();
 
-    expect(await ws.use({ workspace: 42 })).toBe(ws);
+    await expect(ws.use({ workspace: 42 })).resolves.toBe(ws);
   });
 });
 
-describe("TestUseProject (test_workspace_use.py:72)", () => {
+describe("Use project", () => {
+  // python: TestUseProject
   it("use({project: P}) updates ws.project.id", async () => {
     const { ws } = makeWorkspace();
 
@@ -115,16 +103,17 @@ describe("TestUseProject (test_workspace_use.py:72)", () => {
 
     await ws.use({ project: "9999999" });
 
-    expect(ws.account).toEqual(before);
+    expect(ws.account).toStrictEqual(before);
   });
 });
 
-describe("TestHTTPTransportPreservation (test_workspace_use.py:132) — R6.2", () => {
+describe("HTTP transport preservation", () => {
+  // python: TestHTTPTransportPreservation
   it("a workspace switch does NOT recreate the client", async () => {
     const { ws, client } = makeWorkspace();
     const before = ws.client;
     // Python compares `id(client._http)` — the INNER pool. The TS twin
-    // is the pool token `httpHandle()` (B6-ARB fidelity F3), asserted
+    // is the pool token `httpHandle()`, asserted
     // through the facade path alongside the wrapper identity.
     const poolBefore = ws.client.httpHandle();
 
@@ -166,7 +155,8 @@ describe("TestHTTPTransportPreservation (test_workspace_use.py:132) — R6.2", (
   });
 });
 
-describe("TestTargetMutualExclusion (test_workspace_use.py:169)", () => {
+describe("Target mutual exclusion", () => {
+  // python: TestTargetMutualExclusion
   it("use({target, account}) raises before any resolution work", async () => {
     const resolveSession = vi.fn();
     const getAccount = vi.fn();
@@ -175,15 +165,14 @@ describe("TestTargetMutualExclusion (test_workspace_use.py:169)", () => {
     await expect(
       ws.use({ target: "ecom", account: "other" }),
     ).rejects.toBeInstanceOf(Error);
-    // Guard order (packet §14 Caution 4): NOTHING resolved.
+    // Guard order: nothing is resolved.
     expect(resolveSession).not.toHaveBeenCalled();
     expect(getAccount).not.toHaveBeenCalled();
   });
 
   it("use({target}) alone routes through the resolveSession seam", async () => {
-    // W1 residue of `test_target_alone_applies_three_axes` (:176): the
-    // three axes come from the resolved session; B7 owns the resolution
-    // itself (target file I/O + env precedence).
+    // The three axes come from the resolved session; the resolution itself
+    // (target file I/O + env precedence) is covered over real seams below.
     const resolved: Session = {
       account: OTHER_ACCOUNT,
       project: { id: "3018488" },
@@ -202,7 +191,8 @@ describe("TestTargetMutualExclusion (test_workspace_use.py:169)", () => {
   });
 });
 
-describe("TestUseUpdatesSessionAndClearsCaches (test_workspace_use.py:255)", () => {
+describe("Use updates session and clears caches", () => {
+  // python: TestUseUpdatesSessionAndClearsCaches
   it("after use({project: X}), session.project.id is X", async () => {
     const { ws } = makeWorkspace();
     expect(ws.session.project.id).toBe("3713224");
@@ -253,7 +243,7 @@ describe("TestUseUpdatesSessionAndClearsCaches (test_workspace_use.py:255)", () 
   });
 });
 
-describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
+describe("resolver seams (stubbed)", () => {
   it("the default resolveSession seam throws UNPORTED_RESOLVER_SEAM", async () => {
     const { ws } = makeWorkspace();
     await expect(ws.use({ target: "ecom" })).rejects.toMatchObject({
@@ -293,7 +283,7 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
       ws.use({ project: "9999999", persist: true }),
     ).rejects.toMatchObject({ code: "UNPORTED_RESOLVER_SEAM" });
     // The swap itself already happened (Python persists AFTER the swap,
-    // `workspace.py:691-693`).
+    // `workspace.py`).
     expect(ws.project.id).toBe("9999999");
   });
 
@@ -305,7 +295,7 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
   });
 
   it("an account swap with no resolvable project raises ConfigError", async () => {
-    // `workspace.py:653-654` (`_format_no_project_error`) — FR-033: the
+    // `workspace.py` (`_format_no_project_error`) — FR-033: the
     // prior session's project is NEVER carried forward.
     const { ws } = makeWorkspace({
       getAccount: vi.fn().mockResolvedValue(OTHER_ACCOUNT),
@@ -318,7 +308,7 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
   });
 
   it("an explicit workspace= on an account swap skips the env seam", async () => {
-    // `workspace.py:661-668`: `if workspace is not None` short-circuits
+    // `workspace.py`: `if workspace is not None` short-circuits
     // `_env_workspace_id()`.
     const envWorkspaceId = vi.fn().mockReturnValue(999);
     const { ws } = makeWorkspace({
@@ -344,12 +334,9 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// B7-A1: the de-deferred resolver classes over REAL seams
-// (`b7-packets.md` §3.4).
-// ---------------------------------------------------------------------------
+// --- The resolver classes over real seams ---
 
-/** The `two_accounts` fixture (`test_workspace_use.py:32-53`). */
+/** The `two_accounts` fixture. */
 async function twoAccountsBundle(): Promise<EffectsBundle> {
   const bundle = makeEffects();
   const accounts = createAccountsNamespace(bundle.effects);
@@ -388,15 +375,15 @@ function realSeamWorkspace(
     client,
     seams: {
       ...resolverSeamsFromEffects(bundle.effects),
-      // Python `_persist_active` routing over the fake config
-      // (`workspace.py:695-722` — the B8-owned effect member is wired
-      // to `persistActiveToConfig` here).
+      // Python `_persist_active` routing over the fake config: the effect
+      // member is wired to `persistActiveToConfig` here.
       persistActive: (session) => persistActiveToConfig(bundle.config, session),
     },
   });
 }
 
-describe("TestUseAccount (test_workspace_use.py:89) — real seams", () => {
+describe("Use account — real seams", () => {
+  // python: TestUseAccount
   it("use({account}) swaps to the new account", async () => {
     const bundle = await twoAccountsBundle();
     const ws = realSeamWorkspace(bundle);
@@ -426,14 +413,15 @@ describe("TestUseAccount (test_workspace_use.py:89) — real seams", () => {
       () => {
         throw new Error("expected ConfigError");
       },
-      (exc: unknown) => {
-        expect(exc).toBeInstanceOf(ConfigError);
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ConfigError);
       },
     );
   });
 });
 
-describe("TestPersist (test_workspace_use.py:190) — real seams", () => {
+describe("Persist — real seams", () => {
+  // python: TestPersist
   it("use({account, persist: true}) writes to [active]", async () => {
     const bundle = await twoAccountsBundle();
     const ws = realSeamWorkspace(bundle);
@@ -457,7 +445,8 @@ describe("TestPersist (test_workspace_use.py:190) — real seams", () => {
   });
 });
 
-describe("TestUseAccountEnvVarPriority (test_workspace_use.py:221) — real seams", () => {
+describe("Use account env var priority — real seams", () => {
+  // python: TestUseAccountEnvVarPriority
   it("MP_PROJECT_ID overrides the new account's default_project", async () => {
     const bundle = await twoAccountsBundle();
     const ws = realSeamWorkspace(bundle);
@@ -481,7 +470,8 @@ describe("TestUseAccountEnvVarPriority (test_workspace_use.py:221) — real seam
   });
 });
 
-describe("TestUseTargetEnvOverride (test_workspace_use.py:346) — real seams", () => {
+describe("Use target env override — real seams", () => {
+  // python: TestUseTargetEnvOverride
   it("MP_PROJECT_ID beats the target's project (FR-017)", async () => {
     const bundle = await twoAccountsBundle();
     const targets = createTargetsNamespace(bundle.effects);
@@ -520,7 +510,8 @@ describe("TestUseTargetEnvOverride (test_workspace_use.py:346) — real seams", 
   });
 });
 
-describe("TestUseAccountWorkspaceEnvValidation (test_workspace_use.py:384) — real seams", () => {
+describe("Use account workspace env validation — real seams", () => {
+  // python: TestUseAccountWorkspaceEnvValidation
   it("MP_WORKSPACE_ID=-1 raises on account swap, not a silent clear", async () => {
     const bundle = await twoAccountsBundle();
     const ws = realSeamWorkspace(bundle);
@@ -530,9 +521,9 @@ describe("TestUseAccountWorkspaceEnvValidation (test_workspace_use.py:384) — r
       () => {
         throw new Error("expected ConfigError");
       },
-      (exc: unknown) => {
-        expect(exc).toBeInstanceOf(ConfigError);
-        expect((exc as ConfigError).message).toContain("MP_WORKSPACE_ID");
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ConfigError);
+        expect((error as ConfigError).message).toContain("MP_WORKSPACE_ID");
       },
     );
   });
@@ -546,16 +537,16 @@ describe("TestUseAccountWorkspaceEnvValidation (test_workspace_use.py:384) — r
       () => {
         throw new Error("expected ConfigError");
       },
-      (exc: unknown) => {
-        expect(exc).toBeInstanceOf(ConfigError);
-        expect((exc as ConfigError).message).toContain("MP_WORKSPACE_ID");
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ConfigError);
+        expect((error as ConfigError).message).toContain("MP_WORKSPACE_ID");
       },
     );
   });
 });
 
-describe("B7 de-deferred W1-class cases — real seams", () => {
-  it("use({target}) alone applies all three axes (:176)", async () => {
+describe("target and cache cases over real seams", () => {
+  it("use({target}) alone applies all three axes", async () => {
     const bundle = await twoAccountsBundle();
     const targets = createTargetsNamespace(bundle.effects);
     targets.add("ecom", {
@@ -573,7 +564,7 @@ describe("B7 de-deferred W1-class cases — real seams", () => {
     expect(ws.workspace?.id).toBe(42);
   });
 
-  it("the target= branch of use() also clears caches (:301)", async () => {
+  it("the target= branch of use() also clears caches", async () => {
     const bundle = await twoAccountsBundle();
     const targets = createTargetsNamespace(bundle.effects);
     targets.add("ecom", {
@@ -590,7 +581,7 @@ describe("B7 de-deferred W1-class cases — real seams", () => {
     expect(ws.session.project.id).toBe("3018488");
   });
 
-  it("use({account}) retargets the MeCache at the new account (:311)", async () => {
+  it("use({account}) retargets the MeCache at the new account", async () => {
     const bundle = await twoAccountsBundle();
     const ws = realSeamWorkspace(bundle);
     expect(ws.meService.cacheAccountName).toBe("team");
@@ -600,7 +591,7 @@ describe("B7 de-deferred W1-class cases — real seams", () => {
     expect(ws.meService.cacheAccountName).toBe("other");
   });
 
-  it("use({target}) also retargets the MeCache (:333)", async () => {
+  it("use({target}) also retargets the MeCache", async () => {
     const bundle = await twoAccountsBundle();
     const targets = createTargetsNamespace(bundle.effects);
     targets.add("ecom", {

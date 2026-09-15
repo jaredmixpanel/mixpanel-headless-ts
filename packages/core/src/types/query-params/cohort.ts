@@ -1,42 +1,33 @@
 /**
- * Cohort-definition builder types — TS port of the corresponding frozen
- * dataclasses and module helpers in `mixpanel_headless/types.py`
- * (phase2-design C7, packet P2-5b): `CohortCriteria`, `CohortDefinition`,
- * `CohortBreakdown`, and the module-private `_sanitize_raw_cohort` →
- * {@link sanitizeRawCohort}.
+ * Cohort-definition builders: `CohortCriteria` (one atomic membership
+ * condition), `CohortDefinition` (criteria combined with AND/OR) and
+ * `CohortBreakdown` (segment results by cohort membership). Fields keep
+ * their Python spellings, including the underscore-prefixed ones, because
+ * the conformance codec reads them by name; guards fire in Python source
+ * order, one comment per rule code.
  *
- * Porting rules applied here (C7):
- * - Fields are `readonly` under their EXACT Python spellings — the
- *   `CohortCriteria`/`CohortDefinition` privates (`_selector_node`,
- *   `_behavior_key`, `_behavior`, `_criteria`, `_operator`) are
- *   codec-visible (R7.6 wire-spelling exception); Python tuples become
- *   `ReadonlyArray`.
- * - Static factories keep Python's method names mechanically camelized
- *   (`did_event` → `didEvent`) per the D12 naming map.
- * - Guard blocks are transcribed IN PYTHON SOURCE ORDER (Risk #1), one
- *   comment per registry code.
- * - `CohortDefinition` mirrors Python's `init=False` design: variadic
- *   constructor (AND) + `allOf`/`anyOf` statics; its codec decoder
- *   reconstructs through the statics (see `../vector-codecs.ts`).
+ * @see mixpanel_headless.types.CohortDefinition
  */
 
 import { pythonStrip } from "../../compat/index.js";
+import { KeyError } from "../../compat/python-builtins.js";
 import { ParamValidationError } from "../../errors.js";
-import { KeyError } from "../../query/python-builtins.js";
 import type { CohortAggregationType } from "../literals.js";
 import { CustomPropertyRef, Filter, InlineCustomProperty } from "./filter.js";
 import {
+  deepCopy,
   isRealCalendarDate,
   matchesDateFormat,
   validateCohortArgs,
 } from "./guards.js";
 
 /**
- * Maps `CohortCriteria.hasProperty()` operator names to selector tree
- * operators — mirror of `types._PROPERTY_OPERATOR_MAP` (entry order =
- * Python source order).
+ * Maps `CohortCriteria.hasProperty()` operator names to selector-tree
+ * operators; entry order is the Python source order. Exported for the
+ * translated operator-map tests only.
  *
- * @internal Exported for the translated operator-map tests only.
+ * @see mixpanel_headless.types._PROPERTY_OPERATOR_MAP
+ * @internal
  */
 export const PROPERTY_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
   ["equals", "=="],
@@ -49,30 +40,22 @@ export const PROPERTY_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
   ["is_not_set", "not defined"],
 ]);
 
-// The CPython `KeyError` twin for the ONE call site that raises it:
-// `has_property`'s `_PROPERTY_OPERATOR_MAP[operator]` lookup
-// (types.py ~8959) on an operator outside the map — a real divergence
-// found by the P2-9 gate (the pre-fix port silently constructed with an
-// `undefined` selector operator). FOLDED into the canonical
-// `query/python-builtins.ts` twin at the B6 gate per that module's own
-// R10.4 watch note: the former file-local duplicate collided with the
-// canonical class in the bundled oracle (esbuild renamed one binding to
-// `KeyError2`, and the bridge compares `constructor.name` —
-// oracle-protocol.md §4.1), which the B6-gate differential regression
-// caught as a live cohort_family divergence. `python-builtins.ts` is
-// import-free, so this types-layer import creates no cycle.
+// `KeyError` is imported from the shared compat twin rather than declared
+// here: the oracle bridge compares `constructor.name`, and a file-local
+// duplicate gets renamed (`KeyError2`) by the bundler and stops matching.
+// `python-builtins.ts` is import-free, so the import creates no cycle.
 
 /**
- * Set of `Filter._operator` values accepted by {@link buildEventSelector}
- * — mirror of `types._FILTER_TO_SELECTOR_SUPPORTED`.
+ * The `Filter._operator` values {@link buildEventSelector} accepts.
  *
  * These operators are emitted verbatim in the Insights bookmark filter
  * format (`filterOperator` key) — no mapping is needed because the
  * server's `output_leaf_node` routes `filterOperator` nodes through
  * `filter_to_arb_selector_string`, which understands these names
- * natively.
+ * natively. Exported for the translated operator-map tests only.
  *
- * @internal Exported for the translated operator-map tests only.
+ * @see mixpanel_headless.types._FILTER_TO_SELECTOR_SUPPORTED
+ * @internal
  */
 export const FILTER_TO_SELECTOR_SUPPORTED: ReadonlySet<string> = new Set([
   "equals",
@@ -87,54 +70,13 @@ export const FILTER_TO_SELECTOR_SUPPORTED: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Whether a value is a plain data object (the TS stand-in for a decoded
- * Python `dict` — arrays, class instances, and `null` do not count).
- *
- * @param value - The candidate value.
- * @returns True for prototype-of-`Object.prototype` objects.
- */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    Object.getPrototypeOf(value) === Object.prototype
-  );
-}
-
-/**
- * Deep-copy a decoded JSON-ish subtree — the TS twin of the
- * `copy.deepcopy` calls in Python's `CohortDefinition.to_dict` /
- * `_sanitize_raw_cohort`.
- *
- * Plain objects and arrays are copied recursively; primitives, `bigint`,
- * and immutable class instances (e.g. lossless number wrappers riding in
- * decoded payloads) pass through by reference.
- *
- * @param value - The subtree to copy.
- * @returns A structurally independent copy.
- */
-function deepCopy<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value.map((item) => deepCopy(item)) as unknown as T;
-  }
-  if (isPlainObject(value)) {
-    const out: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-      out[key] = deepCopy(item);
-    }
-    return out as T;
-  }
-  return value;
-}
-
-/**
- * Validate that a date string is in YYYY-MM-DD format — port of
- * `types._validate_cohort_date`.
+ * Reject a cohort date that is not a real `YYYY-MM-DD` calendar date.
  *
  * @param dateStr - Date string to validate.
- * @throws ParamValidationError - `CD6_DATE_FORMAT` when the shape is not
- *   YYYY-MM-DD, `CD6_DATE_INVALID` when the shape matches but the date
- *   does not exist on the calendar.
+ * @throws {@link ParamValidationError} - `CD6_DATE_FORMAT` when the shape is
+ *   not `YYYY-MM-DD`, `CD6_DATE_INVALID` when the shape matches but the
+ *   date does not exist on the calendar.
+ * @see mixpanel_headless.types._validate_cohort_date
  */
 function validateCohortDate(dateStr: string): void {
   // CD6_DATE_FORMAT: dates must be YYYY-MM-DD.
@@ -154,27 +96,34 @@ function validateCohortDate(dateStr: string): void {
 }
 
 /**
- * Convert Filter objects to an event selector expression tree — port of
- * `types._build_event_selector`.
+ * Convert `Filter` objects to the event-selector expression tree a
+ * behavioural cohort criterion embeds.
  *
  * Each `Filter` is emitted as an Insights bookmark filter node
  * (`filterOperator` / `filterValue` / `filterType` keys) rather than the
- * legacy selector-tree format (`operator` / `operand`). R10.12 note:
- * `filterValue` stays a JSON value — never stringified.
+ * legacy selector-tree format (`operator` / `operand`); `filterValue`
+ * stays a JSON value and is never stringified. Exported for the translated
+ * tests only.
  *
- * @param filters - Single Filter or list of Filters to convert.
+ * @param filters - Single `Filter` or list of `Filter`s to convert.
  * @returns Expression tree object with `operator` and `children` keys.
- * @throws ParamValidationError - `CD10_UNSUPPORTED_FILTER_OPERATOR` when
- *   a filter uses an operator outside
+ * @throws {@link ParamValidationError} - `CD10_UNSUPPORTED_FILTER_OPERATOR`
+ *   when a filter uses an operator outside
  *   {@link FILTER_TO_SELECTOR_SUPPORTED}.
- *
- * @internal Exported for the translated tests only.
+ * @example
+ * ```ts
+ * buildEventSelector(Filter.equals("plan", "pro"));
+ * // { operator: "and", children: [{ resourceType: "events", filterType: "string",
+ * //   defaultType: "string", filterOperator: "equals", value: "plan", filterValue: ["pro"] }] }
+ * ```
+ * @see mixpanel_headless.types._build_event_selector
+ * @internal
  */
 export function buildEventSelector(
   filters: Filter | readonly Filter[],
 ): Record<string, unknown> {
   const filterList = filters instanceof Filter ? [filters] : filters;
-  const children: Record<string, unknown>[] = [];
+  const children: Array<Record<string, unknown>> = [];
   for (const f of filterList) {
     // CD10_UNSUPPORTED_FILTER_OPERATOR: only the natively-understood
     // bookmark filter operators are accepted.
@@ -197,8 +146,7 @@ export function buildEventSelector(
       node["customPropertyId"] = prop.id;
       node["dataset"] = "$mixpanel";
     } else if (prop instanceof InlineCustomProperty) {
-      const effectiveType =
-        prop.property_type !== null ? prop.property_type : f._property_type;
+      const effectiveType = prop.property_type ?? f._property_type;
       const composedProperties: Record<string, unknown> = {};
       for (const [letter, pi] of Object.entries(prop.inputs)) {
         composedProperties[letter] = {
@@ -286,45 +234,56 @@ export type HasPropertyType =
   "string" | "number" | "boolean" | "datetime" | "list";
 
 /**
- * A single atomic condition for cohort membership — TS port of
- * `types.CohortCriteria`.
+ * A single atomic condition for cohort membership.
  *
- * Constructed exclusively via the static factories in the public API —
- * the field constructor exists for codec reconstruction (mirror of
- * Python's generic `_decode_dataclass` path, which reaches the real
- * dataclass constructor). Produces selector nodes and behavior entries
- * for the Mixpanel cohort definition format (legacy `selector` +
- * `behaviors` JSON).
+ * Build criteria through the static factories; the field constructor
+ * exists for codec reconstruction only. Each criterion contributes a
+ * selector node and, for behavioural criteria, a behavior entry to the
+ * Mixpanel cohort-definition format (legacy `selector` + `behaviors`
+ * JSON).
+ *
+ * @example
+ * ```ts
+ * const active = CohortCriteria.didEvent("Purchase", { at_least: 3, within_days: 30 });
+ * const premium = CohortCriteria.hasProperty("plan", "premium");
+ * const churnRisk = CohortCriteria.didNotDoEvent("Login", { within_weeks: 2 });
+ * ```
+ * @see mixpanel_headless.types.CohortCriteria
  */
 export class CohortCriteria {
   /**
-   * Expression tree leaf node (behavioral, property, or cohort
-   * reference).
+   * Expression-tree leaf node (behavioral, property, or cohort
+   * reference). Kept under its Python spelling because the conformance
+   * codec reads it by name.
    *
-   * @internal Codec-visible under its exact Python spelling.
+   * @internal
    */
   readonly _selector_node: Readonly<Record<string, unknown>>;
 
   /**
    * Placeholder behavior key (e.g. `"bhvr_0"`); `null` for
-   * non-behavioral criteria.
+   * non-behavioral criteria. Kept under its Python spelling because the
+   * conformance codec reads it by name.
    *
-   * @internal Codec-visible under its exact Python spelling.
+   * @internal
    */
   readonly _behavior_key: string | null;
 
   /**
    * Behavior dict entry (event selector + window/dates); `null` for
-   * non-behavioral criteria.
+   * non-behavioral criteria. Kept under its Python spelling because the
+   * conformance codec reads it by name.
    *
-   * @internal Codec-visible under its exact Python spelling.
+   * @internal
    */
   readonly _behavior: Readonly<Record<string, unknown>> | null;
 
   /**
    * Reconstruct a criterion from its declared fields.
    *
-   * @param fields - The three declared Python dataclass fields.
+   * @param fields - Bag with the three declared fields: `_selector_node`
+   *   (the expression-tree leaf), `_behavior_key` (placeholder key or
+   *   `null`) and `_behavior` (behavior entry or `null`).
    */
   constructor(fields: {
     readonly _selector_node: Readonly<Record<string, unknown>>;
@@ -337,22 +296,24 @@ export class CohortCriteria {
   }
 
   /**
-   * Create a behavioral criterion based on event frequency — port of
-   * `CohortCriteria.did_event` (guards transcribed in Python source
-   * order).
+   * Create a behavioral criterion based on event frequency; the guards
+   * fire in Python source order.
    *
    * @param event - Event name (must be non-empty).
-   * @param options - Kw-only frequency/time/filter/aggregation options.
-   * @returns CohortCriteria with behavioral selector node and behavior
-   *   entry.
-   * @throws ParamValidationError - `CD4_EMPTY_EVENT`,
+   * @param options - Frequency / time-window / filter / aggregation
+   *   options; see {@link DidEventOptions}.
+   * @returns A `CohortCriteria` with a behavioral selector node and
+   *   behavior entry.
+   * @throws {@link ParamValidationError} - `CD4_EMPTY_EVENT`,
    *   `CA1_AGGREGATION_PAIR`, `CA2_EMPTY_AGGREGATION_PROPERTY`,
    *   `CD1_FREQUENCY_PARAM_REQUIRED`, `CD2_FREQUENCY_NEGATIVE`,
    *   `CD3_TIME_CONSTRAINT_REQUIRED`, `CD10_UNSUPPORTED_FILTER_OPERATOR`
    *   (via {@link buildEventSelector}), `CD3_WINDOW_NOT_POSITIVE`,
    *   `CD5_FROM_REQUIRES_TO`, `CD5_TO_REQUIRES_FROM`, `CD6_DATE_FORMAT`,
    *   `CD6_DATE_INVALID`, `CD6_DATE_ORDER` — first failing guard wins.
+   * @see mixpanel_headless.types.CohortCriteria.did_event
    */
+  // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   static didEvent(event: string, options?: DidEventOptions): CohortCriteria {
     const opts = options ?? {};
     const atLeast = opts.at_least ?? null;
@@ -401,16 +362,16 @@ export class CohortCriteria {
       ["at_most", atMost],
       ["exactly", exactly],
     ];
-    const setFreqs = freqParams.filter(
+    const chosenFreqs = freqParams.filter(
       ([, value]) => value !== null,
-    ) as readonly (readonly [string, number])[];
-    if (setFreqs.length !== 1) {
+    ) as ReadonlyArray<readonly [string, number]>;
+    if (chosenFreqs.length !== 1) {
       throw new ParamValidationError(
         "exactly one of at_least, at_most, exactly must be set",
         "CD1_FREQUENCY_PARAM_REQUIRED",
       );
     }
-    const [freqName, freqValue] = setFreqs[0] as readonly [string, number];
+    const [freqName, freqValue] = chosenFreqs[0] as readonly [string, number];
 
     // CD2_FREQUENCY_NEGATIVE: frequency param must be non-negative.
     if (freqValue < 0) {
@@ -435,26 +396,26 @@ export class CohortCriteria {
       ["within_weeks", withinWeeks],
       ["within_months", withinMonths],
     ];
-    const setRolling = rollingParams.filter(
+    const chosenRolling = rollingParams.filter(
       ([, value]) => value !== null,
-    ) as readonly (readonly [string, number])[];
+    ) as ReadonlyArray<readonly [string, number]>;
     const hasDateRange = fromDate !== null || toDate !== null;
 
-    if (setRolling.length === 0 && !hasDateRange) {
+    if (chosenRolling.length === 0 && !hasDateRange) {
       throw new ParamValidationError(
         "exactly one time constraint required " +
           "(within_days/weeks/months or from_date+to_date)",
         "CD3_TIME_CONSTRAINT_REQUIRED",
       );
     }
-    if (setRolling.length > 0 && hasDateRange) {
+    if (chosenRolling.length > 0 && hasDateRange) {
       throw new ParamValidationError(
         "exactly one time constraint required " +
           "(within_days/weeks/months or from_date+to_date)",
         "CD3_TIME_CONSTRAINT_REQUIRED",
       );
     }
-    if (setRolling.length > 1) {
+    if (chosenRolling.length > 1) {
       throw new ParamValidationError(
         "exactly one time constraint required " +
           "(within_days/weeks/months or from_date+to_date)",
@@ -470,7 +431,7 @@ export class CohortCriteria {
       selector: null,
     };
     if (where !== null) {
-      // CD10_UNSUPPORTED_FILTER_OPERATOR fires here, BEFORE the window/
+      // CD10_UNSUPPORTED_FILTER_OPERATOR fires here, before the window/
       // date guards below — exactly Python's evaluation order.
       const whereList = where instanceof Filter ? [where] : where;
       if (whereList.length > 0) {
@@ -493,8 +454,8 @@ export class CohortCriteria {
       count: countDict,
     };
 
-    if (setRolling.length > 0) {
-      const [rollingName, rollingValue] = setRolling[0] as readonly [
+    if (chosenRolling.length > 0) {
+      const [rollingName, rollingValue] = chosenRolling[0] as readonly [
         string,
         number,
       ];
@@ -572,16 +533,17 @@ export class CohortCriteria {
   }
 
   /**
-   * Create a criterion for users who did NOT perform an event — port of
-   * `CohortCriteria.did_not_do_event` (shorthand for
-   * `didEvent(event, {exactly: 0, ...})`).
+   * Create a criterion for users who did not perform an event; shorthand
+   * for `didEvent(event, { exactly: 0, ...options })`.
    *
    * @param event - Event name.
-   * @param options - Kw-only time-constraint options.
-   * @returns CohortCriteria equivalent to
-   *   `didEvent(event, {exactly: 0, ...})`.
-   * @throws ParamValidationError - On constraint violations (same codes
-   *   as {@link didEvent}).
+   * @param options - Time-constraint options; see
+   *   {@link DidNotDoEventOptions}.
+   * @returns A `CohortCriteria` equivalent to
+   *   `didEvent(event, { exactly: 0, ...options })`.
+   * @throws {@link ParamValidationError} - On constraint violations (same
+   *   codes as {@link didEvent}).
+   * @see mixpanel_headless.types.CohortCriteria.did_not_do_event
    */
   static didNotDoEvent(
     event: string,
@@ -599,16 +561,18 @@ export class CohortCriteria {
   }
 
   /**
-   * Create a property-based criterion — port of
-   * `CohortCriteria.has_property`.
+   * Create a criterion on a user-profile property value.
    *
    * @param property - Property name (must be non-empty).
    * @param value - Value to compare against.
-   * @param options - Kw-only `operator` (default `"equals"`) and
-   *   `property_type` (default `"string"`).
-   * @returns CohortCriteria with property selector node.
-   * @throws ParamValidationError - `CD7_EMPTY_PROPERTY` when the property
-   *   name is empty/blank.
+   * @param options - Bag with `operator` (defaults to `"equals"`) and
+   *   `property_type` (defaults to `"string"`).
+   * @returns A `CohortCriteria` with a property selector node.
+   * @throws {@link ParamValidationError} - `CD7_EMPTY_PROPERTY` when the
+   *   property name is empty or blank.
+   * @throws {@link KeyError} - When an untyped caller passes an operator
+   *   outside {@link PROPERTY_OPERATOR_MAP}, as Python's dict lookup does.
+   * @see mixpanel_headless.types.CohortCriteria.has_property
    */
   static hasProperty(
     property: string,
@@ -631,10 +595,10 @@ export class CohortCriteria {
 
     const selectorOperator = PROPERTY_OPERATOR_MAP.get(operator);
     if (selectorOperator === undefined) {
-      // Python: `_PROPERTY_OPERATOR_MAP[operator]` raises KeyError for
-      // operators outside the map (uncoded builtin raise, R5.5) — the
-      // typed signature makes this unreachable from TS call sites, but
-      // vector/bridge replay can carry any recorded string.
+      // Python's `_PROPERTY_OPERATOR_MAP[operator]` raises an uncoded
+      // KeyError for operators outside the map. The typed signature makes
+      // this unreachable from TS call sites, but vector/bridge replay can
+      // carry any recorded string.
       throw new KeyError(operator);
     }
 
@@ -654,28 +618,28 @@ export class CohortCriteria {
   }
 
   /**
-   * Check if a user property exists — port of
-   * `CohortCriteria.property_is_set` (shorthand for
-   * `hasProperty(property, "", {operator: "is_set"})`).
+   * Create a criterion requiring a user property to be set; shorthand for
+   * `hasProperty(property, "", { operator: "is_set" })`.
    *
    * @param property - Property name.
-   * @returns CohortCriteria checking property existence.
-   * @throws ParamValidationError - `CD7_EMPTY_PROPERTY` when the property
-   *   name is empty/blank.
+   * @returns A `CohortCriteria` checking property existence.
+   * @throws {@link ParamValidationError} - `CD7_EMPTY_PROPERTY` when the
+   *   property name is empty or blank.
+   * @see mixpanel_headless.types.CohortCriteria.property_is_set
    */
   static propertyIsSet(property: string): CohortCriteria {
     return CohortCriteria.hasProperty(property, "", { operator: "is_set" });
   }
 
   /**
-   * Check if a user property does not exist — port of
-   * `CohortCriteria.property_is_not_set` (shorthand for
-   * `hasProperty(property, "", {operator: "is_not_set"})`).
+   * Create a criterion requiring a user property to be unset; shorthand
+   * for `hasProperty(property, "", { operator: "is_not_set" })`.
    *
    * @param property - Property name.
-   * @returns CohortCriteria checking property non-existence.
-   * @throws ParamValidationError - `CD7_EMPTY_PROPERTY` when the property
-   *   name is empty/blank.
+   * @returns A `CohortCriteria` checking property non-existence.
+   * @throws {@link ParamValidationError} - `CD7_EMPTY_PROPERTY` when the
+   *   property name is empty or blank.
+   * @see mixpanel_headless.types.CohortCriteria.property_is_not_set
    */
   static propertyIsNotSet(property: string): CohortCriteria {
     return CohortCriteria.hasProperty(property, "", {
@@ -684,13 +648,13 @@ export class CohortCriteria {
   }
 
   /**
-   * Create a criterion for membership in a saved cohort — port of
-   * `CohortCriteria.in_cohort`.
+   * Create a criterion for membership in a saved cohort.
    *
-   * @param cohortId - Cohort ID (must be a positive integer).
-   * @returns CohortCriteria with cohort reference selector node.
-   * @throws ParamValidationError - `CD8_COHORT_ID_NOT_POSITIVE` when the
-   *   cohort ID is not positive.
+   * @param cohortId - Cohort id (must be a positive integer).
+   * @returns A `CohortCriteria` with a cohort-reference selector node.
+   * @throws {@link ParamValidationError} - `CD8_COHORT_ID_NOT_POSITIVE` when
+   *   the cohort id is not positive.
+   * @see mixpanel_headless.types.CohortCriteria.in_cohort
    */
   static inCohort(cohortId: number): CohortCriteria {
     // CD8_COHORT_ID_NOT_POSITIVE: cohort_id must be a positive integer.
@@ -715,13 +679,13 @@ export class CohortCriteria {
   }
 
   /**
-   * Create a criterion for non-membership in a saved cohort — port of
-   * `CohortCriteria.not_in_cohort`.
+   * Create a criterion for non-membership in a saved cohort.
    *
-   * @param cohortId - Cohort ID (must be a positive integer).
-   * @returns CohortCriteria with cohort exclusion selector node.
-   * @throws ParamValidationError - `CD8_COHORT_ID_NOT_POSITIVE` when the
-   *   cohort ID is not positive.
+   * @param cohortId - Cohort id (must be a positive integer).
+   * @returns A `CohortCriteria` with a cohort-exclusion selector node.
+   * @throws {@link ParamValidationError} - `CD8_COHORT_ID_NOT_POSITIVE` when
+   *   the cohort id is not positive.
+   * @see mixpanel_headless.types.CohortCriteria.not_in_cohort
    */
   static notInCohort(cohortId: number): CohortCriteria {
     // CD8_COHORT_ID_NOT_POSITIVE: cohort_id must be a positive integer.
@@ -747,73 +711,40 @@ export class CohortCriteria {
 }
 
 /**
- * Remove null `selector` keys from behavioral event_selector entries —
- * port of the module-private `types._sanitize_raw_cohort` (exported
- * `@internal` for its conformance vectors).
+ * A set of criteria combined with AND or OR logic, nestable to any depth.
  *
- * The Mixpanel API calls `postorder_traverse` on nested `selector`
- * fields within `event_selector` blocks; a `None` root causes a crash.
- * This function deep-copies the raw cohort dict and removes any
- * `selector: null` entries from behavioral event_selectors.
+ * The stored `_operator` is `"and"` (constructor and {@link allOf}) or
+ * `"or"` ({@link anyOf}); there is no other value. {@link toDict}
+ * produces Mixpanel cohort-definition JSON (legacy `selector` +
+ * `behaviors` format) with behavior keys re-indexed globally so they stay
+ * unique across nesting.
  *
- * Python-parity note: the Python body runs `del es["selector"]` whenever
- * `es.get("selector") is None`, which would raise `KeyError` on an
- * absent key — but every constructible `CohortDefinition.to_dict()`
- * output always carries the key, so the reachable behavior is exactly
- * "delete when present and null" (mirrored here; a JS `delete` on an
- * absent key is a silent no-op).
- *
- * @param raw - Output of `CohortDefinition.toDict()`.
- * @returns Sanitized deep copy safe for API submission.
- *
- * @internal Not part of the public package surface — exported from this
- * module for the conformance binding and translated tests only.
- */
-export function sanitizeRawCohort(
-  raw: Readonly<Record<string, unknown>>,
-): Record<string, unknown> {
-  const result = deepCopy(raw) as Record<string, unknown>;
-  const behaviors = result["behaviors"];
-  if (isPlainObject(behaviors)) {
-    for (const bval of Object.values(behaviors)) {
-      if (!isPlainObject(bval)) {
-        continue;
-      }
-      const count = bval["count"];
-      if (isPlainObject(count)) {
-        const es = count["event_selector"];
-        if (isPlainObject(es) && es["selector"] === null) {
-          delete es["selector"];
-        }
-      }
-    }
-  }
-  return result;
-}
-
-/**
- * A composed set of criteria combined with AND/OR logic — TS port of
- * `types.CohortDefinition`.
- *
- * Mirrors Python's `init=False` design: the stored `_operator` literals
- * are `"and"` (from the constructor / {@link allOf}) and `"or"` (from
- * {@link anyOf}) — there is no other operator value. Produces valid
- * Mixpanel cohort definition JSON (legacy `selector` + `behaviors`
- * format) via {@link toDict}; behavior keys are globally re-indexed to
- * ensure uniqueness across arbitrary nesting.
+ * @example
+ * ```ts
+ * const cohort = CohortDefinition.allOf(
+ *   CohortCriteria.hasProperty("plan", "premium"),
+ *   CohortDefinition.anyOf(
+ *     CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
+ *     CohortCriteria.inCohort(12345),
+ *   ),
+ * );
+ * ```
+ * @see mixpanel_headless.types.CohortDefinition
  */
 export class CohortDefinition {
   /**
-   * One or more criteria or nested definitions.
+   * One or more criteria or nested definitions. Kept under its Python
+   * spelling because the conformance codec reads it by name.
    *
-   * @internal Codec-visible under its exact Python spelling.
+   * @internal
    */
   readonly _criteria: ReadonlyArray<CohortCriteria | CohortDefinition>;
 
   /**
-   * Boolean combinator (`"and"` | `"or"`).
+   * Boolean combinator (`"and"` | `"or"`). Kept under its Python
+   * spelling because the conformance codec reads it by name.
    *
-   * @internal Codec-visible under its exact Python spelling.
+   * @internal
    */
   readonly _operator: "and" | "or";
 
@@ -822,7 +753,7 @@ export class CohortDefinition {
    * to {@link allOf}).
    *
    * @param criteria - One or more criteria or nested definitions.
-   * @throws ParamValidationError - `CD9_EMPTY_CRITERIA` when no criteria
+   * @throws {@link ParamValidationError} - `CD9_EMPTY_CRITERIA` when no criteria
    *   are provided.
    */
   constructor(...criteria: ReadonlyArray<CohortCriteria | CohortDefinition>) {
@@ -841,9 +772,10 @@ export class CohortDefinition {
    * Combine criteria and/or definitions with AND logic.
    *
    * @param criteria - One or more criteria or nested definitions.
-   * @returns CohortDefinition with the AND combinator.
-   * @throws ParamValidationError - `CD9_EMPTY_CRITERIA` when no criteria
-   *   are provided.
+   * @returns A `CohortDefinition` with the AND combinator.
+   * @throws {@link ParamValidationError} - `CD9_EMPTY_CRITERIA` when no
+   *   criteria are provided.
+   * @see mixpanel_headless.types.CohortDefinition.all_of
    */
   static allOf(
     ...criteria: ReadonlyArray<CohortCriteria | CohortDefinition>
@@ -855,9 +787,10 @@ export class CohortDefinition {
    * Combine criteria and/or definitions with OR logic.
    *
    * @param criteria - One or more criteria or nested definitions.
-   * @returns CohortDefinition with the OR combinator.
-   * @throws ParamValidationError - `CD9_EMPTY_CRITERIA` when no criteria
-   *   are provided.
+   * @returns A `CohortDefinition` with the OR combinator.
+   * @throws {@link ParamValidationError} - `CD9_EMPTY_CRITERIA` when no
+   *   criteria are provided.
+   * @see mixpanel_headless.types.CohortDefinition.any_of
    */
   static anyOf(
     ...criteria: ReadonlyArray<CohortCriteria | CohortDefinition>
@@ -871,19 +804,17 @@ export class CohortDefinition {
   }
 
   /**
-   * Serialize to Mixpanel cohort definition format — port of
-   * `CohortDefinition.to_dict`.
+   * Serialize to the Mixpanel cohort-definition format.
    *
    * Produces `{selector: {...}, behaviors: {...}}` with globally
-   * re-indexed behavior keys (`bhvr_0`, `bhvr_1`, ...) ensuring
-   * uniqueness across arbitrary nesting depth (rule CD10's uniqueness
-   * half — enforced structurally by the sequential re-indexing below).
+   * re-indexed behavior keys (`bhvr_0`, `bhvr_1`, ...) so they stay
+   * unique across arbitrary nesting depth (rule CD10's uniqueness half,
+   * enforced structurally by the sequential re-indexing).
    *
    * @returns Object with `selector` expression tree and `behaviors` map
    *   (deep copies — mutating the output never corrupts the criteria).
-   *
    * @example
-   * ```typescript
+   * ```ts
    * const cohort = CohortDefinition.allOf(
    *   CohortCriteria.hasProperty("plan", "premium"),
    *   CohortCriteria.didEvent("Purchase", { at_least: 3, within_days: 30 }),
@@ -892,6 +823,7 @@ export class CohortDefinition {
    * // {selector: {operator: "and", children: [...]},
    * //  behaviors: {bhvr_0: {...}}}
    * ```
+   * @see mixpanel_headless.types.CohortDefinition.to_dict
    */
   toDict(): Record<string, unknown> {
     const behaviors: Record<string, unknown> = {};
@@ -926,12 +858,21 @@ export class CohortDefinition {
 }
 
 /**
- * Break down query results by cohort membership — TS port of
- * `types.CohortBreakdown`.
+ * Break down query results by cohort membership.
  *
- * Accepts either a saved cohort ID (positive integer) or an inline
+ * Accepts either a saved cohort id (positive integer) or an inline
  * {@link CohortDefinition}. When `include_negated` is true (the
  * default), both "In Cohort" and "Not In Cohort" segments are shown.
+ *
+ * @example
+ * ```ts
+ * const byPaying = new CohortBreakdown({ cohort: 12345, name: "Paying" });
+ * const byInline = new CohortBreakdown({
+ *   cohort: CohortDefinition.allOf(CohortCriteria.hasProperty("plan", "pro")),
+ *   include_negated: false,
+ * });
+ * ```
+ * @see mixpanel_headless.types.CohortBreakdown
  */
 export class CohortBreakdown {
   /** Saved cohort ID or inline definition. */
@@ -944,12 +885,13 @@ export class CohortBreakdown {
   readonly include_negated: boolean;
 
   /**
-   * Create a cohort breakdown (guards fire exactly as Python's
-   * `__post_init__`).
+   * Create a cohort breakdown; the guards fire in Python `__post_init__`
+   * order.
    *
-   * @param fields - Declared fields; `name` defaults to `null`,
-   *   `include_negated` to `true`.
-   * @throws ParamValidationError - `CB1_COHORT_ID_NOT_POSITIVE` /
+   * @param fields - Bag with `cohort` (saved cohort id or inline
+   *   definition, required), `name` (display name, defaults to `null`)
+   *   and `include_negated` (defaults to `true`).
+   * @throws {@link ParamValidationError} - `CB1_COHORT_ID_NOT_POSITIVE` /
    *   `CB2_COHORT_NAME_EMPTY` (via the shared cohort-args guard).
    */
   constructor(fields: {
@@ -959,8 +901,7 @@ export class CohortBreakdown {
   }) {
     this.cohort = fields.cohort;
     this.name = fields.name ?? null;
-    this.include_negated =
-      fields.include_negated === undefined ? true : fields.include_negated;
+    this.include_negated = fields.include_negated ?? true;
     // CB1_COHORT_ID_NOT_POSITIVE / CB2_COHORT_NAME_EMPTY: shared guard.
     validateCohortArgs(this.cohort, this.name, "CB");
   }

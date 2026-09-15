@@ -1,9 +1,49 @@
 {
   "name": "@mixpanel-headless/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
+  "description": "Isomorphic core of Mixpanel Headless: the Workspace facade, query builders, result types, and error hierarchy, with zero Node dependencies.",
+  "keywords": [
+    "mixpanel",
+    "analytics",
+    "typescript",
+    "headless",
+    "isomorphic",
+    "api-client"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",
+    "directory": "packages/core"
+  },
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "NOTICE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "default": "./dist/internal.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -b",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

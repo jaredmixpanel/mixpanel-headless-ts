@@ -1,13 +1,13 @@
-// coerce.ts tests (R4.12) including fast-check property #5 from
-// phase2-design C9: R4.12 table parity for coerceInt/coerceStr/coerceBool
-// and default_factory-on-absent-only semantics.
-//
-// The example tables mirror a live pydantic-v2 probe (2026-08-15) run via
-// TypeAdapter(int|float|str|bool).validate_python — see coerce.ts module
-// docs for the one documented divergence (booleans rejected for
-// int/float, the JSON-mode / R4.12 posture).
+// `coerceInt` / `coerceInt64` / `coerceFloat` / `coerceStr` / `coerceBool`
+// and `resolveWithDefault`: pydantic-v2 lax-table parity (the example tables
+// mirror a live `TypeAdapter(...).validate_python` probe; booleans are
+// rejected for int/float — the JSON-mode posture) and the
+// default_factory-on-absent-only rule. `coerceInt64` has no Python twin.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
+import { JsonNumber } from "../src/client/json-value.js";
 import {
   coerceBool,
   coerceFloat,
@@ -16,14 +16,14 @@ import {
   coerceStr,
   resolveWithDefault,
 } from "../src/coerce.js";
-import { JsonNumber } from "../src/client/json-value.js";
 import {
   ParamValidationError,
   ResponseValidationError,
 } from "../src/errors.js";
+import { expectThrows } from "../test-support/raises.js";
 
 describe("coerceInt", () => {
-  it("accepts the R4.12 table: 42 / 42.0 / '42'", () => {
+  it("accepts 42 / 42.0 / '42'", () => {
     expect(coerceInt(42)).toBe(42);
     expect(coerceInt(42.0)).toBe(42);
     expect(coerceInt("42")).toBe(42);
@@ -37,7 +37,7 @@ describe("coerceInt", () => {
     expect(coerceInt("1_000")).toBe(1000);
   });
 
-  it("rejects the R4.12 table: 42.5 and booleans", () => {
+  it("rejects 42.5 and booleans", () => {
     expect(() => coerceInt(42.5)).toThrow(ResponseValidationError);
     expect(() => coerceInt(true)).toThrow(ResponseValidationError);
     expect(() => coerceInt(false)).toThrow(ResponseValidationError);
@@ -63,18 +63,16 @@ describe("coerceInt", () => {
   });
 
   it("throws ParamValidationError at the 'param' boundary with field detail", () => {
-    try {
-      coerceInt("nope", { kind: "param", field: "project_id" });
-      expect.unreachable();
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      const err = exc as ParamValidationError;
-      expect(err.code).toBe("VALIDATION_ERROR");
-      expect(err.details["field"]).toBe("project_id");
-    }
+    const error = expectThrows(() =>
+      coerceInt("nope", { kind: "param", field: "project_id" }),
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    const err = error as ParamValidationError;
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.details["field"]).toBe("project_id");
   });
 
-  it("property #5: integral numbers pass, fractional numbers throw", () => {
+  it("property: integral numbers pass, fractional numbers throw", () => {
     fc.assert(
       fc.property(fc.integer(), (n) => {
         expect(coerceInt(n)).toBe(n);
@@ -209,9 +207,7 @@ describe("coerceFloat", () => {
         expect(coerceFloat(n)).toBe(n);
         // String(-0) is "0" in JS, so the string leg loses the sign bit;
         // JSON cannot encode -0 either, so the boundary never sees it.
-        if (!Object.is(n, -0)) {
-          expect(coerceFloat(String(n))).toBe(n);
-        }
+        expect(coerceFloat(String(n))).toBe(Object.is(n, -0) ? 0 : n);
       }),
     );
   });
@@ -223,7 +219,7 @@ describe("coerceStr", () => {
     expect(coerceStr("")).toBe("");
   });
 
-  it("does NOT coerce int/float/bool/null to string (R4.12)", () => {
+  it("does NOT coerce int/float/bool/null to string", () => {
     for (const bad of [42, 42.5, true, false, null, undefined, ["a"], {}]) {
       expect(() => coerceStr(bad)).toThrow(ResponseValidationError);
     }
@@ -250,7 +246,7 @@ describe("coerceBool", () => {
   const TRUE_SET = ["true", "t", "yes", "y", "on", "1"];
   const FALSE_SET = ["false", "f", "no", "n", "off", "0"];
 
-  it("accepts exactly the R4.12 string sets, case-insensitively", () => {
+  it("accepts exactly the pydantic string sets, case-insensitively", () => {
     for (const s of TRUE_SET) {
       expect(coerceBool(s)).toBe(true);
       expect(coerceBool(s.toUpperCase())).toBe(true);
@@ -293,33 +289,43 @@ describe("coerceBool", () => {
     }
   });
 
-  it("property #5: strings outside the two sets always throw", () => {
+  it("property: strings outside the two sets always throw", () => {
     const members = new Set([...TRUE_SET, ...FALSE_SET]);
     fc.assert(
-      fc.property(fc.string(), (s) => {
-        if (members.has(s.toLowerCase())) {
-          expect(typeof coerceBool(s)).toBe("boolean");
-        } else {
+      fc.property(
+        fc.string().filter((s) => !members.has(s.toLowerCase())),
+        (s) => {
           expect(() => coerceBool(s)).toThrow(ResponseValidationError);
-        }
-      }),
+        },
+      ),
+    );
+  });
+
+  it("property: members of either set coerce to a boolean in any casing", () => {
+    fc.assert(
+      fc.property(
+        fc.mixedCase(fc.constantFrom(...TRUE_SET, ...FALSE_SET)),
+        (s) => {
+          expect(typeof coerceBool(s)).toBe("boolean");
+        },
+      ),
     );
   });
 });
 
 describe("resolveWithDefault (default_factory-on-absent-only)", () => {
   it("fires the factory only when the key is ABSENT", () => {
-    expect(resolveWithDefault({}, "tags", () => ["d"])).toEqual(["d"]);
-    expect(resolveWithDefault({ tags: ["x"] }, "tags", () => ["d"])).toEqual([
-      "x",
-    ]);
+    expect(resolveWithDefault({}, "tags", () => ["d"])).toStrictEqual(["d"]);
+    expect(
+      resolveWithDefault({ tags: ["x"] }, "tags", () => ["d"]),
+    ).toStrictEqual(["x"]);
   });
 
   it("explicit null is returned verbatim — never replaced by the default", () => {
     expect(resolveWithDefault({ tags: null }, "tags", () => ["d"])).toBeNull();
   });
 
-  it("property #5: factory fires iff the key is absent", () => {
+  it("property: the factory fires iff the key is absent", () => {
     const SENTINEL = Symbol("default");
     fc.assert(
       fc.property(

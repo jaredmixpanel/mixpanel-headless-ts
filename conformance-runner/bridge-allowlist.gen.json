@@ -1,9 +1,9 @@
 {
-  "note": "GENERATED FILE — DO NOT EDIT. Regenerate with `npm run generate:bridge-allowlist`. `generatedAt` and `headlessCommit` are informational provenance only: they move on every run, are excluded from the freshness comparison, and nothing may make a policy decision from them. The load-bearing stamps are `corpusCommit`, `rulesSha256`, `verbsSha256` and `routeVerbsSha256`. `rows` is the matchable table; `deniedRoutes` are routes the corpus records that the rules refuse to admit — they are never matchable, and exist so a refusal can be named. A `{n}` in a `consentVerb` is filled by the consent composer from the request body's `ids` array length; it only ever appears on bulk routes.",
+  "note": "GENERATED FILE — DO NOT EDIT. Regenerate with `npm run generate:bridge-allowlist`. External spec: docs/specs/heads/01-lease-and-bridge.md §5.3 in the mixpanel-desktop-app repository. `generatedAt` and `headlessCommit` are informational provenance only: they move on every run, are excluded from the freshness comparison, and nothing may make a policy decision from them. The load-bearing stamps are `corpusCommit`, `rulesSha256`, `verbsSha256` and `routeVerbsSha256`. `rows` is the matchable table; `deniedRoutes` are routes the corpus records that the rules refuse to admit — they are never matchable, and exist so a refusal can be named. A `{n}` in a `consentVerb` is filled by the consent composer from the request body's `ids` array length; it only ever appears on bulk routes.",
   "schema": 1,
   "corpusCommit": "0dde50608a6af026e94cdb75bacbcebe5ce105db",
-  "generatedAt": "2026-09-14T19:47:24.360Z",
-  "headlessCommit": "48da72e8ba2844d2fdfb285f3f9b527e73f031b7",
+  "generatedAt": "2026-09-15T02:32:08.056Z",
+  "headlessCommit": "938a347c34e311125ea5299dc04ab37b6b274caf",
   "rulesSha256": "c1918a46e7958cca081f67f5cc85afa198bbcb21de018c45a87a7edebac5ec95",
   "verbsSha256": "3df22c986ad813fabe8e240fdab7d21d010f6b1f8b6bc6f2ee4020fa981467e9",
   "routeVerbsSha256": "eb9d8b5d30044d5687d229f43f0eb3b3645c39fdecae34f44d1028c02c9e43b5",

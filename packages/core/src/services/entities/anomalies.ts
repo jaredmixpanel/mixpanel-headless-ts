@@ -1,83 +1,95 @@
 /**
- * Data-volume-anomaly wire methods (App API) — Phase-3 packet B4-C5
- * port of the `MixpanelAPIClient` anomalies range
- * (`api_client.py:8422-8538`).
+ * Data-volume-anomaly wire methods on the App API
+ * (`data-definitions/data-volume-anomalies/`, workspace-scoped through
+ * `maybe_scoped_path`). The list call is a raw-envelope request that
+ * digs `results.anomalies` out with Python's exact fall-through ladder;
+ * the two updates are plain PATCH dict-returns.
  *
- * `list_data_volume_anomalies` uses `_raw=True` and digs
- * `results.anomalies` out of the envelope with the source's exact
- * fall-through ladder; the update pair are plain PATCH dict-returns.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_data_volume_anomalies
  */
 
 import { appRequest } from "../../client/app-request.js";
-import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
+import type { ClientCore } from "../../client/core.js";
 import { isPlainRecord } from "../../client/internals.js";
-import { MixpanelHeadlessError } from "../../errors.js";
+import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import { expectRecordResult } from "./shared.js";
 
 /** Options bag of {@link AnomalyMethods.listDataVolumeAnomalies}. */
 export interface ListDataVolumeAnomaliesOptions {
   /** Optional filters (status, limit, event_id, ...). */
   readonly query_params?: Record<string, string> | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C5 anomaly method surface (mixed into `MixpanelClient`). */
+/** Anomaly methods mixed into `MixpanelClient`. */
 export interface AnomalyMethods {
   /**
-   * List data-volume anomalies (`list_data_volume_anomalies`,
-   * `api_client.py:8422-8467` — GET
-   * `data-definitions/data-volume-anomalies/` with `_raw=True`;
-   * extracts `results.anomalies`).
+   * List data-volume anomalies. Sends GET
+   * `data-definitions/data-volume-anomalies/` with `_raw=True`; extracts
+   * `results.anomalies`.
    *
    * @param options - Optional `query_params` filters + signal.
    * @returns The anomaly list.
-   * @throws MixpanelHeadlessError - Missing `anomalies` key
-   *   ("missing 'anomalies' key in results") or an unexpected format.
+   * @throws {@link MixpanelHeadlessError} - Missing `anomalies` key ("missing
+   *   'anomalies' key in results") or an unexpected format.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_data_volume_anomalies
    */
-  listDataVolumeAnomalies(
+  listDataVolumeAnomalies: (
     options?: ListDataVolumeAnomaliesOptions,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
-   * Update one anomaly's status (`update_anomaly`, `:8469-8502` —
-   * PATCH).
+   * Update one anomaly's status. Sends a PATCH.
    *
    * @param body - Update payload (id, status, anomalyClass).
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_anomaly
    */
-  updateAnomaly(
+  updateAnomaly: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Bulk-update anomaly statuses (`bulk_update_anomalies`,
-   * `:8504-8538` — PATCH `.../data-volume-anomalies/bulk/`).
+   * Bulk-update anomaly statuses. Sends PATCH `.../data-volume-anomalies/bulk/`.
    *
    * @param body - Bulk update payload.
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_update_anomalies
    */
-  bulkUpdateAnomalies(
+  bulkUpdateAnomalies: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**
- * Build the C5 anomaly methods over the C1 core seam.
+ * Build the anomaly methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const anomalies = createAnomalyMethods(core);
+ * const open = await anomalies.listDataVolumeAnomalies({ query_params: { status: "open" } });
+ * // [{ id: 3, event_id: 12, status: "open", ... }, ...]
+ * ```
  */
 export function createAnomalyMethods(core: ClientCore): AnomalyMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -98,8 +110,8 @@ export function createAnomalyMethods(core: ClientCore): AnomalyMethods {
           raw: true,
         },
       );
-      // Response: {"status":"ok","results":{"anomalies":[...]}} —
-      // ladder ported verbatim (`:8454-8467`).
+      // Response: {"status":"ok","results":{"anomalies":[...]}} — the
+      // ladder mirrors Python branch for branch.
       if (isPlainRecord(result)) {
         const results = Object.hasOwn(result, "results")
           ? (result["results"] as JsonValue)

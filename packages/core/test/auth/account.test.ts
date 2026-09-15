@@ -1,15 +1,17 @@
-// Unit tests for the Account discriminated union + parse factory + free
-// functions (packet P2-4, phase2-design C4). The parse guards replicate
-// the Pydantic invariants of `_internal/auth/account.py`: extra='forbid',
-// name pattern/length, default_project digits-only, exactly-one-of
-// token/token_env, discriminator dispatch.
+// The Account discriminated union, its parse factory and free functions.
+// The parse guards replicate the Pydantic invariants of
+// `_internal/auth/account.py`: extra='forbid', name pattern/length,
+// digits-only default_project, exactly-one-of token/token_env,
+// discriminator dispatch. TS unit tests; no Python suite is mirrored.
+
 import { describe, expect, it } from "vitest";
+
 import {
+  type Account,
   accountAuthHeader,
   isLongLived,
-  parseAccount,
-  type Account,
   type OAuthTokenAccount,
+  parseAccount,
   type TokenResolver,
 } from "../../src/auth/account.js";
 import {
@@ -56,7 +58,7 @@ describe("parseAccount — variant dispatch", () => {
     expect(account.username).toBe("sa.user");
     expect(account.secret).toBeInstanceOf(Secret);
     expect(account.secret.reveal()).toBe("hunter2");
-    // default_project omitted -> key ABSENT (R3.9 absent-vs-null).
+    // default_project omitted -> key ABSENT (absent-vs-null).
     expect(Object.hasOwn(account, "default_project")).toBe(false);
   });
 
@@ -188,8 +190,8 @@ describe("parseAccount — Pydantic invariants (coded guards)", () => {
     let caught: unknown;
     try {
       parseAccount({ ...SA_PAYLOAD, name: "" }, { boundary: "param" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect((caught as ParamValidationError).code).toBe("VALIDATION_ERROR");
   });
@@ -198,8 +200,8 @@ describe("parseAccount — Pydantic invariants (coded guards)", () => {
     let caught: unknown;
     try {
       parseAccount({ ...SA_PAYLOAD, extra_key: true });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ResponseValidationError);
     expect((caught as ResponseValidationError).code).toBe(
@@ -282,20 +284,23 @@ describe("accountAuthHeader / isLongLived (exhaustive free functions)", () => {
   it("narrows exhaustively at compile time (never default)", () => {
     /**
      * Compile-time exhaustiveness canary: adding a 4th Account variant
-     * makes the `never` assignment below a type error, breaking the
-     * build exactly as phase2-design C4 requires.
+     * makes the `never` assignment below a type error and breaks the
+     * build.
      *
      * @param account - Any account variant.
      * @returns The discriminator value.
      */
     function discriminate(account: Account): string {
       switch (account.type) {
-        case "service_account":
+        case "service_account": {
           return account.type;
-        case "oauth_browser":
+        }
+        case "oauth_browser": {
           return account.type;
-        case "oauth_token":
+        }
+        case "oauth_token": {
           return account.type;
+        }
         default: {
           const exhaustive: never = account;
           return exhaustive;

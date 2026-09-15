@@ -1,9 +1,7 @@
 /**
- * Python `str.strip()` semantics (rulebook R11.3 enabling dependency).
- * Part of the `pythonCompat` module (rulebook §11): ported once, first;
- * no other module re-derives these semantics.
+ * Python `str.strip()` semantics, implemented once here.
  *
- * The trap this closes: the CPython whitespace table is NOT the JS
+ * The trap this closes: the CPython whitespace table is not the JS
  * `String.prototype.trim()` table — Python strips the U+001C..U+001F
  * file/group/record/unit separators (JS keeps them) and keeps U+FEFF
  * (JS trims it). Membership comes from the pinned, CPython-generated
@@ -11,6 +9,7 @@
  * decisions independent of the JS engine's Unicode database version
  * (V8 tracks Unicode 17; see the `python-str.ts` precedent).
  */
+import { codepoints } from "./codepoint.js";
 import { PYTHON_STR_WHITESPACE } from "./whitespace.gen.js";
 
 /**
@@ -21,7 +20,6 @@ import { PYTHON_STR_WHITESPACE } from "./whitespace.gen.js";
  * @returns The substring with every leading/trailing codepoint in the
  *   pinned `str.isspace()` table removed. Never splits a surrogate pair
  *   (whitespace is BMP-only, and scanning is codepoint-based).
- *
  * @example
  * ```typescript
  * pythonStrip("\u001chi\u001f"); // "hi"  (JS trim() keeps U+001C/U+001F)
@@ -29,7 +27,7 @@ import { PYTHON_STR_WHITESPACE } from "./whitespace.gen.js";
  * ```
  */
 export function pythonStrip(text: string): string {
-  const points = Array.from(text);
+  const points = codepoints(text);
   let start = 0;
   let end = points.length;
   while (

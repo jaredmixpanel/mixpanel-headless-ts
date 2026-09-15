@@ -1,37 +1,22 @@
-// Translated flow-query tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query_flow.py (R10.2) — ALL 6
-// classes (TestArbFunnelsQuery :88, TestTransformFlowResult :134,
-// TestQueryFlow :189, TestParseTreeNode :326,
-// TestTransformFlowResultTree :417, TestQueryFlowTree :455).
-//
-// Translation notes:
-// - Python uses `MagicMock(spec=MixpanelAPIClient)` rather than a
-//   transport mock, so the TS twin is {@link mockClient}: a stub object
-//   carrying ONLY the client members `LiveQueryService.queryFlow`
-//   touches (`arbFunnelsQuery`) plus a call log. The
-//   `assert_called_once_with` / `call_args[0][0]` asserts read that log.
-// - `_transform_flow_result` / `_parse_tree_node` are
-//   {@link transformFlowResult} / {@link parseTreeNode} in
-//   `services/live-query-transforms.ts` (R7.2 split).
-// - Python's `children` is a TUPLE; the TS field is a readonly array, so
-//   `node.children == ()` becomes `toEqual([])`.
-// - `TestArbFunnelsQuery`'s three cases assert on the MagicMock itself
-//   (they never touch library code — `test_query_type_sankey` /
-//   `..._top_paths` are pure dict-literal asserts). They translate
-//   verbatim against the same stub so the class stays complete (A-F2).
+// LiveQueryService.query_flow with transformFlowResult / parseTreeNode
+// (sankey, top-paths and tree modes) and the client's arbFunnelsQuery body.
+// Mirrors tests/unit/test_live_query_flow.py (all six classes). The
+// MagicMock(spec=...) client is a call-recording stub; Python's tuple
+// `children` is a readonly array, so `== ()` becomes `toEqual([])`.
 
 import { describe, expect, it } from "vitest";
+
+import type { MixpanelClient } from "../../src/client/client.js";
+import type { JsonValue } from "../../src/client/json-value.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import {
   parseTreeNode,
   transformFlowResult,
 } from "../../src/services/live-query-transforms.js";
 import { FlowQueryResult } from "../../src/types/results/query-engine.js";
-import type { MixpanelClient } from "../../src/client/client.js";
-import type { JsonValue } from "../../src/client/json-value.js";
 
 // ===========================================================================
-// Fixtures (test_live_query_flow.py:22-79)
+// Fixtures (test_live_query_flow.py)
 // ===========================================================================
 
 /** The `MagicMock(spec=MixpanelAPIClient)` twin plus its call log. */
@@ -41,11 +26,11 @@ interface MockApiClient {
   /** Every `arbFunnelsQuery` body, in call order. */
   readonly arbFunnelsCalls: Array<Record<string, unknown>>;
   /** Set the value the next `arbFunnelsQuery` resolves with. */
-  setReturnValue(value: unknown): void;
+  setReturnValue: (value: unknown) => void;
 }
 
 /**
- * The `mock_api_client` fixture (test_live_query_flow.py:27-30).
+ * The `mock_api_client` fixture.
  *
  * @returns The stub client plus its call log.
  */
@@ -190,10 +175,11 @@ function sampleTreeRoot(): Record<string, unknown> {
 }
 
 // ===========================================================================
-// T024: TestArbFunnelsQuery — API client method
+// Arb funnels query (API client method)
 // ===========================================================================
 
-describe("TestArbFunnelsQuery", () => {
+describe("Arb funnels query", () => {
+  // python: TestArbFunnelsQuery
   it("POSTs the body to the /arb_funnels endpoint", async () => {
     const mock = mockClient();
     mock.setReturnValue(sampleSankeyResponse());
@@ -208,8 +194,8 @@ describe("TestArbFunnelsQuery", () => {
       unknown
     >;
 
-    expect(mock.arbFunnelsCalls.length).toBe(1);
-    expect(mock.arbFunnelsCalls[0]).toEqual(body);
+    expect(mock.arbFunnelsCalls).toHaveLength(1);
+    expect(mock.arbFunnelsCalls[0]).toStrictEqual(body);
     expect(Object.hasOwn(result, "computed_at")).toBe(true);
   });
 
@@ -233,10 +219,11 @@ describe("TestArbFunnelsQuery", () => {
 });
 
 // ===========================================================================
-// T026: TestTransformFlowResult
+// Transform flow result
 // ===========================================================================
 
-describe("TestTransformFlowResult", () => {
+describe("Transform flow result", () => {
+  // python: TestTransformFlowResult
   it("sankey response extracts steps, breakdowns, conversion rate", () => {
     const raw = sampleSankeyResponse();
     const bookmark = sampleBookmarkParams();
@@ -245,12 +232,12 @@ describe("TestTransformFlowResult", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.computed_at).toBe("2025-01-15T10:00:00");
-    expect(result.steps.length).toBe(2);
+    expect(result.steps).toHaveLength(2);
     expect(result.steps[0]!["event"]).toBe("Login");
-    expect(result.breakdowns.length).toBe(1);
+    expect(result.breakdowns).toHaveLength(1);
     expect(result.overall_conversion_rate).toBe(0.3);
     expect(result.mode).toBe("sankey");
-    expect(result.meta).toEqual({ sampling_factor: 1.0 });
+    expect(result.meta).toStrictEqual({ sampling_factor: 1.0 });
   });
 
   it("top-paths response extracts the flows field", () => {
@@ -260,8 +247,8 @@ describe("TestTransformFlowResult", () => {
     const result = transformFlowResult(raw, bookmark, "paths");
 
     expect(result).toBeInstanceOf(FlowQueryResult);
-    expect(result.flows.length).toBe(2);
-    expect(result.flows[0]!["path"]).toEqual(["Login", "Purchase"]);
+    expect(result.flows).toHaveLength(2);
+    expect(result.flows[0]!["path"]).toStrictEqual(["Login", "Purchase"]);
     expect(result.overall_conversion_rate).toBe(0.5);
     expect(result.mode).toBe("paths");
   });
@@ -281,15 +268,16 @@ describe("TestTransformFlowResult", () => {
 
     const result = transformFlowResult(raw, bookmark, "sankey");
 
-    expect(result.params).toEqual(bookmark);
+    expect(result.params).toStrictEqual(bookmark);
   });
 });
 
 // ===========================================================================
-// T027: TestQueryFlow
+// Query flow
 // ===========================================================================
 
-describe("TestQueryFlow", () => {
+describe("Query flow", () => {
+  // python: TestQueryFlow
   it("calls arb_funnels_query with the correct body", async () => {
     const mock = mockClient();
     mock.setReturnValue(sampleSankeyResponse());
@@ -298,9 +286,9 @@ describe("TestQueryFlow", () => {
 
     const result = await live.queryFlow(bookmark, 12345, "sankey");
 
-    expect(mock.arbFunnelsCalls.length).toBe(1);
+    expect(mock.arbFunnelsCalls).toHaveLength(1);
     const body = mock.arbFunnelsCalls[0]!;
-    expect(body["bookmark"]).toEqual(bookmark);
+    expect(body["bookmark"]).toStrictEqual(bookmark);
     expect(body["project_id"]).toBe(12345);
     expect(body["query_type"]).toBe("flows_sankey");
 
@@ -330,10 +318,11 @@ describe("TestQueryFlow", () => {
 });
 
 // ===========================================================================
-// TestParseTreeNode
+// Parse tree node
 // ===========================================================================
 
-describe("TestParseTreeNode", () => {
+describe("Parse tree node", () => {
+  // python: TestParseTreeNode
   it("extracts event, type and counts from the root dict", () => {
     const node = parseTreeNode(sampleTreeRoot());
 
@@ -350,10 +339,10 @@ describe("TestParseTreeNode", () => {
   it("builds recursive children", () => {
     const node = parseTreeNode(sampleTreeRoot());
 
-    expect(node.children.length).toBe(2);
+    expect(node.children).toHaveLength(2);
     expect(node.children[0]!.event).toBe("Search");
     expect(node.children[0]!.total_count).toBe(80);
-    expect(node.children[0]!.children.length).toBe(1);
+    expect(node.children[0]!.children).toHaveLength(1);
     expect(node.children[0]!.children[0]!.event).toBe("Purchase");
   });
 
@@ -372,7 +361,7 @@ describe("TestParseTreeNode", () => {
       converted_total_count: 0,
     };
     const node = parseTreeNode(leafRaw);
-    expect(node.children).toEqual([]);
+    expect(node.children).toStrictEqual([]);
     expect(node.total_count).toBe(20);
   });
 
@@ -396,16 +385,19 @@ describe("TestParseTreeNode", () => {
       time_percentiles_from_prev: { percentiles: [50], values: [0.5] },
     };
     const node = parseTreeNode(raw);
-    expect(node.time_percentiles_from_start["percentiles"]).toEqual([50, 90]);
-    expect(node.time_percentiles_from_prev["values"]).toEqual([0.5]);
+    expect(node.time_percentiles_from_start["percentiles"]).toStrictEqual([
+      50, 90,
+    ]);
+    expect(node.time_percentiles_from_prev["values"]).toStrictEqual([0.5]);
   });
 });
 
 // ===========================================================================
-// TestTransformFlowResultTree
+// Transform flow result (tree mode)
 // ===========================================================================
 
-describe("TestTransformFlowResultTree", () => {
+describe("Transform flow result tree", () => {
+  // python: TestTransformFlowResultTree
   it("tree mode parses trees into a FlowTreeNode list", () => {
     const result = transformFlowResult(
       sampleTreeResponse(),
@@ -415,7 +407,7 @@ describe("TestTransformFlowResultTree", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.mode).toBe("tree");
-    expect(result.trees.length).toBe(1);
+    expect(result.trees).toHaveLength(1);
     expect(result.trees[0]!.event).toBe("Login");
     expect(result.trees[0]!.total_count).toBe(100);
   });
@@ -429,7 +421,7 @@ describe("TestTransformFlowResultTree", () => {
     const result = transformFlowResult(raw, sampleBookmarkParams(), "tree");
 
     expect(result.mode).toBe("tree");
-    expect(result.trees).toEqual([]);
+    expect(result.trees).toStrictEqual([]);
   });
 
   it("error-as-200 still raises QueryError in tree mode", () => {
@@ -442,10 +434,11 @@ describe("TestTransformFlowResultTree", () => {
 });
 
 // ===========================================================================
-// TestQueryFlowTree
+// Query flow (tree mode)
 // ===========================================================================
 
-describe("TestQueryFlowTree", () => {
+describe("Query flow tree", () => {
+  // python: TestQueryFlowTree
   it("tree mode uses query_type='flows'", async () => {
     const mock = mockClient();
     mock.setReturnValue(sampleTreeResponse());
@@ -465,7 +458,7 @@ describe("TestQueryFlowTree", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.mode).toBe("tree");
-    expect(result.trees.length).toBe(1);
+    expect(result.trees).toHaveLength(1);
     expect(result.trees[0]!.event).toBe("Login");
   });
 });

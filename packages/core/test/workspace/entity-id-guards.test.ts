@@ -1,51 +1,28 @@
-// ADDITIVE (no Python twin): network-free guards on the positional
-// entity-id parameters of the `Workspace` facade.
-//
-// Motivation — a live run passed `{ annotation_id: 2078447 }` where
-// `deleteAnnotation(annotationId: number)` expects the bare number; the
-// port interpolated `/annotations/[object Object]/` into the path and
-// surfaced the server's 404 as `QUERY_FAILED`. Python does not guard
-// these arguments (its signatures are `int`-typed), so the TS guard is
-// additive hardening: every `int`-typed positional id on the facade now
-// rejects a non-positive-integer BEFORE any request is assembled, with
-// Python's own `RL6_INVALID_ID` ("An id is a positive integer").
-//
-// Two layers: the `requireEntityId` helper table, and one probe per
-// guarded facade member proving the guard fires with ZERO transport
-// calls (the `httpx.MockTransport` twin records every request).
+// ADDITIVE (no Python twin): network-free guards on the `Workspace`
+// facade's positional entity-id parameters — `requireEntityId`,
+// `requireInt64Id` (lookup-table ids are signed int64) and one probe per
+// guarded member proving `RL6_INVALID_ID` fires with zero transport calls.
+// Python's `int`-typed signatures do no such check; this is TS hardening.
 
 import { describe, expect, it } from "vitest";
+
+import {
+  CODED_GUARD_REGISTRY,
+  ParamValidationError,
+} from "../../src/errors.js";
+import { UpdateAnnotationParams } from "../../src/types/entities/annotations.js";
 import { Workspace } from "../../src/workspace.js";
 import {
   requireEntityId,
   requireInt64Id,
 } from "../../src/workspace-members/shared.js";
 import {
-  CODED_GUARD_REGISTRY,
-  ParamValidationError,
-} from "../../src/errors.js";
-import {
-  createMockClient,
-  makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
-import { UpdateAnnotationParams } from "../../src/types/entities/annotations.js";
-
-/** The OAuth session the mock client is built over. */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The service-account facade session (`_TEST_SESSION`). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
+  CLIENT_SESSION,
+  createMockClient,
+  FACADE_SESSION,
+} from "../../test-support/client-test-helpers.js";
 
 /**
  * Build a Workspace whose transport records every request and answers
@@ -75,8 +52,8 @@ function makeWorkspace(): { ws: Workspace; calls: CapturedFetchRequest[] } {
 async function caught(thunk: () => unknown): Promise<unknown> {
   try {
     await thunk();
-  } catch (exc) {
-    return exc;
+  } catch (error) {
+    return error;
   }
   return undefined;
 }
@@ -117,8 +94,8 @@ describe("requireEntityId", () => {
     let error: unknown;
     try {
       requireEntityId("annotation_id", value);
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(ParamValidationError);
     const coded = error as ParamValidationError;
@@ -126,7 +103,10 @@ describe("requireEntityId", () => {
     expect(coded.message).toBe(
       `Invalid annotation_id: expected a positive integer id, received ${shown}.`,
     );
-    expect(coded.details).toEqual({ field: "annotation_id", received: shown });
+    expect(coded.details).toStrictEqual({
+      field: "annotation_id",
+      received: shown,
+    });
   });
 
   it("never echoes object contents or long strings", () => {
@@ -134,20 +114,20 @@ describe("requireEntityId", () => {
     const objErr = (() => {
       try {
         requireEntityId("bookmark_id", secretish);
-      } catch (exc) {
-        return exc as ParamValidationError;
+      } catch (error) {
+        return error as ParamValidationError;
       }
-      return undefined;
+      return;
     })();
     expect(objErr?.message).not.toContain("sk-live");
     const long = "x".repeat(200);
     const strErr = (() => {
       try {
         requireEntityId("bookmark_id", long);
-      } catch (exc) {
-        return exc as ParamValidationError;
+      } catch (error) {
+        return error as ParamValidationError;
       }
-      return undefined;
+      return;
     })();
     expect(strErr?.message).toContain(`"${"x".repeat(40)}"`);
     expect(strErr?.message).not.toContain("x".repeat(41));
@@ -196,8 +176,8 @@ describe("requireInt64Id", () => {
     let error: unknown;
     try {
       requireInt64Id("data_group_id", value);
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(ParamValidationError);
     const coded = error as ParamValidationError;
@@ -205,7 +185,10 @@ describe("requireInt64Id", () => {
     expect(coded.message).toBe(
       `Invalid data_group_id: expected a non-zero integer id (number or bigint), received ${shown}.`,
     );
-    expect(coded.details).toEqual({ field: "data_group_id", received: shown });
+    expect(coded.details).toStrictEqual({
+      field: "data_group_id",
+      received: shown,
+    });
   });
 
   it.each<[string, number, string]>([
@@ -224,8 +207,8 @@ describe("requireInt64Id", () => {
       let error: unknown;
       try {
         requireInt64Id("data_group_id", value);
-      } catch (exc) {
-        error = exc;
+      } catch (error_) {
+        error = error_;
       }
       expect(error).toBeInstanceOf(ParamValidationError);
       const coded = error as ParamValidationError;
@@ -235,7 +218,7 @@ describe("requireInt64Id", () => {
           `Number.MAX_SAFE_INTEGER and already rounded; pass the id as a ` +
           `bigint (e.g. -8644926364725811123n or BigInt("<digits>")).`,
       );
-      expect(coded.details).toEqual({
+      expect(coded.details).toStrictEqual({
         field: "data_group_id",
         received: shown,
       });
@@ -542,7 +525,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
       expect(coded.message).toBe(
         `Invalid ${field}: expected a positive integer id, received object (Object).`,
       );
-      expect(calls).toEqual([]);
+      expect(calls).toStrictEqual([]);
     },
   );
 
@@ -557,7 +540,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
       expect(coded.message).toBe(
         `Invalid ${field}: expected a non-zero integer id (number or bigint), received object (Object).`,
       );
-      expect(calls).toEqual([]);
+      expect(calls).toStrictEqual([]);
     },
   );
 
@@ -570,7 +553,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
       expect(coded.code).toBe("RL6_INVALID_ID");
       expect(coded.message).toContain(`Invalid ${field}:`);
       expect(coded.message).toContain("pass the id as a bigint");
-      expect(calls).toEqual([]);
+      expect(calls).toStrictEqual([]);
     },
   );
 
@@ -586,7 +569,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
     const { ws, calls } = makeWorkspace();
     const error = await caught(() => ws.deleteAnnotation(BAD_ID));
     expect((error as ParamValidationError).code).toBe("RL6_INVALID_ID");
-    expect(calls).toEqual([]);
+    expect(calls).toStrictEqual([]);
   });
 
   it("a valid id passes through to the transport unchanged", async () => {
@@ -602,7 +585,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
       const { ws, calls } = makeWorkspace();
       const error = await caught(() => ws.getDashboard(value));
       expect((error as ParamValidationError).code).toBe("RL6_INVALID_ID");
-      expect(calls).toEqual([]);
+      expect(calls).toStrictEqual([]);
     },
   );
 });

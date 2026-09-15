@@ -1,7 +1,6 @@
 /**
- * Shared golden-diff helper for the C8(b) tests (P2-6 result goldens
- * pioneered the algorithm inline; P2-7 factors it here for the entity
- * goldens — P2-8 may re-home the result-golden copy).
+ * Shared golden-diff helper for the result-shape and entity-model golden
+ * tests.
  *
  * Diffs a re-encoded TS field walk against the ORIGINAL raw vector
  * payload subtree. Structure and key sets must match exactly; numbers
@@ -11,6 +10,7 @@
  * sweep).
  */
 import { expect } from "vitest";
+
 import { JsonNumber, type JsonValue } from "../../src/json-value.js";
 
 /**
@@ -42,7 +42,7 @@ function unwrapFloat(value: unknown): unknown {
     typeof value === "object" &&
     value !== null &&
     "spelling" in value &&
-    typeof (value as { spelling: unknown }).spelling === "string"
+    typeof value.spelling === "string"
   ) {
     return Number((value as { spelling: string }).spelling);
   }
@@ -77,7 +77,7 @@ export function diffPlainPayload(
   if (isTagged(expected, "datetime")) {
     // The serialized walk re-tags datetimes with the preserved iso text.
     const tagged = expected as Readonly<Record<string, JsonValue>>;
-    expect(actual, path).toEqual({
+    expect(actual, path).toStrictEqual({
       $type: "datetime",
       iso: tagged["iso"] as string,
     });
@@ -90,15 +90,15 @@ export function diffPlainPayload(
   if (Array.isArray(expected)) {
     expect(Array.isArray(actual), path).toBe(true);
     const actualArray = actual as readonly unknown[];
-    expect(actualArray.length, path).toBe(expected.length);
-    expected.forEach((item, index) => {
+    expect(actualArray, path).toHaveLength(expected.length);
+    for (const [index, item] of expected.entries()) {
       diffPlainPayload(actualArray[index], item, `${path}[${String(index)}]`);
-    });
+    }
     return;
   }
   expect(typeof actual === "object" && actual !== null, path).toBe(true);
   const actualRecord = actual as Readonly<Record<string, unknown>>;
-  expect(Object.keys(actualRecord).sort(), path).toEqual(
+  expect(Object.keys(actualRecord).sort(), path).toStrictEqual(
     Object.keys(expected).sort(),
   );
   for (const [key, item] of Object.entries(expected)) {

@@ -1,48 +1,24 @@
-// B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of
-// `tests/unit/test_workspace_bookmarks.py` — the WHOLE file:
-// `TestListBookmarks` (:61), `TestQuerySavedReport` (:210) and
-// `TestQueryFlows` (:450).
-//
-// Scope note: the three MEMBERS these classes exercise
-// (`list_bookmarks`, `query_saved_report`, `query_saved_flows`) are
-// B5's; the file is a FACADE-level lock (Python replaces `ws._discovery`
-// / `ws._live_query` with MagicMocks), distinct from the already-green
-// service-level suites (`services/discovery-bookmarks.test.ts`,
-// `services/live-query-bookmarks.test.ts`). The packet assigns it to W3
-// because it sits in the bookmark family; nothing here changes B5 code.
-//
-// Translation notes:
-// - `ws._discovery = MagicMock()` / `ws._live_query = MagicMock()`
-//   become `vi.spyOn(ws, "discoveryService"|"liveQueryService", "get")`
-//   — the W1 `workspace-facade.test.ts` precedent for the same idiom.
-// - `assert_called_once_with(bookmark_type=…)` reads the recorded call:
-//   Python kwargs map to the TS positional / options bag with the SAME
-//   VALUES.
-// - DIVERGENCE (recorded, behaviour-neutral): Python's
-//   `query_saved_report` facade FILLS `bookmark_type="insights"` before
-//   forwarding (`workspace.py:1874-1879`); the TS facade forwards the
-//   options bag and `LiveQueryService.querySavedReport`
-//   (`live-query.ts:537`) applies the identical default, so the values
-//   reaching the wire match. The translated assertions therefore read
-//   the EFFECTIVE bag (`bookmark_type ?? "insights"`, `from_date ??
-//   null`, `to_date ?? null`), which is exactly the four-kwarg tuple
-//   Python asserts.
-// - `try/finally: ws.close()` is kept (B6-W1 ported `close()`).
+// Facade-level lock on Workspace.listBookmarks / querySavedReport /
+// querySavedFlows delegating to DiscoveryService / LiveQueryService. Mirrors
+// tests/unit/test_workspace_bookmarks.py; `ws._discovery = MagicMock()` becomes
+// `vi.spyOn(ws, "discoveryService", "get")`. Python defaults bookmark_type to
+// "insights" in the facade, TS in the service, so asserts read the effective bag.
 
 import { describe, expect, it, vi } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-} from "../client/client-test-helpers.js";
+
+import type { LiveQuerySavedReportOptions } from "../../src/services/live-query.js";
 import { BookmarkInfo } from "../../src/types/results/discovery.js";
 import {
   FlowsResult,
   SavedReportResult,
 } from "../../src/types/results/live-query.js";
-import type { LiveQuerySavedReportOptions } from "../../src/services/live-query.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
-/** The `_TEST_SESSION` twin (`test_workspace_bookmarks.py:22-31`). */
+/** The `_TEST_SESSION` twin. */
 const TEST_SESSION = makeSession({
   name: "test_account",
   projectId: "12345",
@@ -51,7 +27,7 @@ const TEST_SESSION = makeSession({
 });
 
 /**
- * The `workspace_factory` fixture twin (`:44-58`) — a facade over a
+ * The `workspace_factory` fixture twin — a facade over a
  * `MagicMock(spec=MixpanelAPIClient)` stand-in. The mock client is
  * never reached: every case stubs a service first.
  *
@@ -97,8 +73,9 @@ function effective(
   };
 }
 
-describe("TestListBookmarks (test_workspace_bookmarks.py:61)", () => {
-  it("list_bookmarks() delegates to DiscoveryService (:64)", async () => {
+describe("List bookmarks", () => {
+  // python: TestListBookmarks
+  it("listBookmarks() delegates to DiscoveryService", async () => {
     const ws = makeWorkspace();
     const listBookmarks = vi.fn().mockResolvedValue([
       new BookmarkInfo({
@@ -122,7 +99,7 @@ describe("TestListBookmarks (test_workspace_bookmarks.py:61)", () => {
     await ws.close();
   });
 
-  it("list_bookmarks() passes the bookmark_type filter (:92)", async () => {
+  it("listBookmarks() passes the bookmark_type filter", async () => {
     const ws = makeWorkspace();
     const listBookmarks = vi.fn().mockResolvedValue([]);
     vi.spyOn(ws, "discoveryService", "get").mockReturnValue({
@@ -136,7 +113,7 @@ describe("TestListBookmarks (test_workspace_bookmarks.py:61)", () => {
     await ws.close();
   });
 
-  it("list_bookmarks() returns list[BookmarkInfo] (:111)", async () => {
+  it("listBookmarks() returns list[BookmarkInfo]", async () => {
     const ws = makeWorkspace();
     const listBookmarks = vi.fn().mockResolvedValue([
       new BookmarkInfo({
@@ -168,17 +145,17 @@ describe("TestListBookmarks (test_workspace_bookmarks.py:61)", () => {
     await ws.close();
   });
 
-  it("list_bookmarks() handles empty results (:147)", async () => {
+  it("listBookmarks() handles empty results", async () => {
     const ws = makeWorkspace();
     vi.spyOn(ws, "discoveryService", "get").mockReturnValue({
       listBookmarks: vi.fn().mockResolvedValue([]),
     } as never);
 
-    expect(await ws.listBookmarks()).toEqual([]);
+    await expect(ws.listBookmarks()).resolves.toStrictEqual([]);
     await ws.close();
   });
 
-  it("list_bookmarks() calls the service without a filter (:164)", async () => {
+  it("listBookmarks() calls the service without a filter", async () => {
     const ws = makeWorkspace();
     const listBookmarks = vi.fn().mockResolvedValue([]);
     vi.spyOn(ws, "discoveryService", "get").mockReturnValue({
@@ -192,7 +169,7 @@ describe("TestListBookmarks (test_workspace_bookmarks.py:61)", () => {
     await ws.close();
   });
 
-  it("list_bookmarks() accepts every valid type filter (:181)", async () => {
+  it("listBookmarks() accepts every valid type filter", async () => {
     const bookmarkTypes = [
       "insights",
       "funnels",
@@ -217,8 +194,9 @@ describe("TestListBookmarks (test_workspace_bookmarks.py:61)", () => {
   });
 });
 
-describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
-  it("query_saved_report() delegates to LiveQueryService (:213)", async () => {
+describe("Query saved report", () => {
+  // python: TestQuerySavedReport
+  it("querySavedReport() delegates to LiveQueryService", async () => {
     const ws = makeWorkspace();
     const calls: EffectiveSavedReportCall[] = [];
     const querySavedReport = vi
@@ -245,7 +223,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
     const result = await ws.querySavedReport(12345);
 
     expect(result.bookmark_id).toBe(12345);
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         bookmark_id: 12345,
         bookmark_type: "insights",
@@ -256,7 +234,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
     await ws.close();
   });
 
-  it("query_saved_report() reports the insights report_type (:245)", async () => {
+  it("querySavedReport() reports the insights report_type", async () => {
     const ws = makeWorkspace();
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
       querySavedReport: vi.fn().mockResolvedValue(
@@ -275,7 +253,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
     await ws.close();
   });
 
-  it("query_saved_report() reports the retention report_type (:271)", async () => {
+  it("querySavedReport() reports the retention report_type", async () => {
     const ws = makeWorkspace();
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
       querySavedReport: vi.fn().mockResolvedValue(
@@ -296,7 +274,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
     await ws.close();
   });
 
-  it("query_saved_report() reports the funnel report_type (:297)", async () => {
+  it("querySavedReport() reports the funnel report_type", async () => {
     const ws = makeWorkspace();
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
       querySavedReport: vi.fn().mockResolvedValue(
@@ -315,7 +293,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
     await ws.close();
   });
 
-  it("query_saved_report() returns a SavedReportResult (:323)", async () => {
+  it("querySavedReport() returns a SavedReportResult", async () => {
     const ws = makeWorkspace();
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
       querySavedReport: vi.fn().mockResolvedValue(
@@ -330,11 +308,13 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
       ),
     } as never);
 
-    expect(await ws.querySavedReport(12345)).toBeInstanceOf(SavedReportResult);
+    await expect(ws.querySavedReport(12345)).resolves.toBeInstanceOf(
+      SavedReportResult,
+    );
     await ws.close();
   });
 
-  it("query_saved_report() passes bookmark_type to the service (:349)", async () => {
+  it("querySavedReport() passes bookmark_type to the service", async () => {
     const ws = makeWorkspace();
     const calls: EffectiveSavedReportCall[] = [];
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
@@ -359,7 +339,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
 
     await ws.querySavedReport(12345, { bookmark_type: "funnels" });
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         bookmark_id: 12345,
         bookmark_type: "funnels",
@@ -370,7 +350,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
     await ws.close();
   });
 
-  it("query_saved_report() passes from_date/to_date through (:380)", async () => {
+  it("querySavedReport() passes from_date/to_date through", async () => {
     const ws = makeWorkspace();
     const calls: EffectiveSavedReportCall[] = [];
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
@@ -399,7 +379,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
       to_date: "2024-06-30",
     });
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         bookmark_id: 12345,
         bookmark_type: "funnels",
@@ -410,7 +390,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
     await ws.close();
   });
 
-  it("query_saved_report(bookmark_id) works without new params (:416)", async () => {
+  it("query_saved_report(bookmark_id) works without new params", async () => {
     const ws = makeWorkspace();
     const calls: EffectiveSavedReportCall[] = [];
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
@@ -437,7 +417,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
 
     expect(result).toBeInstanceOf(SavedReportResult);
     // Should default to insights
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         bookmark_id: 12345,
         bookmark_type: "insights",
@@ -449,8 +429,9 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
   });
 });
 
-describe("TestQueryFlows (test_workspace_bookmarks.py:450)", () => {
-  it("query_saved_flows() delegates to LiveQueryService (:453)", async () => {
+describe("Query flows", () => {
+  // python: TestQueryFlows
+  it("querySavedFlows() delegates to LiveQueryService", async () => {
     const ws = makeWorkspace();
     const querySavedFlows = vi.fn().mockResolvedValue(
       new FlowsResult({
@@ -473,7 +454,7 @@ describe("TestQueryFlows (test_workspace_bookmarks.py:450)", () => {
     await ws.close();
   });
 
-  it("query_saved_flows() returns a FlowsResult (:479)", async () => {
+  it("querySavedFlows() returns a FlowsResult", async () => {
     const ws = makeWorkspace();
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
       querySavedFlows: vi.fn().mockResolvedValue(
@@ -484,11 +465,13 @@ describe("TestQueryFlows (test_workspace_bookmarks.py:450)", () => {
       ),
     } as never);
 
-    expect(await ws.querySavedFlows(12345)).toBeInstanceOf(FlowsResult);
+    await expect(ws.querySavedFlows(12345)).resolves.toBeInstanceOf(
+      FlowsResult,
+    );
     await ws.close();
   });
 
-  it("query_saved_flows() returns steps and breakdowns (:501)", async () => {
+  it("querySavedFlows() returns steps and breakdowns", async () => {
     const ws = makeWorkspace();
     vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
       querySavedFlows: vi.fn().mockResolvedValue(

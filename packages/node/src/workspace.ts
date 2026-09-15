@@ -1,29 +1,33 @@
 /**
  * `createNodeWorkspace()` — the parity twin of Python's zero-config
- * `Workspace()` construction (`workspace.py:424-513`).
+ * `Workspace()` construction.
  *
  * Python's constructor wires four on-disk collaborators implicitly:
- * the resolver sources (env / `~/.mp/config.toml` / bridge file, with
- * the bridge-token materialization side effect), the
- * `OnDiskTokenResolver` for oauth_browser bearer refresh, the per-account
- * on-disk `/me` cache (`MeCache`), and filesystem reads for
- * `uploadLookupTable`. The core `Workspace` takes all four as injected
- * seams (R9.4); this factory is the node-side composition that makes
- * `createNodeWorkspace()` behave like Python's `Workspace()`.
- *
- * Added post-Phase-3 (QA 2026-08-17): the pieces all shipped in B7/B8
- * but nothing composed them, so the documented
+ * the resolver sources (env, `~/.mp/config.toml`, bridge file, with the
+ * bridge-token materialization side effect), the `OnDiskTokenResolver`
+ * for oauth_browser bearer refresh, the per-account on-disk `/me` cache
+ * (`MeCache`), and filesystem reads for `uploadLookupTable`. The core
+ * `Workspace` takes all four as injected seams; this factory is the
+ * node-side composition. Without it the bare
  * `new Workspace({ sources: createNodeWorkspaceSources() })` recipe
- * failed on the first OAuth query with `TokenResolver is required`.
+ * fails on the first OAuth query with `TokenResolver is required`.
+ *
+ * @see mixpanel_headless.workspace.Workspace.__init__
  */
 
-import { Workspace, type WorkspaceOptions } from "../../core/src/workspace.js";
-import type { MixpanelClientOptions } from "../../core/src/client/client.js";
+import {
+  type MixpanelClientOptions,
+  Workspace,
+  type WorkspaceLogger,
+  type WorkspaceOptions,
+} from "@mixpanel-headless/core";
+
+import { bridgeViewFromFile, loadBridgeForStartup } from "./auth/bridge.js";
+import type { StorageLogger } from "./auth/storage.js";
 import {
   createNodeAuthEffects,
   type NodeAuthEffectsOptions,
 } from "./auth-effects.js";
-import { bridgeViewFromFile, loadBridgeForStartup } from "./auth/bridge.js";
 import { createNodeEndpointOverrides } from "./env.js";
 import { nodeReadFile } from "./fs-seams.js";
 import { MeCache } from "./me-cache.js";
@@ -33,7 +37,7 @@ import { MeCache } from "./me-cache.js";
  * `WorkspaceOptions` plus the node effects seams and client extras.
  */
 export interface NodeWorkspaceOptions extends NodeAuthEffectsOptions {
-  /** Named account from config (resolver axis, `workspace.py:427`). */
+  /** Named account from config (resolver axis). */
   readonly account?: string | null | undefined;
   /** Project ID override (resolver axis, digit string). */
   readonly project?: string | null | undefined;
@@ -51,6 +55,34 @@ export interface NodeWorkspaceOptions extends NodeAuthEffectsOptions {
 }
 
 /**
+ * The facade's log seam for a node process: warnings reach stderr the way
+ * Python's unconfigured `logging` last-resort handler prints them
+ * (WARNING and above; debug/info are dropped), or route to the caller's
+ * storage logger when one was supplied.
+ *
+ * @param logger - The caller's `NodeAuthEffectsOptions.logger`, if any.
+ * @returns The `Workspace` logger.
+ */
+function nodeWorkspaceLogger(
+  logger: StorageLogger | undefined,
+): WorkspaceLogger {
+  if (logger !== undefined) {
+    return {
+      debug: (message): void => logger.debug?.(message),
+      warning: (message): void => {
+        logger.warning(message);
+      },
+    };
+  }
+  return {
+    debug: (): void => undefined,
+    warning: (message): void => {
+      process.stderr.write(`${message}\n`);
+    },
+  };
+}
+
+/**
  * Build a fully wired node `Workspace` — config-file accounts, bridge
  * startup materialization, on-disk OAuth token refresh, on-disk `/me`
  * cache, and `node:fs` reads — exactly what Python's bare
@@ -59,11 +91,10 @@ export interface NodeWorkspaceOptions extends NodeAuthEffectsOptions {
  * @param options - Resolver-axis overrides, node effects seams, and
  *   extra client options.
  * @returns The constructed facade.
- * @throws ConfigError - No resolvable account, or a malformed config /
- *   bridge file.
- *
+ * @throws {@link ConfigError} - No resolvable account, or a malformed
+ *   config or bridge file.
  * @example
- * ```typescript
+ * ```ts
  * import { createNodeWorkspace } from "@mixpanel-headless/node";
  *
  * const ws = createNodeWorkspace();
@@ -74,30 +105,32 @@ export function createNodeWorkspace(
   options: NodeWorkspaceOptions = {},
 ): Workspace {
   const effectsOptions: NodeAuthEffectsOptions = {
-    ...(options.configPath !== undefined
-      ? { configPath: options.configPath }
-      : {}),
-    ...(options.fetchImpl !== undefined
-      ? { fetchImpl: options.fetchImpl }
-      : {}),
-    ...(options.now !== undefined ? { now: options.now } : {}),
-    ...(options.logger !== undefined ? { logger: options.logger } : {}),
-    ...(options.flowSeams !== undefined
-      ? { flowSeams: options.flowSeams }
-      : {}),
+    ...(options.configPath === undefined
+      ? {}
+      : { configPath: options.configPath }),
+    ...(options.fetchImpl === undefined
+      ? {}
+      : { fetchImpl: options.fetchImpl }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
+    ...(options.flowSeams === undefined
+      ? {}
+      : { flowSeams: options.flowSeams }),
   };
   const effects = createNodeAuthEffects(effectsOptions);
-  // Startup bridge load WITH the token-materialization side effect
-  // (`workspace.py:476-513`; the B8-ARB-A SEM-F1 composition).
+  // Startup bridge load with the token-materialization side effect:
+  // oauth_browser bridge tokens are written to the per-account
+  // `tokens.json` here, and only here, so the on-disk resolver can serve
+  // them without a stale bridge ever clobbering a mid-session refresh.
   const bridge = loadBridgeForStartup();
 
   const workspaceOptions: WorkspaceOptions = {
-    ...(options.account !== undefined ? { account: options.account } : {}),
-    ...(options.project !== undefined ? { project: options.project } : {}),
-    ...(options.workspace !== undefined
-      ? { workspace: options.workspace }
-      : {}),
-    ...(options.target !== undefined ? { target: options.target } : {}),
+    ...(options.account === undefined ? {} : { account: options.account }),
+    ...(options.project === undefined ? {} : { project: options.project }),
+    ...(options.workspace === undefined
+      ? {}
+      : { workspace: options.workspace }),
+    ...(options.target === undefined ? {} : { target: options.target }),
     sources: {
       env: effects.env,
       config: effects.config,
@@ -105,13 +138,14 @@ export function createNodeWorkspace(
     },
     clientOptions: {
       tokenResolver: effects.tokenResolver,
-      // `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read per request (PR #235);
-      // an explicit `clientOptions.endpointOverrides` wins.
+      // `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read per request; an
+      // explicit `clientOptions.endpointOverrides` wins.
       endpointOverrides: createNodeEndpointOverrides(),
       ...options.clientOptions,
     },
     meCache: (accountName: string) => new MeCache({ accountName }),
     readFile: nodeReadFile,
+    logger: nodeWorkspaceLogger(options.logger),
   };
   return new Workspace(workspaceOptions);
 }

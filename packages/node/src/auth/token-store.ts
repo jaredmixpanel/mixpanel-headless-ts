@@ -1,56 +1,61 @@
 /**
- * The real per-account token/artifact store — the B8-N2 implementation
- * of the core `TokenStore` seam (`auth-effects.ts:305-362`;
- * b8-packets.md §3.1 row 6). Python twins per member:
+ * The on-disk per-account token store behind core's `TokenStore` seam.
+ * Python twins per member: `writeTokens` is `_persist_browser_tokens`,
+ * `removeTokens` is `logout`, `removeAccountDir` is `_safe_rmtree_warn`
+ * (warn, never raise), `clientInfoPath` is `_client_info_path` (honours
+ * `MP_OAUTH_STORAGE_DIR`), `accountDirExists` is the
+ * `account_dir(name).exists()` orphan-directory probe, and `readTokens`
+ * is the storage-read discipline (missing or corrupt reads as `null`).
  *
- * - `writeTokens` ← `_persist_browser_tokens` (`accounts.py:878-893`);
- * - `removeTokens` ← `logout` (`accounts.py:916-929`);
- * - `removeAccountDir` ← `_safe_rmtree_warn` (`accounts.py:278-303` —
- *   warn, NEVER raise);
- * - `clientInfoPath` ← `_client_info_path` (`accounts.py:894-915` —
- *   honors `MP_OAUTH_STORAGE_DIR`);
- * - `accountDirExists` ← `account_dir(name).exists()` — the B7-ARB-A
- *   SEM-F2 orphan-directory probe (`accounts.py:1704-1708`;
- *   `b7-reviewA-resolution.md:239-241`);
- * - `readTokens` ← the storage-read discipline (missing/corrupt →
- *   `null`; the member has no direct Python function — it is the B7
- *   seam abstraction of the on-disk read the fakes model).
+ * @see mixpanel_headless.accounts._persist_browser_tokens
  */
 
 import { existsSync, rmSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
-import type { TokenStore } from "../../../core/src/accounts/auth-effects.js";
-import type { Region } from "../../../core/src/auth/account.js";
 import {
-  parseOAuthTokens,
+  isPythonDict,
   type OAuthTokens,
-} from "../../../core/src/auth/token.js";
-import { isPythonDict } from "../../../core/src/compat/python-dict.js";
+  parseOAuthTokens,
+  type Region,
+  type TokenStore,
+} from "@mixpanel-headless/core";
+import { exceptionMessage } from "@mixpanel-headless/core/internal";
+
 import { atomicWriteBytes, readCredentialText } from "../io-utils.js";
 import { coerceLaxExpiresAt } from "./pydantic-datetime.js";
 import {
-  OAuthStorage,
   accountDir,
   ensureAccountDir,
+  OAuthStorage,
   type StorageLogger,
 } from "./storage.js";
-import { accountTokensPath } from "./token-resolver.js";
 import { tokenPayloadBytes } from "./token-payload.js";
+import { accountTokensPath } from "./token-resolver.js";
 
 /** Options bag of {@link createNodeTokenStore}. */
 export interface NodeTokenStoreOptions {
-  /** Injected log sink (default silent — R9.5). */
+  /**
+   * Injected log sink for the warn-only cleanup path.
+   *
+   * @defaultValue silent
+   */
   readonly logger?: StorageLogger | undefined;
 }
 
 /**
- * Build the real on-disk {@link TokenStore}.
+ * Build the on-disk {@link TokenStore}.
  *
  * @param options - Optional log sink for the warn-only cleanup path.
  * @returns The store over `~/.mp/accounts/{name}/` (or the
  *   `MP_OAUTH_STORAGE_DIR` override — every path routes through
  *   `accountDir` / `OAuthStorage.defaultStorageDir`).
+ * @example
+ * ```ts
+ * const store = createNodeTokenStore({ logger: console });
+ * const path = store.writeTokens("team", tokens);
+ * store.readTokens("team"); // the tokens just written, or null
+ * ```
  */
 export function createNodeTokenStore(
   options: NodeTokenStoreOptions = {},
@@ -64,8 +69,8 @@ export function createNodeTokenStore(
       }
       try {
         let parsed: unknown = JSON.parse(readCredentialText(path));
-        // Shared pydantic-lax mirror (B8-ARB-B F1) — this reader and
-        // the OnDiskTokenResolver consume the SAME file and must agree.
+        // Shared pydantic-lax coercion — this reader and the
+        // OnDiskTokenResolver consume the same file and must agree.
         if (isPythonDict(parsed) && Object.hasOwn(parsed, "expires_at")) {
           parsed = {
             ...parsed,
@@ -73,18 +78,18 @@ export function createNodeTokenStore(
           };
         }
         return parseOAuthTokens(parsed, { boundary: "param" });
-      } catch (exc) {
+      } catch (error) {
         logger.warning(
           `Failed to read tokens for account '${name}' from ${path}: ` +
-            `${exc instanceof Error ? exc.message : String(exc)} — ignoring.`,
+            `${exceptionMessage(error)} — ignoring.`,
         );
         return null;
       }
     },
     writeTokens: (name: string, tokens: OAuthTokens): string => {
-      // `_persist_browser_tokens`: ensure the 0o700 account dir, then
-      // an atomic 0o600 write of the canonical payload (CRED-F3 reveal
-      // happens inside `tokenPayloadBytes`, its designated site).
+      // Ensure the 0o700 account dir, then an atomic 0o600 write of the
+      // canonical payload (the secret reveal happens inside
+      // `tokenPayloadBytes`, its designated site).
       const path = join(ensureAccountDir(name), "tokens.json");
       atomicWriteBytes(path, tokenPayloadBytes(tokens));
       return path;
@@ -102,10 +107,10 @@ export function createNodeTokenStore(
       }
       try {
         rmSync(dir, { recursive: true });
-      } catch (exc) {
+      } catch (error) {
         logger.warning(
           `Failed to clean up ${dir} containing OAuth tokens: ` +
-            `${exc instanceof Error ? exc.message : String(exc)}. ` +
+            `${exceptionMessage(error)}. ` +
             `Run \`rm -rf ${dir}\` manually to remove them.`,
         );
       }

@@ -1,30 +1,21 @@
-// B6-W1 Layer-3 translation of `tests/unit/test_workspace_streaming.py`
-// (WHOLE file, 744 lines — packet §3 table): `TestStreamEvents` (:106),
-// `TestStreamProfiles` (:369), `TestNormalizedEventFormat` (:622),
-// `TestRawEventFormat` (:659), `TestNormalizedProfileFormat` (:689),
-// `TestRawProfileFormat` (:720).
-//
-// The members under test are the W1-D3 veneers: `ws.streamEvents` /
-// `ws.streamProfiles` are R6.6 item-level `yield*` wrappers over the
-// B4-C2 `streamEvents`/`streamProfiles` helpers
-// (`services/queries/streaming.ts:708,744`), which in turn wrap the
-// client's `exportEvents`/`exportProfiles`. Python's
-// `MagicMock(spec=MixpanelAPIClient)` becomes a stub client carrying
-// only those two members plus the call log.
-//
-// TRANSLATION NOTE (watchlist #5 / B4-C2 precedent): Python's normalized
-// `event_time` is a `datetime`; the TS transform emits the SAME instant
-// as UTC ISO TEXT (`transforms.ts:443-444`). `isinstance(…, datetime)`
-// therefore translates to the ISO-text spelling assertion, and
-// `event_time.tzinfo == timezone.utc` to the trailing `+00:00`.
+// Workspace.streamEvents / streamProfiles — item-level `yield*` veneers over
+// the streaming helpers and the client's exportEvents / exportProfiles — plus
+// the normalized and raw event/profile formats. Mirrors all six classes of
+// tests/unit/test_workspace_streaming.py. Python's normalized `event_time` is a
+// datetime; TS emits the same instant as UTC ISO text (`+00:00`), asserted as such.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import { makeSession } from "../client/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  asyncIterableOf,
+  drain,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
-/** The `_TEST_SESSION` twin (`test_workspace_streaming.py:21-29`). */
+/** The `_TEST_SESSION` twin. */
 const TEST_SESSION = makeSession({
   name: "test_account",
   projectId: "12345",
@@ -44,8 +35,8 @@ interface StubClient {
   readonly client: MixpanelClient;
   readonly exportEventsCalls: ExportEventsCall[];
   readonly exportProfilesCalls: Array<Record<string, unknown>>;
-  setEvents(source: () => AsyncGenerator<JsonValue, void, undefined>): void;
-  setProfiles(source: () => AsyncGenerator<JsonValue, void, undefined>): void;
+  setEvents: (source: () => Iterable<JsonValue>) => void;
+  setProfiles: (source: () => Iterable<JsonValue>) => void;
 }
 
 /**
@@ -56,14 +47,12 @@ interface StubClient {
 function stubClient(): StubClient {
   const exportEventsCalls: ExportEventsCall[] = [];
   const exportProfilesCalls: Array<Record<string, unknown>> = [];
-  let events: () => AsyncGenerator<JsonValue, void, undefined> =
-    async function* () {};
-  let profiles: () => AsyncGenerator<JsonValue, void, undefined> =
-    async function* () {};
+  let events: () => Iterable<JsonValue> = () => [];
+  let profiles: () => Iterable<JsonValue> = () => [];
   const client = {
     // The `MagicMock(spec=MixpanelAPIClient)` twin auto-provides every
     // client member; the facade constructor touches these two
-    // (`_install_workspace_resolver`, `workspace.py:775-793`).
+    // (`_install_workspace_resolver`, `workspace.py`).
     hasWorkspaceResolver: false,
     setWorkspaceResolver: (): void => {},
     close: (): Promise<void> => Promise.resolve(),
@@ -71,19 +60,19 @@ function stubClient(): StubClient {
       fromDate: string,
       toDate: string,
       options: Record<string, unknown> = {},
-    ): AsyncGenerator<JsonValue, void, undefined> => {
+    ): AsyncIterable<JsonValue> => {
       exportEventsCalls.push({
         from_date: fromDate,
         to_date: toDate,
         options,
       });
-      return events();
+      return asyncIterableOf(events());
     },
     exportProfiles: (
       options: Record<string, unknown> = {},
-    ): AsyncGenerator<JsonValue, void, undefined> => {
+    ): AsyncIterable<JsonValue> => {
       exportProfilesCalls.push(options);
-      return profiles();
+      return asyncIterableOf(profiles());
     },
   } as unknown as MixpanelClient;
   return {
@@ -100,7 +89,7 @@ function stubClient(): StubClient {
 }
 
 /**
- * Build a raw event in Mixpanel API format (`raw_event`, :71-82).
+ * Build a raw event in Mixpanel API format (`raw_event`).
  *
  * @param name - Event name.
  * @param distinctId - User id.
@@ -122,11 +111,11 @@ function rawEvent(
       $insert_id: `evt_${String(timestamp)}`,
       ...extra,
     },
-  } as unknown as JsonValue;
+  };
 }
 
 /**
- * Build a raw profile in Mixpanel API format (`raw_profile`, :85-93).
+ * Build a raw profile in Mixpanel API format (`raw_profile`).
  *
  * @param distinctId - User id.
  * @param lastSeen - `$last_seen` value (omitted when `null`).
@@ -145,7 +134,7 @@ function rawProfile(
   return {
     $distinct_id: distinctId,
     $properties: props,
-  } as unknown as JsonValue;
+  };
 }
 
 /**
@@ -158,27 +147,14 @@ function makeWorkspace(stub: StubClient): Workspace {
   return new Workspace({ session: TEST_SESSION, client: stub.client });
 }
 
-/**
- * Drain an async iterable into an array (Python's `list(...)`).
- *
- * @param source - The async iterable.
- * @returns Every yielded item, in order.
- */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
-
 /** Cast helper for the transformed-record assertions. */
 type Rec = Record<string, unknown>;
 
-describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
+describe("Stream events", () => {
+  // python: TestStreamEvents
   it("T006: basic streaming with the default (normalized) format", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("PageView", "user_1", 1705328400, { page: "/home" });
       yield rawEvent("Click", "user_2", 1705328500, { button: "signup" });
     });
@@ -188,20 +164,20 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       ws.streamEvents({ from_date: "2024-01-15", to_date: "2024-01-15" }),
     )) as Rec[];
 
-    expect(events.length).toBe(2);
+    expect(events).toHaveLength(2);
     expect(events[0]?.["event_name"]).toBe("PageView");
     expect(events[0]?.["distinct_id"]).toBe("user_1");
     expect(typeof events[0]?.["event_time"]).toBe("string");
     expect((events[0]?.["properties"] as Rec)["page"]).toBe("/home");
     expect(events[1]?.["event_name"]).toBe("Click");
     expect(events[1]?.["distinct_id"]).toBe("user_2");
-    expect(stub.exportEventsCalls.length).toBe(1);
+    expect(stub.exportEventsCalls).toHaveLength(1);
     await ws.close();
   });
 
   it("T006: an event-name filter forwards verbatim", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Purchase", "user_1", 1705328400, { amount: 99.99 });
     });
     const ws = makeWorkspace(stub);
@@ -214,9 +190,9 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       }),
     )) as Rec[];
 
-    expect(events.length).toBe(1);
+    expect(events).toHaveLength(1);
     expect(events[0]?.["event_name"]).toBe("Purchase");
-    expect(stub.exportEventsCalls).toEqual([
+    expect(stub.exportEventsCalls).toStrictEqual([
       {
         from_date: "2024-01-15",
         to_date: "2024-01-15",
@@ -233,7 +209,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("T006: a WHERE filter forwards verbatim", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("PageView", "user_1", 1705328400, { country: "US" });
     });
     const ws = makeWorkspace(stub);
@@ -247,7 +223,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       }),
     )) as Rec[];
 
-    expect(events.length).toBe(1);
+    expect(events).toHaveLength(1);
     expect((events[0]?.["properties"] as Rec)["country"]).toBe("US");
     expect(stub.exportEventsCalls[0]?.options["where"]).toBe(whereClause);
     await ws.close();
@@ -255,7 +231,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("T006: raw=true returns the Mixpanel API format", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("PageView", "user_1", 1705328400, { page: "/home" });
       yield rawEvent("Click", "user_2", 1705328500, { button: "signup" });
     });
@@ -269,9 +245,9 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       }),
     )) as Rec[];
 
-    expect(events.length).toBe(2);
+    expect(events).toHaveLength(2);
     expect(events[0]?.["event"]).toBe("PageView");
-    expect(Object.hasOwn(events[0] as Rec, "properties")).toBe(true);
+    expect(Object.hasOwn(events[0]!, "properties")).toBe(true);
     const props = events[0]?.["properties"] as Rec;
     expect(props["distinct_id"]).toBe("user_1");
     expect(props["time"]).toBe(1705328400);
@@ -281,7 +257,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("T006: raw=false (default) transforms the payload", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Purchase", "user_123", 1705328400, { amount: 49.99 });
     });
     const ws = makeWorkspace(stub);
@@ -294,8 +270,8 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       }),
     )) as Rec[];
 
-    expect(events.length).toBe(1);
-    const event = events[0] as Rec;
+    expect(events).toHaveLength(1);
+    const event = events[0]!;
     expect(event["event_name"]).toBe("Purchase");
     expect(event["distinct_id"]).toBe("user_123");
     // `isinstance(event_time, datetime)` + `tzinfo == utc` (see header).
@@ -311,21 +287,21 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("returns an empty stream when the export yields nothing", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {});
+    stub.setEvents(function* () {});
     const ws = makeWorkspace(stub);
 
     const events = await drain(
       ws.streamEvents({ from_date: "2024-01-15", to_date: "2024-01-15" }),
     );
 
-    expect(events).toEqual([]);
+    expect(events).toStrictEqual([]);
     await ws.close();
   });
 
   it("is a lazy iterator (nothing runs before the first pull)", async () => {
     const stub = stubClient();
     let callCount = 0;
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       for (let i = 0; i < 3; i += 1) {
         callCount += 1;
         yield rawEvent("Event", `user_${String(i)}`, 1705328400 + i);
@@ -348,7 +324,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("forwards the limit parameter", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Event", "user_1", 1705328400);
     });
     const ws = makeWorkspace(stub);
@@ -366,10 +342,11 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
   });
 });
 
-describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
+describe("Stream profiles", () => {
+  // python: TestStreamProfiles
   it("T010: basic streaming with the default (normalized) format", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", "2024-01-15T10:00:00", { name: "Alice" });
       yield rawProfile("user_2", "2024-01-15T11:00:00", { name: "Bob" });
     });
@@ -377,21 +354,21 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
     const profiles = (await drain(ws.streamProfiles())) as Rec[];
 
-    expect(profiles.length).toBe(2);
+    expect(profiles).toHaveLength(2);
     expect(profiles[0]?.["distinct_id"]).toBe("user_1");
     expect(profiles[0]?.["last_seen"]).toBe("2024-01-15T10:00:00");
     expect((profiles[0]?.["properties"] as Rec)["name"]).toBe("Alice");
     expect(profiles[1]?.["distinct_id"]).toBe("user_2");
     expect((profiles[1]?.["properties"] as Rec)["name"]).toBe("Bob");
-    // Python asserts the full kwargs bag; TS omits absent keys (R3.9)
+    // Python asserts the full kwargs bag; TS omits absent keys
     // so the equivalent lock is "no filter keys were invented".
-    expect(stub.exportProfilesCalls).toEqual([{}]);
+    expect(stub.exportProfilesCalls).toStrictEqual([{}]);
     await ws.close();
   });
 
   it("T010: a WHERE filter forwards verbatim", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", null, { plan: "premium" });
     });
     const ws = makeWorkspace(stub);
@@ -401,15 +378,15 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
       ws.streamProfiles({ where: whereClause }),
     )) as Rec[];
 
-    expect(profiles.length).toBe(1);
+    expect(profiles).toHaveLength(1);
     expect((profiles[0]?.["properties"] as Rec)["plan"]).toBe("premium");
-    expect(stub.exportProfilesCalls).toEqual([{ where: whereClause }]);
+    expect(stub.exportProfilesCalls).toStrictEqual([{ where: whereClause }]);
     await ws.close();
   });
 
   it("forwards cohort_id", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", null, { plan: "premium" });
     });
     const ws = makeWorkspace(stub);
@@ -418,14 +395,16 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
       ws.streamProfiles({ cohort_id: "cohort_12345" }),
     );
 
-    expect(profiles.length).toBe(1);
-    expect(stub.exportProfilesCalls).toEqual([{ cohort_id: "cohort_12345" }]);
+    expect(profiles).toHaveLength(1);
+    expect(stub.exportProfilesCalls).toStrictEqual([
+      { cohort_id: "cohort_12345" },
+    ]);
     await ws.close();
   });
 
   it("forwards output_properties", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", null, { email: "test@example.com" });
     });
     const ws = makeWorkspace(stub);
@@ -434,8 +413,8 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
       ws.streamProfiles({ output_properties: ["$email", "$name", "plan"] }),
     );
 
-    expect(profiles.length).toBe(1);
-    expect(stub.exportProfilesCalls).toEqual([
+    expect(profiles).toHaveLength(1);
+    expect(stub.exportProfilesCalls).toStrictEqual([
       { output_properties: ["$email", "$name", "plan"] },
     ]);
     await ws.close();
@@ -443,7 +422,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("forwards every filter together", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", null);
     });
     const ws = makeWorkspace(stub);
@@ -457,7 +436,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
       }),
     );
 
-    expect(stub.exportProfilesCalls).toEqual([
+    expect(stub.exportProfilesCalls).toStrictEqual([
       {
         where: whereClause,
         cohort_id: "cohort_abc",
@@ -469,7 +448,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("T010: raw=true returns the Mixpanel API format", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", "2024-01-15T10:00:00", { name: "Alice" });
       yield rawProfile("user_2", null, { name: "Bob" });
     });
@@ -477,9 +456,9 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
     const profiles = (await drain(ws.streamProfiles({ raw: true }))) as Rec[];
 
-    expect(profiles.length).toBe(2);
+    expect(profiles).toHaveLength(2);
     expect(profiles[0]?.["$distinct_id"]).toBe("user_1");
-    expect(Object.hasOwn(profiles[0] as Rec, "$properties")).toBe(true);
+    expect(Object.hasOwn(profiles[0]!, "$properties")).toBe(true);
     const first = profiles[0]?.["$properties"] as Rec;
     expect(first["$last_seen"]).toBe("2024-01-15T10:00:00");
     expect(first["name"]).toBe("Alice");
@@ -490,7 +469,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("T010: raw=false (default) transforms the payload", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_abc", "2024-01-15T14:30:00", {
         email: "test@example.com",
       });
@@ -499,8 +478,8 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
     const profiles = (await drain(ws.streamProfiles({ raw: false }))) as Rec[];
 
-    expect(profiles.length).toBe(1);
-    const profile = profiles[0] as Rec;
+    expect(profiles).toHaveLength(1);
+    const profile = profiles[0]!;
     expect(profile["distinct_id"]).toBe("user_abc");
     expect(profile["last_seen"]).toBe("2024-01-15T14:30:00");
     const props = profile["properties"] as Rec;
@@ -511,18 +490,19 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("returns an empty stream when the export yields nothing", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {});
+    stub.setProfiles(function* () {});
     const ws = makeWorkspace(stub);
 
-    expect(await drain(ws.streamProfiles())).toEqual([]);
+    await expect(drain(ws.streamProfiles())).resolves.toStrictEqual([]);
     await ws.close();
   });
 });
 
-describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
+describe("Normalized event format", () => {
+  // python: TestNormalizedEventFormat
   it("T019: normalized events carry every required field", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Purchase", "user_abc123", 1705328400, { amount: 99.99 });
     });
     const ws = makeWorkspace(stub);
@@ -531,7 +511,7 @@ describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
       ws.streamEvents({ from_date: "2024-01-15", to_date: "2024-01-15" }),
     )) as Rec[];
 
-    const event = events[0] as Rec;
+    const event = events[0]!;
     for (const key of [
       "event_name",
       "event_time",
@@ -551,10 +531,11 @@ describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
   });
 });
 
-describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
+describe("Raw event format", () => {
+  // python: TestRawEventFormat
   it("T020: raw events keep the Mixpanel API structure", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Purchase", "user_abc123", 1705328400, { amount: 99.99 });
     });
     const ws = makeWorkspace(stub);
@@ -567,7 +548,7 @@ describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
       }),
     )) as Rec[];
 
-    const event = events[0] as Rec;
+    const event = events[0]!;
     expect(Object.hasOwn(event, "event")).toBe(true);
     expect(Object.hasOwn(event, "properties")).toBe(true);
     const props = event["properties"] as Rec;
@@ -578,10 +559,11 @@ describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
   });
 });
 
-describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => {
+describe("Normalized profile format", () => {
+  // python: TestNormalizedProfileFormat
   it("T021: normalized profiles carry every required field", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_abc123", "2024-01-15T14:30:00", {
         name: "Alice",
       });
@@ -590,7 +572,7 @@ describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => 
 
     const profiles = (await drain(ws.streamProfiles())) as Rec[];
 
-    const profile = profiles[0] as Rec;
+    const profile = profiles[0]!;
     for (const key of ["distinct_id", "last_seen", "properties"]) {
       expect(Object.hasOwn(profile, key)).toBe(true);
     }
@@ -603,10 +585,11 @@ describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => 
   });
 });
 
-describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
+describe("Raw profile format", () => {
+  // python: TestRawProfileFormat
   it("T022: raw profiles keep the `$`-prefixed API structure", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_abc123", "2024-01-15T14:30:00", {
         name: "Alice",
       });
@@ -615,7 +598,7 @@ describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
 
     const profiles = (await drain(ws.streamProfiles({ raw: true }))) as Rec[];
 
-    const profile = profiles[0] as Rec;
+    const profile = profiles[0]!;
     expect(Object.hasOwn(profile, "$distinct_id")).toBe(true);
     expect(Object.hasOwn(profile, "$properties")).toBe(true);
     expect(profile["$distinct_id"]).toBe("user_abc123");
@@ -626,12 +609,12 @@ describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
   });
 });
 
-describe("W1-D3 — the streaming veneers stay PROJECT-scoped", () => {
+describe("the streaming veneers stay project-scoped", () => {
   it("a pinned workspace does not leak into the export options", async () => {
-    // `workspace.py:566-573`: "Raw export streaming remains
+    // `workspace.py`: "Raw export streaming remains
     // project-scoped by design."
     const stub = stubClient();
-    stub.setEvents(async function* () {});
+    stub.setEvents(function* () {});
     const ws = new Workspace({
       session: makeSession({ workspaceId: 4242 }),
       client: stub.client,

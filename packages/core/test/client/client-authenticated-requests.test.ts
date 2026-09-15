@@ -1,61 +1,40 @@
-// Layer-3 translation — B4-ARB resolution of the assertions-review
-// MAJOR finding (b4-review-assertions.md F1): the three
-// tests/unit/test_api_client.py classes the C1 shard dropped without an
-// exclusion header. Sources:
-//
-// - tests/unit/test_api_client.py::TestAuthenticatedRequests (:332-441)
-// - tests/unit/test_api_client.py::TestWithProject (:2885-2973)
-// - tests/unit/test_api_client.py::TestClientIdentificationHeaders
-//   (:2974-3129)
-//
-// Entry-point substitutions (B0-notes decision 13 + packet C1 table):
-// httpx.MockTransport → the injected-fetch fake (client-test-helpers);
-// `client._session` → `client.core.session()`; `client._timeout` /
-// `client._export_timeout` / `client._max_retries` →
-// `client.core.timeoutSeconds` / `.exportTimeoutSeconds` /
-// `.maxRetries`; `client._transport is transport` → injected-fetch
-// identity through `client.core.http().fetchImpl`; the
-// `monkeypatch.setenv(MP_CUSTOM_HEADER_*)` pair → the injected
-// `getCustomHeaderEnv` provider (R9.1 env boundary); the Python UA
-// runtime tag `python/<x.y>` → `ts` (B0-notes decision 8 — the UA is
-// telemetry, never vector-byte-locked). Every other assertion is
-// preserved 1:1 (R10.2).
+// Authenticated requests through the assembled client: auth header,
+// project_id param, 401 mapping, regional routing, `withProject` cloning
+// and the User-Agent / custom-header identification rules. Mirrors
+// TestAuthenticatedRequests, TestWithProject and TestClientIdentificationHeaders
+// from tests/unit/test_api_client.py; the Python UA runtime tag `python/x.y` is `ts` here.
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
 import {
+  type EntryPoint,
   getEntryPoint,
   setEntryPoint,
-  type EntryPoint,
 } from "../../src/client/headers.js";
 import { AuthenticationError } from "../../src/errors.js";
 import {
   createMockClient,
+  drain,
   fakeTransport,
   makeSession,
   staticTokenResolver,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
-/** Drain an async generator into an array (`list(...)`). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
-
-/** The `eu_credentials` fixture (test_api_client.py:47-56). */
+/** The `eu_credentials` fixture. */
 function euCredentials(): ReturnType<typeof makeSession> {
   return makeSession({ region: "eu" });
 }
 
-/** The `india_credentials` fixture (test_api_client.py:58-67). */
+/** The `india_credentials` fixture. */
 function indiaCredentials(): ReturnType<typeof makeSession> {
   return makeSession({ region: "in" });
 }
 
-describe("TestAuthenticatedRequests", () => {
-  it("test_auth_header_sent", async () => {
+describe("Authenticated requests", () => {
+  // python: TestAuthenticatedRequests
+  it("auth header sent", async () => {
+    // python: test_auth_header_sent
     const { client, transport } = createMockClient(makeSession(), () => ({
       status: 200,
       json: ["event1"],
@@ -67,7 +46,8 @@ describe("TestAuthenticatedRequests", () => {
     expect(captured?.headers["authorization"]?.startsWith("Basic ")).toBe(true);
   });
 
-  it("test_project_id_in_query_params", async () => {
+  it("project ID in query params", async () => {
+    // python: test_project_id_in_query_params
     const { client, transport } = createMockClient(makeSession(), () => ({
       status: 200,
       json: ["event1"],
@@ -76,7 +56,8 @@ describe("TestAuthenticatedRequests", () => {
     expect(transport.captures[0]?.url).toContain("project_id=12345");
   });
 
-  it("test_authentication_error_on_401", async () => {
+  it("authentication error on 401", async () => {
+    // python: test_authentication_error_on_401
     const { client } = createMockClient(makeSession(), () => ({
       status: 401,
       json: { error: "Invalid credentials" },
@@ -84,14 +65,15 @@ describe("TestAuthenticatedRequests", () => {
     let raised: unknown = null;
     try {
       await client.getEvents();
-    } catch (cause) {
-      raised = cause;
+    } catch (error) {
+      raised = error;
     }
     expect(raised).toBeInstanceOf(AuthenticationError);
     expect(String(raised).toLowerCase()).toContain("credentials");
   });
 
-  it("test_credentials_not_in_error_messages", async () => {
+  it("credentials not in error messages", async () => {
+    // python: test_credentials_not_in_error_messages
     const { client } = createMockClient(makeSession(), () => ({
       status: 401,
       json: { error: "Auth failed" },
@@ -99,8 +81,8 @@ describe("TestAuthenticatedRequests", () => {
     let raised: unknown = null;
     try {
       await client.getEvents();
-    } catch (cause) {
-      raised = cause;
+    } catch (error) {
+      raised = error;
     }
     expect(raised).toBeInstanceOf(AuthenticationError);
     const errorStr = String(raised);
@@ -108,7 +90,8 @@ describe("TestAuthenticatedRequests", () => {
     expect(errorStr).not.toContain("test_user");
   });
 
-  it("test_regional_routing_us", async () => {
+  it("regional routing us", async () => {
+    // python: test_regional_routing_us
     const { client, transport } = createMockClient(makeSession(), () => ({
       status: 200,
       json: ["event1"],
@@ -117,7 +100,8 @@ describe("TestAuthenticatedRequests", () => {
     expect(transport.captures[0]?.url).toContain("mixpanel.com");
   });
 
-  it("test_regional_routing_eu", async () => {
+  it("regional routing EU", async () => {
+    // python: test_regional_routing_eu
     const { client, transport } = createMockClient(euCredentials(), () => ({
       status: 200,
       json: ["event1"],
@@ -126,7 +110,8 @@ describe("TestAuthenticatedRequests", () => {
     expect(transport.captures[0]?.url).toContain("eu.mixpanel.com");
   });
 
-  it("test_regional_routing_india", async () => {
+  it("regional routing india", async () => {
+    // python: test_regional_routing_india
     const { client, transport } = createMockClient(indiaCredentials(), () => ({
       status: 200,
       json: ["event1"],
@@ -136,15 +121,18 @@ describe("TestAuthenticatedRequests", () => {
   });
 });
 
-describe("TestWithProject", () => {
-  it("test_with_project_creates_new_client", () => {
+describe("With project", () => {
+  // python: TestWithProject
+  it("with project creates new client", () => {
+    // python: test_with_project_creates_new_client
     const original = createMixpanelClient({ session: makeSession() });
     const newClient = original.withProject("9999999");
     expect(newClient).not.toBe(original);
     expect(newClient.core.session().project.id).toBe("9999999");
   });
 
-  it("test_with_project_preserves_auth", () => {
+  it("with project preserves auth", () => {
+    // python: test_with_project_preserves_auth
     const session = makeSession();
     const original = createMixpanelClient({ session });
     const newClient = original.withProject("9999999");
@@ -161,25 +149,29 @@ describe("TestWithProject", () => {
     expect(newAccount.secret.reveal()).toBe(session.account.secret.reveal());
   });
 
-  it("test_with_project_preserves_region", () => {
+  it("with project preserves region", () => {
+    // python: test_with_project_preserves_region
     const original = createMixpanelClient({ session: euCredentials() });
     const newClient = original.withProject("9999999");
     expect(newClient.core.session().account.region).toBe("eu");
   });
 
-  it("test_with_project_sets_workspace_id", () => {
+  it("with project sets workspace ID", () => {
+    // python: test_with_project_sets_workspace_id
     const original = createMixpanelClient({ session: makeSession() });
     const newClient = original.withProject("9999999", 42);
     expect(newClient.workspaceId).toBe(42);
   });
 
-  it("test_with_project_no_workspace_id", () => {
+  it("with project no workspace ID", () => {
+    // python: test_with_project_no_workspace_id
     const original = createMixpanelClient({ session: makeSession() });
     const newClient = original.withProject("9999999");
     expect(newClient.workspaceId).toBeNull();
   });
 
-  it("test_with_project_preserves_timeouts", () => {
+  it("with project preserves timeouts", () => {
+    // python: test_with_project_preserves_timeouts
     const original = createMixpanelClient({
       session: makeSession(),
       timeoutSeconds: 30.0,
@@ -190,7 +182,8 @@ describe("TestWithProject", () => {
     expect(newClient.core.exportTimeoutSeconds).toBe(300.0);
   });
 
-  it("test_with_project_preserves_max_retries", () => {
+  it("with project preserves max retries", () => {
+    // python: test_with_project_preserves_max_retries
     const original = createMixpanelClient({
       session: makeSession(),
       maxRetries: 5,
@@ -199,7 +192,8 @@ describe("TestWithProject", () => {
     expect(newClient.core.maxRetries).toBe(5);
   });
 
-  it("test_with_project_shares_transport", () => {
+  it("with project shares transport", () => {
+    // python: test_with_project_shares_transport
     const transport = fakeTransport(() => ({
       status: 200,
       json: { ok: true },
@@ -212,7 +206,8 @@ describe("TestWithProject", () => {
     expect(newClient.core.http().fetchImpl).toBe(transport.fetch);
   });
 
-  it("test_with_project_preserves_oauth_credentials", () => {
+  it("with project preserves OAuth credentials", () => {
+    // python: test_with_project_preserves_oauth_credentials
     const oauthCreds = makeSession({
       projectId: "12345",
       region: "us",
@@ -233,8 +228,9 @@ describe("TestWithProject", () => {
   });
 });
 
-describe("TestClientIdentificationHeaders", () => {
-  // The autouse `_reset_entry_point` fixture (:2981-2996): pin "lib"
+describe("Client identification headers", () => {
+  // python: TestClientIdentificationHeaders
+  // The autouse `_reset_entry_point` fixture: pin "lib"
   // for deterministic assertions; restore the prior value on teardown.
   let originalEntryPoint: EntryPoint;
   beforeEach(() => {
@@ -245,7 +241,8 @@ describe("TestClientIdentificationHeaders", () => {
     setEntryPoint(originalEntryPoint);
   });
 
-  it("test_user_agent_set_on_standard_request", async () => {
+  it("user agent set on standard request", async () => {
+    // python: test_user_agent_set_on_standard_request
     const { client, transport } = createMockClient(makeSession(), () => ({
       status: 200,
       json: ["event1"],
@@ -255,11 +252,12 @@ describe("TestClientIdentificationHeaders", () => {
     expect(ua.startsWith("mixpanel-headless/")).toBe(true);
     expect(ua).toContain("entry=lib");
     // Python asserts `"python/" in ua`; the TS runtime tag is `ts`
-    // (B0-notes decision 8 — documented substitution).
+    // (the UA is telemetry, never vector-byte-locked).
     expect(ua).toContain("ts");
   });
 
-  it("test_user_agent_set_on_app_request", async () => {
+  it("user agent set on app request", async () => {
+    // python: test_user_agent_set_on_app_request
     const { client, transport } = createMockClient(makeSession(), () => ({
       status: 200,
       json: { results: [] },
@@ -269,7 +267,8 @@ describe("TestClientIdentificationHeaders", () => {
     expect(ua.startsWith("mixpanel-headless/")).toBe(true);
   });
 
-  it("test_user_agent_set_on_export_stream", async () => {
+  it("user agent set on export stream", async () => {
+    // python: test_user_agent_set_on_export_stream
     const { client, transport } = createMockClient(makeSession(), () => ({
       status: 200,
       text: '{"event":"A","properties":{"time":1}}\n',
@@ -279,7 +278,8 @@ describe("TestClientIdentificationHeaders", () => {
     expect(ua.startsWith("mixpanel-headless/")).toBe(true);
   });
 
-  it("test_user_agent_reflects_cli_entry_point", async () => {
+  it("user agent reflects CLI entry point", async () => {
+    // python: test_user_agent_reflects_cli_entry_point
     const { client, transport } = createMockClient(makeSession(), () => ({
       status: 200,
       json: ["event1"],
@@ -289,7 +289,8 @@ describe("TestClientIdentificationHeaders", () => {
     expect(transport.captures[0]?.headers["user-agent"]).toContain("entry=cli");
   });
 
-  it("test_session_headers_override_user_agent", async () => {
+  it("session headers override user agent", async () => {
+    // python: test_session_headers_override_user_agent
     const session = makeSession({
       name: "team",
       username: "team.sa",
@@ -306,9 +307,10 @@ describe("TestClientIdentificationHeaders", () => {
     );
   });
 
-  it("test_mp_custom_header_can_override_user_agent", async () => {
+  it("mp custom header can override user agent", async () => {
+    // python: test_mp_custom_header_can_override_user_agent
     // `monkeypatch.setenv(MP_CUSTOM_HEADER_*)` → the injected env
-    // provider (R9.1: `core` never reads process.env).
+    // provider (`core` never reads process.env).
     const { client, transport } = createMockClient(
       makeSession(),
       () => ({ status: 200, json: ["event1"] }),
@@ -320,7 +322,8 @@ describe("TestClientIdentificationHeaders", () => {
     expect(transport.captures[0]?.headers["user-agent"]).toBe("env-ua/2.0");
   });
 
-  it("test_caller_extra_header_overrides_default_user_agent", async () => {
+  it("caller extra header overrides default user agent", async () => {
+    // python: test_caller_extra_header_overrides_default_user_agent
     const { client, transport } = createMockClient(makeSession(), () => ({
       status: 200,
       json: {},

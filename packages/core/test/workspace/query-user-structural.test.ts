@@ -1,65 +1,24 @@
-// Translated structural query-user tests (B5-S2, packet §3 + §8):
-// assertion-for-assertion port of tests/test_query_user_structural.py
-// (R10.2) — the 8 classes this shard owns:
-// TestParallelPageOrderingPreserved :171,
-// TestParallelLimit1FallsBackToSequential :241,
-// TestParallelPageSizeZeroFallback :274,
-// TestParallelPageSizeNoneFallback :307,
-// TestAggregateComputedAtFromAPI :347,
-// TestAggregateComputedAtFallback :375,
-// TestDfProfilesVaryingPropertySetsUnionColumns :526,
-// TestDfPropertyNamedDistinctIdCollision :585.
-//
-// HEADER EXCLUSIONS (the other 4 classes, already translated):
-// - TestPbtFormatValueSpecialChars :416 and
-//   TestFiltersToSelectorOrAndPrecedence :461 — translated at B3-K4
-//   (`B3-K4-notes.md:87-90`).
-// - TestTransformProfileMissingDistinctId :492 and
-//   TestTransformProfileCompletelyEmpty :509 — translated at B3-K3
-//   (`B3-K3-notes.md:93-96`).
-// The Python file also carries a `TestCredentialCheckBeforeValidation`
-// REMOVAL comment (:411) — nothing to translate.
-//
-// Translation notes:
-// - `page_size=None` (Python `object.__setattr__` on a frozen
-//   dataclass) is reproduced with the same field mutated to `null`; the
-//   `or 1000` guard is `page0.page_size ? … : 1000` in TS, so both
-//   falsy values take the same branch.
-// - The pandas NaN assertions in
-//   `test_df_profiles_varying_property_sets_union_columns` have no TS
-//   twin: the ragged-row model (phase2-design C6) leaves a missing key
-//   ABSENT rather than filling NaN, and `rowColumns()` is the column
-//   contract. The translation asserts the SAME facts in the TS model —
-//   the union column list, its exact order, key ABSENCE where pandas
-//   would show NaN, and the present values.
+// Structural queryUser behaviour: parallel page ordering, the limit=1 and
+// page_size 0/null fallbacks, aggregate computed_at sourcing and the ragged-row
+// frame. Mirrors eight classes of tests/test_query_user_structural.py (the PBT,
+// selector and transform-profile classes live under test/query/). pandas NaN
+// asserts become key-absence asserts: ragged rows leave missing keys absent.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
 import {
   makePageResult,
   makeProfilesBatch,
   makeRawProfile,
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
-  type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
+} from "../../test-support/workspace-test-helpers.js";
 
-/**
- * The `workspace_factory` fixture (test file :131-158).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
+// --- Structural / behavioural correctness ---
 
-// ===========================================================================
-// TIER 4: structural / behavioural correctness
-// ===========================================================================
-
-describe("TestParallelPageOrderingPreserved", () => {
+describe("Parallel page ordering preserved", () => {
+  // python: TestParallelPageOrderingPreserved
   it("assembles profiles in page order across futures", async () => {
     const total = 500;
     const pageSize = 100;
@@ -81,7 +40,7 @@ describe("TestParallelPageOrderingPreserved", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -89,14 +48,15 @@ describe("TestParallelPageOrderingPreserved", () => {
 
     // Profiles are in page order: user_000..user_099 (page 0),
     // user_100..user_199 (page 1), etc.
-    result.profiles.forEach((profile, i) => {
-      expect(profile["distinct_id"]).toBe(`user_${`${i}`.padStart(3, "0")}`);
-    });
-    expect(callOrder.length).toBe(numPages);
+    for (const [i, profile] of result.profiles.entries()) {
+      expect(profile["distinct_id"]).toBe(`user_${String(i).padStart(3, "0")}`);
+    }
+    expect(callOrder).toHaveLength(numPages);
   });
 });
 
-describe("TestParallelLimit1FallsBackToSequential", () => {
+describe("Parallel limit 1 falls back to sequential", () => {
+  // python: TestParallelLimit1FallsBackToSequential
   it("limit=1 with parallel=true uses the sequential path", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() =>
@@ -110,20 +70,21 @@ describe("TestParallelLimit1FallsBackToSequential", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 1,
     });
 
     expect(result.meta["parallel"]).toBe(false);
-    expect(result.profiles.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
     // Only one API call should have been made
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 });
 
-describe("TestParallelPageSizeZeroFallback", () => {
+describe("Parallel page size zero fallback", () => {
+  // python: TestParallelPageSizeZeroFallback
   it("page_size=0 from the API falls back to 1000", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() =>
@@ -136,18 +97,19 @@ describe("TestParallelPageSizeZeroFallback", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
     });
 
     // Should not divide by zero
-    expect(result.profiles.length).toBe(5);
+    expect(result.profiles).toHaveLength(5);
   });
 });
 
-describe("TestParallelPageSizeNoneFallback", () => {
+describe("Parallel page size none fallback", () => {
+  // python: TestParallelPageSizeNoneFallback
   it("page_size=null from the API falls back to 1000", async () => {
     const mock = mockWorkspaceClient();
     const pageResult = makePageResult(makeProfilesBatch(0, 3), {
@@ -161,18 +123,19 @@ describe("TestParallelPageSizeNoneFallback", () => {
     (pageResult as unknown as { page_size: number | null }).page_size = null;
     mock.setPageHandler(() => pageResult);
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
     });
 
     // Should not crash
-    expect(result.profiles.length).toBe(3);
+    expect(result.profiles).toHaveLength(3);
   });
 });
 
-describe("TestAggregateComputedAtFromAPI", () => {
+describe("Aggregate computed at from API", () => {
+  // python: TestAggregateComputedAtFromAPI
   it("uses the API's computed_at when present", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({
@@ -181,7 +144,7 @@ describe("TestAggregateComputedAtFromAPI", () => {
       computed_at: "2025-01-01T00:00:00Z",
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
     });
 
@@ -189,12 +152,13 @@ describe("TestAggregateComputedAtFromAPI", () => {
   });
 });
 
-describe("TestAggregateComputedAtFallback", () => {
+describe("Aggregate computed at fallback", () => {
+  // python: TestAggregateComputedAtFallback
   it("falls back to a local ISO timestamp when the API omits it", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({ results: 42, status: "ok" }); // no computed_at
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
     });
 
@@ -205,11 +169,10 @@ describe("TestAggregateComputedAtFallback", () => {
   });
 });
 
-// ===========================================================================
-// TIER 5: edge cases
-// ===========================================================================
+// --- Edge cases ---
 
-describe("TestDfProfilesVaryingPropertySetsUnionColumns", () => {
+describe("Df profiles varying property sets union columns", () => {
+  // python: TestDfProfilesVaryingPropertySetsUnionColumns
   it("profiles with different property sets produce the union of columns", () => {
     const profiles = [
       {
@@ -241,12 +204,12 @@ describe("TestDfProfilesVaryingPropertySetsUnionColumns", () => {
     const columns = result.rowColumns();
 
     // All property columns should be present
-    expect(new Set(columns)).toEqual(
+    expect(new Set(columns)).toStrictEqual(
       new Set(["distinct_id", "last_seen", "a", "b", "c"]),
     );
 
     // Column order: distinct_id, last_seen, then alphabetical
-    expect(columns).toEqual(["distinct_id", "last_seen", "a", "b", "c"]);
+    expect(columns).toStrictEqual(["distinct_id", "last_seen", "a", "b", "c"]);
 
     // Where pandas shows NaN, the TS ragged row leaves the key ABSENT
     const rows = result.toRows();
@@ -265,7 +228,8 @@ describe("TestDfProfilesVaryingPropertySetsUnionColumns", () => {
   });
 });
 
-describe("TestDfPropertyNamedDistinctIdCollision", () => {
+describe("Df property named distinct ID collision", () => {
+  // python: TestDfPropertyNamedDistinctIdCollision
   it("a property named 'distinct_id' overwrites the top-level value", () => {
     const profiles = [
       {

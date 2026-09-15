@@ -1,32 +1,35 @@
 /**
- * Canonical on-disk `tokens.json` serialization — TS port of
- * `token_payload_bytes` (`token.py:188-212`; b8-packets.md §3.1).
+ * Canonical on-disk `tokens.json` serialization. Every site that writes
+ * a per-account `tokens.json` (the on-disk resolver's refresh, the token
+ * store, the bridge-token materialization) routes through this helper so
+ * the written shape stays in lockstep with what the loaders read back.
+ * `refresh_token` is omitted when `null` (not written as an explicit
+ * JSON `null`), matching the loaders' "missing key means null" reading.
  *
- * Every site that writes a per-account `tokens.json`
- * (`OnDiskTokenResolver._refresh_and_persist`, `TokenStore.writeTokens`,
- * the bridge-token materialization) routes through this helper so the
- * written shape stays in lockstep with what the loaders read back.
- * `refresh_token` is OMITTED when `null` (not an explicit JSON `null`)
- * — matching the loaders' "missing key → null" behavior.
+ * This is a designated secret-reveal site: `Secret.toJSON()` returns the
+ * mask, so the payload is built from explicit `reveal()` calls, never
+ * via `JSON.stringify(tokens)`.
  *
- * CRED-F3 (b7-reviewB-resolution.md): this is a DESIGNATED reveal
- * site — `Secret.toJSON()` returns the mask, so the payload is built
- * from explicit `reveal()` calls, never via `JSON.stringify(tokens)`.
+ * @see mixpanel_headless._internal.auth.token.token_payload_bytes
  */
 
-import type { OAuthTokens } from "../../../core/src/auth/token.js";
-import { pythonJsonDumps } from "../../../core/src/compat/python-json-dumps.js";
+import { type OAuthTokens, pythonJsonDumps } from "@mixpanel-headless/core";
+
 import { pythonIsoformatDatetimeText } from "./pydantic-datetime.js";
 
 /**
  * Serialize `tokens` to UTF-8 JSON bytes for `atomicWriteBytes`.
  *
- * @param tokens - The tokens to serialize (`expires_at` is tz-aware
- *   ISO text, enforced at model construction; re-rendered through the
- *   `datetime.isoformat()` twin so foreign spellings like `Z` never
- *   leak into the written file — B8-ARB-B F2,
- *   `b8-reviewB-resolution.md`).
+ * @param tokens - The tokens to serialize. `expires_at` is tz-aware ISO
+ *   text (enforced at model construction) and is re-rendered through the
+ *   `datetime.isoformat()` twin so foreign spellings such as `Z` never
+ *   reach the written file.
  * @returns UTF-8 encoded JSON bytes.
+ * @example
+ * ```ts
+ * const path = join(ensureAccountDir(name), "tokens.json");
+ * atomicWriteBytes(path, tokenPayloadBytes(tokens));
+ * ```
  */
 export function tokenPayloadBytes(tokens: OAuthTokens): Uint8Array {
   const payload: Record<string, unknown> = {
@@ -38,8 +41,7 @@ export function tokenPayloadBytes(tokens: OAuthTokens): Uint8Array {
   if (tokens.refresh_token !== null) {
     payload["refresh_token"] = tokens.refresh_token.reveal();
   }
-  // `json.dumps(payload)` default separators — `", "` / `": "`
-  // (B8-ARB-B ripple: byte parity with `token.py:212`, probed
-  // byte-identical in `b8-reviewB-resolution.md`).
+  // `json.dumps(payload)` default separators (`", "` / `": "`) keep the
+  // file byte-identical to what Python writes.
   return new TextEncoder().encode(pythonJsonDumps(payload));
 }

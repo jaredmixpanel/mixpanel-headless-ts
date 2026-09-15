@@ -1,14 +1,20 @@
-// Layer-3 translation — Phase-3 packet B4-C4 experiment locks.
-// Source: tests/unit/test_api_client_experiments.py (ALL classes —
-// experiment CRUD, lifecycle launch/conclude/decide, management
-// archive/restore/duplicate, ERF listing, 400/404 error paths).
-import { describe, expect, it } from "vitest";
-import { APIError } from "../../src/errors.js";
-import { toNativeJson } from "../../src/client/json-value.js";
-import { createMockClient, makeSession } from "./client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
+// Experiment client methods: CRUD, the launch/conclude/decide lifecycle
+// (including state-guard errors), archive/restore/duplicate and ERF
+// listing (paths, methods, bodies, 400/404 error paths). Mirrors every
+// class of tests/unit/test_api_client_experiments.py.
 
-/** The `oauth_credentials` fixture twin (test_api_client_experiments.py:32-35). */
+import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
+import { toNativeJson } from "../../src/client/json-value.js";
+import { APIError } from "../../src/errors.js";
+import {
+  createMockClient,
+  makeSession,
+  parseBody,
+} from "../../test-support/client-test-helpers.js";
+
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -17,13 +23,10 @@ function oauthCredentials(): Session {
   });
 }
 
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
-}
-
-describe("TestListExperiments", () => {
-  it("test_returns_experiment_list", async () => {
+describe("List experiments", () => {
+  // python: TestListExperiments
+  it("returns experiment list", async () => {
+    // python: test_returns_experiment_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -42,7 +45,8 @@ describe("TestListExperiments", () => {
     expect(result[1]?.["name"]).toBe("Experiment B");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -52,16 +56,18 @@ describe("TestListExperiments", () => {
     expect(capturedUrls[0]).toContain("/projects/12345/experiments");
   });
 
-  it("test_empty_result", async () => {
+  it("empty result", async () => {
+    // python: test_empty_result
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
     }));
     const result = await client.listExperiments();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
-  it("test_include_archived", async () => {
+  it("include archived", async () => {
+    // python: test_include_archived
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -72,8 +78,10 @@ describe("TestListExperiments", () => {
   });
 });
 
-describe("TestCreateExperiment", () => {
-  it("test_creates_experiment", async () => {
+describe("Create experiment", () => {
+  // python: TestCreateExperiment
+  it("creates experiment", async () => {
+    // python: test_creates_experiment
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -89,11 +97,12 @@ describe("TestCreateExperiment", () => {
       await client.createExperiment({ name: "New Experiment" }),
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("POST");
-    expect(captured[0]?.[2]).toEqual({ name: "New Experiment" });
+    expect(captured[0]?.[2]).toStrictEqual({ name: "New Experiment" });
     expect(result["id"]).toBe("new-123");
   });
 
-  it("test_uses_trailing_slash", async () => {
+  it("uses trailing slash", async () => {
+    // python: test_uses_trailing_slash
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -104,13 +113,15 @@ describe("TestCreateExperiment", () => {
     });
     await client.createExperiment({ name: "X" });
     // The URL should end with experiments/ (trailing slash).
-    const path = (capturedUrls[0] ?? "").split("?")[0] ?? "";
+    const path = (capturedUrls[0] ?? "").split("?", 1)[0] ?? "";
     expect(path.endsWith("experiments/")).toBe(true);
   });
 });
 
-describe("TestGetExperiment", () => {
-  it("test_gets_experiment_by_id", async () => {
+describe("Get experiment", () => {
+  // python: TestGetExperiment
+  it("gets experiment by ID", async () => {
+    // python: test_gets_experiment_by_id
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -126,7 +137,8 @@ describe("TestGetExperiment", () => {
     expect(result["id"]).toBe("xyz-456");
   });
 
-  it("test_not_found", async () => {
+  it("not found", async () => {
+    // python: test_not_found
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 404,
       json: { status: "error", error: "Not found" },
@@ -137,8 +149,10 @@ describe("TestGetExperiment", () => {
   });
 });
 
-describe("TestUpdateExperiment", () => {
-  it("test_updates_experiment", async () => {
+describe("Update experiment", () => {
+  // python: TestUpdateExperiment
+  it("updates experiment", async () => {
+    // python: test_updates_experiment
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -154,7 +168,8 @@ describe("TestUpdateExperiment", () => {
     expect(result["name"]).toBe("Updated");
   });
 
-  it("test_url_contains_experiment_id", async () => {
+  it("URL contains experiment ID", async () => {
+    // python: test_url_contains_experiment_id
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -168,8 +183,10 @@ describe("TestUpdateExperiment", () => {
   });
 });
 
-describe("TestDeleteExperiment", () => {
-  it("test_deletes_experiment", async () => {
+describe("Delete experiment", () => {
+  // python: TestDeleteExperiment
+  it("deletes experiment", async () => {
+    // python: test_deletes_experiment
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -179,7 +196,8 @@ describe("TestDeleteExperiment", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_url_contains_experiment_id", async () => {
+  it("URL contains experiment ID", async () => {
+    // python: test_url_contains_experiment_id
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -190,8 +208,10 @@ describe("TestDeleteExperiment", () => {
   });
 });
 
-describe("TestLaunchExperiment", () => {
-  it("test_launches_experiment", async () => {
+describe("Launch experiment", () => {
+  // python: TestLaunchExperiment
+  it("launches experiment", async () => {
+    // python: test_launches_experiment
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -211,7 +231,8 @@ describe("TestLaunchExperiment", () => {
     expect(result["status"]).toBe("active");
   });
 
-  it("test_launch_non_draft_raises_error", async () => {
+  it("launch non draft raises error", async () => {
+    // python: test_launch_non_draft_raises_error
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 400,
       json: {
@@ -225,8 +246,10 @@ describe("TestLaunchExperiment", () => {
   });
 });
 
-describe("TestConcludeExperiment", () => {
-  it("test_concludes_experiment", async () => {
+describe("Conclude experiment", () => {
+  // python: TestConcludeExperiment
+  it("concludes experiment", async () => {
+    // python: test_concludes_experiment
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -246,7 +269,8 @@ describe("TestConcludeExperiment", () => {
     expect(result["status"]).toBe("concluded");
   });
 
-  it("test_concludes_with_params", async () => {
+  it("concludes with params", async () => {
+    // python: test_concludes_with_params
     const capturedBodies: unknown[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedBodies.push(parseBody(request.bodyText));
@@ -259,10 +283,11 @@ describe("TestConcludeExperiment", () => {
       };
     });
     await client.concludeExperiment("xyz-456", { end_date: "2026-04-01" });
-    expect(capturedBodies[0]).toEqual({ end_date: "2026-04-01" });
+    expect(capturedBodies[0]).toStrictEqual({ end_date: "2026-04-01" });
   });
 
-  it("test_concludes_without_params_sends_empty_body", async () => {
+  it("concludes without params sends empty body", async () => {
+    // python: test_concludes_without_params_sends_empty_body
     const capturedBodies: unknown[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedBodies.push(
@@ -286,7 +311,8 @@ describe("TestConcludeExperiment", () => {
     ).toBe(true);
   });
 
-  it("test_conclude_non_active_raises_error", async () => {
+  it("conclude non active raises error", async () => {
+    // python: test_conclude_non_active_raises_error
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 400,
       json: {
@@ -300,8 +326,10 @@ describe("TestConcludeExperiment", () => {
   });
 });
 
-describe("TestDecideExperiment", () => {
-  it("test_decides_experiment", async () => {
+describe("Decide experiment", () => {
+  // python: TestDecideExperiment
+  it("decides experiment", async () => {
+    // python: test_decides_experiment
     const captured: Array<[string, string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -329,7 +357,8 @@ describe("TestDecideExperiment", () => {
     expect(result["status"]).toBe("success");
   });
 
-  it("test_decide_non_concluded_raises_error", async () => {
+  it("decide non concluded raises error", async () => {
+    // python: test_decide_non_concluded_raises_error
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 400,
       json: {
@@ -343,8 +372,10 @@ describe("TestDecideExperiment", () => {
   });
 });
 
-describe("TestArchiveExperiment", () => {
-  it("test_archives_experiment", async () => {
+describe("Archive experiment", () => {
+  // python: TestArchiveExperiment
+  it("archives experiment", async () => {
+    // python: test_archives_experiment
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -356,8 +387,10 @@ describe("TestArchiveExperiment", () => {
   });
 });
 
-describe("TestRestoreExperiment", () => {
-  it("test_restores_experiment", async () => {
+describe("Restore experiment", () => {
+  // python: TestRestoreExperiment
+  it("restores experiment", async () => {
+    // python: test_restores_experiment
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -375,8 +408,10 @@ describe("TestRestoreExperiment", () => {
   });
 });
 
-describe("TestDuplicateExperiment", () => {
-  it("test_duplicates_experiment", async () => {
+describe("Duplicate experiment", () => {
+  // python: TestDuplicateExperiment
+  it("duplicates experiment", async () => {
+    // python: test_duplicates_experiment
     const captured: Array<[string, string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url, parseBody(request.bodyText)]);
@@ -393,13 +428,15 @@ describe("TestDuplicateExperiment", () => {
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("POST");
     expect(captured[0]?.[1]).toContain("/experiments/xyz-456/duplicate");
-    expect(captured[0]?.[2]).toEqual({ name: "Copy of Test" });
+    expect(captured[0]?.[2]).toStrictEqual({ name: "Copy of Test" });
     expect(result["id"]).toBe("dup-789");
   });
 });
 
-describe("TestListErfExperiments", () => {
-  it("test_lists_erf_experiments", async () => {
+describe("List erf experiments", () => {
+  // python: TestListErfExperiments
+  it("lists erf experiments", async () => {
+    // python: test_lists_erf_experiments
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -419,7 +456,8 @@ describe("TestListErfExperiments", () => {
     expect(result[0]?.["id"]).toBe("erf-1");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);

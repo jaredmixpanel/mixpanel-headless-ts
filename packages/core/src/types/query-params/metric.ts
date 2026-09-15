@@ -1,11 +1,11 @@
 /**
- * Metric/formula/time-comparison query-param types — TS port of the
- * corresponding frozen dataclasses in `mixpanel_headless/types.py`
- * (phase2-design C7, packet P2-5a): `Metric`, `CohortMetric`, `Formula`,
- * `TimeComparison`.
+ * Per-metric query-parameter types: `Metric` (an event with its
+ * aggregation settings), `Formula` (an expression over metric letters),
+ * `CohortMetric` (cohort size over time) and `TimeComparison` (a
+ * comparison-period overlay). Constructor guards fire in the Python
+ * `__post_init__` order, one comment per rule code.
  *
- * Guard blocks are transcribed from the Python `__post_init__` bodies IN
- * SOURCE ORDER (Risk #1), one comment per registry code.
+ * @see mixpanel_headless.types.Metric
  */
 
 import { pythonStrip } from "../../compat/index.js";
@@ -31,28 +31,67 @@ import {
 export interface MetricFields {
   /** Mixpanel event name. */
   readonly event: string;
-  /** Aggregation function. Default: `"total"`. */
+  /**
+   * Aggregation function.
+   *
+   * @defaultValue `"total"`
+   */
   readonly math?: MathType;
-  /** Property for property-based math types. Default: `null`. */
+  /**
+   * Property for property-based math types.
+   *
+   * @defaultValue `null`
+   */
   readonly property?: PropertySpec | null;
-  /** Per-user pre-aggregation type. Default: `null`. */
+  /**
+   * Per-user pre-aggregation type.
+   *
+   * @defaultValue `null`
+   */
   readonly per_user?: PerUserAggregation | null;
-  /** Custom percentile value (e.g. 95 for p95). Default: `null`. */
+  /**
+   * Custom percentile value (e.g. 95 for p95).
+   *
+   * @defaultValue `null`
+   */
   readonly percentile_value?: number | null;
-  /** Per-metric filters. Default: `null`. */
+  /**
+   * Per-metric filters.
+   *
+   * @defaultValue `null`
+   */
   readonly filters?: readonly Filter[] | null;
-  /** How per-metric filters combine. Default: `"all"`. */
+  /**
+   * How per-metric filters combine.
+   *
+   * @defaultValue `"all"`
+   */
   readonly filters_combinator?: FiltersCombinator;
-  /** Segment method for counting qualifying events. Default: `null`. */
+  /**
+   * Segment method for counting qualifying events.
+   *
+   * @defaultValue `null`
+   */
   readonly segment_method?: SegmentMethod | null;
 }
 
 /**
- * Encapsulates a single event to query with its aggregation settings —
- * TS port of `types.Metric`.
+ * A single event to query together with its aggregation settings.
  *
- * Plain event name strings inherit top-level query defaults; Metric
- * objects override them.
+ * Plain event-name strings inherit the top-level query defaults; `Metric`
+ * objects override them per event.
+ *
+ * @example
+ * ```ts
+ * const revenue = new Metric({
+ *   event: "Purchase",
+ *   math: "sum",
+ *   property: "amount",
+ *   filters: [Filter.equals("currency", "USD")],
+ * });
+ * const p95 = new Metric({ event: "Load", math: "percentile", property: "ms", percentile_value: 95 });
+ * ```
+ * @see mixpanel_headless.types.Metric
  */
 export class Metric {
   /** Mixpanel event name. */
@@ -88,26 +127,23 @@ export class Metric {
   readonly segment_method: SegmentMethod | null;
 
   /**
-   * Create a metric (guards fire exactly as Python's `__post_init__`).
+   * Create a metric; the guards fire in Python `__post_init__` order.
    *
    * @param fields - Declared fields; absent optionals take the Python
    *   defaults.
-   * @throws ParamValidationError - `EV1_EMPTY_EVENT` /
+   * @throws {@link ParamValidationError} - `EV1_EMPTY_EVENT` /
    *   `EV2_CONTROL_CHAR_EVENT` (via the shared event-name guard),
    *   `V13_METRIC_MATH_PROPERTY`, `V26_PERCENTILE_REQUIRES_VALUE`,
    *   `MT2_INVALID_SEGMENT_METHOD` (transcribed in Python source order).
    */
   constructor(fields: MetricFields) {
     this.event = fields.event;
-    this.math = fields.math === undefined ? "total" : fields.math;
+    this.math = fields.math ?? "total";
     this.property = fields.property ?? null;
     this.per_user = fields.per_user ?? null;
     this.percentile_value = fields.percentile_value ?? null;
     this.filters = fields.filters ?? null;
-    this.filters_combinator =
-      fields.filters_combinator === undefined
-        ? "all"
-        : fields.filters_combinator;
+    this.filters_combinator = fields.filters_combinator ?? "all";
     this.segment_method = fields.segment_method ?? null;
     // EV1_EMPTY_EVENT / EV2_CONTROL_CHAR_EVENT: shared event-name guard.
     validateEventName(this.event, "Metric");
@@ -129,24 +165,28 @@ export class Metric {
       );
     }
     // MT2_INVALID_SEGMENT_METHOD: segment_method must be valid if set.
-    if (this.segment_method !== null) {
-      if (!["all", "first"].includes(this.segment_method as string)) {
-        throw new ParamValidationError(
-          "Metric segment_method must be one of ['all', 'first'], " +
-            `got ${JSON.stringify(this.segment_method)}`,
-          "MT2_INVALID_SEGMENT_METHOD",
-        );
-      }
+    if (
+      this.segment_method !== null &&
+      !["all", "first"].includes(this.segment_method)
+    ) {
+      throw new ParamValidationError(
+        "Metric segment_method must be one of ['all', 'first'], " +
+          `got ${JSON.stringify(this.segment_method)}`,
+        "MT2_INVALID_SEGMENT_METHOD",
+      );
     }
   }
 }
 
 /**
- * A formula expression referencing events by position letter (A, B,
- * C...) — TS port of `types.Formula`.
+ * A formula expression that references the query's events by position
+ * letter: `A` is the first event, `B` the second, and so on.
  *
- * Letters map to event positions in the list passed to the query: A is
- * the first event, B the second, etc.
+ * @example
+ * ```ts
+ * const conversion = new Formula({ expression: "B / A * 100", label: "Conversion %" });
+ * ```
+ * @see mixpanel_headless.types.Formula
  */
 export class Formula {
   /** Formula expression referencing events by letter. */
@@ -156,10 +196,11 @@ export class Formula {
   readonly label: string | null;
 
   /**
-   * Create a formula (guards fire exactly as Python's `__post_init__`).
+   * Create a formula; the guard fires in Python `__post_init__` order.
    *
-   * @param fields - Declared fields; `label` defaults to `null`.
-   * @throws ParamValidationError - `FM1_EMPTY_EXPRESSION` when the
+   * @param fields - Bag with `expression` (the formula text, required) and
+   *   `label` (display label, defaults to `null`).
+   * @throws {@link ParamValidationError} - `FM1_EMPTY_EXPRESSION` when the
    *   expression is empty/blank.
    */
   constructor(fields: {
@@ -179,9 +220,16 @@ export class Formula {
 }
 
 /**
- * Track cohort size over time as an event metric — TS port of
- * `types.CohortMetric` (insights only; CM4 is enforced by the Phase-3
- * builders, CM5 here at construction).
+ * Track the size of a saved cohort over time as an insights metric.
+ *
+ * Only saved cohorts are accepted (rule CM5, enforced here); the bookmark
+ * builders enforce the insights-only restriction (rule CM4).
+ *
+ * @example
+ * ```ts
+ * const payingUsers = new CohortMetric({ cohort: 12345, name: "Paying users" });
+ * ```
+ * @see mixpanel_headless.types.CohortMetric
  */
 export class CohortMetric {
   /** Saved cohort ID or inline definition. */
@@ -191,11 +239,12 @@ export class CohortMetric {
   readonly name: string | null;
 
   /**
-   * Create a cohort metric (guards fire exactly as Python's
-   * `__post_init__`).
+   * Create a cohort metric; the guards fire in Python `__post_init__`
+   * order.
    *
-   * @param fields - Declared fields; `name` defaults to `null`.
-   * @throws ParamValidationError - `CM1_COHORT_ID_NOT_POSITIVE` /
+   * @param fields - Bag with `cohort` (saved cohort id or inline
+   *   definition, required) and `name` (display name, defaults to `null`).
+   * @throws {@link ParamValidationError} - `CM1_COHORT_ID_NOT_POSITIVE` /
    *   `CM2_COHORT_NAME_EMPTY` (via the shared cohort-args guard), then
    *   `CM5_INLINE_COHORT_METRIC` when the cohort is an inline
    *   `CohortDefinition` (the server returns 500 for those).
@@ -221,11 +270,18 @@ export class CohortMetric {
 }
 
 /**
- * Overlay a comparison time period on insights, funnel, or retention
- * queries — TS port of `types.TimeComparison`.
+ * Overlay a comparison time period on an insights, funnel or retention
+ * query.
  *
- * Use the static factories rather than constructing directly:
- * {@link relative}, {@link absoluteStart}, {@link absoluteEnd}.
+ * Prefer the static factories to direct construction: {@link relative},
+ * {@link absoluteStart}, {@link absoluteEnd}.
+ *
+ * @example
+ * ```ts
+ * const lastMonth = TimeComparison.relative("month");
+ * const fromLaunch = TimeComparison.absoluteStart("2026-01-01");
+ * ```
+ * @see mixpanel_headless.types.TimeComparison
  */
 export class TimeComparison {
   /**
@@ -241,11 +297,13 @@ export class TimeComparison {
   readonly date: string | null;
 
   /**
-   * Create a time comparison (guards fire exactly as Python's
-   * `__post_init__`, rules TC0-TC3b in source order).
+   * Create a time comparison; the guards TC0–TC3b fire in Python
+   * `__post_init__` order.
    *
-   * @param fields - Declared fields; `unit`/`date` default to `null`.
-   * @throws ParamValidationError - `TC0_INVALID_TYPE`,
+   * @param fields - Bag with `type` (the discriminant, required), `unit`
+   *   (relative comparisons only, defaults to `null`) and `date`
+   *   (`YYYY-MM-DD`, absolute comparisons only, defaults to `null`).
+   * @throws {@link ParamValidationError} - `TC0_INVALID_TYPE`,
    *   `TC1_REQUIRES_UNIT`, `TC1B_INVALID_UNIT`, `TC1_REJECTS_DATE`,
    *   `TC2_REQUIRES_DATE`, `TC2_REJECTS_UNIT`, `TC3_DATE_FORMAT`,
    *   `TC3B_DATE_INVALID`.
@@ -259,11 +317,7 @@ export class TimeComparison {
     this.unit = fields.unit ?? null;
     this.date = fields.date ?? null;
     // TC0_INVALID_TYPE: type must be a valid TimeComparisonType.
-    if (
-      !["relative", "absolute-start", "absolute-end"].includes(
-        this.type as string,
-      )
-    ) {
+    if (!["relative", "absolute-start", "absolute-end"].includes(this.type)) {
       throw new ParamValidationError(
         "TimeComparison type must be one of " +
           "['absolute-end', 'absolute-start', 'relative'], " +
@@ -281,11 +335,7 @@ export class TimeComparison {
         );
       }
       // TC1B_INVALID_UNIT: unit must be a valid TimeComparisonUnit.
-      if (
-        !["day", "week", "month", "quarter", "year"].includes(
-          this.unit as string,
-        )
-      ) {
+      if (!["day", "week", "month", "quarter", "year"].includes(this.unit)) {
         throw new ParamValidationError(
           "TimeComparison unit must be one of " +
             "['day', 'month', 'quarter', 'week', 'year'], " +
@@ -329,8 +379,9 @@ export class TimeComparison {
       // TC3B_DATE_INVALID: date must be a real calendar date.
       if (!isRealCalendarDate(this.date)) {
         throw new ParamValidationError(
-          "TimeComparison date is not a valid calendar date: " +
-            JSON.stringify(this.date),
+          `TimeComparison date is not a valid calendar date: ${JSON.stringify(
+            this.date,
+          )}`,
           "TC3B_DATE_INVALID",
         );
       }
@@ -338,37 +389,39 @@ export class TimeComparison {
   }
 
   /**
-   * Create a relative time comparison — port of
-   * `TimeComparison.relative`.
+   * Create a relative time comparison.
    *
    * @param unit - Time unit for the comparison offset.
-   * @returns TimeComparison with `type="relative"` and the given unit.
+   * @returns A `TimeComparison` with `type="relative"` and the given unit.
+   * @throws {@link ParamValidationError} - `TC1B_INVALID_UNIT` from the
+   *   constructor guards when the unit is not one of the five units.
+   * @see mixpanel_headless.types.TimeComparison.relative
    */
   static relative(unit: TimeComparisonUnit): TimeComparison {
     return new TimeComparison({ type: "relative", unit });
   }
 
   /**
-   * Create an absolute-start time comparison — port of
-   * `TimeComparison.absolute_start`.
+   * Create an absolute-start time comparison.
    *
-   * @param date - Start date in YYYY-MM-DD format.
-   * @returns TimeComparison with `type="absolute-start"` and the date.
-   * @throws ParamValidationError - `TC3_DATE_FORMAT`/`TC3B_DATE_INVALID`
-   *   via the constructor guards.
+   * @param date - Start date in `YYYY-MM-DD` format.
+   * @returns A `TimeComparison` with `type="absolute-start"` and the date.
+   * @throws {@link ParamValidationError} - `TC3_DATE_FORMAT` /
+   *   `TC3B_DATE_INVALID` from the constructor guards.
+   * @see mixpanel_headless.types.TimeComparison.absolute_start
    */
   static absoluteStart(date: string): TimeComparison {
     return new TimeComparison({ type: "absolute-start", date });
   }
 
   /**
-   * Create an absolute-end time comparison — port of
-   * `TimeComparison.absolute_end`.
+   * Create an absolute-end time comparison.
    *
-   * @param date - End date in YYYY-MM-DD format.
-   * @returns TimeComparison with `type="absolute-end"` and the date.
-   * @throws ParamValidationError - `TC3_DATE_FORMAT`/`TC3B_DATE_INVALID`
-   *   via the constructor guards.
+   * @param date - End date in `YYYY-MM-DD` format.
+   * @returns A `TimeComparison` with `type="absolute-end"` and the date.
+   * @throws {@link ParamValidationError} - `TC3_DATE_FORMAT` /
+   *   `TC3B_DATE_INVALID` from the constructor guards.
+   * @see mixpanel_headless.types.TimeComparison.absolute_end
    */
   static absoluteEnd(date: string): TimeComparison {
     return new TimeComparison({ type: "absolute-end", date });

@@ -1,38 +1,21 @@
-/**
- * Layer-3 translation of `tests/unit/test_live_query_pbt.py` (B5-S2,
- * packet §3) — BOTH classes: TestTransformFunnelProperties :127,
- * TestTransformRetentionProperties :314.
- *
- * Hypothesis `@settings(max_examples=100)` → fast-check `numRuns: 100`
- * (the un-settinged cases keep Hypothesis's own 100 default).
- *
- * Fidelity notes:
- * - `st.dates().map(strftime("%Y-%m-%d"))` becomes a generated
- *   proleptic-Gregorian `YYYY-MM-DD` string over the same 1..9999 year
- *   span; the values are only ever compared/ordered, never parsed.
- * - `event_names` (`st.characters(categories=("L","N","P","S"))`)
- *   becomes an explicit alphabet spanning Latin / Greek / Cyrillic /
- *   CJK letters, ASCII + non-ASCII digits, punctuation and symbols
- *   (strictly inside the Python categories; the B2 ASSERT-F1
- *   convention).
- * - `dates == sorted(dates)` is CODE-POINT ordered (R11.5), so the
- *   assertion uses {@link sortedByCodepoint} rather than JS `.sort()`.
- * - `_transform_funnel` / `_transform_retention` are
- *   {@link transformFunnel} / {@link transformRetention} in
- *   `services/live-query-transforms.ts` (R7.2 split).
- */
+// Property tests for transformFunnel / transformRetention (conversion-rate
+// and retention invariants over generated API responses). Mirrors
+// tests/unit/test_live_query_pbt.py (both classes). Hypothesis strategies are
+// fast-check arbitraries over the same value domains; `dates == sorted(dates)`
+// is code-point order, hence sortedByCodepoint rather than JS `.sort()`.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
+import { sortedByCodepoint } from "../../src/compat/index.js";
 import {
   transformFunnel,
   transformRetention,
 } from "../../src/services/live-query-transforms.js";
-import { sortedByCodepoint } from "../../src/compat/index.js";
 import type { TimeUnit } from "../../src/types/literals.js";
 
 // ===========================================================================
-// Custom strategies (test_live_query_pbt.py:23-118)
+// Custom strategies (test_live_query_pbt.py)
 // ===========================================================================
 
 /** `date_strings` — `st.dates().map(lambda d: d.strftime("%Y-%m-%d"))`. */
@@ -43,15 +26,15 @@ const dateStrings: fc.Arbitrary<string> = fc
     noInvalidDate: true,
   })
   .map((d) => {
-    const year = `${d.getUTCFullYear()}`.padStart(4, "0");
-    const month = `${d.getUTCMonth() + 1}`.padStart(2, "0");
-    const day = `${d.getUTCDate()}`.padStart(2, "0");
+    const year = String(d.getUTCFullYear()).padStart(4, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   });
 
 /**
- * `event_names` — `st.text(alphabet=st.characters(categories=("L","N",
- * "P","S")), min_size=1, max_size=50)`.
+ * `event_names` — `st.text(alphabet=st.characters(categories=("L","N","P","S")),`
+ * `min_size=1, max_size=50)`.
  */
 const eventNames: fc.Arbitrary<string> = fc
   .array(
@@ -120,7 +103,7 @@ const rawFunnelResponse: fc.Arbitrary<Record<string, unknown>> = fc
   .map(([numDates, numSteps, allDates, allSteps]) => {
     const dates = allDates.slice(0, numDates);
     const data: Record<string, unknown> = {};
-    dates.forEach((date, index) => {
+    for (const [index, date] of dates.entries()) {
       const drawn = allSteps[index] ?? [];
       // Python draws exactly `num_steps` steps per date; the mapped
       // pool is padded/trimmed to the same length.
@@ -131,7 +114,7 @@ const rawFunnelResponse: fc.Arbitrary<Record<string, unknown>> = fc
         );
       }
       data[date] = { steps, analysis: {} };
-    });
+    }
     return { data };
   });
 
@@ -150,14 +133,14 @@ const rawRetentionResponse: fc.Arbitrary<Record<string, unknown>> = fc
   .map(([numCohorts, numPeriods, allDates, sizes, rawCounts]) => {
     const dates = allDates.slice(0, numCohorts);
     const result: Record<string, unknown> = {};
-    dates.forEach((date, index) => {
+    for (const [index, date] of dates.entries()) {
       const cohortSize = sizes[index] ?? 0;
       const cap = Math.max(1, cohortSize * 2);
       const counts = rawCounts
         .slice(0, numPeriods)
         .map((value) => Math.min(value, cap));
       result[date] = { first: cohortSize, counts };
-    });
+    }
     return result;
   });
 
@@ -165,7 +148,8 @@ const rawRetentionResponse: fc.Arbitrary<Record<string, unknown>> = fc
 // _transform_funnel property tests
 // ===========================================================================
 
-describe("TestTransformFunnelProperties", () => {
+describe("Transform funnel properties", () => {
+  // python: TestTransformFunnelProperties
   it("first step conversion is always 1.0", () => {
     fc.assert(
       fc.property(
@@ -175,9 +159,9 @@ describe("TestTransformFunnelProperties", () => {
         dateStrings,
         (raw, funnelId, fromDate, toDate) => {
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
-          if (result.steps.length > 0) {
-            expect(result.steps[0]!.conversion_rate).toBe(1.0);
-          }
+          expect(result.steps.at(0)?.conversion_rate).toBe(
+            result.steps.length > 0 ? 1.0 : undefined,
+          );
         },
       ),
       { numRuns: 100 },
@@ -212,20 +196,14 @@ describe("TestTransformFunnelProperties", () => {
         dateStrings,
         (raw, funnelId, fromDate, toDate) => {
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
-          if (result.steps.length > 0) {
-            const firstCount = result.steps[0]!.count;
-            const lastCount = result.steps[result.steps.length - 1]!.count;
-            if (firstCount > 0) {
-              const expected = lastCount / firstCount;
-              expect(Math.abs(result.conversion_rate - expected)).toBeLessThan(
-                1e-9,
-              );
-            } else {
-              expect(result.conversion_rate).toBe(0.0);
-            }
-          } else {
-            expect(result.conversion_rate).toBe(0.0);
-          }
+          const firstCount = result.steps.at(0)?.count ?? 0;
+          const lastCount = result.steps.at(-1)?.count ?? 0;
+          const expected = firstCount > 0 ? lastCount / firstCount : 0.0;
+          expect(Math.abs(result.conversion_rate - expected)).toBeLessThan(
+            1e-9,
+          );
+          // The no-steps / zero-first-count arms are exact, not merely close.
+          expect(firstCount > 0 ? 0.0 : result.conversion_rate).toBe(0.0);
         },
       ),
       { numRuns: 100 },
@@ -241,9 +219,10 @@ describe("TestTransformFunnelProperties", () => {
         dateStrings,
         (raw, funnelId, fromDate, toDate) => {
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
-          if (result.steps.length === 0) {
-            expect(result.conversion_rate).toBe(0.0);
-          }
+          // With no steps the rate must be exactly 0.0 (vacuous otherwise).
+          expect(result.steps.length === 0 ? result.conversion_rate : 0.0).toBe(
+            0.0,
+          );
         },
       ),
       { numRuns: 100 },
@@ -270,9 +249,9 @@ describe("TestTransformFunnelProperties", () => {
           const raw = { data: { [date]: { steps, analysis: {} } } };
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
 
-          if (zeroStepIdx + 1 < result.steps.length) {
-            expect(result.steps[zeroStepIdx + 1]!.conversion_rate).toBe(0.0);
-          }
+          expect(result.steps.at(zeroStepIdx + 1)?.conversion_rate).toBe(
+            zeroStepIdx + 1 < result.steps.length ? 0.0 : undefined,
+          );
         },
       ),
       { numRuns: 100 },
@@ -284,7 +263,8 @@ describe("TestTransformFunnelProperties", () => {
 // _transform_retention property tests
 // ===========================================================================
 
-describe("TestTransformRetentionProperties", () => {
+describe("Transform retention properties", () => {
+  // python: TestTransformRetentionProperties
   it("retention values are non-negative", () => {
     fc.assert(
       fc.property(
@@ -333,7 +313,7 @@ describe("TestTransformRetentionProperties", () => {
             unit,
           );
           const dates = result.cohorts.map((cohort) => cohort.date);
-          expect(dates).toEqual(sortedByCodepoint(dates));
+          expect(dates).toStrictEqual(sortedByCodepoint(dates));
         },
       ),
       { numRuns: 100 },
@@ -353,7 +333,10 @@ describe("TestTransformRetentionProperties", () => {
         (bornEvent, returnEvent, fromDate, toDate, unit, date, numPeriods) => {
           // Cohort with size 0 but non-zero counts (the edge case)
           const raw = {
-            [date]: { first: 0, counts: Array<number>(numPeriods).fill(10) },
+            [date]: {
+              first: 0,
+              counts: Array.from({ length: numPeriods }, () => 10),
+            },
           };
 
           const result = transformRetention(
@@ -365,7 +348,7 @@ describe("TestTransformRetentionProperties", () => {
             unit,
           );
 
-          expect(result.cohorts.length).toBe(1);
+          expect(result.cohorts).toHaveLength(1);
           for (const retentionValue of result.cohorts[0]!.retention) {
             expect(retentionValue).toBe(0.0);
           }
@@ -410,14 +393,14 @@ describe("TestTransformRetentionProperties", () => {
             unit,
           );
 
-          expect(result.cohorts.length).toBe(1);
+          expect(result.cohorts).toHaveLength(1);
           const cohort = result.cohorts[0]!;
-          counts.forEach((count, i) => {
+          for (const [i, count] of counts.entries()) {
             const expected = count / cohortSize;
             expect(Math.abs(cohort.retention[i]! - expected)).toBeLessThan(
               1e-9,
             );
-          });
+          }
         },
       ),
       { numRuns: 100 },
@@ -441,7 +424,7 @@ describe("TestTransformRetentionProperties", () => {
             toDate,
             unit,
           );
-          expect(result.cohorts).toEqual([]);
+          expect(result.cohorts).toStrictEqual([]);
         },
       ),
       { numRuns: 100 },

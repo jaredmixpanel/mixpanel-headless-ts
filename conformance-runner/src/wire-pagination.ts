@@ -1,20 +1,22 @@
 /**
- * B4-C6 wire binding: `pagination.paginate_all` (packet C6 — the one
- * corpus name under the `pagination.` prefix; 39 vectors).
+ * The `pagination.paginate_all` wire binding — the one corpus name under
+ * the `pagination.` prefix.
  *
- * Binding honesty (P3-5 §3): memoized `clientFromSession` + ONE call to
- * the ported `paginateAll` generator (drained like the recorder's
- * `list(paginate_all(...))`) + kwarg passthrough — no request assembly,
- * no path derivation.
+ * The binding is the memoized `clientFromSession` plus one call to the
+ * ported `paginateAll` generator (drained like the recorder's
+ * `list(paginate_all(...))`) and kwarg passthrough — no request
+ * assembly, no path derivation. See `wire-client.ts` for the shared
+ * client-construction and honesty rules.
  */
 
-import { paginateAll } from "../../packages/core/src/client/pagination.js";
+import { paginateAll } from "@mixpanel-headless/core/internal";
+
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";
 
 /**
- * Register the B4-C6 pagination binding.
+ * Register the pagination binding.
  *
  * @param implementations - The registry to extend.
  */

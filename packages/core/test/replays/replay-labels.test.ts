@@ -1,31 +1,20 @@
-// Translated label tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports (R10.2) of the three label classes in
-//   tests/unit/test_replay_bundle.py
-//     TestUrlNormalizer     :97
-//     TestDefaultLabelFn    :118
-//     TestSelectorLabelFn   :135
-//
-// The remaining classes of that file are owned elsewhere: TestRrwebAnalyzer
-// :162 → `rrweb-analyzer.test.ts`; TestReplayBundleAggregations :325 +
-// TestAggregatorFunctions :459 → `aggregators.test.ts`;
-// TestReplayBundleProjections :260, TestReplayBundleFilters :415,
-// TestCodedUserActionCodes :485 and TestCodedReplayBundleCodes :513 were
-// translated in Phase 2 (`test/types/results/replays.test.ts:1-21`) — the
-// four asserts excluded THERE (test_elements_df,
-// test_elements_df_normalizes_urls, test_error_sessions,
-// test_sample_determinism) come alive in `aggregators.test.ts` with the
-// TODO(port) closure.
+// Replay label helpers: url_normalizer, default_label_fn and
+// selector_label_fn. Mirrors tests/unit/test_replay_bundle.py
+// (TestUrlNormalizer, TestDefaultLabelFn, TestSelectorLabelFn); the other
+// classes of that file live in rrweb-analyzer.test.ts, aggregators.test.ts
+// and test/types/results/replays.test.ts. One additive suite (see below).
 import { describe, expect, it } from "vitest";
+
 import {
   defaultLabelFn,
   selectorLabelFn,
   urlNormalizer,
 } from "../../src/replays/replay-labels.js";
-import { UserAction } from "../../src/types/results/replays.js";
+import { UserAction } from "../../src/replays/user-action.js";
 
 /**
  * Construct a `UserAction` for label tests (Python `_build_action`,
- * `test_replay_bundle.py:49-64`).
+ * `test_replay_bundle.py`).
  *
  * @param overrides - Field overrides applied over the Python defaults.
  * @returns The constructed action.
@@ -50,29 +39,36 @@ function buildAction(
   });
 }
 
-describe("url_normalizer collapses parameterized URLs (TestUrlNormalizer)", () => {
-  it("test_strips_query_string", () => {
+describe("url_normalizer collapses parameterized URLs", () => {
+  // python: TestUrlNormalizer
+  it("strips query string", () => {
+    // python: test_strips_query_string
     expect(urlNormalizer("/x?a=1&b=2")).toBe("/x");
   });
 
-  it("test_replaces_numeric_segments", () => {
+  it("replaces numeric segments", () => {
+    // python: test_replaces_numeric_segments
     expect(urlNormalizer("/users/12345/profile")).toBe("/users/:id/profile");
   });
 
-  it("test_preserves_host", () => {
+  it("preserves host", () => {
+    // python: test_preserves_host
     const out = urlNormalizer(
       "https://app.example.com/users/12345/profile?ref=x",
     );
     expect(out).toBe("https://app.example.com/users/:id/profile");
   });
 
-  it("test_empty_url", () => {
+  it("empty URL", () => {
+    // python: test_empty_url
     expect(urlNormalizer("")).toBe("");
   });
 });
 
-describe("default_label_fn produces the canonical action:tag@url shape (TestDefaultLabelFn)", () => {
-  it("test_label_shape", () => {
+describe("default_label_fn produces the canonical action:tag@url shape", () => {
+  // python: TestDefaultLabelFn
+  it("label shape", () => {
+    // python: test_label_shape
     const action = buildAction({
       target_desc: 'button "Sign in"',
       url: "/users/12345/profile?ref=x",
@@ -82,14 +78,17 @@ describe("default_label_fn produces the canonical action:tag@url shape (TestDefa
     );
   });
 
-  it("test_no_url", () => {
+  it("no URL", () => {
+    // python: test_no_url
     const action = buildAction({ url: null });
     expect(defaultLabelFn(action)).toContain("@(no-url)");
   });
 });
 
-describe("selector_label_fn prefers stable attributes when present (TestSelectorLabelFn)", () => {
-  it("test_uses_data_testid_when_present", () => {
+describe("selector_label_fn prefers stable attributes when present", () => {
+  // python: TestSelectorLabelFn
+  it("uses data testid when present", () => {
+    // python: test_uses_data_testid_when_present
     const fn = selectorLabelFn("data-testid");
     const action = buildAction({
       target_desc: "some long ugly description",
@@ -101,18 +100,17 @@ describe("selector_label_fn prefers stable attributes when present (TestSelector
     expect(out).not.toContain("ugly description");
   });
 
-  it("test_falls_back_to_default", () => {
+  it("falls back to default", () => {
+    // python: test_falls_back_to_default
     const fn = selectorLabelFn("data-testid");
     const action = buildAction({ target_desc: "button", url: "/login" });
     expect(fn(action)).toBe(defaultLabelFn(action));
   });
 });
 
-// ADDITIVE (no Python twin): the R10.9 differential harness caught the
-// label forking on a non-`str` metadata value — Python's f-string is
-// `str(candidate)`, so a boolean renders `True`, not `true`. Recorded
-// here because `throwaway/b5-s3/` is deleted at the batch gate
-// (`b5-packets.md` §7.5) and this is the surviving lock.
+// Additive (no Python twin): the differential fuzz caught the label forking
+// on a non-`str` metadata value — Python's f-string is `str(candidate)`, so
+// a boolean renders `True`, not `true`.
 describe("selector_label_fn renders non-str values with PYTHON spelling", () => {
   it.each([
     [true, "True"],

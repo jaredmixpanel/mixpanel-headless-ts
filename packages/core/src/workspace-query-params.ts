@@ -1,48 +1,15 @@
 /**
- * The `Workspace` query-parameter engine — TS port of the private
- * param-building methods of `mixpanel_headless/workspace.py` for
- * Phase-3 batch B5, shard S2
- * (`context/phase3/design/b5-packets.md` §3).
+ * The query-parameter engine behind the `query*` / `run*Params` /
+ * `build*Params` facade families: the insights, funnel, retention, flow
+ * and user-profile param builders, ported as free functions because
+ * Python's are `self`-free apart from the `_build_*` chain. Guard order
+ * is source order in every function — the corpus pins it. The argument
+ * validators and bookmark builders are imported, never re-implemented;
+ * the chart-type lookups are `ReadonlyMap`s so a `mode` of `"toString"`
+ * cannot reach `Object.prototype`; `json.dumps` renders through
+ * {@link pythonJsonDumps} (CPython separators and `\uXXXX` policy).
  *
- * Split out of `workspace.ts` per R7.2 (the facade file already carries
- * the S1/S3/B6 member sections; these ten helpers are ~1,100 lines on
- * their own). Every one of them is `self`-free in Python apart from the
- * `self._build_*_params` call chain, so they port as free functions and
- * the facade members delegate.
- *
- * Contents, in Python source order:
- *
- * | Python | Here |
- * |---|---|
- * | `_check_step_direction` `:353` | {@link checkStepDirection} |
- * | `_flow_mode_from_params` `:438` | {@link flowModeFromParams} |
- * | `_build_query_params` `:2047` | {@link buildQueryParams} |
- * | `_resolve_and_build_params` `:2546` | {@link resolveAndBuildParams} |
- * | `_build_funnel_params` `:2746` | {@link buildFunnelParams} |
- * | `_resolve_and_build_funnel_params` `:2930` | {@link resolveAndBuildFunnelParams} |
- * | `_build_retention_params` `:3321` | {@link buildRetentionParams} |
- * | `_build_flow_params` `:3493` | {@link buildFlowParams} |
- * | `_resolve_and_build_flow_params` `:3635` | {@link resolveAndBuildFlowParams} |
- * | `_resolve_and_build_retention_params` `:4100` | {@link resolveAndBuildRetentionParams} |
- * | `_resolve_and_build_user_params` `:9336` | {@link resolveAndBuildUserParams} |
- * | `_build_page_kwargs` `:10209` | {@link buildPageKwargs} |
- *
- * Port-wide conventions applied here:
- *
- * - R10.8 — the B2 validators (`validateQueryArgs`, `validateFunnelArgs`,
- *   `validateRetentionArgs`, `validateFlowArgs`, `validateUserArgs`,
- *   `validateUserParams`, `validateBookmark`, `validateFlowBookmark`,
- *   `_scanCustomProperties`) and the B3 builders (`buildTimeSection`,
- *   `buildFilterSection`, `buildGroupSection`, `buildFilterEntry`,
- *   `buildDateRange`, `buildSegfilterEntry`, `buildFlowCohortFilter`,
- *   `buildFlowPropertyFilter`, `buildTimeComparison`,
- *   `patchCustomPropertyFiltersForTransform`, `buildComposedProperties`,
- *   `sanitizeRawCohort`) are IMPORTED BY NAME, never re-implemented.
- * - R4.8 — the three `chart_type_map` lookups are `ReadonlyMap`s, so a
- *   `mode` of `"toString"` cannot reach `Object.prototype`.
- * - R11.7 — `json.dumps` renders through {@link pythonJsonDumps}
- *   (CPython's separators and `\uXXXX` policy), never `JSON.stringify`.
- * - Guard order is SOURCE order in every function.
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import {
@@ -59,19 +26,27 @@ import {
 } from "./bookmarks/builders.js";
 import { toNativeJson } from "./client/json-value.js";
 import { parseLossless } from "./client/lossless-json.js";
+import { ValueError } from "./compat/python-builtins.js";
+import { dateTodayIso, isLeapYear } from "./compat/python-dates.js";
+import { isPythonDict } from "./compat/python-dict.js";
 import { pythonJsonDumps } from "./compat/python-json-dumps.js";
-import { pythonRepr } from "./compat/python-str.js";
+import { isPythonValue, pythonRepr, pythonStrOf } from "./compat/python-str.js";
+import { pythonTypeName } from "./compat/python-values.js";
 import {
   BookmarkValidationError,
   ParamValidationError,
   ValidationError,
 } from "./errors.js";
+import { defined } from "./invariant.js";
 import { buildSegfilterEntry } from "./query/segfilter.js";
 import {
   extractCohortFilter,
   filtersToSelector,
 } from "./query/user-builders.js";
-import { ValueError } from "./query/python-builtins.js";
+import {
+  validateUserArgs,
+  validateUserParams,
+} from "./query/user-validators.js";
 import {
   validateFlowArgs,
   validateFunnelArgs,
@@ -83,17 +58,14 @@ import {
   validateFlowBookmark,
 } from "./query/validation-bookmark.js";
 import {
-  _scanCustomProperties,
   containsControlChars,
+  scanCustomProperties,
 } from "./query/validation-shared.js";
+import type { FlowMode } from "./services/live-query-transforms.js";
+import type { QueryTimeUnit } from "./types/literals.js";
 import {
-  validateUserArgs,
-  validateUserParams,
-} from "./query/user-validators.js";
-import {
-  CohortBreakdown,
+  type CohortBreakdown,
   CohortDefinition,
-  sanitizeRawCohort,
 } from "./types/query-params/cohort.js";
 import {
   CustomPropertyRef,
@@ -102,7 +74,7 @@ import {
 } from "./types/query-params/filter.js";
 import { FlowStep } from "./types/query-params/flow.js";
 import {
-  FrequencyBreakdown,
+  type FrequencyBreakdown,
   FrequencyFilter,
 } from "./types/query-params/frequency.js";
 import {
@@ -110,17 +82,15 @@ import {
   FunnelStep,
   HoldingConstant,
 } from "./types/query-params/funnel.js";
-import { GroupBy } from "./types/query-params/group-by.js";
-import { isPyInt } from "./types/query-params/guards.js";
-import type { FlowMode } from "./services/live-query-transforms.js";
+import type { GroupBy } from "./types/query-params/group-by.js";
+import { isPyInt, sanitizeRawCohort } from "./types/query-params/guards.js";
 import {
   CohortMetric,
   Formula,
   Metric,
-  TimeComparison,
+  type TimeComparison,
 } from "./types/query-params/metric.js";
 import { RetentionEvent } from "./types/query-params/retention.js";
-import { isPythonDict, pythonTypeName } from "./query/validation-shared.js";
 
 /** Any JSON-ish dict the bookmark builders emit or consume. */
 export type ParamsDict = Record<string, unknown>;
@@ -153,18 +123,15 @@ export type FilterWhereInput = Filter | readonly Filter[] | null;
 export type TodayFn = () => string;
 
 /**
- * Today's LOCAL calendar date as `YYYY-MM-DD` — the default of the
- * {@link resolveAndBuildFlowParams} clock seam, mirroring the B2/B3
- * `today` precedent (`bookmark_builders.py:115` twin).
+ * `repr(value)` for a JSON-derived value whose static type is `unknown`
+ * (a `Filter.in_cohort()` payload): exact CPython `repr` when the value is
+ * in the Python domain, else the loose `str` rendering.
  *
- * @returns Today's date as `YYYY-MM-DD`.
+ * @param value - The value to render.
+ * @returns The Python text.
  */
-function defaultToday(): string {
-  const now = new Date();
-  const year = `${now.getFullYear()}`.padStart(4, "0");
-  const month = `${now.getMonth() + 1}`.padStart(2, "0");
-  const day = `${now.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function reprOf(value: unknown): string {
+  return isPythonValue(value) ? pythonRepr(value) : pythonStrOf(value);
 }
 
 /**
@@ -178,34 +145,31 @@ function anyError(errors: readonly ValidationError[]): boolean {
   return errors.some((e) => e.severity === "error");
 }
 
-/** Insights `mode` → `displayOptions.chartType` (`workspace.py:2245`). */
+/** Insights `mode` → `displayOptions.chartType`. */
 const INSIGHTS_CHART_TYPE: ReadonlyMap<string, string> = new Map([
   ["timeseries", "line"],
   ["total", "bar"],
   ["table", "table"],
 ]);
 
-/** Funnel `mode` → `chartType` (`workspace.py:2896`). */
+/** Funnel `mode` → `chartType`. */
 const FUNNEL_CHART_TYPE: ReadonlyMap<string, string> = new Map([
   ["steps", "funnel-steps"],
   ["trends", "line"],
   ["table", "table"],
 ]);
 
-/** Retention `mode` → `chartType` (`workspace.py:3434`). */
+/** Retention `mode` → `chartType`. */
 const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
   ["curve", "retention-curve"],
   ["trends", "line"],
   ["table", "table"],
 ]);
 
-// ===========================================================================
-// `_check_step_direction` (`workspace.py:353-390`)
-// ===========================================================================
+// --- _check_step_direction ---
 
 /**
- * Validate a per-step `forward`/`reverse` value for type and range
- * (`_check_step_direction`, `workspace.py:353-390`).
+ * Validate a per-step `forward`/`reverse` value for type and range.
  *
  * `None` means "inherit the default" and produces no finding. The type
  * check rejects `bool` explicitly (Python's `bool` is an `int`
@@ -216,8 +180,9 @@ const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
  * @param name - Field name (`"forward"` or `"reverse"`).
  * @param stepPath - Parent path for error reporting (`"steps[0]"`).
  * @returns The findings (empty when valid).
+ * @see mixpanel_headless.workspace._check_step_direction
  */
-export function checkStepDirection(
+function checkStepDirection(
   value: unknown,
   name: "forward" | "reverse",
   stepPath: string,
@@ -248,13 +213,10 @@ export function checkStepDirection(
   return [];
 }
 
-// ===========================================================================
-// `_flow_mode_from_params` (`workspace.py:410-465`)
-// ===========================================================================
+// --- _flow_mode_from_params ---
 
 /**
- * Maps a flow `flows_merge_type` value to the `query_flow` mode that
- * runs it (`_FLOW_MERGE_TYPE_TO_MODE`, `workspace.py:410`).
+ * The `query_flow` mode that runs each flow `flows_merge_type` value.
  *
  * `build_flow_params` writes this key for every mode, so it is the
  * authoritative source when present.
@@ -266,8 +228,7 @@ const FLOW_MERGE_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
 ]);
 
 /**
- * Maps a flow `chartType` value to the `query_flow` mode that runs it
- * (`_FLOW_CHART_TYPE_TO_MODE`, `workspace.py:422`).
+ * The `query_flow` mode that runs each flow `chartType` value.
  *
  * Fallback for params without `flows_merge_type`. `build_flow_params`
  * writes `"top-paths"` for paths mode and `"sankey"` for both sankey and
@@ -282,21 +243,20 @@ const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
 ]);
 
 /**
- * Derive the flow chart mode from pre-built flow params
- * (`_flow_mode_from_params`, `workspace.py:438-465`).
+ * Derive the flow chart mode from pre-built flow params.
  *
  * `flows_merge_type` wins when present and recognised. `chartType` is
  * the fallback. Anything else runs as sankey.
  *
  * @param params - Flow bookmark params, normally from `buildFlowParams`.
  * @returns `"sankey"`, `"paths"`, or `"tree"`.
- *
  * @example
  * ```typescript
  * flowModeFromParams({ chartType: "sankey", flows_merge_type: "tree" }); // "tree"
  * flowModeFromParams({ chartType: "top-paths" }); // "paths"
  * flowModeFromParams({}); // "sankey"
  * ```
+ * @see mixpanel_headless.workspace._flow_mode_from_params
  */
 export function flowModeFromParams(
   params: Readonly<Record<string, unknown>>,
@@ -315,9 +275,7 @@ export function flowModeFromParams(
   return "sankey";
 }
 
-// ===========================================================================
-// `_build_query_params` (`workspace.py:2047-2283`)
-// ===========================================================================
+// --- _build_query_params ---
 
 /** Keyword-only arguments of {@link buildQueryParams}. */
 export interface BuildQueryParamsOptions {
@@ -329,7 +287,11 @@ export interface BuildQueryParamsOptions {
   readonly math_property: unknown;
   /** Per-user pre-aggregation. */
   readonly per_user: string | null;
-  /** Custom percentile value. */
+  /**
+   * Custom percentile value.
+   *
+   * @defaultValue `null`
+   */
   readonly percentile_value?: number | null | undefined;
   /** Start date (`YYYY-MM-DD`) or `null`. */
   readonly from_date: string | null;
@@ -351,21 +313,43 @@ export interface BuildQueryParamsOptions {
   readonly cumulative: boolean;
   /** Result mode (`timeseries`, `total`, `table`). */
   readonly mode: string;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam threaded into {@link buildTimeSection}. */
+  /**
+   * Clock seam threaded into {@link buildTimeSection}.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Build the insights bookmark params dict from typed arguments
- * (`_build_query_params`, `workspace.py:2047-2283`).
+ * Build the insights bookmark params dict from typed arguments.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @example
+ * ```typescript
+ * const params = buildQueryParams({
+ *   events: ["Signup"], math: "total", math_property: null, per_user: null,
+ *   from_date: null, to_date: null, last: 30, unit: "day", group_by: null,
+ *   where: null, formulas: [], rolling: null, cumulative: false,
+ *   mode: "timeseries",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._build_query_params
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
   const {
     events,
@@ -374,7 +358,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     per_user,
     percentile_value = null,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -486,19 +470,19 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
         measurement["property"] = { name: itemProp, resourceType: "events" };
       }
     }
-    if (itemPerUser !== null && itemPerUser !== undefined) {
+    if (itemPerUser !== null) {
       measurement["perUserAggregation"] = itemPerUser;
     }
-    if (itemPercentile !== null && itemPercentile !== undefined) {
+    if (itemPercentile !== null) {
       measurement["percentile"] = itemPercentile;
     }
-    if (itemSegmentMethod !== null && itemSegmentMethod !== undefined) {
+    if (itemSegmentMethod !== null) {
       measurement["segmentMethod"] = itemSegmentMethod;
     }
 
     // Build behavior block with optional per-metric filters
     let behaviorFilters: ParamsDict[] = [];
-    // Python `if item_filters:` — an emptiness test (watchlist #6).
+    // Python `if item_filters:` — an emptiness test, not a null check.
     if (itemFilters !== null && itemFilters.length > 0) {
       behaviorFilters = itemFilters.map((f) => buildFilterEntry(f));
     }
@@ -531,7 +515,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
       measurement: {},
       referencedMetrics: [],
     };
-    // Python `if f.label:` — empty labels are dropped (watchlist #6).
+    // Python `if f.label:` — empty labels are dropped.
     if (f.label !== null && f.label !== "") {
       formulaEntry["name"] = f.label;
     }
@@ -541,10 +525,12 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
   // --- Build sections.time (array) ---
   const timeSection = buildTimeSection({
     from_date,
-    to_date,
+    to_date: toDate,
     last,
-    unit: unit as never,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    // Forwarded verbatim, as Python does; the bookmark schema validation
+    // downstream is what rejects an unknown unit.
+    unit: unit as QueryTimeUnit,
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
 
   // --- Build sections.filter[] ---
@@ -558,14 +544,14 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     chartType: INSIGHTS_CHART_TYPE.get(mode) ?? "line",
     analysis: "linear",
   };
-  if (rolling !== null && rolling !== undefined) {
+  if (rolling !== null) {
     displayOptions["analysis"] = "rolling";
     displayOptions["rollingWindowSize"] = rolling;
   } else if (cumulative) {
     displayOptions["analysis"] = "cumulative";
   }
 
-  if (time_comparison !== null && time_comparison !== undefined) {
+  if (time_comparison !== null) {
     displayOptions["timeComparison"] = buildTimeComparison(time_comparison);
   }
 
@@ -576,21 +562,16 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     filter: filterSection,
     group: groupSection,
   };
-  if (data_group_id !== null && data_group_id !== undefined) {
-    // Contract: the Sections model has no `dataGroupId` key — the
-    // sections-level spelling is `globalDataGroupId: string | null`
-    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
-    // fix-of-record
-    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+  if (data_group_id !== null) {
+    // The Sections model has no `dataGroupId` key; the sections-level
+    // spelling is `globalDataGroupId: string | null`, as Python emits it.
     sections["globalDataGroupId"] = String(data_group_id);
   }
 
   return { sections, displayOptions };
 }
 
-// ===========================================================================
-// `_resolve_and_build_params` (`workspace.py:2546-2743`)
-// ===========================================================================
+// --- _resolve_and_build_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildParams}. */
 export interface ResolveAndBuildParamsOptions {
@@ -610,33 +591,76 @@ export interface ResolveAndBuildParamsOptions {
   readonly math_property: unknown;
   /** Per-user pre-aggregation. */
   readonly per_user: string | null;
-  /** Custom percentile value. */
+  /**
+   * Custom percentile value.
+   *
+   * @defaultValue `null`
+   */
   readonly percentile_value?: number | null | undefined;
-  /** Breakdown specification. */
+  /**
+   * Breakdown specification.
+   *
+   * @defaultValue `null`
+   */
   readonly group_by?: GroupByInput;
-  /** Filter conditions. */
+  /**
+   * Filter conditions.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: unknown;
-  /** Top-level formula expression. */
+  /**
+   * Top-level formula expression.
+   *
+   * @defaultValue `null`
+   */
   readonly formula?: string | null | undefined;
-  /** Display label for the formula. */
+  /**
+   * Display label for the formula.
+   *
+   * @defaultValue `null`
+   */
   readonly formula_label?: string | null | undefined;
-  /** Rolling window size. */
+  /**
+   * Rolling window size.
+   *
+   * @defaultValue `null`
+   */
   readonly rolling?: number | null | undefined;
-  /** Cumulative analysis mode. */
+  /**
+   * Cumulative analysis mode.
+   *
+   * @defaultValue `false`
+   */
   readonly cumulative?: boolean | undefined;
-  /** Result shape. */
+  /**
+   * Result shape.
+   *
+   * @defaultValue `"timeseries"`
+   */
   readonly mode?: string | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Normalize, validate and build insights bookmark params
- * (`_resolve_and_build_params`, `workspace.py:2546-2743`).
+ * Normalize, validate and build insights bookmark params.
  *
  * Shared implementation of `query` and `build_params`: type guards,
  * event/formula normalization, Layer-1 argument validation, bookmark
@@ -644,18 +668,28 @@ export interface ResolveAndBuildParamsOptions {
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Any layer's blocking findings
+ * @throws {@link BookmarkValidationError} - Any layer's blocking findings
  *   (`V21_INVALID_EVENT_TYPE`, `V25_INVALID_FILTER_TYPE`,
  *   `V0_NO_EVENTS`, `V4_FORMULA_CONFLICT`, then the `V*` and `B*`
  *   sets).
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildParams({
+ *   events: ["Signup", "Purchase"], from_date: null, to_date: null, last: 30,
+ *   unit: "day", math: "total", math_property: null, per_user: null,
+ *   formula: "B / A", formula_label: "Conversion",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_params
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildParams(
   options: ResolveAndBuildParamsOptions,
 ): ParamsDict {
   const {
     events,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     math,
@@ -715,10 +749,11 @@ export function resolveAndBuildParams(
   // Normalize events to a sequence, separating Formula objects
   let eventsList: Array<string | Metric | CohortMetric>;
   let formulasFromList: Formula[];
-  if (typeof events === "string") {
-    eventsList = [events];
-    formulasFromList = [];
-  } else if (events instanceof Metric || events instanceof CohortMetric) {
+  if (
+    typeof events === "string" ||
+    events instanceof Metric ||
+    events instanceof CohortMetric
+  ) {
     eventsList = [events];
     formulasFromList = [];
   } else if (events instanceof Formula) {
@@ -754,12 +789,12 @@ export function resolveAndBuildParams(
   }
 
   let resolvedFormulas: readonly Formula[];
-  if (formula !== null) {
+  if (formula === null) {
+    resolvedFormulas = formulasFromList;
+  } else {
     resolvedFormulas = [
       new Formula({ expression: formula, label: formula_label ?? null }),
     ];
-  } else {
-    resolvedFormulas = formulasFromList;
   }
 
   // Layer 1: Argument validation
@@ -770,7 +805,7 @@ export function resolveAndBuildParams(
     per_user,
     percentile_value,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     has_formula: resolvedFormulas.length > 0,
     rolling,
@@ -780,7 +815,7 @@ export function resolveAndBuildParams(
     data_group_id,
   });
   // CP1-CP6: Custom property validation for where filters
-  argErrors.push(..._scanCustomProperties({ where: where as never }));
+  argErrors.push(...scanCustomProperties({ where }));
   if (anyError(argErrors)) {
     throw new BookmarkValidationError(argErrors);
   }
@@ -793,7 +828,7 @@ export function resolveAndBuildParams(
     per_user,
     percentile_value,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -804,7 +839,7 @@ export function resolveAndBuildParams(
     mode,
     time_comparison,
     data_group_id,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
 
   // Layer 2: Bookmark structure validation
@@ -816,12 +851,10 @@ export function resolveAndBuildParams(
   return params;
 }
 
-// ===========================================================================
-// `_build_funnel_params` (`workspace.py:2746-2927`)
-// ===========================================================================
+// --- _build_funnel_params ---
 
 /** Keyword-only arguments of {@link buildFunnelParams}. */
-export interface BuildFunnelParamsOptions {
+interface BuildFunnelParamsOptions {
   /** Normalized funnel steps. */
   readonly steps: readonly FunnelStep[];
   /** Conversion window size. */
@@ -852,26 +885,40 @@ export interface BuildFunnelParamsOptions {
   readonly holding_constant: readonly HoldingConstant[];
   /** Display mode (`steps`, `trends`, `table`). */
   readonly mode: string;
-  /** Funnel reentry mode. */
+  /**
+   * Funnel reentry mode.
+   *
+   * @defaultValue `null`
+   */
   readonly reentry_mode?: string | null | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Build the funnel bookmark params dict (`_build_funnel_params`,
- * `workspace.py:2746-2927`).
+ * Build the funnel bookmark params dict.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @see mixpanel_headless.workspace.Workspace._build_funnel_params
  */
-export function buildFunnelParams(
-  options: BuildFunnelParamsOptions,
-): ParamsDict {
+function buildFunnelParams(options: BuildFunnelParamsOptions): ParamsDict {
   const {
     steps,
     conversion_window,
@@ -880,7 +927,7 @@ export function buildFunnelParams(
     math,
     math_property,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -924,7 +971,7 @@ export function buildFunnelParams(
   for (const ex of exclusions) {
     // Step range — API uses 1-indexed, Exclusion uses 0-indexed
     const apiFrom = ex.from_step + 1;
-    const apiTo = ex.to_step !== null ? ex.to_step + 1 : steps.length;
+    const apiTo = ex.to_step === null ? steps.length : ex.to_step + 1;
     exclusionsList.push({
       event: ex.event,
       steps: { from: apiFrom, to: apiTo },
@@ -949,7 +996,7 @@ export function buildFunnelParams(
     aggregateBy,
     filter: [],
   };
-  if (reentry_mode !== null && reentry_mode !== undefined) {
+  if (reentry_mode !== null) {
     behavior["funnelReentryMode"] = reentry_mode;
   }
 
@@ -957,9 +1004,7 @@ export function buildFunnelParams(
   const measurement: ParamsDict = {
     math,
     property:
-      math_property !== null &&
-      math_property !== undefined &&
-      math_property !== ""
+      math_property !== null && math_property !== ""
         ? { name: math_property, type: "number", resourceType: "events" }
         : null,
     stepIndex: null,
@@ -971,10 +1016,12 @@ export function buildFunnelParams(
   // Build sections using the shared builders
   const timeSection = buildTimeSection({
     from_date,
-    to_date,
+    to_date: toDate,
     last,
-    unit: unit as never,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    // Forwarded verbatim, as Python does; the bookmark schema validation
+    // downstream is what rejects an unknown unit.
+    unit: unit as QueryTimeUnit,
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
   const filterSection = patchCustomPropertyFiltersForTransform(
     buildFilterSection(where),
@@ -984,7 +1031,7 @@ export function buildFunnelParams(
   const displayOptions: ParamsDict = {
     chartType: FUNNEL_CHART_TYPE.get(mode) ?? "funnel-steps",
   };
-  if (time_comparison !== null && time_comparison !== undefined) {
+  if (time_comparison !== null) {
     displayOptions["timeComparison"] = buildTimeComparison(time_comparison);
   }
 
@@ -995,21 +1042,16 @@ export function buildFunnelParams(
     group: groupSection,
     formula: [],
   };
-  if (data_group_id !== null && data_group_id !== undefined) {
-    // Contract: the Sections model has no `dataGroupId` key — the
-    // sections-level spelling is `globalDataGroupId: string | null`
-    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
-    // fix-of-record
-    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+  if (data_group_id !== null) {
+    // The Sections model has no `dataGroupId` key; the sections-level
+    // spelling is `globalDataGroupId: string | null`, as Python emits it.
     sections["globalDataGroupId"] = String(data_group_id);
   }
 
   return { sections, displayOptions };
 }
 
-// ===========================================================================
-// `_resolve_and_build_funnel_params` (`workspace.py:2930-3062`)
-// ===========================================================================
+// --- _resolve_and_build_funnel_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildFunnelParams}. */
 export interface ResolveAndBuildFunnelParamsOptions {
@@ -1044,23 +1086,49 @@ export interface ResolveAndBuildFunnelParamsOptions {
     string | HoldingConstant | ReadonlyArray<string | HoldingConstant> | null;
   /** Display mode. */
   readonly mode: string;
-  /** Funnel reentry mode. */
+  /**
+   * Funnel reentry mode.
+   *
+   * @defaultValue `null`
+   */
   readonly reentry_mode?: string | null | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Normalize, validate and build funnel bookmark params
- * (`_resolve_and_build_funnel_params`, `workspace.py:2930-3062`).
+ * Normalize, validate and build funnel bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Layer-1 or Layer-2 findings.
+ * @throws {@link BookmarkValidationError} - Layer-1 or Layer-2 findings.
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildFunnelParams({
+ *   steps: ["Signup", "Purchase"], conversion_window: 14,
+ *   conversion_window_unit: "day", order: "loose", math: "conversion_rate_unique",
+ *   math_property: null, from_date: null, to_date: null, last: 30, unit: "day",
+ *   group_by: null, where: null, exclusions: null, holding_constant: null,
+ *   mode: "steps",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_funnel_params
  */
 export function resolveAndBuildFunnelParams(
   options: ResolveAndBuildFunnelParamsOptions,
@@ -1073,7 +1141,7 @@ export function resolveAndBuildFunnelParams(
     math,
     math_property,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1093,7 +1161,7 @@ export function resolveAndBuildFunnelParams(
 
   // Normalize exclusions: str → Exclusion
   let normalizedExclusions: Exclusion[] = [];
-  if (exclusions !== null && exclusions !== undefined) {
+  if (exclusions !== null) {
     normalizedExclusions = [...exclusions].map((e) =>
       typeof e === "string" ? new Exclusion({ event: e }) : e,
     );
@@ -1101,7 +1169,7 @@ export function resolveAndBuildFunnelParams(
 
   // Normalize holding_constant: str → HoldingConstant
   let normalizedHc: HoldingConstant[] = [];
-  if (holding_constant !== null && holding_constant !== undefined) {
+  if (holding_constant !== null) {
     const hcList: ReadonlyArray<string | HoldingConstant> =
       typeof holding_constant === "string" ||
       holding_constant instanceof HoldingConstant
@@ -1122,14 +1190,14 @@ export function resolveAndBuildFunnelParams(
     exclusions: normalizedExclusions.length > 0 ? normalizedExclusions : null,
     holding_constant: normalizedHc.length > 0 ? normalizedHc : null,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     group_by,
     reentry_mode,
     data_group_id,
   });
   // CP1-CP6: Custom property validation for where filters
-  argErrors.push(..._scanCustomProperties({ where: where as never }));
+  argErrors.push(...scanCustomProperties({ where }));
   if (anyError(argErrors)) {
     throw new BookmarkValidationError(argErrors);
   }
@@ -1143,7 +1211,7 @@ export function resolveAndBuildFunnelParams(
     math,
     math_property,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1154,7 +1222,7 @@ export function resolveAndBuildFunnelParams(
     reentry_mode,
     time_comparison,
     data_group_id,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
 
   // Layer 2: Bookmark structure validation
@@ -1168,12 +1236,10 @@ export function resolveAndBuildFunnelParams(
   return params;
 }
 
-// ===========================================================================
-// `_build_retention_params` (`workspace.py:3321-3487`)
-// ===========================================================================
+// --- _build_retention_params ---
 
 /** Keyword-only arguments of {@link buildRetentionParams}. */
-export interface BuildRetentionParamsOptions {
+interface BuildRetentionParamsOptions {
   /** Normalized born event. */
   readonly born_event: RetentionEvent;
   /** Normalized return event. */
@@ -1200,29 +1266,49 @@ export interface BuildRetentionParamsOptions {
   readonly where: FilterWhereInput;
   /** Display mode (`curve`, `trends`, `table`). */
   readonly mode: string;
-  /** Retention unbounded mode. */
+  /**
+   * Retention unbounded mode.
+   *
+   * @defaultValue `null`
+   */
   readonly unbounded_mode?: string | null | undefined;
-  /** Cumulative retention counting. */
+  /**
+   * Cumulative retention counting.
+   *
+   * @defaultValue `false`
+   */
   readonly retention_cumulative?: boolean | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Build the retention bookmark params dict
- * (`_build_retention_params`, `workspace.py:3321-3487`).
+ * Build the retention bookmark params dict.
  *
  * The trailing `sorting` / `columnWidths` literals are transcribed
  * verbatim — they are part of the emitted contract.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @see mixpanel_headless.workspace.Workspace._build_retention_params
  */
-export function buildRetentionParams(
+function buildRetentionParams(
   options: BuildRetentionParamsOptions,
 ): ParamsDict {
   const {
@@ -1233,7 +1319,7 @@ export function buildRetentionParams(
     bucket_sizes,
     math,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1273,7 +1359,7 @@ export function buildRetentionParams(
       bucket_sizes !== null && bucket_sizes.length > 0 ? [...bucket_sizes] : [],
     filter: [],
   };
-  if (unbounded_mode !== null && unbounded_mode !== undefined) {
+  if (unbounded_mode !== null) {
     behavior["retentionUnboundedMode"] = unbounded_mode;
   }
 
@@ -1289,10 +1375,12 @@ export function buildRetentionParams(
   // Build sections using the shared builders
   const timeSection = buildTimeSection({
     from_date,
-    to_date,
+    to_date: toDate,
     last,
-    unit: unit as never,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    // Forwarded verbatim, as Python does; the bookmark schema validation
+    // downstream is what rejects an unknown unit.
+    unit: unit as QueryTimeUnit,
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
   const filterSection = patchCustomPropertyFiltersForTransform(
     buildFilterSection(where),
@@ -1302,7 +1390,7 @@ export function buildRetentionParams(
   const displayOptions: ParamsDict = {
     chartType: RETENTION_CHART_TYPE.get(mode) ?? "retention-curve",
   };
-  if (time_comparison !== null && time_comparison !== undefined) {
+  if (time_comparison !== null) {
     displayOptions["timeComparison"] = buildTimeComparison(time_comparison);
   }
 
@@ -1313,12 +1401,9 @@ export function buildRetentionParams(
     group: groupSection,
     formula: [],
   };
-  if (data_group_id !== null && data_group_id !== undefined) {
-    // Contract: the Sections model has no `dataGroupId` key — the
-    // sections-level spelling is `globalDataGroupId: string | null`
-    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
-    // fix-of-record
-    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+  if (data_group_id !== null) {
+    // The Sections model has no `dataGroupId` key; the sections-level
+    // spelling is `globalDataGroupId: string | null`, as Python emits it.
     sections["globalDataGroupId"] = String(data_group_id);
   }
 
@@ -1349,9 +1434,7 @@ export function buildRetentionParams(
   };
 }
 
-// ===========================================================================
-// `_build_flow_params` (`workspace.py:3493-3632`)
-// ===========================================================================
+// --- _build_flow_params ---
 
 /** Keyword-only arguments of {@link buildFlowParams}. */
 export interface BuildFlowParamsOptions {
@@ -1377,30 +1460,56 @@ export interface BuildFlowParamsOptions {
   readonly hidden_events: readonly string[] | null;
   /** Display mode (`sankey`, `paths`, `tree`). */
   readonly mode: string;
-  /** Filter results by cohort membership or property conditions. */
+  /**
+   * Filter results by cohort membership or property conditions.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: FilterWhereInput;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Segment (breakdown) specification. */
+  /**
+   * Segment (breakdown) specification.
+   *
+   * @defaultValue `null`
+   */
   readonly segments?: GroupByInput;
-  /** Event names to exclude from flow paths. */
+  /**
+   * Event names to exclude from flow paths.
+   *
+   * @defaultValue `null`
+   */
   readonly exclusions?: readonly string[] | null | undefined;
 }
 
 /**
- * Build the FLAT flow bookmark params dict (`_build_flow_params`,
- * `workspace.py:3493-3632`).
+ * Build the flat flow bookmark params dict.
  *
  * Flows use a flat dict (no `sections` / `displayOptions` wrapper).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The flat bookmark params dict.
+ * @example
+ * ```typescript
+ * const params = buildFlowParams({
+ *   steps: [new FlowStep({ event: "Login" })], from_date: null, to_date: null,
+ *   last: 30, conversion_window: 7, conversion_window_unit: "day",
+ *   count_type: "unique", cardinality: 3, collapse_repeated: false,
+ *   hidden_events: null, mode: "sankey",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._build_flow_params
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
   const {
     steps,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     conversion_window,
     conversion_window_unit,
@@ -1423,8 +1532,8 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
       // Python `step.label or step.event` — an empty label falls back.
       step_label:
         step.label !== null && step.label !== "" ? step.label : step.event,
-      forward: step.forward !== null ? step.forward : 0,
-      reverse: step.reverse !== null ? step.reverse : 0,
+      forward: step.forward ?? 0,
+      reverse: step.reverse ?? 0,
       bool_op: step.filters_combinator === "any" ? "or" : "and",
       property_filter_params_list: (step.filters ?? []).map((f) =>
         buildSegfilterEntry(f),
@@ -1438,10 +1547,9 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
 
   const params: ParamsDict = {
     steps: stepDicts,
-    date_range: buildDateRange({ from_date, to_date, last }),
+    date_range: buildDateRange({ from_date, to_date: toDate, last }),
     chartType: mode === "paths" ? "top-paths" : "sankey",
-    flows_merge_type:
-      mode === "tree" ? "tree" : mode === "paths" ? "list" : "graph",
+    flows_merge_type: flowsMergeType(mode),
     count_type,
     cardinality_threshold: cardinality,
     version: 2,
@@ -1455,16 +1563,15 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
     // Python `hidden_events or []` — an empty list also falls back.
     hidden_events:
       hidden_events !== null && hidden_events.length > 0 ? hidden_events : [],
-    exclusions:
-      exclusions !== null && exclusions !== undefined ? exclusions : [],
+    exclusions: exclusions ?? [],
   };
 
-  if (data_group_id !== null && data_group_id !== undefined) {
+  if (data_group_id !== null) {
     params["data_group_id"] = data_group_id;
   }
 
   // Add filters if present — route cohort vs property filters
-  if (where !== null && where !== undefined) {
+  if (where !== null) {
     const filterList: readonly Filter[] = Array.isArray(where)
       ? (where as readonly Filter[])
       : [where as Filter];
@@ -1486,16 +1593,14 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
   }
 
   // Add segments if present
-  if (segments !== null && segments !== undefined) {
+  if (segments !== null) {
     params["segments"] = buildGroupSection(segments);
   }
 
   return params;
 }
 
-// ===========================================================================
-// `_resolve_and_build_flow_params` (`workspace.py:3635-3849`)
-// ===========================================================================
+// --- _resolve_and_build_flow_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildFlowParams}. */
 export interface ResolveAndBuildFlowParamsOptions {
@@ -1525,28 +1630,58 @@ export interface ResolveAndBuildFlowParamsOptions {
   readonly hidden_events: readonly string[] | null;
   /** Display mode. */
   readonly mode: string;
-  /** Filter conditions. */
+  /**
+   * Filter conditions.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: FilterWhereInput;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Segment (breakdown) specification. */
+  /**
+   * Segment (breakdown) specification.
+   *
+   * @defaultValue `null`
+   */
   readonly segments?: GroupByInput;
-  /** Event names to exclude from flow paths. */
+  /**
+   * Event names to exclude from flow paths.
+   *
+   * @defaultValue `null`
+   */
   readonly exclusions?: readonly string[] | null | undefined;
-  /** Clock seam for the `to_date` default (`_date.today()`). */
+  /**
+   * Clock seam for the `to_date` default (`_date.today()`).
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Normalize, validate and build flow bookmark params
- * (`_resolve_and_build_flow_params`, `workspace.py:3635-3849`).
+ * Normalize, validate and build flow bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated flow bookmark params dict.
- * @throws BookmarkValidationError - Layer-0.5, Layer-1 or Layer-2
+ * @throws {@link BookmarkValidationError} - Layer-0.5, Layer-1 or Layer-2
  *   findings (`FL_TYPE_*`, `FL3`/`FL4`, `FL_INVALID_*`, then the FL*
  *   argument and bookmark sets).
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildFlowParams({
+ *   event: "Login", forward: 3, reverse: 0, from_date: null, to_date: null,
+ *   last: 30, conversion_window: 7, conversion_window_unit: "day",
+ *   count_type: "unique", cardinality: 3, collapse_repeated: false,
+ *   hidden_events: null, mode: "sankey",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_flow_params
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildFlowParams(
   options: ResolveAndBuildFlowParamsOptions,
 ): ParamsDict {
@@ -1568,7 +1703,7 @@ export function resolveAndBuildFlowParams(
     segments = null,
     exclusions = null,
   } = options;
-  let to_date = options.to_date;
+  let toDate = options.to_date;
 
   // Normalize input: str → FlowStep, single → list
   let rawSteps: ReadonlyArray<string | FlowStep>;
@@ -1589,8 +1724,8 @@ export function resolveAndBuildFlowParams(
     (s) =>
       new FlowStep({
         event: s.event,
-        forward: s.forward !== null ? s.forward : forward,
-        reverse: s.reverse !== null ? s.reverse : reverse,
+        forward: s.forward ?? forward,
+        reverse: s.reverse ?? reverse,
         label: s.label,
         filters: s.filters,
         filters_combinator: s.filters_combinator,
@@ -1621,15 +1756,20 @@ export function resolveAndBuildFlowParams(
   for (const [i, s] of steps.entries()) {
     const spath = `steps[${i}]`;
     // Per-step forward/reverse type + range checks
-    stepErrors.push(...checkStepDirection(s.forward, "forward", spath));
-    stepErrors.push(...checkStepDirection(s.reverse, "reverse", spath));
+    stepErrors.push(
+      ...checkStepDirection(s.forward, "forward", spath),
+      ...checkStepDirection(s.reverse, "reverse", spath),
+    );
     // Per-step filters_combinator must be "all" or "any"
-    if (s.filters_combinator !== "all" && s.filters_combinator !== "any") {
+    // Runtime guard for untyped callers (the type already says
+    // "all" | "any"; Python raises for anything else).
+    const combinator: string = s.filters_combinator;
+    if (combinator !== "all" && combinator !== "any") {
       stepErrors.push(
         new ValidationError(
           `${spath}.filters_combinator`,
           "filters_combinator must be 'all' or 'any' " +
-            `(got ${pythonRepr(s.filters_combinator as never)})`,
+            `(got ${pythonRepr(combinator)})`,
           "FL_INVALID_FILTERS_COMBINATOR",
         ),
       );
@@ -1657,7 +1797,7 @@ export function resolveAndBuildFlowParams(
   }
 
   // hidden_events type validation
-  if (hidden_events !== null && hidden_events !== undefined) {
+  if (hidden_events !== null) {
     for (const [i, he] of hidden_events.entries()) {
       if (typeof he !== "string") {
         stepErrors.push(
@@ -1678,8 +1818,8 @@ export function resolveAndBuildFlowParams(
 
   // Default to_date to today when from_date is set alone, so the
   // absolute date isn't silently ignored by build_date_range().
-  if (from_date !== null && to_date === null) {
-    to_date = (options.today ?? defaultToday)();
+  if (from_date !== null && toDate === null) {
+    toDate = (options.today ?? dateTodayIso)();
   }
 
   // Layer 1: Argument validation — use the effective direction values
@@ -1697,15 +1837,15 @@ export function resolveAndBuildFlowParams(
     conversion_window,
     conversion_window_unit,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     data_group_id,
   });
   // CP1-CP6: Custom property validation for flow step filters
   argErrors.push(
-    ..._scanCustomProperties({
+    ...scanCustomProperties({
       flow_steps: steps,
-      where: where as never,
+      where,
     }),
   );
   if (anyError(argErrors)) {
@@ -1716,7 +1856,7 @@ export function resolveAndBuildFlowParams(
   const params = buildFlowParams({
     steps,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     conversion_window,
     conversion_window_unit,
@@ -1746,15 +1886,16 @@ export function resolveAndBuildFlowParams(
  * @param values - The candidates (never empty — `steps` always has at
  *   least one member by the time this runs).
  * @returns The maximum.
- * @throws ValueError - On an empty sequence (CPython's
+ * @throws {@link ValueError} - On an empty sequence (CPython's
  *   `max() iterable argument is empty`).
  */
 function pyMax(values: readonly number[]): number {
-  if (values.length === 0) {
+  const [first, ...rest] = values;
+  if (first === undefined) {
     throw new ValueError("max() iterable argument is empty");
   }
-  let best = values[0]!;
-  for (const v of values.slice(1)) {
+  let best = first;
+  for (const v of rest) {
     if (v > best) {
       best = v;
     }
@@ -1762,9 +1903,7 @@ function pyMax(values: readonly number[]): number {
   return best;
 }
 
-// ===========================================================================
-// `_resolve_and_build_retention_params` (`workspace.py:4100-4222`)
-// ===========================================================================
+// --- _resolve_and_build_retention_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildRetentionParams}. */
 export interface ResolveAndBuildRetentionParamsOptions {
@@ -1794,25 +1933,54 @@ export interface ResolveAndBuildRetentionParamsOptions {
   readonly where: FilterWhereInput;
   /** Display mode. */
   readonly mode: string;
-  /** Retention unbounded mode. */
+  /**
+   * Retention unbounded mode.
+   *
+   * @defaultValue `null`
+   */
   readonly unbounded_mode?: string | null | undefined;
-  /** Cumulative retention counting. */
+  /**
+   * Cumulative retention counting.
+   *
+   * @defaultValue `false`
+   */
   readonly retention_cumulative?: boolean | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Normalize, validate and build retention bookmark params
- * (`_resolve_and_build_retention_params`, `workspace.py:4100-4222`).
+ * Normalize, validate and build retention bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Layer-1 or Layer-2 findings.
+ * @throws {@link BookmarkValidationError} - Layer-1 or Layer-2 findings.
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildRetentionParams({
+ *   born_event: "Signup", return_event: "Login", retention_unit: "week",
+ *   alignment: "birth", bucket_sizes: null, math: "retention_rate",
+ *   from_date: null, to_date: null, last: 30, unit: "day", group_by: null,
+ *   where: null, mode: "curve",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_retention_params
  */
 export function resolveAndBuildRetentionParams(
   options: ResolveAndBuildRetentionParamsOptions,
@@ -1825,7 +1993,7 @@ export function resolveAndBuildRetentionParams(
     bucket_sizes,
     math,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1858,7 +2026,7 @@ export function resolveAndBuildRetentionParams(
     mode,
     unit,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     group_by,
     unbounded_mode,
@@ -1866,8 +2034,8 @@ export function resolveAndBuildRetentionParams(
   });
   // CP1-CP6: Custom property validation for where and event filters
   argErrors.push(
-    ..._scanCustomProperties({
-      where: where as never,
+    ...scanCustomProperties({
+      where,
       retention_events: [normBorn, normReturn],
     }),
   );
@@ -1884,7 +2052,7 @@ export function resolveAndBuildRetentionParams(
     bucket_sizes,
     math,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1894,7 +2062,7 @@ export function resolveAndBuildRetentionParams(
     retention_cumulative,
     time_comparison,
     data_group_id,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
 
   // Layer 2: Bookmark structure validation
@@ -1908,64 +2076,149 @@ export function resolveAndBuildRetentionParams(
   return params;
 }
 
-// ===========================================================================
-// `_resolve_and_build_user_params` (`workspace.py:9336-9627`)
-// ===========================================================================
+// --- _resolve_and_build_user_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildUserParams}. */
 export interface ResolveAndBuildUserParamsOptions {
-  /** Profile filter (single, list, raw selector, or `null`). */
+  /**
+   * Profile filter (single, list, raw selector, or `null`).
+   *
+   * @defaultValue `null`
+   */
   readonly where?: unknown;
-  /** Cohort membership filter. */
+  /**
+   * Cohort membership filter.
+   *
+   * @defaultValue `null`
+   */
   readonly cohort?: number | CohortDefinition | null | undefined;
-  /** Output properties. */
+  /**
+   * Output properties.
+   *
+   * @defaultValue `null`
+   */
   readonly properties?: readonly string[] | null | undefined;
-  /** Property name to sort by. */
+  /**
+   * Property name to sort by.
+   *
+   * @defaultValue `null`
+   */
   readonly sort_by?: string | null | undefined;
-  /** Sort direction. */
+  /**
+   * Sort direction.
+   *
+   * @defaultValue `"descending"`
+   */
   readonly sort_order?: string | undefined;
-  /** Full-text search term. */
+  /**
+   * Full-text search term.
+   *
+   * @defaultValue `null`
+   */
   readonly search?: string | null | undefined;
-  /** Single distinct-ID lookup. */
+  /**
+   * Single distinct-ID lookup.
+   *
+   * @defaultValue `null`
+   */
   readonly distinct_id?: string | null | undefined;
-  /** Batch distinct-ID lookup. */
+  /**
+   * Batch distinct-ID lookup.
+   *
+   * @defaultValue `null`
+   */
   readonly distinct_ids?: readonly string[] | null | undefined;
-  /** Group-profile scope. */
+  /**
+   * Group-profile scope.
+   *
+   * @defaultValue `null`
+   */
   readonly group_id?: string | null | undefined;
-  /** Point-in-time query (ISO date string or Unix timestamp). */
+  /**
+   * Point-in-time query (ISO date string or Unix timestamp).
+   *
+   * @defaultValue `null`
+   */
   readonly as_of?: string | number | null | undefined;
-  /** Output mode. */
+  /**
+   * Output mode.
+   *
+   * @defaultValue `"aggregate"`
+   */
   readonly mode?: string | undefined;
-  /** Aggregation function. */
+  /**
+   * Aggregation function.
+   *
+   * @defaultValue `"count"`
+   */
   readonly aggregate?: string | undefined;
-  /** Property to aggregate on. */
+  /**
+   * Property to aggregate on.
+   *
+   * @defaultValue `null`
+   */
   readonly aggregate_property?: string | null | undefined;
-  /** Percentile value. */
+  /**
+   * Percentile value.
+   *
+   * @defaultValue `null`
+   */
   readonly percentile?: number | null | undefined;
-  /** Cohort IDs for segmented aggregation. */
+  /**
+   * Cohort IDs for segmented aggregation.
+   *
+   * @defaultValue `null`
+   */
   readonly segment_by?: readonly number[] | null | undefined;
-  /** Concurrent page fetching. */
+  /**
+   * Concurrent page fetching.
+   *
+   * @defaultValue `false`
+   */
   readonly parallel?: boolean | undefined;
-  /** Maximum concurrent workers. */
+  /**
+   * Maximum concurrent workers.
+   *
+   * @defaultValue `5`
+   */
   readonly workers?: number | undefined;
-  /** Maximum profiles (validation only; not emitted). */
+  /**
+   * Maximum profiles (validation only; not emitted).
+   *
+   * @defaultValue `1`
+   */
   readonly limit?: number | null | undefined;
-  /** Include non-members in cohort query results. */
+  /**
+   * Include non-members in cohort query results.
+   *
+   * @defaultValue `false`
+   */
   readonly include_all_users?: boolean | undefined;
-  /** Clock seam for the U8 `as_of` future check. */
+  /**
+   * Clock seam for the U8 `as_of` future check.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Validate arguments and build the engage API params dict
- * (`_resolve_and_build_user_params`, `workspace.py:9336-9627`).
+ * Validate arguments and build the engage API params dict.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The engage params dict for `export_profiles_page`.
- * @throws BookmarkValidationError - Argument-level (U1-U28) or
+ * @throws {@link BookmarkValidationError} - Argument-level (U1-U28) or
  *   param-level (UP1-UP4) findings, plus the `U9` / `U_FILTER` /
  *   `U_COHORT` guards raised here.
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildUserParams({
+ *   cohort: 12345, mode: "aggregate", aggregate: "count",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_user_params
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildUserParams(
   options: ResolveAndBuildUserParamsOptions = {},
 ): ParamsDict {
@@ -2018,9 +2271,9 @@ export function resolveAndBuildUserParams(
     properties,
     sort_by,
     // Python's `Literal[...]` is erased at runtime, so an out-of-union
-    // string MUST still reach the validator (which raises U2/U13/U14
+    // string must still reach the validator (which raises U2/U13/U14
     // for it). The casts restore that reachability past the TS
-    // narrowing on the B2 options bag.
+    // narrowing of the options bag.
     sort_order: sort_order as "ascending" | "descending",
     limit,
     search,
@@ -2037,7 +2290,7 @@ export function resolveAndBuildUserParams(
     parallel,
     workers,
     include_all_users,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
   const errorSeverity = argErrors.filter((e) => e.severity === "error");
   if (errorSeverity.length > 0) {
@@ -2060,26 +2313,25 @@ export function resolveAndBuildUserParams(
       let selector: string;
       try {
         selector = filtersToSelector(remaining);
-      } catch (exc) {
-        // Python's `except ValueError` here catches BOTH the builtin and
-        // `ParamValidationError`, which dual-inherits `ValueError`
-        // (`exceptions.py:97`). The converted ES* guards inside
-        // `filters_to_selector` raise the latter, and RR-4
-        // (`test_workspace_query_user_integration.py:1116-1152`) pins
-        // that they surface here as `U_FILTER` with the guard error as
-        // the chained cause. The Phase-2 header note ("`except
-        // ValueError` reachability is a Python-side concern only",
-        // `errors.ts:11-14`) does NOT hold at this one site, so the
-        // catch names both classes explicitly.
-        if (exc instanceof ValueError || exc instanceof ParamValidationError) {
+      } catch (error) {
+        // Python's `except ValueError` here catches both the builtin and
+        // `ParamValidationError`, which dual-inherits `ValueError`. The
+        // converted ES* guards inside `filters_to_selector` raise the
+        // latter, and Python's integration tests pin that they surface
+        // here as `U_FILTER` with the guard error as the chained cause,
+        // so the catch names both classes explicitly.
+        if (
+          error instanceof ValueError ||
+          error instanceof ParamValidationError
+        ) {
           const wrapped = new BookmarkValidationError([
-            new ValidationError("where", exc.message, "U_FILTER"),
+            new ValidationError("where", error.message, "U_FILTER"),
           ]);
           // Python's `raise ... from exc`.
-          (wrapped as { cause?: unknown }).cause = exc;
+          (wrapped as { cause?: unknown }).cause = error;
           throw wrapped;
         }
-        throw exc;
+        throw error;
       }
       if (selector !== "") {
         params["where"] = selector;
@@ -2088,12 +2340,12 @@ export function resolveAndBuildUserParams(
   }
 
   // --- cohort handling ---
-  if (cohort !== null && cohort !== undefined) {
+  if (cohort !== null) {
     if (typeof cohort === "number") {
       params["filter_by_cohort"] = pythonJsonDumps({ id: cohort });
     } else if (cohort instanceof CohortDefinition) {
       params["filter_by_cohort"] = pythonJsonDumps({
-        raw_cohort: sanitizeRawCohort(cohort.toDict()) as never,
+        raw_cohort: sanitizeRawCohort(cohort.toDict()),
       });
     }
   } else if (cohortFromFilter !== null) {
@@ -2126,7 +2378,7 @@ export function resolveAndBuildUserParams(
         new ValidationError(
           "where",
           "Filter.in_cohort() value missing 'cohort' " +
-            `key: ${pythonRepr(firstItem as never)}`,
+            `key: ${reprOf(firstItem)}`,
           "U_COHORT",
         ),
       ]);
@@ -2134,18 +2386,18 @@ export function resolveAndBuildUserParams(
     const cohortWrapper = firstItem["cohort"] as Record<string, unknown>;
     if (Object.hasOwn(cohortWrapper, "id")) {
       params["filter_by_cohort"] = pythonJsonDumps({
-        id: cohortWrapper["id"] as never,
+        id: cohortWrapper["id"],
       });
     } else if (Object.hasOwn(cohortWrapper, "raw_cohort")) {
       params["filter_by_cohort"] = pythonJsonDumps({
-        raw_cohort: cohortWrapper["raw_cohort"] as never,
+        raw_cohort: cohortWrapper["raw_cohort"],
       });
     } else {
       throw new BookmarkValidationError([
         new ValidationError(
           "where",
           "Filter.in_cohort() value has no 'id' or " +
-            `'raw_cohort' key: ${pythonRepr(cohortWrapper as never)}`,
+            `'raw_cohort' key: ${reprOf(cohortWrapper)}`,
           "U_COHORT",
         ),
       ]);
@@ -2153,19 +2405,21 @@ export function resolveAndBuildUserParams(
   }
 
   // --- properties → output_properties ---
-  if (properties !== null && properties !== undefined) {
+  if (properties !== null) {
     params["output_properties"] = pythonJsonDumps([...properties]);
   }
 
   // --- sort_by → sort_key ---
-  if (sort_by !== null && sort_by !== undefined) {
-    const escapedSort = sort_by.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  if (sort_by !== null) {
+    const escapedSort = sort_by
+      .replaceAll("\\", "\\\\")
+      .replaceAll('"', String.raw`\"`);
     params["sort_key"] = `properties["${escapedSort}"]`;
     params["sort_order"] = sort_order;
   }
 
   // --- as_of → as_of_timestamp ---
-  if (as_of !== null && as_of !== undefined) {
+  if (as_of !== null) {
     if (typeof as_of === "string") {
       params["as_of_timestamp"] = timegmFromIsoDate(as_of);
     } else if (typeof as_of === "number") {
@@ -2174,22 +2428,22 @@ export function resolveAndBuildUserParams(
   }
 
   // --- distinct_id ---
-  if (distinct_id !== null && distinct_id !== undefined) {
+  if (distinct_id !== null) {
     params["distinct_id"] = distinct_id;
   }
 
   // --- distinct_ids ---
-  if (distinct_ids !== null && distinct_ids !== undefined) {
+  if (distinct_ids !== null) {
     params["distinct_ids"] = pythonJsonDumps([...distinct_ids]);
   }
 
   // --- group_id → data_group_id ---
-  if (group_id !== null && group_id !== undefined) {
+  if (group_id !== null) {
     params["data_group_id"] = group_id;
   }
 
   // --- search ---
-  if (search !== null && search !== undefined) {
+  if (search !== null) {
     params["search"] = search;
   }
 
@@ -2205,9 +2459,11 @@ export function resolveAndBuildUserParams(
       action = "count()";
     } else {
       const escapedAggProp =
-        aggregate_property !== null && aggregate_property !== undefined
-          ? aggregate_property.replaceAll("\\", "\\\\").replaceAll('"', '\\"')
-          : "";
+        aggregate_property === null
+          ? ""
+          : aggregate_property
+              .replaceAll("\\", "\\\\")
+              .replaceAll('"', String.raw`\"`);
       if (aggregate === "percentile") {
         action = `percentile(properties["${escapedAggProp}"], ${pythonNumberText(
           percentile,
@@ -2217,7 +2473,7 @@ export function resolveAndBuildUserParams(
       }
     }
     params["action"] = action;
-    if (segment_by !== null && segment_by !== undefined) {
+    if (segment_by !== null) {
       const segMap: Record<string, boolean> = {};
       for (const sid of segment_by) {
         segMap[pythonNumberText(sid)] = true;
@@ -2247,22 +2503,12 @@ function pythonNumberText(value: number | null | undefined): string {
   if (value === null || value === undefined) {
     return "None";
   }
-  return pythonReprNumber(value);
-}
-
-/**
- * CPython `repr()` of a float/int, reusing the shared renderer.
- *
- * @param value - The number.
- * @returns The rendered text.
- */
-function pythonReprNumber(value: number): string {
   return pythonRepr(value);
 }
 
 /**
- * `calendar.timegm(date.fromisoformat(s).timetuple())`
- * (`workspace.py:9570`) — midnight UTC of an ISO calendar date.
+ * `calendar.timegm(date.fromisoformat(s).timetuple())` — midnight UTC of
+ * an ISO calendar date.
  *
  * `date.fromisoformat` accepts only `YYYY-MM-DD` in the range this
  * code path can reach (the U8 validator has already rejected malformed
@@ -2271,7 +2517,7 @@ function pythonReprNumber(value: number): string {
  *
  * @param value - The ISO date text.
  * @returns The Unix timestamp of midnight UTC.
- * @throws ValueError - When the text is not an ISO calendar date
+ * @throws {@link ValueError} - When the text is not an ISO calendar date
  *   (CPython's `Invalid isoformat string`).
  */
 function timegmFromIsoDate(value: string): number {
@@ -2293,6 +2539,22 @@ function timegmFromIsoDate(value: string): number {
 }
 
 /**
+ * The `flows_merge_type` bookmark literal for a flows `mode`.
+ *
+ * @param mode - The flows mode (`tree` / `paths` / anything else = sankey).
+ * @returns The bookmark literal.
+ */
+function flowsMergeType(mode: string): "tree" | "list" | "graph" {
+  if (mode === "tree") {
+    return "tree";
+  }
+  if (mode === "paths") {
+    return "list";
+  }
+  return "graph";
+}
+
+/**
  * Days in a proleptic-Gregorian month.
  *
  * @param year - The year.
@@ -2304,17 +2566,7 @@ function daysInMonth(year: number, month: number): number {
   if (month === 2 && isLeapYear(year)) {
     return 29;
   }
-  return lengths[month - 1]!;
-}
-
-/**
- * Proleptic-Gregorian leap-year rule.
- *
- * @param year - The year.
- * @returns Whether the year is a leap year.
- */
-function isLeapYear(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  return defined(lengths[month - 1], "month length");
 }
 
 /**
@@ -2335,13 +2587,10 @@ function daysFromCivilDate(y: number, m: number, d: number): number {
   return era * 146097 + doe - 719468;
 }
 
-// ===========================================================================
-// `_build_page_kwargs` (`workspace.py:10209-10256`)
-// ===========================================================================
+// --- _build_page_kwargs ---
 
 /**
- * Extract `export_profiles_page` kwargs from the engage params dict
- * (`_build_page_kwargs`, `workspace.py:10209-10256`).
+ * Extract `export_profiles_page` kwargs from the engage params dict.
  *
  * The two JSON-encoded members (`output_properties`, `distinct_ids`)
  * are decoded back to lists when they arrive as strings, exactly as
@@ -2349,6 +2598,13 @@ function daysFromCivilDate(y: number, m: number, d: number): number {
  *
  * @param params - The engage params dict.
  * @returns The keyword arguments for the page call.
+ * @throws {@link LosslessJsonError} - Malformed `output_properties` or
+ *   `distinct_ids` JSON (Python's `json.JSONDecodeError`).
+ * @example
+ * ```typescript
+ * const kwargs = buildPageKwargs(ws.buildUserParams({ properties: ["$email"] }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._build_page_kwargs
  */
 export function buildPageKwargs(
   params: Readonly<Record<string, unknown>>,
@@ -2394,26 +2650,24 @@ export function buildPageKwargs(
   return kwargs;
 }
 
-// ===========================================================================
-// The `engage_stats` kwargs block of `_execute_user_aggregate`
-// (`workspace.py:10027-10046`)
-// ===========================================================================
+// --- the engage_stats kwargs block of _execute_user_aggregate ---
 
 /**
  * Extract the `engage_stats` kwargs from the engage params dict — the
- * `self`-free block of `_execute_user_aggregate`
- * (`workspace.py:10027-10046`), lifted here for the same R7.2 reason
- * as {@link buildPageKwargs} (and so the Layer-3 malformed-JSON case
- * `test_query_user_edge_cases.py:664` has a reachable seam; the Python
- * test calls the private method directly).
- *
- * `segment_by_cohorts` is decoded back to a dict when it arrives as a
- * string, exactly as Python does.
+ * `self`-free block of `_execute_user_aggregate`, lifted out so the
+ * malformed-JSON case has a reachable seam (Python's tests call the
+ * private method directly). `segment_by_cohorts` is decoded back to a
+ * dict when it arrives as a string, exactly as Python does.
  *
  * @param params - The engage params dict.
  * @returns The keyword arguments for `engage_stats`.
- * @throws LosslessJsonError - Malformed `segment_by_cohorts` JSON
+ * @throws {@link LosslessJsonError} - Malformed `segment_by_cohorts` JSON
  *   (Python's `json.JSONDecodeError`).
+ * @example
+ * ```typescript
+ * const kwargs = buildStatsKwargs(ws.buildUserParams({ aggregate: "count" }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._execute_user_aggregate
  */
 export function buildStatsKwargs(
   params: Readonly<Record<string, unknown>>,
@@ -2448,12 +2702,12 @@ export function buildStatsKwargs(
 /**
  * `json.loads(text)` for the three engage-param round-trips — the
  * library encoded these with `pythonJsonDumps`, so the decode uses the
- * shared lossless parser (B0-1 F1: never a bare `JSON.parse`) and its
+ * shared lossless parser (never a bare `JSON.parse`) and its
  * `LosslessJsonError` is the `json.JSONDecodeError` analog.
  *
  * @param text - The JSON text.
  * @returns The native-valued tree.
- * @throws LosslessJsonError - On malformed JSON.
+ * @throws {@link LosslessJsonError} - On malformed JSON.
  */
 function pythonJsonLoads(text: string): unknown {
   return toNativeJson(parseLossless(text, { pythonConstants: true }));

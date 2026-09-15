@@ -1,23 +1,24 @@
-// Layer-3 translation — Phase-3 packet B4-C4 feature-flag locks.
-// Source: tests/unit/test_api_client_flags.py (ALL classes — flag CRUD,
-// lifecycle archive/restore/duplicate, set_test_users/history/limits).
-//
-// The Python fixture builds an oauth_token session and pre-sets
-// workspace_id=100 (feature flags use require_scoped_path, which needs
-// a workspace ID; the pin avoids mocking the workspace list endpoint).
+// Feature-flag client methods: CRUD, archive/restore/duplicate,
+// set-test-users, history and limits (paths, methods, bodies). Mirrors
+// every class of tests/unit/test_api_client_flags.py; like the Python
+// fixture, the client pre-sets workspace_id=100 because flags use
+// `requireScopedPath`, which would otherwise discover a workspace over the wire.
+
 import { describe, expect, it } from "vitest";
-import { toNativeJson } from "../../src/client/json-value.js";
+
+import type { Session } from "../../src/auth/session.js";
 import type { MixpanelClient } from "../../src/client/client.js";
+import { toNativeJson } from "../../src/client/json-value.js";
 import {
   type CannedResponse,
   type CapturedFetchRequest,
   createMockClient,
   type FakeTransport,
   makeSession,
-} from "./client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
+  parseBody,
+} from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture twin (test_api_client_flags.py:28-31). */
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -28,7 +29,7 @@ function oauthCredentials(): Session {
 
 /**
  * The flags-file `create_mock_client` twin
- * (test_api_client_flags.py:34-56) — workspace ID pre-set to 100.
+ * (test_api_client_flags.py) — workspace ID pre-set to 100.
  */
 function createFlagsClient(
   handler: (request: CapturedFetchRequest) => CannedResponse,
@@ -39,7 +40,7 @@ function createFlagsClient(
   return { client, transport };
 }
 
-/** The `_flag_result` helper twin (test_api_client_flags.py:59-85). */
+/** The `_flag_result` helper twin. */
 function flagResult(
   id = "abc-123",
   name = "Test Flag",
@@ -59,13 +60,10 @@ function flagResult(
   };
 }
 
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
-}
-
-describe("TestListFeatureFlags", () => {
-  it("test_returns_flag_list", async () => {
+describe("List feature flags", () => {
+  // python: TestListFeatureFlags
+  it("returns flag list", async () => {
+    // python: test_returns_flag_list
     const { client } = createFlagsClient(() => ({
       status: 200,
       json: {
@@ -84,7 +82,8 @@ describe("TestListFeatureFlags", () => {
     expect(result[1]?.["name"]).toBe("Flag B");
   });
 
-  it("test_uses_require_scoped_path", async () => {
+  it("uses require scoped path", async () => {
+    // python: test_uses_require_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -94,7 +93,8 @@ describe("TestListFeatureFlags", () => {
     expect(capturedUrls[0]).toContain("/feature-flags");
   });
 
-  it("test_include_archived", async () => {
+  it("include archived", async () => {
+    // python: test_include_archived
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -104,16 +104,18 @@ describe("TestListFeatureFlags", () => {
     expect(capturedUrls[0]?.toLowerCase()).toContain("include_archived=true");
   });
 
-  it("test_empty_result", async () => {
+  it("empty result", async () => {
+    // python: test_empty_result
     const { client } = createFlagsClient(() => ({
       status: 200,
       json: { status: "ok", results: [] },
     }));
     const result = await client.listFeatureFlags();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedMethods.push(request.method);
@@ -124,8 +126,10 @@ describe("TestListFeatureFlags", () => {
   });
 });
 
-describe("TestCreateFeatureFlag", () => {
-  it("test_creates_flag", async () => {
+describe("Create feature flag", () => {
+  // python: TestCreateFeatureFlag
+  it("creates flag", async () => {
+    // python: test_creates_flag
     const captured: Array<[string, unknown]> = [];
     const { client } = createFlagsClient((request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -141,11 +145,15 @@ describe("TestCreateFeatureFlag", () => {
       await client.createFeatureFlag({ name: "New Flag", key: "new_flag" }),
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("POST");
-    expect(captured[0]?.[1]).toEqual({ name: "New Flag", key: "new_flag" });
+    expect(captured[0]?.[1]).toStrictEqual({
+      name: "New Flag",
+      key: "new_flag",
+    });
     expect(result["id"]).toBe("new-id");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -156,8 +164,10 @@ describe("TestCreateFeatureFlag", () => {
   });
 });
 
-describe("TestGetFeatureFlag", () => {
-  it("test_gets_flag_by_id", async () => {
+describe("Get feature flag", () => {
+  // python: TestGetFeatureFlag
+  it("gets flag by ID", async () => {
+    // python: test_gets_flag_by_id
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -173,7 +183,8 @@ describe("TestGetFeatureFlag", () => {
     expect(result["id"]).toBe("abc-123");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedMethods.push(request.method);
@@ -184,8 +195,10 @@ describe("TestGetFeatureFlag", () => {
   });
 });
 
-describe("TestUpdateFeatureFlag", () => {
-  it("test_updates_flag", async () => {
+describe("Update feature flag", () => {
+  // python: TestUpdateFeatureFlag
+  it("updates flag", async () => {
+    // python: test_updates_flag
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createFlagsClient((request) => {
       captured.push([
@@ -213,7 +226,8 @@ describe("TestUpdateFeatureFlag", () => {
     expect(result["name"]).toBe("Updated");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -229,8 +243,10 @@ describe("TestUpdateFeatureFlag", () => {
   });
 });
 
-describe("TestDeleteFeatureFlag", () => {
-  it("test_deletes_flag", async () => {
+describe("Delete feature flag", () => {
+  // python: TestDeleteFeatureFlag
+  it("deletes flag", async () => {
+    // python: test_deletes_flag
     const capturedMethods: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedMethods.push(request.method);
@@ -240,7 +256,8 @@ describe("TestDeleteFeatureFlag", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -251,8 +268,10 @@ describe("TestDeleteFeatureFlag", () => {
   });
 });
 
-describe("TestArchiveFeatureFlag", () => {
-  it("test_archives_flag", async () => {
+describe("Archive feature flag", () => {
+  // python: TestArchiveFeatureFlag
+  it("archives flag", async () => {
+    // python: test_archives_flag
     const captured: Array<[string, string]> = [];
     const { client } = createFlagsClient((request) => {
       captured.push([request.method, request.url]);
@@ -264,8 +283,10 @@ describe("TestArchiveFeatureFlag", () => {
   });
 });
 
-describe("TestRestoreFeatureFlag", () => {
-  it("test_restores_flag", async () => {
+describe("Restore feature flag", () => {
+  // python: TestRestoreFeatureFlag
+  it("restores flag", async () => {
+    // python: test_restores_flag
     const captured: Array<[string, string]> = [];
     const { client } = createFlagsClient((request) => {
       captured.push([request.method, request.url]);
@@ -280,8 +301,10 @@ describe("TestRestoreFeatureFlag", () => {
   });
 });
 
-describe("TestDuplicateFeatureFlag", () => {
-  it("test_duplicates_flag", async () => {
+describe("Duplicate feature flag", () => {
+  // python: TestDuplicateFeatureFlag
+  it("duplicates flag", async () => {
+    // python: test_duplicates_flag
     const captured: Array<[string, string]> = [];
     const { client } = createFlagsClient((request) => {
       captured.push([request.method, request.url]);
@@ -303,8 +326,10 @@ describe("TestDuplicateFeatureFlag", () => {
   });
 });
 
-describe("TestSetFlagTestUsers", () => {
-  it("test_sets_test_users", async () => {
+describe("Set flag test users", () => {
+  // python: TestSetFlagTestUsers
+  it("sets test users", async () => {
+    // python: test_sets_test_users
     const captured: Array<[string, string, Record<string, unknown>]> = [];
     const { client } = createFlagsClient((request) => {
       captured.push([
@@ -319,12 +344,17 @@ describe("TestSetFlagTestUsers", () => {
     });
     expect(captured[0]?.[0]).toBe("PUT");
     expect(captured[0]?.[1]).toContain("/feature-flags/abc-123/test-users");
-    expect(captured[0]?.[2]["users"]).toEqual({ on: "user-1", off: "user-2" });
+    expect(captured[0]?.[2]["users"]).toStrictEqual({
+      on: "user-1",
+      off: "user-2",
+    });
   });
 });
 
-describe("TestGetFlagHistory", () => {
-  it("test_gets_history", async () => {
+describe("Get flag history", () => {
+  // python: TestGetFlagHistory
+  it("gets history", async () => {
+    // python: test_gets_history
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -340,11 +370,12 @@ describe("TestGetFlagHistory", () => {
       await client.getFlagHistory("abc-123"),
     ) as Record<string, unknown>;
     expect(capturedUrls[0]).toContain("/feature-flags/abc-123/history");
-    expect(result["events"]).toEqual([[1, "created"]]);
+    expect(result["events"]).toStrictEqual([[1, "created"]]);
     expect(result["count"]).toBe(1);
   });
 
-  it("test_with_pagination_params", async () => {
+  it("with pagination params", async () => {
+    // python: test_with_pagination_params
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -362,7 +393,8 @@ describe("TestGetFlagHistory", () => {
     );
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedMethods.push(request.method);
@@ -376,8 +408,10 @@ describe("TestGetFlagHistory", () => {
   });
 });
 
-describe("TestGetFlagLimits", () => {
-  it("test_gets_limits", async () => {
+describe("Get flag limits", () => {
+  // python: TestGetFlagLimits
+  it("gets limits", async () => {
+    // python: test_gets_limits
     const capturedUrls: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedUrls.push(request.url);
@@ -403,7 +437,8 @@ describe("TestGetFlagLimits", () => {
     expect(result["current_usage"]).toBe(42);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createFlagsClient((request) => {
       capturedMethods.push(request.method);
@@ -424,7 +459,8 @@ describe("TestGetFlagLimits", () => {
     expect(capturedMethods[0]).toBe("GET");
   });
 
-  it("test_always_uses_project_scoped_path", async () => {
+  it("always uses project scoped path", async () => {
+    // python: test_always_uses_project_scoped_path
     const capturedUrls: string[] = [];
     // Client has workspace_id=100 set, but limits should still be
     // project-scoped.

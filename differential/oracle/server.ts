@@ -1,81 +1,60 @@
 /**
- * oracle-ts protocol server (design D14; `conformance/schema/
- * oracle-protocol.md` in the Python repo is the normative spec).
- *
- * Implements newline-delimited JSON-RPC 2.0 with the three oracle methods
- * (`oracle.info` / `oracle.call` / `oracle.shutdown`), ASCII-safe framing,
- * and the R5.4 error-mapping rule: expected library errors are DATA
- * (`ok: false` payloads with class name + code, messages stripped), while
- * only harness bugs surface as JSON-RPC `error` objects.
- *
- * Phase-2 `oracle.call` surface (protocol §4.2/§8): the D13 compat module
- * (`compat.zfill` / `compat.python_str` / `compat.python_float_str`,
- * bound to the real `packages/core` port via the raw-token path) PLUS the
- * 44 `types.*` contract entries, served through the SAME bindings module
- * as the conformance runner (`conformance-runner/src/bindings.ts`
- * `createRunnerDeps` — one registration module, so runner and oracle can
- * never disagree; phase2-design C9). The protocol 1.1 addendum method
- * `codec.roundtrip` round-trips `$type`-tagged values through the full
- * rich codec table. Every other api the naming sources know answers the
- * `{class: "Unported", code: "UNPORTED"}` skip payload — the fuzz
- * harness counts it as skip, never divergence — and a name in NO mapping
- * source is a `-32602` protocol error (fail fast; the harness only emits
- * registry names). Scope is checked BEFORE input decoding on purpose:
- * unported apis may carry rich `$type` tags whose decode failures would
- * otherwise turn their skips into protocol errors; `wirestub.*` stays
- * UNPORTED here (async replay transport — wire scope is Phase 3).
- *
- * The stdin/stdout loop lives in `main.ts`; this module is transport-free
- * so protocol behavior is unit-testable in-process (mirroring oracle-py's
- * `server.py` / `__main__.py` split).
+ * oracle-ts protocol server: JSON-RPC 2.0 over newline-delimited,
+ * ASCII-safe framing (`conformance/schema/oracle-protocol.md` in the
+ * Python repo is the normative spec). Serves the three oracle methods
+ * (`oracle.info` / `oracle.call` / `oracle.shutdown`) plus
+ * `codec.roundtrip`. Expected library errors are data — `ok: false`
+ * payloads with class name and code, messages stripped — while only
+ * harness bugs surface as JSON-RPC `error` objects. Unported apis answer
+ * the `{class: "Unported", code: "UNPORTED"}` skip payload, and scope is
+ * checked before input decoding so rich-tag decode failures cannot turn
+ * skips into protocol errors. Shares the conformance runner's bindings
+ * module (`createRunnerDeps`), so runner and oracle cannot disagree.
+ * Transport-free: the stdin/stdout loop is in `main.ts`, mirroring
+ * oracle-py's `server.py` / `__main__.py` split.
  */
 
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { resolveApi } from "../../conformance-runner/src/api-map.js";
-import { createRunnerDeps } from "../../conformance-runner/src/bindings.js";
 import {
   canonicalize,
   canonicalizeError,
-} from "../../conformance-runner/src/canonical.js";
-import {
-  UndecodableValueError,
+  CONTRACT_TAG_CODECS,
+  createRunnerDeps,
+  createShims,
   encodeExpectValue,
-} from "../../conformance-runner/src/codecs.js";
-import {
+  fieldsFromBag,
+  type InvocationContext,
+  isExpectErrorConvertible,
   JsonNumber,
   type JsonValue,
-} from "../../conformance-runner/src/json-value.js";
-import type {
-  InvocationContext,
-  RunnerDeps,
-} from "../../conformance-runner/src/runner.js";
-import { createShims } from "../../conformance-runner/src/shims.js";
-import { pythonFloatStr, zfill } from "../../packages/core/src/compat/index.js";
+  resolveApi,
+  type RunnerDeps,
+  UndecodableValueError,
+} from "@mixpanel-headless/conformance-runner";
 import {
+  pythonFloatStr,
   ReplayBundle,
   ReplayEvent,
   ReplaySummary,
-  type ReplayBundleFields,
-  type ReplayEventFields,
-  type ReplaySummaryFields,
-} from "../../packages/core/src/types/results/replays.js";
-import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
+  zfill,
+} from "@mixpanel-headless/core";
+
 import { pythonStrRaw } from "./python-str-raw.js";
 import {
+  parseRawJson,
   RawObject,
   type RawValue,
   type SerializableValue,
-  parseRawJson,
   serializeAsciiJson,
   toJsonValue,
 } from "./raw-json.js";
 
 /**
  * Version stamp returned by `oracle.info` (oracle-protocol.md §2; "1.1"
- * adds the §8 `codec.roundtrip` method — the Phase-2 P2-9 addendum).
+ * adds the §8 `codec.roundtrip` method).
  */
 export const PROTOCOL_VERSION = "1.1";
 
@@ -104,12 +83,11 @@ export const JSONRPC_INVALID_PARAMS = -32602;
 /**
  * JSON-RPC 2.0 server range: harness-level failure inside the oracle
  * (unencodable output, canonicalization rejection, unexpected dispatch
- * bug — never an expected library error, which is `ok: false` DATA per
- * R5.4).
+ * bug — never an expected library error, which is `ok: false` data).
  */
 export const JSONRPC_INTERNAL_ERROR = -32000;
 
-/** The Phase-1 live surface: the D13 compat module (protocol §4.2). */
+/** The compat surface (protocol §4.2), served over the raw-token path. */
 const COMPAT_APIS: ReadonlySet<string> = new Set([
   "compat.zfill",
   "compat.python_str",
@@ -117,28 +95,25 @@ const COMPAT_APIS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * The three replay dataclass tags with NO corpus `$type` occurrences.
+ * The three replay dataclass tags with no corpus `$type` occurrences.
  *
- * They stay unregistered in `vector-codecs.ts` so the P2-8 sweep's
- * every-registered-tag-exercised check stays honest, but the ORACLE
+ * They stay unregistered in `vector-codecs.ts` so the runner's
+ * every-registered-tag-exercised check stays honest, but the oracle
  * needs them: `oracle.call` success outputs and `codec.roundtrip`
  * instances of these classes must encode/decode exactly like Python's
- * generic dataclass codec (which serves ALL registered dataclasses).
+ * generic dataclass codec (which serves every registered dataclass).
  * The rows are registered on the oracle's own registry instance only.
  */
 const ORACLE_REPLAY_ROWS: ReadonlyArray<
   readonly [string, new (fields: never) => object]
 > = [
-  [
-    "ReplaySummary",
-    ReplaySummary as new (fields: ReplaySummaryFields) => object,
-  ],
-  ["ReplayEvent", ReplayEvent as new (fields: ReplayEventFields) => object],
-  ["ReplayBundle", ReplayBundle as new (fields: ReplayBundleFields) => object],
+  ["ReplaySummary", ReplaySummary],
+  ["ReplayEvent", ReplayEvent],
+  ["ReplayBundle", ReplayBundle],
 ];
 
 /**
- * The rich (dataclass/model) `$type` tags — the tags Python's EXPECT
+ * The rich (dataclass/model) `$type` tags — the tags Python's expect
  * encoder drops (`_encode_common(tagged_models=False)`), as opposed to
  * the built-in value tags (`datetime`, `date`, `bytes`, `SecretStr`,
  * `float`, `callback`), which appear in expect encodings too.
@@ -184,15 +159,14 @@ function finiteFloatSpelling(value: JsonValue): string | null {
 }
 
 /**
- * Tag integral-float number TOKENS so decode preserves Python float-ness.
+ * Tag integral-float number tokens so decode preserves Python float-ness.
  *
  * Python's `json.loads` keeps `18.0` a `float`; the TS
  * `decodeInputKwargs` collapses the `JsonNumber("18.0")` token to the
  * integer-valued number `18`. Rewriting such tokens as `$type: float`
- * payloads before decoding makes them `PyFloat` — the established
- * float-ness carrier (D13 / Risk #3) — so both bridges construct with
- * the same value kind. Integer tokens and fractional floats pass
- * through untouched.
+ * payloads before decoding makes them `PyFloat` — the port's float-ness
+ * carrier — so both bridges construct with the same value kind. Integer
+ * tokens and fractional floats pass through untouched.
  *
  * @param value - The undecoded vector-JSON value.
  * @returns The value with every integral-float token float-tagged.
@@ -221,17 +195,17 @@ function tagIntegralFloatTokens(value: JsonValue): JsonValue {
 }
 
 /**
- * Re-encode one tagged vector-JSON value in Python's EXPECT encoding.
+ * Re-encode one tagged vector-JSON value in Python's expect encoding.
  *
  * oracle-py's `oracle.call` output side is `_encode_result` →
  * `encode_expect_value` (measured semantics): rich `$type` members are
- * absent EVERYWHERE, floats are raw number tokens EVERYWHERE, and the
+ * absent everywhere, floats are raw number tokens everywhere, and the
  * built-in tags (`datetime`, `date`, `bytes`, `SecretStr`, `callback`)
- * stay. The conformance bindings encode through the INPUT-side registry
+ * stay. The conformance bindings encode through the input-side registry
  * (`runGuarded` → `codecs.encodeValue`), so the oracle applies this
  * transform to mirror oracle-py byte-for-byte. Non-finite float tags
  * stay tagged (raw NaN/Infinity tokens are illegal vector JSON — the
- * D6 canonicalizer rejects the payload on both sides symmetrically).
+ * canonicalizer rejects the payload on both sides symmetrically).
  *
  * @param value - The tagged vector-JSON value.
  * @returns The expect-encoded value.
@@ -262,12 +236,12 @@ function toExpectEncoding(value: JsonValue): JsonValue {
 }
 
 /**
- * Re-encode one tagged vector-JSON value in Python's INPUT encoding.
+ * Re-encode one tagged vector-JSON value in Python's input encoding.
  *
  * oracle-py's `codec.roundtrip` output side is `encode_input_value`
- * (measured semantics): rich `$type` tags stay, floats INSIDE rich
+ * (measured semantics): rich `$type` tags stay, floats inside rich
  * payloads stay `$type: float`-tagged (recursively), but floats in
- * PLAIN positions — top level, plain lists/dicts outside any rich
+ * plain positions — top level, plain lists/dicts outside any rich
  * payload — are raw number tokens. The TS registry tags every `PyFloat`
  * unconditionally, so this transform un-tags exactly the plain-position
  * ones.
@@ -318,14 +292,14 @@ function registerOracleReplayCodecs(codecs: RunnerDeps["codecs"]): void {
         const bag: Record<string, unknown> = {};
         for (const [key, member] of Object.entries(payload)) {
           if (key !== "$type") {
-            bag[key] = decodeField(member as JsonValue);
+            bag[key] = decodeField(member);
           }
         }
         try {
-          return new cls(bag as never);
-        } catch (cause) {
+          return new cls(fieldsFromBag(bag));
+        } catch (error) {
           throw new UndecodableValueError(
-            `could not reconstruct ${tag} from vector fields: ${String(cause)}`,
+            `could not reconstruct ${tag} from vector fields: ${String(error)}`,
           );
         }
       },
@@ -334,7 +308,7 @@ function registerOracleReplayCodecs(codecs: RunnerDeps["codecs"]): void {
         encode: (value, encodeChild) => {
           const out: Record<string, JsonValue> = { $type: tag };
           for (const [key, member] of Object.entries(value as object)) {
-            out[key] = encodeChild(member) as JsonValue;
+            out[key] = encodeChild(member);
           }
           return out;
         },
@@ -354,15 +328,14 @@ export interface OracleIdentity {
 }
 
 /**
- * A request that failed at the PROTOCOL level (JSON-RPC `error` object).
+ * A request that failed at the protocol level (JSON-RPC `error` object).
  *
  * Raised internally by the dispatch/call paths for harness bugs — unknown
  * api names, undecodable inputs, unencodable outputs, canonicalization
- * rejections (e.g. a lone-surrogate output string, design D14). Expected
- * library errors never raise this; they are returned as `ok: false`
- * result DATA.
+ * rejections (e.g. a lone-surrogate output string). Expected library
+ * errors never raise this; they are returned as `ok: false` result data.
  */
-export class OracleProtocolError extends Error {
+class OracleProtocolError extends Error {
   /** The JSON-RPC error code (one of the module constants). */
   readonly code: number;
 
@@ -433,23 +406,6 @@ function readJsonString(path: string, key: string): string {
 }
 
 /**
- * Whether a thrown value carries its own vector `expect.error` encoding
- * (the runner's `ExpectErrorConvertible` shape, R5.2/R5.4).
- *
- * @param value - The thrown value.
- * @returns `true` when `toExpectError` is callable.
- */
-function isExpectErrorConvertible(
-  value: unknown,
-): value is { toExpectError(): JsonValue } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { toExpectError?: unknown }).toExpectError === "function"
-  );
-}
-
-/**
  * Stateful protocol server: one instance per oracle process/session.
  *
  * Transport-free by design: {@link handleLine} maps one request line to
@@ -468,9 +424,9 @@ export class OracleServer {
   private readonly identity: OracleIdentity;
 
   /**
-   * The SAME bindings the conformance runner uses (phase2-design C9:
-   * one registration module, imported by both, so runner and oracle can
-   * never disagree): the full rich `$type` codec table plus the
+   * The same bindings the conformance runner uses (one registration
+   * module, imported by both, so runner and oracle cannot disagree): the
+   * full rich `$type` codec table plus the
    * `compat.*`/`wirestub.*`/`types.*` implementation registry.
    */
   private readonly deps: RunnerDeps = createRunnerDeps(RECORD_EPOCH);
@@ -503,12 +459,11 @@ export class OracleServer {
    *
    * Never throws: every failure mode becomes a JSON-RPC `error` response
    * (a strategy-generated poison value must produce a protocol-level
-   * error, "not a hang or crash" — design D14).
+   * error, never a hang or crash).
    *
-   * Async since Phase-3 B0-2: bound implementations may be async (the
+   * Async because bound implementations may be async (the
    * `api_client._iter_jsonl_lines` chunk adapter drives an async
-   * generator), so dispatch awaits them — closing the former
-   * "async bindings are out of oracle scope until Phase 3" note.
+   * generator), so dispatch awaits them.
    *
    * @param line - One newline-stripped request line.
    * @returns The single-line, ASCII-safe JSON response, or `null` for
@@ -546,14 +501,14 @@ export class OracleServer {
     let result: SerializableValue;
     try {
       result = await this.dispatch(method, request.get("params"));
-    } catch (thrown) {
-      if (thrown instanceof OracleProtocolError) {
+    } catch (error) {
+      if (error instanceof OracleProtocolError) {
         return this.encodeResponse(requestId, {
-          error: [thrown.code, thrown.message],
+          error: [error.code, error.message],
         });
       }
-      const name = thrown instanceof Error ? thrown.name : typeof thrown;
-      const detail = thrown instanceof Error ? thrown.message : String(thrown);
+      const name = error instanceof Error ? error.name : typeof error;
+      const detail = error instanceof Error ? error.message : String(error);
       return this.encodeResponse(requestId, {
         error: [
           JSONRPC_INTERNAL_ERROR,
@@ -567,8 +522,8 @@ export class OracleServer {
   /**
    * Build the `oracle.info` result (oracle-protocol.md §3).
    *
-   * @returns The `{language, library_version, source_commit,
-   *   protocol_version}` identity block.
+   * @returns The identity block: `language`, `library_version`,
+   *   `source_commit` and `protocol_version`.
    */
   info(): SerializableValue {
     return {
@@ -660,7 +615,7 @@ export class OracleServer {
       );
     }
     // `session` and `interactions` are accepted for protocol-shape parity
-    // (§4/§4.3) and unused: the compat surface is session-free and every
+    // (oracle-protocol.md §4/§4.3) and unused: the compat surface is session-free and every
     // wire-flavored api (wirestub included) is UNPORTED on this side.
     return this.callApi(api, rawInput ?? new RawObject([]));
   }
@@ -668,22 +623,22 @@ export class OracleServer {
   /**
    * Execute one api call (oracle-protocol.md §4).
    *
-   * @param api - The PYTHON dotted vector name (design D14: language-
-   *   neutral naming; this side resolves it through the SAME naming map
-   *   as the conformance runner, D12).
+   * @param api - The Python dotted vector name (language-neutral naming;
+   *   this side resolves it through the same naming map as the
+   *   conformance runner).
    * @param rawInput - The undecoded `call.input`-shaped kwargs.
    * @returns `{ok: true, output}` or the `ok: false` error/skip payload.
    * @throws OracleProtocolError - For unknown apis, undecodable input,
-   *   and unencodable/uncanonicalizable outputs (harness-level, D14).
+   *   and unencodable/uncanonicalizable outputs (harness-level).
    */
   async callApi(api: string, rawInput: RawObject): Promise<SerializableValue> {
     if (COMPAT_APIS.has(api)) {
       return this.executeCompat(api, rawInput);
     }
     if (!api.startsWith("wirestub.") && this.deps.implementations.has(api)) {
-      // Bound library entry points: served through the SAME bindings the
+      // Bound library entry points: served through the same bindings the
       // conformance runner replays (protocol §8 scope note). `wirestub.*`
-      // is excluded — its bindings need the vector replay TRANSPORT
+      // is excluded — its bindings need the vector replay transport
       // (`context.fetch` interactions), which oracle calls do not carry.
       return this.executeBound(api, rawInput);
     }
@@ -698,22 +653,21 @@ export class OracleServer {
   }
 
   /**
-   * Execute one bindings-registry entry and encode its outcome as DATA.
+   * Execute one bindings-registry entry and encode its outcome as data.
    *
    * The invocation context mirrors the conformance runner's: decoded
    * kwargs (rich `$type` values reconstructed through the shared codec
    * table), the undecoded lossless input, fresh per-call shims at the
-   * §7 record epoch, and an empty state map (the `types.*` surface is
+   * oracle-protocol.md §7 record epoch, and an empty state map (the `types.*` surface is
    * setup-free).
    *
    * @param api - A bound Python dotted api name.
    * @param rawInput - The undecoded kwargs.
    * @returns `{ok: true, output}` for returns; `{ok: false, error}` for
-   *   thrown library errors (class + code, messages stripped, R5.4).
+   *   thrown library errors (class + code, messages stripped).
    * @throws OracleProtocolError - For undecodable input (`-32602`) or an
    *   unencodable/uncanonicalizable output (`-32000`). Async bindings
-   *   are awaited (Phase-3 B0-2); rejections encode as error DATA like
-   *   sync throws.
+   *   are awaited; rejections encode as error data like sync throws.
    */
   private async executeBound(
     api: string,
@@ -722,20 +676,20 @@ export class OracleServer {
     const inputJson: Record<string, JsonValue> = {};
     for (const [name, value] of rawInput.entries) {
       // Integral-float tokens carry Python float-ness only in the raw
-      // token; re-tag them so decode yields PyFloat (D13 / Risk #3).
+      // token; re-tag them so decode yields PyFloat.
       inputJson[name] = tagIntegralFloatTokens(toJsonValue(value));
     }
     let kwargs: Record<string, unknown>;
     try {
       kwargs = this.deps.codecs.decodeInputKwargs(inputJson);
-    } catch (thrown) {
-      if (thrown instanceof UndecodableValueError) {
+    } catch (error) {
+      if (error instanceof UndecodableValueError) {
         throw new OracleProtocolError(
           JSONRPC_INVALID_PARAMS,
-          `input decode failed: ${thrown.message}`,
+          `input decode failed: ${error.message}`,
         );
       }
-      throw thrown;
+      throw error;
     }
     const context: InvocationContext = {
       api,
@@ -754,21 +708,21 @@ export class OracleServer {
     let returned: unknown;
     try {
       returned = await implementation(context);
-    } catch (thrown) {
-      return { ok: false, error: this.errorPayload(thrown) };
+    } catch (error) {
+      return { ok: false, error: this.errorPayload(error) };
     }
     let output: JsonValue;
     try {
-      // Mirror oracle-py's `_encode_result` (EXPECT encoding): the
+      // Mirror oracle-py's `_encode_result` (expect encoding): the
       // bindings encode through the input-side tagged registry, so rich
       // `$type` members are stripped and float tags become raw tokens
       // (built-in non-float tags stay).
       output = toExpectEncoding(this.deps.codecs.encodeValue(returned));
       canonicalize(output);
-    } catch (thrown) {
+    } catch (error) {
       throw new OracleProtocolError(
         JSONRPC_INTERNAL_ERROR,
-        `output encode/canonicalization failed: ${String(thrown)}`,
+        `output encode/canonicalization failed: ${String(error)}`,
       );
     }
     return { ok: true, output };
@@ -776,11 +730,11 @@ export class OracleServer {
 
   /**
    * Round-trip one `$type`-tagged value through the codec table
-   * (protocol 1.1 addendum, oracle-protocol.md §8; phase2-design C9).
+   * (protocol 1.1 addendum, oracle-protocol.md §8).
    *
-   * Decodes `params.value` with the FULL rich codec table (reconstructing
+   * Decodes `params.value` with the full rich codec table (reconstructing
    * the real core instances) and re-encodes with the input-side tagged
-   * encoder, so a valid tagged payload round-trips to itself modulo D6
+   * encoder, so a valid tagged payload round-trips to itself modulo
    * canonicalization.
    *
    * @param params - The raw params object; must carry a `value` member
@@ -809,55 +763,55 @@ export class OracleServer {
       decoded = this.deps.codecs.decodeValue(
         tagIntegralFloatTokens(toJsonValue(raw)),
       );
-    } catch (thrown) {
+    } catch (error) {
       throw new OracleProtocolError(
         JSONRPC_INVALID_PARAMS,
-        `value decode failed: ${String(thrown)}`,
+        `value decode failed: ${String(error)}`,
       );
     }
     let output: JsonValue;
     try {
       output = toInputEncoding(this.deps.codecs.encodeValue(decoded), false);
       canonicalize(output);
-    } catch (thrown) {
+    } catch (error) {
       throw new OracleProtocolError(
         JSONRPC_INTERNAL_ERROR,
-        `round-trip encode/canonicalization failed: ${String(thrown)}`,
+        `round-trip encode/canonicalization failed: ${String(error)}`,
       );
     }
     return { ok: true, output };
   }
 
   /**
-   * Execute one D13 compat api and encode its outcome as call DATA.
+   * Execute one compat api and encode its outcome as call data.
    *
    * @param api - A member of the compat surface.
    * @param rawInput - The undecoded kwargs.
    * @returns `{ok: true, output}` for returns; `{ok: false, error}` for
-   *   thrown library errors (messages stripped, R5.4).
-   * @throws OracleProtocolError - If the RETURNED value cannot be encoded
-   *   or canonicalized (harness-level per design D14 — e.g. a lone-
-   *   surrogate output string must yield a protocol error, never a
-   *   crash), or the input is undecodable (`-32602`).
+   *   thrown library errors (messages stripped).
+   * @throws OracleProtocolError - If the returned value cannot be encoded
+   *   or canonicalized (harness-level — e.g. a lone-surrogate output
+   *   string must yield a protocol error, never a crash), or the input
+   *   is undecodable (`-32602`).
    */
   private executeCompat(api: string, rawInput: RawObject): SerializableValue {
     let returned: unknown;
     try {
       returned = this.invokeCompat(api, rawInput);
-    } catch (thrown) {
-      if (thrown instanceof OracleProtocolError) {
-        throw thrown;
+    } catch (error) {
+      if (error instanceof OracleProtocolError) {
+        throw error;
       }
-      return { ok: false, error: this.errorPayload(thrown) };
+      return { ok: false, error: this.errorPayload(error) };
     }
     let output: JsonValue;
     try {
       output = encodeExpectValue(returned);
       canonicalize(output);
-    } catch (thrown) {
+    } catch (error) {
       throw new OracleProtocolError(
         JSONRPC_INTERNAL_ERROR,
-        `output encode/canonicalization failed: ${String(thrown)}`,
+        `output encode/canonicalization failed: ${String(error)}`,
       );
     }
     return { ok: true, output };
@@ -866,16 +820,16 @@ export class OracleServer {
   /**
    * Invoke one compat entry point over the raw kwargs.
    *
-   * `compat.python_str` walks the RAW token tree ({@link pythonStrRaw})
+   * `compat.python_str` walks the raw token tree ({@link pythonStrRaw})
    * because float-ness and dict member order survive only there; the
    * scalar-argument entries decode through the shared codec table first,
-   * mirroring the runner's D13 bindings.
+   * mirroring the runner's compat bindings.
    *
    * @param api - A member of the compat surface.
    * @param rawInput - The undecoded kwargs.
    * @returns The entry point's return value.
    * @throws TypeError - For missing/mistyped arguments (library-error
-   *   DATA, matching Python's `TypeError` on bad call shapes).
+   *   data, matching Python's `TypeError` on bad call shapes).
    * @throws OracleProtocolError - For undecodable `$type` input.
    */
   private invokeCompat(api: string, rawInput: RawObject): unknown {
@@ -888,14 +842,14 @@ export class OracleServer {
     }
     const kwargs = this.decodeKwargs(rawInput);
     if (api === "compat.zfill") {
-      const value = kwargs["value"];
+      const text = kwargs["value"];
       const width = kwargs["width"];
-      if (typeof value !== "string" || typeof width !== "number") {
+      if (typeof text !== "string" || typeof width !== "number") {
         throw new TypeError(
           "zfill() requires (value: str, width: int) per the Python reference",
         );
       }
-      return zfill(value, width);
+      return zfill(text, width);
     }
     // compat.python_float_str — the only remaining surface member.
     const value = kwargs["value"];
@@ -921,20 +875,20 @@ export class OracleServer {
       for (const [name, value] of rawInput.entries) {
         decoded[name] = this.deps.codecs.decodeValue(toJsonValue(value));
       }
-    } catch (thrown) {
-      if (thrown instanceof UndecodableValueError) {
+    } catch (error) {
+      if (error instanceof UndecodableValueError) {
         throw new OracleProtocolError(
           JSONRPC_INVALID_PARAMS,
-          `input decode failed: ${thrown.message}`,
+          `input decode failed: ${error.message}`,
         );
       }
-      throw thrown;
+      throw error;
     }
     return decoded;
   }
 
   /**
-   * Serialize a thrown library error as comparable DATA (R5.4).
+   * Serialize a thrown library error as comparable data.
    *
    * Errors carrying their own `expect.error` encoding use it (class +
    * code + structural `errors[]`, messages stripped); anything else —
@@ -968,7 +922,7 @@ export class OracleServer {
   }
 
   /**
-   * Frame one JSON-RPC response as a single ASCII-safe line (D14).
+   * Frame one JSON-RPC response as a single ASCII-safe line.
    *
    * @param requestId - The request's `id` member (echoed verbatim,
    *   `null` for unparseable requests).

@@ -1,26 +1,18 @@
-// Layer-3 suite for the browser store's WRITER shapes (b9-packets.md
-// §2.1 R11.9 rule + §2.6 row 2). Python twins for the byte shapes:
-// - tokens payload = the tokens_{region}.json twin — `save_tokens`,
-//   `storage.py:451-478` (`datetime.isoformat()` → `+00:00`, never `Z`);
-// - client-info payload = the client_{region}.json twin —
-//   `save_client_info`, `storage.py:526-543` (pydantic JSON mode → `Z`).
-// Byte-parity goldens copied WITH CITE from the B8 probe/golden set
-// (`b8-reviewB-resolution.md` F2 table: saveTokens renders `+00:00`
-// even from a `Z`-spelled model; saveClientInfo renders `Z` even from
-// a `+00:00` model; live pydantic probe `2030-01-01T00:00:00Z` /
-// `...00.500000Z`).
-// Reads are STRICT (`parseOAuthTokens` / `parseOAuthClientInfo`) — the
-// round-trip locks make the store's closed write→read loop explicit.
+// The browser store's writer shapes: the tokens payload mirrors
+// `OAuthStorage.save_tokens` (`datetime.isoformat()` → `+00:00`), the
+// client-info payload mirrors `save_client_info` (pydantic JSON mode → `Z`).
+// Reads are strict, so the round-trip locks close the write→read loop.
 
 import { describe, expect, it } from "vitest";
 
 import {
+  type OAuthClientInfo,
   OAuthTokens,
   parseOAuthClientInfo,
   parseOAuthTokens,
-  type OAuthClientInfo,
-} from "../../core/src/auth/token.js";
-import { Secret } from "../../core/src/secret.js";
+  Secret,
+} from "@mixpanel-headless/core";
+
 import {
   serializeClientInfoPayload,
   serializeTokensPayload,
@@ -55,14 +47,14 @@ const CLIENT_INFO: OAuthClientInfo = {
   created_at: "2030-01-01T00:00:00+00:00",
 };
 
-describe("serializeTokensPayload — tokens.json writer twin (storage.py:451-478)", () => {
-  it("renders expires_at with +00:00 (never Z) — B8 golden: +00:00 from a Z model", () => {
+describe("serializeTokensPayload (tokens.json writer twin)", () => {
+  it("renders expires_at with +00:00, never Z, even from a Z model", () => {
     const payload = serializeTokensPayload(makeTokens("2030-01-01T00:00:00Z"));
     expect(payload).toContain('"expires_at": "2030-01-01T00:00:00+00:00"');
     expect(payload).not.toContain('"2030-01-01T00:00:00Z"');
   });
 
-  it("keeps a +00:00 model verbatim (b8-reviewB-resolution.md probe: 2030-01-01T00:00:00+00:00)", () => {
+  it("keeps a +00:00 model verbatim", () => {
     const payload = serializeTokensPayload(
       makeTokens("2030-01-01T00:00:00+00:00"),
     );
@@ -82,7 +74,7 @@ describe("serializeTokensPayload — tokens.json writer twin (storage.py:451-478
     const withoutRefresh = JSON.parse(
       serializeTokensPayload(makeTokens("2030-01-01T00:00:00+00:00")),
     ) as Record<string, unknown>;
-    expect(Object.keys(withoutRefresh)).toEqual([
+    expect(Object.keys(withoutRefresh)).toStrictEqual([
       "access_token",
       "expires_at",
       "scope",
@@ -115,8 +107,8 @@ describe("serializeTokensPayload — tokens.json writer twin (storage.py:451-478
   });
 });
 
-describe("serializeClientInfoPayload — client_{region}.json writer twin (storage.py:526-543)", () => {
-  it("renders created_at with Z — B8 golden: Z from a +00:00 model", () => {
+describe("serializeClientInfoPayload (client_<region>.json writer twin)", () => {
+  it("renders created_at with Z, even from a +00:00 model", () => {
     const payload = serializeClientInfoPayload(CLIENT_INFO);
     expect(payload).toContain('"created_at": "2030-01-01T00:00:00Z"');
   });
@@ -144,7 +136,7 @@ describe("serializeClientInfoPayload — client_{region}.json writer twin (stora
     const record = JSON.parse(
       serializeClientInfoPayload(CLIENT_INFO),
     ) as Record<string, unknown>;
-    expect(Object.keys(record)).toEqual([
+    expect(Object.keys(record)).toStrictEqual([
       "client_id",
       "region",
       "redirect_uri",

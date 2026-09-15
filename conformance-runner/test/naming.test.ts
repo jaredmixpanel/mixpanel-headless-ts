@@ -1,10 +1,15 @@
-// Unit tests for the naming-map §3 mechanical transform and §4 exception
-// resolution (src/naming.ts, task TS-4).
-import { describe, expect, it } from "vitest";
-import type { NamingExceptionRow } from "../src/naming.js";
-import { resolveTsApiName, snakeToCamel } from "../src/naming.js";
+// Naming (src/naming.ts): the mechanical snake→camel transform and the
+// exception resolution.
 
-describe("snakeToCamel (naming-map §3)", () => {
+import { describe, expect, it } from "vitest";
+
+import {
+  type NamingExceptionRow,
+  resolveTsApiName,
+  snakeToCamel,
+} from "../src/naming.js";
+
+describe("snakeToCamel", () => {
   it("camelizes multi-segment names", () => {
     expect(snakeToCamel("build_funnel_params")).toBe("buildFunnelParams");
   });
@@ -24,7 +29,7 @@ describe("snakeToCamel (naming-map §3)", () => {
     expect(snakeToCamel("data_group_id")).toBe("dataGroupId");
   });
 
-  it("drops a single leading underscore (R7.6 module-privates)", () => {
+  it("drops a single leading underscore (module-private names)", () => {
     expect(snakeToCamel("_sanitize_raw_cohort")).toBe("sanitizeRawCohort");
     expect(snakeToCamel("_iter_jsonl_lines")).toBe("iterJsonlLines");
   });
@@ -38,7 +43,7 @@ describe("snakeToCamel (naming-map §3)", () => {
   });
 });
 
-describe("resolveTsApiName (naming-map §4-§5)", () => {
+describe("resolveTsApiName", () => {
   /** Minimal exceptions table exercising each resolution path. */
   const ROWS: readonly NamingExceptionRow[] = [
     {
@@ -64,21 +69,25 @@ describe("resolveTsApiName (naming-map §4-§5)", () => {
   ];
 
   it("prefers exact rows over wildcards", () => {
-    expect(resolveTsApiName("segfilter.build_segfilter_entry", ROWS)).toEqual({
+    expect(
+      resolveTsApiName("segfilter.build_segfilter_entry", ROWS),
+    ).toStrictEqual({
       tsModule: "core/query/segfilter",
       tsName: "buildSegfilterEntry",
     });
   });
 
   it("splits exact rows on the FIRST dot (class-qualified members)", () => {
-    expect(resolveTsApiName("types.CohortDefinition.to_dict", ROWS)).toEqual({
+    expect(
+      resolveTsApiName("types.CohortDefinition.to_dict", ROWS),
+    ).toStrictEqual({
       tsModule: "core/types",
       tsName: "CohortDefinition.toDict",
     });
   });
 
   it("applies the mechanical transform under module wildcards", () => {
-    expect(resolveTsApiName("api_client.get_events", ROWS)).toEqual({
+    expect(resolveTsApiName("api_client.get_events", ROWS)).toStrictEqual({
       tsModule: "core/client/api-client",
       tsName: "getEvents",
     });

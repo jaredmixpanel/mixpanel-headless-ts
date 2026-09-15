@@ -2,9 +2,10 @@
   "$comment": [
     "GENERATED FILE - do not hand-edit.",
     "Source: scripts/generate-canonical-fixtures.py (CPython is the oracle).",
-    "Reproduce with:  python3 scripts/generate-canonical-fixtures.py && npm run fmt",
-    "The `npm run fmt` step is REQUIRED - Prettier owns formatting for",
-    "this file and rewrites number literals in `params` (1e-07 -> 1e-7);",
+    "Reproduce with:  npm run generate:canonical-fixtures",
+    "(the pinned CPython via uv, then Prettier). The Prettier step is",
+    "REQUIRED - Prettier owns formatting for this file and rewrites",
+    "number literals in `params` (1e-07 -> 1e-7);",
     "both parse to the same double, and the `canonical` field is a",
     "string Prettier never touches. Skipping it leaves the gate red.",
     "",
@@ -13,7 +14,8 @@
     "its UTF-8 bytes - the heads-platform QueryRef hash (spec 02 3.1).",
     "`normalized: true` means the numeric normalization rule (integral",
     "number -> integer spelling) changed the bytes for this row.",
-    "Provenance: CPython 3.14.6, corpus pin c9991d1eed03fec1830b6e460091724b9263b8aa, 42 fixtures."
+    "Provenance: CPython 3.14.6, corpus pin 0dde50608a6af026e94cdb75bacbcebe5ce105db, 46 fixtures.",
+    "Generator sha256: 56cd111c1846b4c52b8688d354fd1eeb8fe11cbd2a645d5a8694f452a40af300 (scripts/generate-canonical-fixtures.py)."
   ],
   "fixtures": [
     {
@@ -453,7 +455,7 @@
       "sha256": "f02447e914fbfc7a1994e3eedc057e563cfae0a629b90145334643bc15953aa9"
     },
     {
-      "name": "bookmarks/workspace.build_params/test_query_params-testfrequencybreakdowninbuildparams-test_frequency_breakdown_in_group_section",
+      "name": "bookmarks/workspace.build_params/test_query_params-testdatefilterparams-test_date_filter_in_where_clause",
       "source": "corpus",
       "normalized": false,
       "params": {
@@ -462,74 +464,17 @@
           "chartType": "line"
         },
         "sections": {
-          "filter": [],
-          "group": [
+          "filter": [
             {
-              "behavior": {
-                "aggregationOperator": "total",
-                "behaviorType": "$frequency",
-                "dateRange": null,
-                "event": {
-                  "label": "Purchase",
-                  "value": "Purchase"
-                },
-                "filters": [],
-                "filtersOperator": "and"
-              },
-              "customBucket": {
-                "bucketSize": 1,
-                "disabled": false,
-                "max": 10,
-                "min": 0
-              },
-              "dataGroupId": null,
-              "dataset": "$mixpanel",
-              "propertyType": "number",
-              "resourceType": "people",
-              "value": "Purchase Frequency"
+              "defaultType": "datetime",
+              "filterDateUnit": "day",
+              "filterOperator": "was in the",
+              "filterType": "datetime",
+              "filterValue": 7,
+              "resourceType": "events",
+              "value": "created"
             }
           ],
-          "show": [
-            {
-              "behavior": {
-                "filters": [],
-                "filtersDeterminer": "all",
-                "name": "Login",
-                "resourceType": "events",
-                "type": "event"
-              },
-              "measurement": {
-                "math": "total"
-              },
-              "type": "metric"
-            }
-          ],
-          "time": [
-            {
-              "dateRangeType": "in the last",
-              "unit": "day",
-              "window": {
-                "unit": "day",
-                "value": 30
-              }
-            }
-          ]
-        }
-      },
-      "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[{\"behavior\":{\"aggregationOperator\":\"total\",\"behaviorType\":\"$frequency\",\"dateRange\":null,\"event\":{\"label\":\"Purchase\",\"value\":\"Purchase\"},\"filters\":[],\"filtersOperator\":\"and\"},\"customBucket\":{\"bucketSize\":1,\"disabled\":false,\"max\":10,\"min\":0},\"dataGroupId\":null,\"dataset\":\"$mixpanel\",\"propertyType\":\"number\",\"resourceType\":\"people\",\"value\":\"Purchase Frequency\"}],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Login\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"total\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
-      "sha256": "a0af119753c63fc8120723d396bf4b1c371796c367bb5361a5e69056fb773990"
-    },
-    {
-      "name": "bookmarks/workspace.build_params/test_query_params-testsegmentmethodinbuildparams-test_segment_method_string_event_omits_key",
-      "source": "corpus",
-      "normalized": false,
-      "params": {
-        "displayOptions": {
-          "analysis": "linear",
-          "chartType": "line"
-        },
-        "sections": {
-          "filter": [],
           "group": [],
           "show": [
             {
@@ -558,8 +503,51 @@
           ]
         }
       },
-      "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Login\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"total\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
-      "sha256": "b4f6954a70b11d67256d4979f0a2bcf164ad602d2961d563f8c7a1a2b354d5bc"
+      "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[{\"defaultType\":\"datetime\",\"filterDateUnit\":\"day\",\"filterOperator\":\"was in the\",\"filterType\":\"datetime\",\"filterValue\":7,\"resourceType\":\"events\",\"value\":\"created\"}],\"group\":[],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Login\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"total\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+      "sha256": "bfc23422ee974bdb867d469a592579eef739fc724a55c96ce5cab7974e9dac39"
+    },
+    {
+      "name": "bookmarks/workspace.build_params/test_query_params-testsegmentmethodinbuildparams-test_segment_method_first_in_measurement",
+      "source": "corpus",
+      "normalized": false,
+      "params": {
+        "displayOptions": {
+          "analysis": "linear",
+          "chartType": "line"
+        },
+        "sections": {
+          "filter": [],
+          "group": [],
+          "show": [
+            {
+              "behavior": {
+                "filters": [],
+                "filtersDeterminer": "all",
+                "name": "Login",
+                "resourceType": "events",
+                "type": "event"
+              },
+              "measurement": {
+                "math": "total",
+                "segmentMethod": "first"
+              },
+              "type": "metric"
+            }
+          ],
+          "time": [
+            {
+              "dateRangeType": "in the last",
+              "unit": "day",
+              "window": {
+                "unit": "day",
+                "value": 30
+              }
+            }
+          ]
+        }
+      },
+      "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Login\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"total\",\"segmentMethod\":\"first\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+      "sha256": "3eb3e1a3e971af9975d63bc68360727fd07b645f1a97096e0726a0bf38284bac"
     },
     {
       "name": "bookmarks/workspace.build_params/test_validation_bypass_r2-testr2v4inffilterfixed-test_large_finite_value_passes",
@@ -613,7 +601,7 @@
       "sha256": "e48692b5ecb3eadffa4983c8f9aec0f55c2012edf7e99641e0cda02cf796362c"
     },
     {
-      "name": "bookmarks/workspace.build_params/test_workspace_cohort-testresolveandbuildparamscohortmetric-test_cohort_metric_with_where_accepted",
+      "name": "bookmarks/workspace.build_params/test_workspace_cohort-testresolveandbuildparamscohortmetric-test_cohort_metric_with_cohort_breakdown",
       "source": "corpus",
       "normalized": false,
       "params": {
@@ -622,25 +610,35 @@
           "chartType": "line"
         },
         "sections": {
-          "filter": [
+          "filter": [],
+          "group": [
             {
-              "defaultType": "list",
-              "filterOperator": "contains",
-              "filterType": "list",
-              "filterValue": [
+              "cohorts": [
                 {
-                  "cohort": {
-                    "id": 456,
-                    "name": "Other",
-                    "negated": false
-                  }
+                  "data_group_id": null,
+                  "groups": [],
+                  "id": 456,
+                  "name": "Other Cohort",
+                  "negated": false
+                },
+                {
+                  "data_group_id": null,
+                  "groups": [],
+                  "id": 456,
+                  "name": "Other Cohort",
+                  "negated": true
                 }
               ],
+              "dataGroupId": null,
+              "isHidden": false,
+              "profileType": null,
+              "propertyType": null,
               "resourceType": "events",
-              "value": "$cohorts"
+              "search": "",
+              "typeCast": null,
+              "value": ["Other Cohort", "Not In Other Cohort"]
             }
           ],
-          "group": [],
           "show": [
             {
               "behavior": {
@@ -674,16 +672,29 @@
           ]
         }
       },
-      "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[{\"defaultType\":\"list\",\"filterOperator\":\"contains\",\"filterType\":\"list\",\"filterValue\":[{\"cohort\":{\"id\":456,\"name\":\"Other\",\"negated\":false}}],\"resourceType\":\"events\",\"value\":\"$cohorts\"}],\"group\":[],\"show\":[{\"behavior\":{\"dataGroupId\":null,\"dataset\":\"$mixpanel\",\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":123,\"name\":\"PU\",\"resourceType\":\"cohorts\",\"type\":\"cohort\"},\"isHidden\":false,\"measurement\":{\"math\":\"unique\",\"perUserAggregation\":null,\"property\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
-      "sha256": "3e5c95d9cf2a8e9def830f46f68914c053129aa4e9ee6af18f8410465cd484e0"
+      "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[{\"cohorts\":[{\"data_group_id\":null,\"groups\":[],\"id\":456,\"name\":\"Other Cohort\",\"negated\":false},{\"data_group_id\":null,\"groups\":[],\"id\":456,\"name\":\"Other Cohort\",\"negated\":true}],\"dataGroupId\":null,\"isHidden\":false,\"profileType\":null,\"propertyType\":null,\"resourceType\":\"events\",\"search\":\"\",\"typeCast\":null,\"value\":[\"Other Cohort\",\"Not In Other Cohort\"]}],\"show\":[{\"behavior\":{\"dataGroupId\":null,\"dataset\":\"$mixpanel\",\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":123,\"name\":\"PU\",\"resourceType\":\"cohorts\",\"type\":\"cohort\"},\"isHidden\":false,\"measurement\":{\"math\":\"unique\",\"perUserAggregation\":null,\"property\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+      "sha256": "6b7cf3647c6de6814feca9f9354ae71c794fa41d1f50ccccdfd38adcde5482a7"
     },
     {
-      "name": "cohorts/types.cohortdefinition.to_dict/test_cohort_definition-testcohortdefinitioncrudintegration-test_definition_with_create_cohort_params",
+      "name": "cohorts/types.cohortdefinition.to_dict/test_cohort_definition-testcohortdefinitionallof-test_two_behavioral_criteria",
       "source": "corpus",
       "normalized": false,
       "params": {
         "behaviors": {
           "bhvr_0": {
+            "count": {
+              "event_selector": {
+                "event": "Login",
+                "selector": null
+              },
+              "type": "absolute"
+            },
+            "window": {
+              "unit": "day",
+              "value": 7
+            }
+          },
+          "bhvr_1": {
             "count": {
               "event_selector": {
                 "event": "Purchase",
@@ -700,95 +711,182 @@
         "selector": {
           "children": [
             {
-              "operand": "premium",
-              "operator": "==",
-              "property": "user",
-              "type": "string",
-              "value": "plan"
+              "operand": 1,
+              "operator": ">=",
+              "property": "behaviors",
+              "value": "bhvr_0"
             },
             {
               "operand": 3,
               "operator": ">=",
               "property": "behaviors",
-              "value": "bhvr_0"
+              "value": "bhvr_1"
             }
           ],
           "operator": "and"
         }
       },
-      "canonical": "{\"behaviors\":{\"bhvr_0\":{\"count\":{\"event_selector\":{\"event\":\"Purchase\",\"selector\":null},\"type\":\"absolute\"},\"window\":{\"unit\":\"day\",\"value\":30}}},\"selector\":{\"children\":[{\"operand\":\"premium\",\"operator\":\"==\",\"property\":\"user\",\"type\":\"string\",\"value\":\"plan\"},{\"operand\":3,\"operator\":\">=\",\"property\":\"behaviors\",\"value\":\"bhvr_0\"}],\"operator\":\"and\"}}",
-      "sha256": "28b9d1e8335561772ee9ea5fedac2f8f8105dddbdda2c3df7e5e4204a2241a28"
+      "canonical": "{\"behaviors\":{\"bhvr_0\":{\"count\":{\"event_selector\":{\"event\":\"Login\",\"selector\":null},\"type\":\"absolute\"},\"window\":{\"unit\":\"day\",\"value\":7}},\"bhvr_1\":{\"count\":{\"event_selector\":{\"event\":\"Purchase\",\"selector\":null},\"type\":\"absolute\"},\"window\":{\"unit\":\"day\",\"value\":30}}},\"selector\":{\"children\":[{\"operand\":1,\"operator\":\">=\",\"property\":\"behaviors\",\"value\":\"bhvr_0\"},{\"operand\":3,\"operator\":\">=\",\"property\":\"behaviors\",\"value\":\"bhvr_1\"}],\"operator\":\"and\"}}",
+      "sha256": "1dd5f73d56e974546947e463b84403798befcff0237754ac4b106ec42df0e153"
     },
     {
-      "name": "engage/workspace.build_user_params/test_workspace_build_user_params-testaggregatemodeparams-test_aggregate_count_action",
+      "name": "engage/workspace.build_user_params/test_query_user_edge_cases-testtier3validationgaps-test_t3_07_as_of_integer_zero_accepted",
       "source": "corpus",
       "normalized": false,
       "params": {
-        "action": "count()"
+        "as_of_timestamp": 0
       },
-      "canonical": "{\"action\":\"count()\"}",
-      "sha256": "cfd0bb9f4c40dcaa8837914710f7a12ead98b9193d34fa55a0bbadc58cda88fa"
+      "canonical": "{\"as_of_timestamp\":0}",
+      "sha256": "705618e0e502a208fc210da14816b99d402bee0e846882123765e79a12ffee8e"
     },
     {
-      "name": "engage/workspace.build_user_params/test_workspace_build_user_params-testfiltertranslation-test_between_filter",
+      "name": "engage/workspace.build_user_params/test_workspace_build_user_params-testcombinedscenarios-test_group_id_with_filters",
       "source": "corpus",
       "normalized": false,
       "params": {
-        "action": "count()",
-        "where": "properties[\"age\"] >= 18 and properties[\"age\"] <= 65"
+        "data_group_id": "companies",
+        "sort_key": "properties[\"arr\"]",
+        "sort_order": "descending",
+        "where": "properties[\"arr\"] > 50000"
       },
-      "canonical": "{\"action\":\"count()\",\"where\":\"properties[\\\"age\\\"] >= 18 and properties[\\\"age\\\"] <= 65\"}",
-      "sha256": "bb6aee231d3a675c31ab8daea098c34567032cd66b0b8b00399568f8ef7bf404"
+      "canonical": "{\"data_group_id\":\"companies\",\"sort_key\":\"properties[\\\"arr\\\"]\",\"sort_order\":\"descending\",\"where\":\"properties[\\\"arr\\\"] > 50000\"}",
+      "sha256": "27cdaf78ed07cc0522bac469ffa0ff2b9e7d7436e464c79fefb5048e4410028f"
     },
     {
-      "name": "engage/workspace.build_user_params/test_workspace_build_user_params-testsortbytranslation-test_no_sort_by_omits_sort_key",
+      "name": "engage/workspace.build_user_params/test_workspace_build_user_params-testpropertyselection-test_properties_preserves_dollar_prefix",
       "source": "corpus",
       "normalized": false,
       "params": {
-        "action": "count()"
+        "output_properties": "[\"$email\", \"$last_seen\"]"
       },
-      "canonical": "{\"action\":\"count()\"}",
-      "sha256": "cfd0bb9f4c40dcaa8837914710f7a12ead98b9193d34fa55a0bbadc58cda88fa"
+      "canonical": "{\"output_properties\":\"[\\\"$email\\\", \\\"$last_seen\\\"]\"}",
+      "sha256": "1fc042f901d3f450211efbd566b20b6ae0d622c43e1c0fea9508fc0373260d2e"
     },
     {
-      "name": "filters/bookmark_builders.build_filter_entry/test_bookmark_builders-testnewfilteroperatorsinbuilder-test_ends_with_filter_operator",
+      "name": "filters/bookmark_builders.build_filter_entry/test_bookmark_builders-testfilterlistcontains-test_positional_filter_instances_preserve_operators",
+      "source": "corpus",
+      "normalized": false,
+      "params": {
+        "dataset": "$mixpanel",
+        "defaultType": "object",
+        "filterJoinType": "list",
+        "filterOperator": "true",
+        "filterType": "object",
+        "filterValue": true,
+        "listItemFilters": [
+          {
+            "dataset": "$mixpanel",
+            "defaultType": "string",
+            "filterOperator": "equals",
+            "filterType": "string",
+            "filterValue": ["nike"],
+            "resourceType": "events",
+            "value": "Brand"
+          },
+          {
+            "dataset": "$mixpanel",
+            "defaultType": "number",
+            "filterOperator": "is greater than",
+            "filterType": "number",
+            "filterValue": 50,
+            "resourceType": "events",
+            "value": "Price"
+          }
+        ],
+        "listQuantifier": "any",
+        "resourceType": "events",
+        "value": "cart"
+      },
+      "canonical": "{\"dataset\":\"$mixpanel\",\"defaultType\":\"object\",\"filterJoinType\":\"list\",\"filterOperator\":\"true\",\"filterType\":\"object\",\"filterValue\":true,\"listItemFilters\":[{\"dataset\":\"$mixpanel\",\"defaultType\":\"string\",\"filterOperator\":\"equals\",\"filterType\":\"string\",\"filterValue\":[\"nike\"],\"resourceType\":\"events\",\"value\":\"Brand\"},{\"dataset\":\"$mixpanel\",\"defaultType\":\"number\",\"filterOperator\":\"is greater than\",\"filterType\":\"number\",\"filterValue\":50,\"resourceType\":\"events\",\"value\":\"Price\"}],\"listQuantifier\":\"any\",\"resourceType\":\"events\",\"value\":\"cart\"}",
+      "sha256": "8320caa2c1d164c666f783e630b5ff9c78e892266abc87401a621edb79f1d17e"
+    },
+    {
+      "name": "filters/bookmark_builders.build_filter_entry/test_query_params-testfilterparams-test_contains_filter_plain_string",
       "source": "corpus",
       "normalized": false,
       "params": {
         "defaultType": "string",
-        "filterOperator": "ends with",
+        "filterOperator": "contains",
         "filterType": "string",
-        "filterValue": "@example.com",
+        "filterValue": "Chrome",
         "resourceType": "events",
-        "value": "email"
+        "value": "browser"
       },
-      "canonical": "{\"defaultType\":\"string\",\"filterOperator\":\"ends with\",\"filterType\":\"string\",\"filterValue\":\"@example.com\",\"resourceType\":\"events\",\"value\":\"email\"}",
-      "sha256": "77c2b36197c32ecb2452d685820206a1be90328c039d25a367b4da6491a19921"
+      "canonical": "{\"defaultType\":\"string\",\"filterOperator\":\"contains\",\"filterType\":\"string\",\"filterValue\":\"Chrome\",\"resourceType\":\"events\",\"value\":\"browser\"}",
+      "sha256": "7eb13bbf79b1fc15eb10295bae4410874cc960b5c6838f9bad1451016d7644c6"
     },
     {
-      "name": "filters/bookmark_builders.build_filter_entry/test_query_params-testpermetricfilters-test_per_metric_filter_separate_from_global",
+      "name": "filters/bookmark_builders.build_filter_entry/test_query_types-testfilterdirectconstruction-test_boolean_operators_normalize_to_true_false-not_equals-alias-false-1",
       "source": "corpus",
       "normalized": false,
       "params": {
-        "defaultType": "number",
-        "filterOperator": "is greater than",
-        "filterType": "number",
-        "filterValue": 18,
+        "defaultType": "boolean",
+        "filterOperator": "true",
+        "filterType": "boolean",
+        "filterValue": null,
         "resourceType": "events",
-        "value": "age"
+        "value": "flag"
       },
-      "canonical": "{\"defaultType\":\"number\",\"filterOperator\":\"is greater than\",\"filterType\":\"number\",\"filterValue\":18,\"resourceType\":\"events\",\"value\":\"age\"}",
-      "sha256": "a377aaf2c529f6b3af770415deb9fbf94c1889ad8ea0f53d42010836a35a1d9d"
+      "canonical": "{\"defaultType\":\"boolean\",\"filterOperator\":\"true\",\"filterType\":\"boolean\",\"filterValue\":null,\"resourceType\":\"events\",\"value\":\"flag\"}",
+      "sha256": "67466ad2632647d8c817413fcb147757b59e3717c3d89e77f44aed1d5ac8e3ef"
     },
     {
-      "name": "filters/segfilter.build_segfilter_entry/test_segfilter-testsegfilterdatetimeoperators-test_in_the_last_month_unit",
+      "name": "filters/bookmark_builders.build_filter_entry/test_query_types-testfilterunchecked-test_positional_alias_reproduces_factory_byte_for_byte-contains-2",
+      "source": "corpus",
+      "normalized": false,
+      "params": {
+        "defaultType": "string",
+        "filterOperator": "contains",
+        "filterType": "string",
+        "filterValue": "Chrome",
+        "resourceType": "events",
+        "value": "browser"
+      },
+      "canonical": "{\"defaultType\":\"string\",\"filterOperator\":\"contains\",\"filterType\":\"string\",\"filterValue\":\"Chrome\",\"resourceType\":\"events\",\"value\":\"browser\"}",
+      "sha256": "7eb13bbf79b1fc15eb10295bae4410874cc960b5c6838f9bad1451016d7644c6"
+    },
+    {
+      "name": "filters/bookmark_builders.build_filter_entry/test_query_types-testfilterunchecked-test_positional_alias_reproduces_factory_byte_for_byte-is_true-2",
+      "source": "corpus",
+      "normalized": false,
+      "params": {
+        "defaultType": "boolean",
+        "filterOperator": "true",
+        "filterType": "boolean",
+        "filterValue": null,
+        "resourceType": "events",
+        "value": "flag"
+      },
+      "canonical": "{\"defaultType\":\"boolean\",\"filterOperator\":\"true\",\"filterType\":\"boolean\",\"filterValue\":null,\"resourceType\":\"events\",\"value\":\"flag\"}",
+      "sha256": "67466ad2632647d8c817413fcb147757b59e3717c3d89e77f44aed1d5ac8e3ef"
+    },
+    {
+      "name": "filters/bookmark_builders.build_flow_property_filter/test_bookmark_builders-testbuildflowpropertyfilter-test_filter_entry_uses_build_filter_entry",
+      "source": "corpus",
+      "normalized": false,
+      "params": {
+        "children": [
+          {
+            "filterOperator": "contains",
+            "filterType": "string",
+            "filterValue": "test",
+            "propertyName": "name",
+            "resourceType": "events"
+          }
+        ],
+        "operator": "and"
+      },
+      "canonical": "{\"children\":[{\"filterOperator\":\"contains\",\"filterType\":\"string\",\"filterValue\":\"test\",\"propertyName\":\"name\",\"resourceType\":\"events\"}],\"operator\":\"and\"}",
+      "sha256": "e55315dfac4f1540f1c4ec1f9ae152247fc76d2f5f00ab72cb5709ffa8ca9e0a"
+    },
+    {
+      "name": "filters/segfilter.build_segfilter_entry/test_segfilter-testsegfilterdatetimeoperators-test_on",
       "source": "corpus",
       "normalized": false,
       "params": {
         "filter": {
-          "operand": 3,
-          "operator": ">",
-          "unit": "months"
+          "operand": "01/15/2026",
+          "operator": "=="
         },
         "property": {
           "name": "$time",
@@ -798,31 +896,31 @@
         "selected_property_type": "datetime",
         "type": "datetime"
       },
-      "canonical": "{\"filter\":{\"operand\":3,\"operator\":\">\",\"unit\":\"months\"},\"property\":{\"name\":\"$time\",\"source\":\"properties\",\"type\":\"datetime\"},\"selected_property_type\":\"datetime\",\"type\":\"datetime\"}",
-      "sha256": "a2bac72360ced39717c92055d6042f17de9acb6847307deb5b7cd000786808c4"
+      "canonical": "{\"filter\":{\"operand\":\"01/15/2026\",\"operator\":\"==\"},\"property\":{\"name\":\"$time\",\"source\":\"properties\",\"type\":\"datetime\"},\"selected_property_type\":\"datetime\",\"type\":\"datetime\"}",
+      "sha256": "185c5a6d5e1e6c3ea00b0f7ec9caea3ce3c5defd1afdb291dcafc3ca181a8b6b"
     },
     {
-      "name": "filters/segfilter.build_segfilter_entry/test_segfilter-testsegfilterstringoperators-test_is_not_set",
+      "name": "filters/segfilter.build_segfilter_entry/test_segfilter-testsegfilterstringoperators-test_equals",
       "source": "corpus",
       "normalized": false,
       "params": {
         "filter": {
-          "operand": "",
-          "operator": "not set"
+          "operand": ["US"],
+          "operator": "=="
         },
         "property": {
-          "name": "email",
+          "name": "country",
           "source": "properties",
           "type": "string"
         },
         "selected_property_type": "string",
         "type": "string"
       },
-      "canonical": "{\"filter\":{\"operand\":\"\",\"operator\":\"not set\"},\"property\":{\"name\":\"email\",\"source\":\"properties\",\"type\":\"string\"},\"selected_property_type\":\"string\",\"type\":\"string\"}",
-      "sha256": "daf8e8811e1c60302adc20f1c0874df6f46cbaed4f3b898c0266440f9056a3c2"
+      "canonical": "{\"filter\":{\"operand\":[\"US\"],\"operator\":\"==\"},\"property\":{\"name\":\"country\",\"source\":\"properties\",\"type\":\"string\"},\"selected_property_type\":\"string\",\"type\":\"string\"}",
+      "sha256": "19708890945556cb11fba9c5edef928d67fde16f8055d4247eef91ec8a9194a3"
     },
     {
-      "name": "flows/workspace.build_flow_params/test_workspace_cohort-testqueryflowwhere-test_no_where_produces_no_filter_by_cohort",
+      "name": "flows/workspace.build_flow_params/test_run_flow_user_params-testrunflowparams-test_every_built_mode_round_trips-tree",
       "source": "corpus",
       "normalized": false,
       "params": {
@@ -844,7 +942,7 @@
           "type": "in the last"
         },
         "exclusions": [],
-        "flows_merge_type": "graph",
+        "flows_merge_type": "tree",
         "hidden_events": [],
         "show_custom_events": true,
         "steps": [
@@ -859,11 +957,11 @@
         ],
         "version": 2
       },
-      "canonical": "{\"anchor_position\":1,\"cardinality_threshold\":3,\"chartType\":\"sankey\",\"collapse_repeated\":false,\"conversion_window\":{\"unit\":\"day\",\"value\":7},\"count_type\":\"unique\",\"date_range\":{\"from_date\":{\"unit\":\"day\",\"value\":30},\"to_date\":\"$now\",\"type\":\"in the last\"},\"exclusions\":[],\"flows_merge_type\":\"graph\",\"hidden_events\":[],\"show_custom_events\":true,\"steps\":[{\"bool_op\":\"and\",\"event\":\"Login\",\"forward\":3,\"property_filter_params_list\":[],\"reverse\":0,\"step_label\":\"Login\"}],\"version\":2}",
-      "sha256": "c1bd829650cb171cca621f8256e03274dda6a20324e7f96f6654333a96461f2e"
+      "canonical": "{\"anchor_position\":1,\"cardinality_threshold\":3,\"chartType\":\"sankey\",\"collapse_repeated\":false,\"conversion_window\":{\"unit\":\"day\",\"value\":7},\"count_type\":\"unique\",\"date_range\":{\"from_date\":{\"unit\":\"day\",\"value\":30},\"to_date\":\"$now\",\"type\":\"in the last\"},\"exclusions\":[],\"flows_merge_type\":\"tree\",\"hidden_events\":[],\"show_custom_events\":true,\"steps\":[{\"bool_op\":\"and\",\"event\":\"Login\",\"forward\":3,\"property_filter_params_list\":[],\"reverse\":0,\"step_label\":\"Login\"}],\"version\":2}",
+      "sha256": "650e6df51e58ab1c24785eecb5045d9c4f69f4946bf1ad172ca4f788d462ff10"
     },
     {
-      "name": "flows/workspace.build_flow_params/test_workspace_flow-testmultistepnormalization-test_list_of_flow_steps",
+      "name": "flows/workspace.build_flow_params/test_workspace_flow-testflowsegments-test_segments_single_groupby",
       "source": "corpus",
       "normalized": false,
       "params": {
@@ -887,40 +985,58 @@
         "exclusions": [],
         "flows_merge_type": "graph",
         "hidden_events": [],
+        "segments": [
+          {
+            "propertyDefaultType": "string",
+            "propertyName": "country",
+            "propertyType": "string",
+            "resourceType": "events",
+            "value": "country"
+          }
+        ],
         "show_custom_events": true,
         "steps": [
           {
             "bool_op": "and",
-            "event": "A",
+            "event": "Login",
             "forward": 3,
             "property_filter_params_list": [],
             "reverse": 0,
-            "step_label": "A"
-          },
-          {
-            "bool_op": "and",
-            "event": "B",
-            "forward": 3,
-            "property_filter_params_list": [],
-            "reverse": 2,
-            "step_label": "B"
+            "step_label": "Login"
           }
         ],
         "version": 2
       },
-      "canonical": "{\"anchor_position\":1,\"cardinality_threshold\":3,\"chartType\":\"sankey\",\"collapse_repeated\":false,\"conversion_window\":{\"unit\":\"day\",\"value\":7},\"count_type\":\"unique\",\"date_range\":{\"from_date\":{\"unit\":\"day\",\"value\":30},\"to_date\":\"$now\",\"type\":\"in the last\"},\"exclusions\":[],\"flows_merge_type\":\"graph\",\"hidden_events\":[],\"show_custom_events\":true,\"steps\":[{\"bool_op\":\"and\",\"event\":\"A\",\"forward\":3,\"property_filter_params_list\":[],\"reverse\":0,\"step_label\":\"A\"},{\"bool_op\":\"and\",\"event\":\"B\",\"forward\":3,\"property_filter_params_list\":[],\"reverse\":2,\"step_label\":\"B\"}],\"version\":2}",
-      "sha256": "360748b0d03cd13e040d9e089326c889ac613363ddeb83c60e947b9ad6630caa"
+      "canonical": "{\"anchor_position\":1,\"cardinality_threshold\":3,\"chartType\":\"sankey\",\"collapse_repeated\":false,\"conversion_window\":{\"unit\":\"day\",\"value\":7},\"count_type\":\"unique\",\"date_range\":{\"from_date\":{\"unit\":\"day\",\"value\":30},\"to_date\":\"$now\",\"type\":\"in the last\"},\"exclusions\":[],\"flows_merge_type\":\"graph\",\"hidden_events\":[],\"segments\":[{\"propertyDefaultType\":\"string\",\"propertyName\":\"country\",\"propertyType\":\"string\",\"resourceType\":\"events\",\"value\":\"country\"}],\"show_custom_events\":true,\"steps\":[{\"bool_op\":\"and\",\"event\":\"Login\",\"forward\":3,\"property_filter_params_list\":[],\"reverse\":0,\"step_label\":\"Login\"}],\"version\":2}",
+      "sha256": "20d19d19f5870ba8961dc5a223b86326325e0d194fd191d66c1cfc347c185ec9"
     },
     {
-      "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsconfiguration-test_mode_table_chart_type",
+      "name": "funnels/workspace.build_funnel_params/test_build_cohort_params-testbuildfunnelparamscohortfilter-test_cohort_filter_populates_filter_section",
       "source": "corpus",
       "normalized": false,
       "params": {
         "displayOptions": {
-          "chartType": "table"
+          "chartType": "funnel-steps"
         },
         "sections": {
-          "filter": [],
+          "filter": [
+            {
+              "defaultType": "list",
+              "filterOperator": "contains",
+              "filterType": "list",
+              "filterValue": [
+                {
+                  "cohort": {
+                    "id": 123,
+                    "name": "PU",
+                    "negated": false
+                  }
+                }
+              ],
+              "resourceType": "events",
+              "value": "$cohorts"
+            }
+          ],
           "formula": [],
           "group": [],
           "show": [
@@ -973,166 +1089,11 @@
           ]
         }
       },
-      "canonical": "{\"displayOptions\":{\"chartType\":\"table\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Purchase\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
-      "sha256": "d76f39a98ddb13c822b4021fbcd1970075e886ed09379cfbeadf62d7c899f1e5"
+      "canonical": "{\"displayOptions\":{\"chartType\":\"funnel-steps\"},\"sections\":{\"filter\":[{\"defaultType\":\"list\",\"filterOperator\":\"contains\",\"filterType\":\"list\",\"filterValue\":[{\"cohort\":{\"id\":123,\"name\":\"PU\",\"negated\":false}}],\"resourceType\":\"events\",\"value\":\"$cohorts\"}],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Purchase\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+      "sha256": "afd5c6a597a57f400c0632f8d91f5173d635394dc95f352eb55f4aeb47c58a32"
     },
     {
-      "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsexclusions-test_string_exclusion_covers_all_steps",
-      "source": "corpus",
-      "normalized": false,
-      "params": {
-        "displayOptions": {
-          "chartType": "funnel-steps"
-        },
-        "sections": {
-          "filter": [],
-          "formula": [],
-          "group": [],
-          "show": [
-            {
-              "behavior": {
-                "aggregateBy": [],
-                "behaviors": [
-                  {
-                    "filters": [],
-                    "filtersDeterminer": "all",
-                    "funnelOrder": "loose",
-                    "id": null,
-                    "name": "A",
-                    "type": "event"
-                  },
-                  {
-                    "filters": [],
-                    "filtersDeterminer": "all",
-                    "funnelOrder": "loose",
-                    "id": null,
-                    "name": "B",
-                    "type": "event"
-                  },
-                  {
-                    "filters": [],
-                    "filtersDeterminer": "all",
-                    "funnelOrder": "loose",
-                    "id": null,
-                    "name": "C",
-                    "type": "event"
-                  }
-                ],
-                "conversionWindowDuration": 14,
-                "conversionWindowUnit": "day",
-                "exclusions": [
-                  {
-                    "event": "Logout",
-                    "steps": {
-                      "from": 1,
-                      "to": 3
-                    }
-                  }
-                ],
-                "filter": [],
-                "funnelOrder": "loose",
-                "resourceType": "events",
-                "type": "funnel"
-              },
-              "measurement": {
-                "math": "conversion_rate_unique",
-                "property": null,
-                "stepIndex": null
-              },
-              "type": "metric"
-            }
-          ],
-          "time": [
-            {
-              "dateRangeType": "in the last",
-              "unit": "day",
-              "window": {
-                "unit": "day",
-                "value": 30
-              }
-            }
-          ]
-        }
-      },
-      "canonical": "{\"displayOptions\":{\"chartType\":\"funnel-steps\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"A\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"B\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"C\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[{\"event\":\"Logout\",\"steps\":{\"from\":1,\"to\":3}}],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
-      "sha256": "eb85869d202264744169f113abdba8200a1760bbf59ae7047947223cf18f2d62"
-    },
-    {
-      "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsperstepfilters-test_filter_entry_has_correct_value",
-      "source": "corpus",
-      "normalized": false,
-      "params": {
-        "displayOptions": {
-          "chartType": "funnel-steps"
-        },
-        "sections": {
-          "filter": [],
-          "formula": [],
-          "group": [],
-          "show": [
-            {
-              "behavior": {
-                "aggregateBy": [],
-                "behaviors": [
-                  {
-                    "filters": [],
-                    "filtersDeterminer": "all",
-                    "funnelOrder": "loose",
-                    "id": null,
-                    "name": "Signup",
-                    "type": "event"
-                  },
-                  {
-                    "filters": [
-                      {
-                        "defaultType": "number",
-                        "filterOperator": "is greater than",
-                        "filterType": "number",
-                        "filterValue": 50,
-                        "resourceType": "events",
-                        "value": "amount"
-                      }
-                    ],
-                    "filtersDeterminer": "all",
-                    "funnelOrder": "loose",
-                    "id": null,
-                    "name": "Purchase",
-                    "type": "event"
-                  }
-                ],
-                "conversionWindowDuration": 14,
-                "conversionWindowUnit": "day",
-                "exclusions": [],
-                "filter": [],
-                "funnelOrder": "loose",
-                "resourceType": "events",
-                "type": "funnel"
-              },
-              "measurement": {
-                "math": "conversion_rate_unique",
-                "property": null,
-                "stepIndex": null
-              },
-              "type": "metric"
-            }
-          ],
-          "time": [
-            {
-              "dateRangeType": "in the last",
-              "unit": "day",
-              "window": {
-                "unit": "day",
-                "value": 30
-              }
-            }
-          ]
-        }
-      },
-      "canonical": "{\"displayOptions\":{\"chartType\":\"funnel-steps\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[{\"defaultType\":\"number\",\"filterOperator\":\"is greater than\",\"filterType\":\"number\",\"filterValue\":50,\"resourceType\":\"events\",\"value\":\"amount\"}],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Purchase\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
-      "sha256": "6f47b178784e9aa0a45352c896f99f6ed255644ac465b273980d62e99ddbfc98"
-    },
-    {
-      "name": "funnels/workspace.build_funnel_params/test_workspace_funnel-testbuildfunnelparamsvsqueryfunnel-test_params_has_sections_and_display_options",
+      "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsdefaults-test_filter_section_is_list",
       "source": "corpus",
       "normalized": false,
       "params": {
@@ -1197,7 +1158,138 @@
       "sha256": "821ff9f08a520c1e7afc6ed9a907c9178599bab23090dcbbbf5919be1529f8ed"
     },
     {
-      "name": "retention/workspace.build_retention_params/test_build_retention_params-testbuildretentionparamsdefaults-test_has_display_options_key",
+      "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsmixedsteps-test_funnel_step_empty_filters_same_as_none-1",
+      "source": "corpus",
+      "normalized": false,
+      "params": {
+        "displayOptions": {
+          "chartType": "funnel-steps"
+        },
+        "sections": {
+          "filter": [],
+          "formula": [],
+          "group": [],
+          "show": [
+            {
+              "behavior": {
+                "aggregateBy": [],
+                "behaviors": [
+                  {
+                    "filters": [],
+                    "filtersDeterminer": "all",
+                    "funnelOrder": "loose",
+                    "id": null,
+                    "name": "Signup",
+                    "type": "event"
+                  },
+                  {
+                    "filters": [],
+                    "filtersDeterminer": "all",
+                    "funnelOrder": "loose",
+                    "id": null,
+                    "name": "Purchase",
+                    "type": "event"
+                  }
+                ],
+                "conversionWindowDuration": 14,
+                "conversionWindowUnit": "day",
+                "exclusions": [],
+                "filter": [],
+                "funnelOrder": "loose",
+                "resourceType": "events",
+                "type": "funnel"
+              },
+              "measurement": {
+                "math": "conversion_rate_unique",
+                "property": null,
+                "stepIndex": null
+              },
+              "type": "metric"
+            }
+          ],
+          "time": [
+            {
+              "dateRangeType": "in the last",
+              "unit": "day",
+              "window": {
+                "unit": "day",
+                "value": 30
+              }
+            }
+          ]
+        }
+      },
+      "canonical": "{\"displayOptions\":{\"chartType\":\"funnel-steps\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Purchase\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+      "sha256": "821ff9f08a520c1e7afc6ed9a907c9178599bab23090dcbbbf5919be1529f8ed"
+    },
+    {
+      "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsreentrymode-test_reentry_mode_aggressive",
+      "source": "corpus",
+      "normalized": false,
+      "params": {
+        "displayOptions": {
+          "chartType": "funnel-steps"
+        },
+        "sections": {
+          "filter": [],
+          "formula": [],
+          "group": [],
+          "show": [
+            {
+              "behavior": {
+                "aggregateBy": [],
+                "behaviors": [
+                  {
+                    "filters": [],
+                    "filtersDeterminer": "all",
+                    "funnelOrder": "loose",
+                    "id": null,
+                    "name": "Signup",
+                    "type": "event"
+                  },
+                  {
+                    "filters": [],
+                    "filtersDeterminer": "all",
+                    "funnelOrder": "loose",
+                    "id": null,
+                    "name": "Purchase",
+                    "type": "event"
+                  }
+                ],
+                "conversionWindowDuration": 14,
+                "conversionWindowUnit": "day",
+                "exclusions": [],
+                "filter": [],
+                "funnelOrder": "loose",
+                "funnelReentryMode": "aggressive",
+                "resourceType": "events",
+                "type": "funnel"
+              },
+              "measurement": {
+                "math": "conversion_rate_unique",
+                "property": null,
+                "stepIndex": null
+              },
+              "type": "metric"
+            }
+          ],
+          "time": [
+            {
+              "dateRangeType": "in the last",
+              "unit": "day",
+              "window": {
+                "unit": "day",
+                "value": 30
+              }
+            }
+          ]
+        }
+      },
+      "canonical": "{\"displayOptions\":{\"chartType\":\"funnel-steps\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Purchase\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[],\"filter\":[],\"funnelOrder\":\"loose\",\"funnelReentryMode\":\"aggressive\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+      "sha256": "b6907f3f30872c0b92d8e62739c61f9c6d20b7bba7a927c25dfa00730ce10f0e"
+    },
+    {
+      "name": "retention/workspace.build_retention_params/test_build_retention_params-testbuildretentionparamscumulative-test_no_new_params_backward_compat",
       "source": "corpus",
       "normalized": false,
       "params": {
@@ -1286,7 +1378,7 @@
       "sha256": "dfdc3ecbf229936a7c9be2d5b0f5a4c2924a58b6f66bd5dbc777df3d0ae96220"
     },
     {
-      "name": "retention/workspace.build_retention_params/test_build_retention_params-testdatagroupidretention-test_build_retention_params_with_data_group_id",
+      "name": "retention/workspace.build_retention_params/test_build_retention_params-testbuildretentionparamspereventfilters-test_no_filters_produces_empty_array",
       "source": "corpus",
       "normalized": false,
       "params": {
@@ -1299,7 +1391,6 @@
         "sections": {
           "filter": [],
           "formula": [],
-          "globalDataGroupId": "5",
           "group": [],
           "show": [
             {
@@ -1372,8 +1463,8 @@
           }
         }
       },
-      "canonical": "{\"columnWidths\":{\"bar\":{}},\"displayOptions\":{\"chartType\":\"retention-curve\"},\"sections\":{\"filter\":[],\"formula\":[],\"globalDataGroupId\":\"5\",\"group\":[],\"show\":[{\"behavior\":{\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":null,\"name\":\"Login\",\"type\":\"event\"}],\"filter\":[],\"resourceType\":\"events\",\"retentionAlignmentType\":\"birth\",\"retentionCustomBucketSizes\":[],\"retentionUnit\":\"week\",\"type\":\"retention\"},\"measurement\":{\"math\":\"retention_rate\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]},\"sorting\":{\"bar\":{\"colSortAttrs\":[],\"sortBy\":\"column\"},\"line\":{\"colSortAttrs\":[{\"sortBy\":\"value\",\"sortOrder\":\"desc\",\"valueField\":\"averageValue\"}],\"sortBy\":\"column\"},\"table\":{\"colSortAttrs\":[{\"sortBy\":\"value\",\"sortOrder\":\"desc\",\"valueField\":\"size\",\"viewNLimit\":12}],\"sortBy\":\"column\"}}}",
-      "sha256": "aeca70764f110ca8d0be216a58d86635ef04d2bd4b8305f3f42508f6b0579a8f"
+      "canonical": "{\"columnWidths\":{\"bar\":{}},\"displayOptions\":{\"chartType\":\"retention-curve\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":null,\"name\":\"Login\",\"type\":\"event\"}],\"filter\":[],\"resourceType\":\"events\",\"retentionAlignmentType\":\"birth\",\"retentionCustomBucketSizes\":[],\"retentionUnit\":\"week\",\"type\":\"retention\"},\"measurement\":{\"math\":\"retention_rate\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]},\"sorting\":{\"bar\":{\"colSortAttrs\":[],\"sortBy\":\"column\"},\"line\":{\"colSortAttrs\":[{\"sortBy\":\"value\",\"sortOrder\":\"desc\",\"valueField\":\"averageValue\"}],\"sortBy\":\"column\"},\"table\":{\"colSortAttrs\":[{\"sortBy\":\"value\",\"sortOrder\":\"desc\",\"valueField\":\"size\",\"viewNLimit\":12}],\"sortBy\":\"column\"}}}",
+      "sha256": "dfdc3ecbf229936a7c9be2d5b0f5a4c2924a58b6f66bd5dbc777df3d0ae96220"
     }
   ]
 }

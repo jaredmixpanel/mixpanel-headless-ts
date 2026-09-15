@@ -1,42 +1,20 @@
-// Guard + construction tests for FrequencyBreakdown/FrequencyFilter
-// (phase2-design C7, packet P2-5c): translated from
-// tests/unit/test_query_types.py (TestFrequencyBreakdownConstruction /
-// TestFrequencyBreakdownValidation / TestFrequencyFilterConstruction /
-// TestFrequencyFilterValidation / TestCodedFrequencyBreakdownCodes /
-// TestCodedFrequencyFilterCodes), plus Risk #1 guard-order probes and a
-// C9 fast-check guard-totality property. (The Python frozen-dataclass
-// immutability/equality tests have no TS runtime analog — `readonly` is
-// the compile-time equivalent, and dataclass `==` is Python-only.)
+// FrequencyBreakdown / FrequencyFilter construction and guards (FB1..FB4,
+// FF1..FF5) with guard-order probes and fast-check guard-totality
+// properties. Mirrors the FrequencyBreakdown / FrequencyFilter classes of
+// tests/unit/test_query_types.py (construction, validation, coded-error
+// suites); frozen-dataclass immutability / `==` tests have no TS analog.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { VALID_FREQUENCY_FILTER_OPERATORS } from "../../../src/bookmarks/enums.js";
-import {
-  MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
+import { ParamValidationError } from "../../../src/errors.js";
+import type { FrequencyFilterOperator } from "../../../src/types/literals.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
 import {
   FrequencyBreakdown,
   FrequencyFilter,
 } from "../../../src/types/query-params/frequency.js";
-import type { FrequencyFilterOperator } from "../../../src/types/literals.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (cause) {
-    thrown = cause;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 describe("FrequencyBreakdown construction", () => {
   it("applies the Python bucket defaults", () => {
@@ -66,7 +44,7 @@ describe("FrequencyBreakdown construction", () => {
 
 describe("FrequencyBreakdown guards (source order: FB1, FB2, FB4, FB3)", () => {
   it("FB1_EMPTY_EVENT on empty/blank events", () => {
-    for (const event of ["", "   "]) {
+    for (const event of ["", " ".repeat(3)]) {
       expectGuard(() => new FrequencyBreakdown({ event }), "FB1_EMPTY_EVENT");
     }
   });
@@ -190,7 +168,7 @@ describe("FrequencyFilter construction", () => {
 
 describe("FrequencyFilter guards (rules FF1-FF5, source order)", () => {
   it("FF1_EMPTY_EVENT on empty/blank events", () => {
-    for (const event of ["", "   "]) {
+    for (const event of ["", " ".repeat(3)]) {
       expectGuard(
         () => new FrequencyFilter({ event, value: 5 }),
         "FF1_EMPTY_EVENT",
@@ -317,7 +295,7 @@ describe("FrequencyFilter guards (rules FF1-FF5, source order)", () => {
   });
 });
 
-describe("C9 guard-totality property (fast-check #4)", () => {
+describe("guard-totality properties (fast-check)", () => {
   it("unknown operators always raise the FF2 registry code", () => {
     fc.assert(
       fc.property(
@@ -332,10 +310,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
               operator: operator as FrequencyFilterOperator,
             });
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              cause.code === "FF2_INVALID_OPERATOR"
+              error instanceof ParamValidationError &&
+              error.code === "FF2_INVALID_OPERATOR"
             );
           }
         },
@@ -351,10 +329,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
           try {
             new FrequencyFilter({ event: "Login", value });
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              cause.code === "FF3_VALUE_NEGATIVE"
+              error instanceof ParamValidationError &&
+              error.code === "FF3_VALUE_NEGATIVE"
             );
           }
         },

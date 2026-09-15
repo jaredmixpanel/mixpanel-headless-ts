@@ -1,65 +1,39 @@
 /**
- * Pure-functional region probe for `/api/app/me` — TS port of
- * `mixpanel_headless/_internal/auth/region_probe.py` (whole file, B7-A2
- * packet §2.3, `b7-packets.md`).
+ * Pure-functional region probe: walk `us → eu → in` (or a caller-supplied
+ * order) issuing GET `/api/app/me` until one region accepts the
+ * credential. Owns the attempt bookkeeping, the network-vs-credential
+ * failure split and the alternate-host override rules (Python PR #235).
+ * Does no I/O of its own — HTTP goes through an injected
+ * {@link ClientFactory} / fetch, environment reads through a `getEnv`
+ * seam — and never logs; progress narration is the caller's hook.
  *
- * Walks a configurable region ordering (default `us → eu → in`),
- * issuing GET `/api/app/me` against each region's API base URL via a
- * caller-supplied {@link ClientFactory}. Returns the first 200 as a
- * {@link RegionProbeResult}; throws {@link RegionProbeError} carrying
- * the full attempt list when no region accepts the credential, or the
- * {@link RegionProbeNetworkError} subclass when EVERY attempt failed at
- * the network layer (including the `all([])` vacuous-truth edge for an
- * empty `order` — `region_probe.py:182-187`, packet Caution #9).
- *
- * Design constraints (ported from `region_probe.py` module docstring +
- * R9.1/R9.4):
- *
- * - **No I/O of its own.** All HTTP work goes through `clientFactory`;
- *   the real client construction ({@link probeClientFromFetch}) runs
- *   over an INJECTED fetch (R2.4) — no `node:*`, no `process.env`.
- * - **`probeRegion` itself takes no environment access.** Python's
- *   `probe_region_for_credential` reads `os.environ[token_env]`; the TS
- *   twin takes a `getEnv` seam (R9.4 — B8 wires `process.env`).
- * - **No logging.** Progress narration is the caller's `narrate` hook.
- *
- * Alternate-host override (Python PR #235): when `apiBaseUrl` is set,
- * every region maps to the same host, so {@link probeRegionForCredential}
- * collapses the walk to a single probe at that base — the region is the
- * injected region hint (`MP_REGION`) when it names a valid region, else
- * `us`. `appBaseUrl` alone re-homes `/me` but keeps the full `us → eu →
- * in` walk, because the discovered region still routes the live Query /
- * Export / Engage hosts. The overrides arrive injected (a bag or a
- * per-call provider); absent, they are read through the `getEnv` seam
- * (`MP_API_BASE_URL` / `MP_APP_BASE_URL` / `MP_REGION`) — the exact
- * twin of Python's `os.environ` reads, still with no `process` access
- * in `core`.
+ * @see mixpanel_headless._internal.auth.region_probe
  */
 
-import { cpSlice } from "../compat/codepoint.js";
-import { pythonRepr } from "../compat/python-str.js";
 import { MixpanelHttpError } from "../client/internals.js";
 import { createRequestExecutor } from "../client/transport.js";
 import {
   API_BASE_URL_ENV,
   APP_BASE_URL_ENV,
   appPathPrefix,
+  endpointBase,
+  type EndpointOverrides,
   endpointOverridesFromEnv,
   endpointOverridesProvider,
-  endpointBase,
+  type EndpointOverridesSource,
   hasApiBaseUrlOverride,
   normalizeBaseUrlOverride,
-  type EndpointOverrides,
-  type EndpointOverridesSource,
 } from "../client/url.js";
+import { cpSlice } from "../compat/codepoint.js";
+import { pythonRepr } from "../compat/python-str.js";
 import {
   ConfigError,
+  type RegionProbeAttempt,
   RegionProbeError,
   RegionProbeNetworkError,
-  type RegionProbeAttempt,
 } from "../errors.js";
 import type { Secret } from "../secret.js";
-import { base64EncodeUtf8, type AccountType, type Region } from "./account.js";
+import { type AccountType, base64EncodeUtf8, type Region } from "./account.js";
 
 /** One probe response as the probe consumes it (httpx `Response` slice). */
 export interface ProbeResponse {
@@ -78,43 +52,45 @@ export interface ProbeClient {
    * Issue a GET request.
    *
    * @param path - Request path (relative to the client's base URL).
-   * @param opts - Headers + per-request timeout (seconds, R2.12 —
-   *   Python spelling of the unit; ms conversion lives inside
+   * @param opts - Headers + per-request timeout in seconds (the Python
+   *   spelling of the unit; the millisecond conversion lives inside
    *   {@link probeClientFromFetch} at the transport call).
    * @returns The buffered response.
    */
-  get(
+  get: (
     path: string,
     opts: {
       headers: Readonly<Record<string, string>>;
       timeoutSeconds: number;
     },
-  ): Promise<ProbeResponse>;
+  ) => Promise<ProbeResponse>;
 
   /** Release the client (Python `httpx.Client.close`). */
-  close(): void;
+  close: () => void;
 }
 
 /** Builds a {@link ProbeClient} bound to a region's API base URL. */
 export type ClientFactory = (region: Region) => ProbeClient;
 
-/** GET path probed on every region (`region_probe.py:48`). */
+/** GET path probed on every region. */
 const ME_PATH = "/api/app/me";
 
 /**
  * Cap each captured response body so a misconfigured server returning
- * multi-MB HTML cannot bloat the in-memory {@link RegionProbeError}
- * (`region_probe.py:55`). Codepoint-counted (R11.6).
+ * multi-MB HTML cannot bloat the in-memory {@link RegionProbeError}.
+ * Codepoint-counted.
  */
 const MAX_RESPONSE_BODY_CHARS = 4096;
 
 /**
- * Outcome of a sequential region probe (`region_probe.py:58-82`).
+ * Outcome of a sequential region probe.
  *
- * `attempts` mirrors the failure tail (as 2-tuples, bodies DROPPED)
- * plus the successful `[region, 200]` entry — the error-path 3-tuple
- * shape lives on {@link RegionProbeError.attempts} instead (packet
- * Caution #5: two distinct tuple shapes).
+ * `attempts` mirrors the failure tail (as 2-tuples, bodies dropped)
+ * plus the successful `[region, 200]` entry; the error path carries a
+ * distinct 3-tuple shape (with bodies) on
+ * {@link RegionProbeError.attempts} instead.
+ *
+ * @see mixpanel_headless._internal.auth.region_probe.RegionProbeResult
  */
 export interface RegionProbeResult {
   /** The first region whose `/me` returned 200. */
@@ -124,17 +100,15 @@ export interface RegionProbeResult {
 }
 
 /**
- * The `cause.code → httpx class` reverse table (packet §2.3 item 5 /
- * Caution #8 — the D12 table's dual, committed in the LIBRARY).
+ * The `cause.code → httpx class` reverse table.
  *
  * The transport adapter normalizes fetch rejections to
- * {@link MixpanelHttpError} (R2.10) whose cause chain is
+ * {@link MixpanelHttpError} whose cause chain is
  * `TypeError("fetch failed") → Error{code}`; Python renders
- * `f"{type(exc).__name__}: {exc}"` (`region_probe.py:156`), so the
- * httpx class name must be recovered from the cause code (the
- * ConnectError cause's `name` is just `"Error"`). Vector-locked for
- * `ECONNREFUSED` only; the rest is principled best-effort, disclosed in
- * the shard RUN record.
+ * `f"{type(exc).__name__}: {exc}"`, so the httpx class name must be
+ * recovered from the cause code (the ConnectError cause's `name` is just
+ * `"Error"`). Corpus-locked for `ECONNREFUSED` only; the rest is
+ * best-effort.
  */
 const HTTPX_CLASS_BY_CAUSE_CODE: Readonly<Record<string, string>> = {
   ECONNREFUSED: "ConnectError",
@@ -144,7 +118,7 @@ const HTTPX_CLASS_BY_CAUSE_CODE: Readonly<Record<string, string>> = {
 
 /**
  * Render a transport failure as `<httpx-equivalent class>: <message>`
- * (the `f"{type(exc).__name__}: {exc}"` twin, `region_probe.py:156`).
+ * (the `f"{type(exc).__name__}: {exc}"` twin).
  *
  * @param error - The normalized transport error.
  * @returns The rendered attempt body.
@@ -167,43 +141,44 @@ function renderTransportFailure(error: MixpanelHttpError): string {
   return `${httpxClass}: ${error.message}`;
 }
 
-/** Options bag for {@link probeRegion} (Python kwonly params, R3.8). */
+/** Options bag for {@link probeRegion} (Python keyword-only parameters). */
 export interface ProbeRegionOptions {
   /**
-   * Per-region request timeout (float seconds). Default `5.0`. Each
-   * region gets its own timeout budget.
+   * Per-region request timeout in seconds; each region gets its own
+   * budget.
+   *
+   * @defaultValue `5.0`
    */
   readonly timeoutSeconds?: number | undefined;
   /**
-   * Probe ordering. Default `["us", "eu", "in"]` per spec R-1. Pass a
-   * custom array to skip regions or change the sequence.
+   * Probe ordering. Pass a custom array to skip regions or change the
+   * sequence.
+   *
+   * @defaultValue `["us", "eu", "in"]`
    */
   readonly order?: readonly Region[] | undefined;
 }
 
 /**
- * Sequentially probe regions until one accepts the credential (port of
- * `probe_region`, `region_probe.py:85-191`).
+ * Sequentially probe regions until one accepts the credential.
  *
  * For each region in `order`, builds a client via
  * `clientFactory(region)`, issues GET `/api/app/me` carrying `headers`,
- * and returns on the first 200 — subsequent regions are NOT probed
+ * and returns on the first 200 — subsequent regions are not probed
  * (their factories are never invoked). Network errors are recorded as
  * status code `0` with the failure reason in the attempt body. Every
  * client is closed in a `finally` per region — including the 200 path
- * (close BEFORE returning) and the network-error `continue` path
- * (packet Caution #6).
+ * (closed before returning) and the network-error `continue` path.
  *
  * @param clientFactory - Region → client builder (injection seam).
  * @param headers - Request headers carrying the credential.
  * @param options - `timeoutSeconds` (default 5.0) + `order`.
  * @returns The resolved region and the ordered attempt list.
- * @throws RegionProbeNetworkError - Every attempt failed at the network
- *   layer (`all(status == 0)` — vacuously true for an EMPTY `order`:
- *   `attempts: []`, packet Caution #9).
- * @throws RegionProbeError - Every region failed with at least one
+ * @throws {@link RegionProbeNetworkError} - Every attempt failed at the network
+ *   layer (`all(status == 0)` — vacuously true for an empty `order`,
+ *   which raises with `attempts: []` exactly as Python's `all([])` does).
+ * @throws {@link RegionProbeError} - Every region failed with at least one
  *   HTTP (non-network) rejection.
- *
  * @example
  * ```typescript
  * const result = await probeRegion(factory, {
@@ -211,6 +186,7 @@ export interface ProbeRegionOptions {
  * });
  * // result.region === "us"; result.attempts === [["us", 200]]
  * ```
+ * @see mixpanel_headless._internal.auth.region_probe.probe_region
  */
 export async function probeRegion(
   clientFactory: ClientFactory,
@@ -229,24 +205,25 @@ export async function probeRegion(
       let response: ProbeResponse;
       try {
         response = await client.get(ME_PATH, { headers, timeoutSeconds });
-      } catch (exc) {
-        if (exc instanceof MixpanelHttpError) {
+      } catch (error) {
+        if (error instanceof MixpanelHttpError) {
           // Network-layer failure: DNS, TLS, connect refused, etc.
           // Recorded as status 0 so callers can render it consistently
-          // with HTTP failures in the same table (:152-157).
-          failureAttempts.push([region, 0, renderTransportFailure(exc)]);
+          // with HTTP failures in the same table.
+          failureAttempts.push([region, 0, renderTransportFailure(error)]);
           continue;
         }
-        throw exc;
+        throw error;
       }
       if (response.status === 200) {
         successAttempts.push([region, 200]);
         // Mirror the failure tail back into the success attempts so the
         // caller sees the full probe history (US 401 → EU 200 appears
-        // as [["us", 401], ["eu", 200]]) — bodies dropped (:163-166).
-        const fullAttempts = failureAttempts
-          .map(([r, s]) => [r, s] as const)
-          .concat(successAttempts);
+        // as [["us", 401], ["eu", 200]]) — bodies dropped.
+        const fullAttempts = [
+          ...failureAttempts.map(([r, s]) => [r, s] as const),
+          ...successAttempts,
+        ];
         return { region, attempts: fullAttempts };
       }
       failureAttempts.push([
@@ -260,7 +237,7 @@ export async function probeRegion(
   }
 
   // Every region failed. Distinguish "credential rejected" from "could
-  // not reach any region at the network layer" (:182-191). Python
+  // not reach any region at the network layer". Python
   // `all([])` is True — an empty order raises the network subclass with
   // an empty attempt list.
   const attempts: readonly RegionProbeAttempt[] = failureAttempts;
@@ -277,18 +254,28 @@ export async function probeRegion(
 }
 
 /**
- * The real {@link ProbeClient} construction over an injected fetch —
- * consumed by {@link probeRegionForCredential} (and the conformance
- * binding, packet §2.7).
+ * Build a {@link ProbeClient} over an injected fetch, bound to one base
+ * URL — the real client behind {@link probeRegionForCredential} and the
+ * conformance binding.
  *
- * Request assembly is string concatenation only (R2.13); every
- * transport failure surfaces as {@link MixpanelHttpError} via the B0
- * adapter (R2.10 — `client/transport.ts`); the seconds → ms conversion
- * happens inside the adapter (R2.12).
- *
- * @param fetchImpl - The injected fetch (R2.4).
- * @param baseUrl - Scheme+host base (e.g. `https://mixpanel.com`).
+ * @remarks
+ * Request assembly is string concatenation only; every transport failure
+ * surfaces as {@link MixpanelHttpError} via the shared adapter
+ * (`client/transport.ts`), which also performs the seconds → ms
+ * conversion.
+ * @param fetchImpl - The injected fetch.
+ * @param baseUrl - Scheme + host base (e.g. `https://mixpanel.com`),
+ *   without a trailing slash.
  * @returns A probe client issuing `GET baseUrl + path`.
+ * @example
+ * ```typescript
+ * const client = probeClientFromFetch(fetch, "https://mixpanel.com");
+ * const response = await client.get("/api/app/me", {
+ *   headers: { Authorization: "Basic …" },
+ *   timeoutSeconds: 5,
+ * });
+ * // response.status === 200 when the credential is valid in `us`
+ * ```
  */
 export function probeClientFromFetch(
   fetchImpl: typeof fetch,
@@ -316,26 +303,23 @@ export function probeClientFromFetch(
 }
 
 /**
- * Derive the probe client base from an App API URL — TS port of
- * `api_client._probe_base_url` (PR #235; formerly the inline `_factory`
- * derivation, `region_probe.py:276-277`).
+ * Derive the probe client base from an App API URL (Python PR #235;
+ * formerly the inline `_factory` derivation).
  *
  * {@link probeRegion} issues `/api/app/me` relative to the client base,
- * so the base must be the App API URL MINUS its `/api/app` suffix. That
+ * so the base must be the App API URL minus its `/api/app` suffix. That
  * keeps any extra path prefix an override base carries (e.g.
  * `https://proxy.example/mp`) in front of `/api/app/me`. When the URL
  * does not end in `/api/app` the path is dropped entirely and the
- * scheme + host are used (the pre-override behaviour: Python
- * `urlsplit` → `urlunsplit((scheme, netloc, "", "", ""))`; the URL
- * parser's `origin` is equivalent for canonical http(s) URLs — the
- * disclosed skew for NON-canonical inputs, `b7-reviewA-resolution.md`
- * SEM-F3, is unchanged: `origin` drops default ports and userinfo and
- * lowercases scheme/host).
+ * scheme + host are used (Python `urlsplit` →
+ * `urlunsplit((scheme, netloc, "", "", ""))`). The URL parser's
+ * `origin` is equivalent for canonical http(s) URLs; for non-canonical
+ * inputs it also drops default ports and userinfo and lowercases
+ * scheme/host, which Python's `urlunsplit` does not.
  *
  * @param appUrl - The App API base URL for a region (live or overridden).
  * @returns The base URL to bind the probe client to, without a trailing
  *   slash.
- *
  * @example
  * ```typescript
  * probeBaseUrl("https://mixpanel.com/api/app");
@@ -343,6 +327,7 @@ export function probeClientFromFetch(
  * probeBaseUrl("https://proxy.example/mp/api/app/");
  * // "https://proxy.example/mp"
  * ```
+ * @see mixpanel_headless._internal.api_client._probe_base_url
  */
 export function probeBaseUrl(appUrl: string): string {
   const trimmed = appUrl.replace(/\/+$/, "");
@@ -357,17 +342,17 @@ export function probeBaseUrl(appUrl: string): string {
 const VALID_REGIONS: readonly Region[] = ["us", "eu", "in"];
 
 /**
- * The single-region probe order when `apiBaseUrl` is active — TS port
- * of `api_client._override_probe_order` (PR #235).
+ * Return the single-region probe order forced by an `apiBaseUrl`
+ * override, or `null` when no override is active (Python PR #235).
  *
  * With `apiBaseUrl` set, every family — and therefore every region —
  * resolves to the same host, so walking `us → eu → in` would hit it
  * three times on failure for no gain. The region label still has to be
- * SOME valid region (it is persisted on the account and used for
+ * some valid region (it is persisted on the account and used for
  * non-URL purposes), so it is taken from `requestedRegion` (the
  * `MP_REGION` hint) when that is valid, else `us`.
  *
- * `appBaseUrl` on its own deliberately does NOT collapse the walk:
+ * `appBaseUrl` on its own deliberately does not collapse the walk:
  * Query, Export and Engage still go to the live regional hosts, so the
  * region the probe discovers still decides where those requests land.
  *
@@ -375,12 +360,12 @@ const VALID_REGIONS: readonly Region[] = ["us", "eu", "in"];
  * @param requestedRegion - The `MP_REGION` hint (raw; may be anything).
  * @returns A one-element order when `apiBaseUrl` is set; `null`
  *   otherwise (callers then use `probeRegion`'s default order).
- *
  * @example
  * ```typescript
  * overrideProbeOrder({ apiBaseUrl: "http://127.0.0.1:8080" }, "eu");
  * // ["eu"]
  * ```
+ * @see mixpanel_headless._internal.api_client._override_probe_order
  */
 export function overrideProbeOrder(
   overrides: EndpointOverrides,
@@ -398,9 +383,9 @@ export function overrideProbeOrder(
 }
 
 /**
- * The first `mp login` probe narration line under an override — TS port
- * of `api_client._override_probe_narration` (PR #235). Names whichever
- * override(s) are active so a user debugging a login failure sees the
+ * Return the first `mp login` probe narration line under an override, or
+ * `null` when none is active (Python PR #235). Names whichever
+ * override(s) apply so a user debugging a login failure sees the
  * configuration that actually shaped the probe.
  *
  * @param overrides - The override bag.
@@ -408,12 +393,12 @@ export function overrideProbeOrder(
  *   legacy line). With `apiBaseUrl` set: a line naming the single probe
  *   base. With only `appBaseUrl` set: a line saying regions are still
  *   walked, at the App override base.
- *
  * @example
  * ```typescript
  * overrideProbeNarration({ appBaseUrl: "http://app.internal:9000" });
  * // "Probing regions at http://app.internal:9000 (MP_APP_BASE_URL override) for /me access ..."
  * ```
+ * @see mixpanel_headless._internal.api_client._override_probe_narration
  */
 export function overrideProbeNarration(
   overrides: EndpointOverrides,
@@ -437,7 +422,7 @@ export function overrideProbeNarration(
   return `Probing regions at ${base} ${label} for /me access ...`;
 }
 
-/** Options bag for {@link probeRegionForCredential} (packet §2.3). */
+/** Options bag for {@link probeRegionForCredential}. */
 export interface ProbeRegionForCredentialOptions {
   /** `"service_account"` or `"oauth_token"`; other types are rejected. */
   readonly account_type: AccountType;
@@ -447,17 +432,21 @@ export interface ProbeRegionForCredentialOptions {
   readonly secret: Secret | null;
   /** Inline `oauth_token` bearer (mutually exclusive with `token_env`). */
   readonly token: Secret | null;
-  /** Env-var NAME carrying the bearer (read via `getEnv` at call time). */
+  /** Env-var name carrying the bearer (read via `getEnv` at call time). */
   readonly token_env: string | null;
-  /** Optional per-step progress hook (CLI narration; default silent). */
+  /**
+   * Per-step progress hook (CLI narration); `null` is silent.
+   *
+   * @defaultValue `null`
+   */
   readonly narrate?: ((msg: string) => void) | null | undefined;
-  /** R9.4 seam for the single env read — B8 wires `process.env`. */
+  /** The single env read (`process.env` on Node); `core` never reads it directly. */
   readonly getEnv: (name: string) => string | undefined;
-  /** The injected fetch the real probe clients run over (R2.4). */
+  /** The injected fetch the real probe clients run over. */
   readonly fetchImpl: typeof fetch;
   /**
-   * Alternate-host overrides (PR #235) — a bag or per-call provider.
-   * Absent → read through `getEnv` (`MP_API_BASE_URL` /
+   * Alternate-host overrides (Python PR #235) — a bag or per-call
+   * provider. Absent → read through `getEnv` (`MP_API_BASE_URL` /
    * `MP_APP_BASE_URL`), Python's own source.
    */
   readonly endpointOverrides?: EndpointOverridesSource | undefined;
@@ -470,23 +459,21 @@ export interface ProbeRegionForCredentialOptions {
 }
 
 /**
- * Build the credential header, probe `us → eu → in`, return the region
- * (port of `probe_region_for_credential`, `region_probe.py:194-287`).
+ * Build the credential header, probe `us → eu → in`, return the region.
  *
- * Under an `apiBaseUrl` override (PR #235) the walk collapses to one
- * probe at the override base and the returned region is the region
+ * Under an `apiBaseUrl` override (Python PR #235) the walk collapses to
+ * one probe at the override base and the returned region is the region
  * hint (when valid) or `us` — see {@link overrideProbeOrder}.
  *
  * @param options - Credential material + seams (see the field docs).
  * @returns The first region whose `/me` returned 200 (under an
  *   override: the single probed region).
- * @throws ConfigError - Missing credential material for the given
+ * @throws {@link ConfigError} - Missing credential material for the given
  *   `account_type`, or `token_env` points at an unset/empty variable.
- * @throws RegionProbeError - Propagated from {@link probeRegion} when
+ * @throws {@link RegionProbeError} - Propagated from {@link probeRegion} when
  *   no region accepts the credential.
- * @throws RegionProbeNetworkError - Propagated from {@link probeRegion}
+ * @throws {@link RegionProbeNetworkError} - Propagated from {@link probeRegion}
  *   when every probe failed at the network layer.
- *
  * @example
  * ```typescript
  * const region = await probeRegionForCredential({
@@ -495,10 +482,11 @@ export interface ProbeRegionForCredentialOptions {
  *   secret: new Secret("hunter2"),
  *   token: null,
  *   token_env: null,
- *   getEnv: (name) => process.env[name], // B8 wiring
+ *   getEnv: (name) => process.env[name], // what @mixpanel-headless/node passes
  *   fetchImpl: fetch,
  * });
  * ```
+ * @see mixpanel_headless._internal.auth.region_probe.probe_region_for_credential
  */
 export async function probeRegionForCredential(
   options: ProbeRegionForCredentialOptions,
@@ -513,27 +501,25 @@ export async function probeRegionForCredential(
         "service_account region probe requires `username` and `secret`.",
       );
     }
-    // UTF-8 bytes then base64 — never `btoa` on raw UTF-16 (packet
-    // Caution #10; `region_probe.py:246-247`).
+    // UTF-8 bytes then base64 — never `btoa` on raw UTF-16.
     const raw = `${username}:${secret.reveal()}`;
     headers = { Authorization: `Basic ${base64EncodeUtf8(raw)}` };
   } else if (account_type === "oauth_token") {
     let bearer: string;
     if (token !== null) {
       bearer = token.reveal();
-    } else if (token_env !== null) {
+    } else if (token_env === null) {
+      throw new ConfigError(
+        "oauth_token region probe requires `token` or `token_env`.",
+      );
+    } else {
       bearer = getEnv(token_env) ?? "";
       if (bearer === "") {
-        // Python `if not bearer` — unset AND empty both reject
-        // (:252-260).
+        // Python `if not bearer` — unset and empty both reject.
         throw new ConfigError(
           `--token-env ${pythonRepr(token_env)} is unset; cannot probe region.`,
         );
       }
-    } else {
-      throw new ConfigError(
-        "oauth_token region probe requires `token` or `token_env`.",
-      );
     }
     headers = { Authorization: `Bearer ${bearer}` };
   } else {
@@ -542,7 +528,7 @@ export async function probeRegionForCredential(
     );
   }
 
-  // PR #235: overrides injected, else Python's env reads via the seam.
+  // Overrides injected, else Python's env reads via the seam.
   const getOverrides =
     options.endpointOverrides === undefined
       ? endpointOverridesFromEnv(getEnv)
@@ -554,9 +540,9 @@ export async function probeRegionForCredential(
       : (options.regionHint ?? undefined);
 
   /**
-   * Build a region-scoped probe client bound to the App API host
-   * (the Python `_factory` twin, `region_probe.py:267-278`; base via
-   * {@link probeBaseUrl} so an override base keeps its path prefix).
+   * Build a region-scoped probe client bound to the App API host (the
+   * Python `_factory` twin; base via {@link probeBaseUrl} so an override
+   * base keeps its path prefix).
    *
    * @param region - The region to probe (ignored for URL purposes when
    *   an `apiBaseUrl` override is active).

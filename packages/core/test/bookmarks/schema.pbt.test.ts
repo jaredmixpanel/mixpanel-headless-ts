@@ -1,35 +1,19 @@
-/**
- * Layer-3 translation of `tests/unit/test_bookmark_schema_pbt.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 387 LOC,
- * 7 classes) — fast-check twins of the Hypothesis strategies, same
- * shapes, same filters, same example budgets.
- *
- * Strategy mirroring notes (R10.2):
- * - `st.text(min_size=1, max_size=50)` → `fc.string` over the same
- *   size window with `unit: "binary"` so non-BMP code points can be
- *   generated (the B2 ASSERT-F1 narrowing fix).
- * - `_safe_extra_field_names` mirrors the `a-z`, 8..20 alphabet and the
- *   `_KNOWN_FIELDS` filter; the known-field set is rebuilt here from
- *   the ported model specs, so it drifts with them exactly as the
- *   Python set drifts with `model_fields`.
- * - `TestRoundtripSoundness` asserts the twin's OBSERVABLE half only:
- *   the port has validators, not parsers, so there is no `model_dump`
- *   to round-trip (see `schema.test.ts` header). The
- *   "validate → no errors" halves translate verbatim; the
- *   "dump → re-validate" halves become a second validation of the same
- *   input, which is what the property is guarding (statelessness).
- */
-
-import { describe, it, expect } from "vitest";
+// fast-check twins of `tests/unit/test_bookmark_schema_pbt.py` (all seven
+// classes): same shapes, filters and example budgets. `st.text` →
+// `fc.string({ unit: "binary" })` so non-BMP code points are generated; the
+// known-field set is rebuilt from the ported model specs. The port has
+// validators, not parsers, so "dump → re-validate" halves re-validate the same input.
 import fc from "fast-check";
+import { describe, expect, it } from "vitest";
+
 import {
   DISPLAY_OPTIONS_MODEL,
   FLOWS_BOOKMARK_PARAMS_MODEL,
   FLOWS_BOOKMARK_STEP_MODEL,
+  getRootModelForBookmarkType,
   INSIGHTS_BOOKMARK_PARAMS_MODEL,
   PARTIAL_UPDATE_SUB_MODELS,
   SECTIONS_MODEL,
-  getRootModelForBookmarkType,
 } from "../../src/bookmarks/schema.js";
 import {
   SORT_BY_COLUMNS_CONFIG_MODEL,
@@ -42,7 +26,7 @@ import type { ValidationError } from "../../src/errors.js";
 type Dict = Record<string, unknown>;
 
 /**
- * Port of `_valid_minimal_insights` (`test_bookmark_schema_pbt.py:44-57`).
+ * Port of `_valid_minimal_insights`.
  *
  * @returns A fresh minimal valid `InsightsBookmarkParams` dict.
  */
@@ -249,7 +233,7 @@ const safeExtraFieldNames = fc
  * Port of `_INSIGHTS_LEGACY_FIELDS` (`:100-133`) — the 32 documented
  * `Ignore[T]` fields with type-correct values.
  */
-const INSIGHTS_LEGACY_FIELDS: readonly (readonly [string, unknown])[] = [
+const INSIGHTS_LEGACY_FIELDS: ReadonlyArray<readonly [string, unknown]> = [
   ["alignment", "any-json-value"],
   ["anchor_position", 1],
   ["anchorPosition", 1],
@@ -294,72 +278,80 @@ function validateInsights(params: unknown): ValidationError[] {
   return validateWithPydantic(INSIGHTS_BOOKMARK_PARAMS_MODEL.validate, params);
 }
 
-describe("TestRoundtripSoundness", () => {
-  it("test_insights_minimal_roundtrip_no_errors", () => {
+describe("Roundtrip soundness", () => {
+  // python: TestRoundtripSoundness
+  it("insights minimal roundtrip no errors", () => {
+    // python: test_insights_minimal_roundtrip_no_errors
     fc.assert(
       fc.property(
         fc.string({ minLength: 1, maxLength: 50, unit: "binary" }),
         (name) => {
           const params = validMinimalInsights();
-          params.name = name;
-          expect(validateInsights(params)).toEqual([]);
+          params["name"] = name;
+          expect(validateInsights(params)).toStrictEqual([]);
           // The twin has no `model_dump`; re-validating the same input
           // is the statelessness half of the Python property.
-          expect(validateInsights(params)).toEqual([]);
+          expect(validateInsights(params)).toStrictEqual([]);
         },
       ),
       { numRuns: 50 },
     );
   });
 
-  it("test_sort_by_columns_roundtrip", () => {
+  it("sort by columns roundtrip", () => {
+    // python: test_sort_by_columns_roundtrip
     fc.assert(
       fc.property(fc.constantFrom("column"), (sortBy) => {
         const raw = { sortBy, colSortAttrs: [] };
         expect(
           validateWithPydantic(SORT_BY_COLUMNS_CONFIG_MODEL.validate, raw),
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 20 },
     );
   });
 
-  it("test_flows_step_roundtrip", () => {
+  it("flows step roundtrip", () => {
+    // python: test_flows_step_roundtrip
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 10 }), (forward) => {
         expect(
           FLOWS_BOOKMARK_STEP_MODEL.validate({ event: "Login", forward }),
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 20 },
     );
   });
 });
 
-describe("TestValidatorIdempotence", () => {
-  it("test_validator_no_state_leak", () => {
+describe("Validator idempotence", () => {
+  // python: TestValidatorIdempotence
+  it("validator no state leak", () => {
+    // python: test_validator_no_state_leak
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 5 }), (extraCount) => {
         const valid = validMinimalInsights();
-        expect(validateInsights(valid)).toEqual([]);
+        expect(validateInsights(valid)).toStrictEqual([]);
         const bad: Dict = { ...valid };
         for (let i = 0; i <= extraCount; i += 1) {
           bad[`definitely_unknown_${String(i)}`] = i;
         }
         expect(validateInsights(bad).length).toBeGreaterThanOrEqual(1);
-        expect(validateInsights(valid)).toEqual([]);
+        expect(validateInsights(valid)).toStrictEqual([]);
       }),
       { numRuns: 20 },
     );
   });
 });
 
-describe("TestExtraFieldRejection", () => {
-  it("test_unknown_field_on_sections_rejected", () => {
+describe("Extra field rejection", () => {
+  // python: TestExtraFieldRejection
+  it("unknown field on sections rejected", () => {
+    // python: test_unknown_field_on_sections_rejected
     fc.assert(
       fc.property(safeExtraFieldNames, (fieldName) => {
         const params = validMinimalInsights();
-        (params.sections as Dict)[fieldName] = "anything";
+        (params["sections"] as Dict)[fieldName] = "anything";
         const errs = validateInsights(params);
         expect(
           errs.some(
@@ -371,12 +363,13 @@ describe("TestExtraFieldRejection", () => {
     );
   });
 
-  it("test_unknown_field_on_behavior_rejected", () => {
+  it("unknown field on behavior rejected", () => {
+    // python: test_unknown_field_on_behavior_rejected
     fc.assert(
       fc.property(safeExtraFieldNames, (fieldName) => {
         const params = validMinimalInsights();
-        const show = (params.sections as Dict).show as Dict[];
-        (show[0]!.behavior as Dict)[fieldName] = 1;
+        const show = (params["sections"] as Dict)["show"] as Dict[];
+        (show[0]!["behavior"] as Dict)[fieldName] = 1;
         const errs = validateInsights(params);
         expect(
           errs.some(
@@ -388,7 +381,8 @@ describe("TestExtraFieldRejection", () => {
     );
   });
 
-  it("test_unknown_field_on_sort_config_rejected", () => {
+  it("unknown field on sort config rejected", () => {
+    // python: test_unknown_field_on_sort_config_rejected
     fc.assert(
       fc.property(safeExtraFieldNames, (fieldName) => {
         const bad: Dict = {
@@ -411,14 +405,16 @@ describe("TestExtraFieldRejection", () => {
   });
 });
 
-describe("TestRequiredFieldRejection", () => {
-  it("test_missing_required_top_level_field_rejected", () => {
+describe("Required field rejection", () => {
+  // python: TestRequiredFieldRejection
+  it("missing required top level field rejected", () => {
+    // python: test_missing_required_top_level_field_rejected
     fc.assert(
       fc.property(
         fc.constantFrom("displayOptions", "sections"),
         (fieldName) => {
           const params = validMinimalInsights();
-          delete params[fieldName];
+          Reflect.deleteProperty(params, fieldName);
           const errs = validateInsights(params);
           expect(
             errs.some(
@@ -432,11 +428,12 @@ describe("TestRequiredFieldRejection", () => {
     );
   });
 
-  it("test_missing_required_sections_field_rejected", () => {
+  it("missing required sections field rejected", () => {
+    // python: test_missing_required_sections_field_rejected
     fc.assert(
       fc.property(fc.constantFrom("show", "time"), (fieldName) => {
         const params = validMinimalInsights();
-        delete (params.sections as Dict)[fieldName];
+        Reflect.deleteProperty(params["sections"] as Dict, fieldName);
         const errs = validateInsights(params);
         expect(
           errs.some(
@@ -449,7 +446,8 @@ describe("TestRequiredFieldRejection", () => {
   });
 });
 
-describe("TestDiscriminatorRejection", () => {
+describe("Discriminator rejection", () => {
+  // python: TestDiscriminatorRejection
   const KNOWN_METRIC_TYPES: ReadonlySet<string> = new Set([
     "event",
     "simple",
@@ -466,7 +464,8 @@ describe("TestDiscriminatorRejection", () => {
     "metric",
   ]);
 
-  it("test_bad_behavior_type_rejected", () => {
+  it("bad behavior type rejected", () => {
+    // python: test_bad_behavior_type_rejected
     fc.assert(
       fc.property(
         fc
@@ -474,8 +473,8 @@ describe("TestDiscriminatorRejection", () => {
           .filter((s) => !KNOWN_METRIC_TYPES.has(s)),
         (badType) => {
           const params = validMinimalInsights();
-          const show = (params.sections as Dict).show as Dict[];
-          (show[0]!.behavior as Dict).type = badType;
+          const show = (params["sections"] as Dict)["show"] as Dict[];
+          (show[0]!["behavior"] as Dict)["type"] = badType;
           const errs = validateInsights(params);
           expect(
             errs.some(
@@ -490,7 +489,8 @@ describe("TestDiscriminatorRejection", () => {
     );
   });
 
-  it("test_bad_sort_by_rejected", () => {
+  it("bad sort by rejected", () => {
+    // python: test_bad_sort_by_rejected
     const KNOWN_SORT_BY: ReadonlySet<string> = new Set([
       "column",
       "value",
@@ -516,20 +516,23 @@ describe("TestDiscriminatorRejection", () => {
   });
 });
 
-describe("TestLegacyFieldTolerance", () => {
-  it("test_legacy_field_tolerated", () => {
+describe("Legacy field tolerance", () => {
+  // python: TestLegacyFieldTolerance
+  it("legacy field tolerated", () => {
+    // python: test_legacy_field_tolerated
     fc.assert(
       fc.property(fc.constantFrom(...INSIGHTS_LEGACY_FIELDS), (field) => {
         const [fieldName, fieldValue] = field;
         const params = validMinimalInsights();
         params[fieldName] = fieldValue;
-        expect(validateInsights(params)).toEqual([]);
+        expect(validateInsights(params)).toStrictEqual([]);
       }),
       { numRuns: INSIGHTS_LEGACY_FIELDS.length },
     );
   });
 
-  it("test_multiple_legacy_fields_tolerated", () => {
+  it("multiple legacy fields tolerated", () => {
+    // python: test_multiple_legacy_fields_tolerated
     fc.assert(
       fc.property(
         fc
@@ -544,7 +547,7 @@ describe("TestLegacyFieldTolerance", () => {
           for (const [fieldName, fieldValue] of fields) {
             params[fieldName] = fieldValue;
           }
-          expect(validateInsights(params)).toEqual([]);
+          expect(validateInsights(params)).toStrictEqual([]);
         },
       ),
       { numRuns: 20 },
@@ -552,20 +555,22 @@ describe("TestLegacyFieldTolerance", () => {
   });
 });
 
-describe("TestDispatchConsistency", () => {
-  it("test_dispatch_returns_consistent_class", () => {
+describe("Dispatch consistency", () => {
+  // python: TestDispatchConsistency
+  it("dispatch returns consistent class", () => {
+    // python: test_dispatch_returns_consistent_class
     fc.assert(
       fc.property(
         fc.constantFrom("insights", "funnels", "retention", "flows", "user"),
         (bt) => {
-          const m = getRootModelForBookmarkType(bt);
-          if (bt === "insights" || bt === "funnels" || bt === "retention") {
-            expect(m).toBe(INSIGHTS_BOOKMARK_PARAMS_MODEL);
-          } else if (bt === "flows") {
-            expect(m).toBe(FLOWS_BOOKMARK_PARAMS_MODEL);
-          } else {
-            expect(m).toBeNull();
-          }
+          const expected = {
+            insights: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            funnels: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            retention: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            flows: FLOWS_BOOKMARK_PARAMS_MODEL,
+            user: null,
+          }[bt];
+          expect(getRootModelForBookmarkType(bt)).toBe(expected);
         },
       ),
       { numRuns: 5 },
@@ -573,7 +578,7 @@ describe("TestDispatchConsistency", () => {
   });
 
   it("returns null for unknown and empty bookmark types", () => {
-    // R10.9 `get_root_model_family` edge probe: Python's `dict.get()`
+    // `get_root_model_family` edge: Python's `dict.get()`
     // default makes "unknown" indistinguishable from the explicit
     // `"user" -> None` entry.
     for (const bt of ["", "insightz", "USER", "𝒳", "sorting"]) {
@@ -582,8 +587,8 @@ describe("TestDispatchConsistency", () => {
   });
 
   it("exposes exactly the two partial-update sub-models", () => {
-    // `sorting` is deliberately excluded (`bookmark_schema.py:362-369`).
-    expect([...PARTIAL_UPDATE_SUB_MODELS.keys()]).toEqual([
+    // `sorting` is deliberately excluded (`bookmark_schema.PARTIAL_UPDATE_SUB_MODELS`).
+    expect([...PARTIAL_UPDATE_SUB_MODELS.keys()]).toStrictEqual([
       "sections",
       "displayOptions",
     ]);
@@ -600,6 +605,6 @@ describe("TestDispatchConsistency", () => {
         FLOWS_BOOKMARK_PARAMS_MODEL.validate,
         validMinimalFlows(),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });

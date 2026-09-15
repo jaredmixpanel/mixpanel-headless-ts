@@ -1,28 +1,30 @@
-// Protocol-conformance tests for oracle-ts (design D14; the normative
-// spec is conformance/schema/oracle-protocol.md in the Python repo).
-// Mirrors the oracle-py suite (conformance/tests/test_oracle_protocol.py)
-// so both bridges are pinned to the same observable behavior, plus the
-// TS-specific raw-token traps: nested integral floats and integer-like
-// dict-key ordering, which only this side can get wrong.
+// Protocol conformance for oracle-ts (normative spec:
+// conformance/schema/oracle-protocol.md in the Python repo). Mirrors the
+// oracle-py suite so both bridges pin the same observable behaviour, plus
+// the TS-specific raw-token traps (nested integral floats, integer-like
+// dict-key ordering).
+
 import { describe, expect, it } from "vitest";
 
+import { JsonNumber } from "@mixpanel-headless/conformance-runner";
+import { codepoints } from "@mixpanel-headless/core";
+
+import {
+  parseRawJson,
+  RawObject,
+  serializeAsciiJson,
+  toJsonValue,
+} from "../oracle/raw-json.js";
 import {
   JSONRPC_INTERNAL_ERROR,
   JSONRPC_INVALID_PARAMS,
   JSONRPC_INVALID_REQUEST,
   JSONRPC_METHOD_NOT_FOUND,
   JSONRPC_PARSE_ERROR,
+  type OracleIdentity,
   OracleServer,
   PROTOCOL_VERSION,
-  type OracleIdentity,
 } from "../oracle/server.js";
-import {
-  RawObject,
-  parseRawJson,
-  serializeAsciiJson,
-  toJsonValue,
-} from "../oracle/raw-json.js";
-import { JsonNumber } from "../../conformance-runner/src/json-value.js";
 
 /** Fixed identity injected in every test (no filesystem dependence). */
 const TEST_IDENTITY: OracleIdentity = {
@@ -61,7 +63,7 @@ async function serveLine(
 ): Promise<Envelope> {
   const response = await server.handleLine(line);
   expect(response).not.toBeNull();
-  return JSON.parse(response as string) as Envelope;
+  return JSON.parse(response!) as Envelope;
 }
 
 /**
@@ -99,13 +101,13 @@ async function call(
 ): Promise<Record<string, unknown>> {
   const envelope = await serve(server, "oracle.call", { api, input });
   expect(envelope.error).toBeUndefined();
-  return envelope.result as Record<string, unknown>;
+  return envelope.result!;
 }
 
 describe("oracle.info / oracle.shutdown / framing", () => {
   it("reports the identity block", async () => {
     const envelope = await serve(makeServer(), "oracle.info");
-    expect(envelope.result).toEqual({
+    expect(envelope.result).toStrictEqual({
       language: "typescript",
       library_version: "0.0.0-test",
       source_commit: "f".repeat(40),
@@ -117,14 +119,14 @@ describe("oracle.info / oracle.shutdown / framing", () => {
     const server = makeServer();
     expect(server.shutdownRequested).toBe(false);
     const envelope = await serve(server, "oracle.shutdown");
-    expect(envelope.result).toEqual({ ok: true });
+    expect(envelope.result).toStrictEqual({ ok: true });
     expect(server.shutdownRequested).toBe(true);
   });
 
   it("ignores blank input lines", async () => {
     const server = makeServer();
-    expect(await server.handleLine("")).toBeNull();
-    expect(await server.handleLine("   \t ")).toBeNull();
+    await expect(server.handleLine("")).resolves.toBeNull();
+    await expect(server.handleLine("   \t ")).resolves.toBeNull();
   });
 
   it("answers id null with -32700 for unparseable lines", async () => {
@@ -149,23 +151,21 @@ describe("oracle.info / oracle.shutdown / framing", () => {
     expect(envelope.error?.code).toBe(JSONRPC_METHOD_NOT_FOUND);
   });
 
-  it("frames responses as single ASCII lines (D14 ensure_ascii parity)", async () => {
+  it("frames responses as single ASCII lines (ensure_ascii parity)", async () => {
     const server = makeServer();
     const line = await server.handleLine(
       JSON.stringify({
         jsonrpc: "2.0",
         id: 5,
         method: "oracle.call",
-        params: { api: "compat.python_str", input: { value: "\u{1f40d}" } },
+        params: { api: "compat.python_str", input: { value: "\u{1F40D}" } },
       }),
     );
     expect(line).not.toBeNull();
     expect(line).not.toContain("\n");
-    expect([...(line as string)].every((ch) => ch.charCodeAt(0) < 128)).toBe(
-      true,
-    );
-    const envelope = JSON.parse(line as string) as Envelope;
-    expect(envelope.result?.["output"]).toBe("\u{1f40d}");
+    expect(codepoints(line!).every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
+    const envelope = JSON.parse(line!) as Envelope;
+    expect(envelope.result?.["output"]).toBe("\u{1F40D}");
   });
 
   it("echoes string ids verbatim and preserves integer id tokens", async () => {
@@ -185,9 +185,9 @@ describe("oracle.info / oracle.shutdown / framing", () => {
 
 describe("oracle.call: compat surface", () => {
   it("returns ok output for compat.zfill", async () => {
-    expect(
-      await call(makeServer(), "compat.zfill", { value: "-1", width: 3 }),
-    ).toEqual({ ok: true, output: "-01" });
+    await expect(
+      call(makeServer(), "compat.zfill", { value: "-1", width: 3 }),
+    ).resolves.toStrictEqual({ ok: true, output: "-01" });
   });
 
   // Raw request lines mirror Python json.dumps tokens exactly — JS
@@ -205,7 +205,7 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       `{"api": "compat.python_float_str", "input": {"value": ${token}}}}`;
     const envelope = await serveLine(makeServer(), line);
-    expect(envelope.result).toEqual({ ok: true, output: expected });
+    expect(envelope.result).toStrictEqual({ ok: true, output: expected });
   });
 
   it("recovers nested integral floats from raw tokens in python_str", async () => {
@@ -216,7 +216,10 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       '{"api": "compat.python_str", "input": {"value": [18.0, {"k": 1.0}]}}}';
     const envelope = await serveLine(makeServer(), line);
-    expect(envelope.result).toEqual({ ok: true, output: "[18.0, {'k': 1.0}]" });
+    expect(envelope.result).toStrictEqual({
+      ok: true,
+      output: "[18.0, {'k': 1.0}]",
+    });
   });
 
   it("preserves insertion order of integer-like dict keys in python_str", async () => {
@@ -227,7 +230,7 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       '{"api": "compat.python_str", "input": {"value": {"1": null, "0": true}}}}';
     const envelope = await serveLine(makeServer(), line);
-    expect(envelope.result).toEqual({
+    expect(envelope.result).toStrictEqual({
       ok: true,
       output: "{'1': None, '0': True}",
     });
@@ -239,7 +242,10 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       '{"api": "compat.python_str", "input": {"value": {"a": 1, "b": 2, "a": 3}}}}';
     const envelope = await serveLine(server, line);
-    expect(envelope.result).toEqual({ ok: true, output: "{'a': 3, 'b': 2}" });
+    expect(envelope.result).toStrictEqual({
+      ok: true,
+      output: "{'a': 3, 'b': 2}",
+    });
   });
 
   it("renders integers beyond 2^53 exactly in python_str", async () => {
@@ -248,64 +254,67 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       '{"api": "compat.python_str", "input": {"value": 12345678901234567890123}}}';
     const envelope = await serveLine(server, line);
-    expect(envelope.result).toEqual({
+    expect(envelope.result).toStrictEqual({
       ok: true,
       output: "12345678901234567890123",
     });
   });
 
-  it("returns R10.9 edge outputs matching CPython", async () => {
+  it("returns compat.python_str and compat.zfill edge outputs matching CPython", async () => {
     const server = makeServer();
-    expect(await call(server, "compat.python_str", { value: true })).toEqual({
+    await expect(
+      call(server, "compat.python_str", { value: true }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "True",
     });
-    expect(await call(server, "compat.python_str", { value: null })).toEqual({
+    await expect(
+      call(server, "compat.python_str", { value: null }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "None",
     });
-    expect(await call(server, "compat.python_str", { value: [] })).toEqual({
+    await expect(
+      call(server, "compat.python_str", { value: [] }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "[]",
     });
-    expect(await call(server, "compat.python_str", { value: "" })).toEqual({
+    await expect(
+      call(server, "compat.python_str", { value: "" }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "",
     });
-    expect(await call(server, "compat.zfill", { value: "", width: 2 })).toEqual(
-      {
-        ok: true,
-        output: "00",
-      },
-    );
-    expect(
-      await call(server, "compat.zfill", { value: "\u{1f40d}", width: 3 }),
-    ).toEqual({ ok: true, output: "00\u{1f40d}" });
+    await expect(
+      call(server, "compat.zfill", { value: "", width: 2 }),
+    ).resolves.toStrictEqual({
+      ok: true,
+      output: "00",
+    });
+    await expect(
+      call(server, "compat.zfill", { value: "\u{1F40D}", width: 3 }),
+    ).resolves.toStrictEqual({ ok: true, output: "00\u{1F40D}" });
   });
 
-  it("returns thrown library errors as bare-class DATA (R5.4)", async () => {
+  it("returns thrown library errors as bare-class data", async () => {
     // Wrong argument types are library errors, not protocol errors —
     // "Python raised TypeError / TS raised TypeError" stays comparable.
     const result = await call(makeServer(), "compat.zfill", { value: "5" });
-    expect(result).toEqual({ ok: false, error: { class: "TypeError" } });
+    expect(result).toStrictEqual({ ok: false, error: { class: "TypeError" } });
   });
 });
 
 describe("oracle.call: scope, skips, and protocol errors", () => {
   it("answers UNPORTED for mapped apis outside the compat surface", async () => {
-    // Exemplar re-anchored at each bind wave to a still-unported mapped
-    // api: user_builders.filter_to_selector went live at B3-BIND,
-    // workspace.build_params at B5-BIND, workspace.me at B6-BIND,
-    // region_probe.probe_region at B7-A2, oauth_flow.refresh_tokens at
-    // B8-N2 (the LAST corpus name). Re-anchored to the NON-CORPUS
-    // module-known oauth_flow.build_authorize_url; the B8 gate
-    // completes the retirement (b8-packets.md §5.3, b6-packets.md §12.5).
+    // Every corpus api is ported, so the exemplar is the non-corpus
+    // module-known oauth_flow.build_authorize_url.
     const result = await call(
       makeServer(),
       "oauth_flow.build_authorize_url",
       {},
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
     });
@@ -315,29 +324,25 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     // Unported apis carry rich tags whose PAYLOADS may be malformed
     // (this one lacks every Filter field); scope must be checked FIRST
     // or every such probe would crash the harness with -32602 instead
-    // of counting as a skip. (Exemplar re-anchored at B3-BIND —
-    // segfilter.build_segfilter_entry went live — at B5-BIND:
-    // build_params went live — at B6-BIND: workspace.me went live —
-    // at B7-A2: region_probe.probe_region went live — and at B8-N2:
-    // oauth_flow.refresh_tokens went live; now the NON-CORPUS
-    // module-known oauth_flow.build_authorize_url.)
+    // of counting as a skip. (The exemplar is the non-corpus module-known
+    // oauth_flow.build_authorize_url.)
     const result = await call(makeServer(), "oauth_flow.build_authorize_url", {
       where: { $type: "Filter", field: "x" },
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
     });
   });
 
-  it("answers UNPORTED for the wirestub gate apis (protocol §4.2)", async () => {
+  it("answers UNPORTED for the wirestub gate apis", async () => {
     const server = makeServer();
     const envelope = await serve(server, "oracle.call", {
       api: "wirestub.request",
       input: { method: "GET", path: "/ping" },
       interactions: [],
     });
-    expect(envelope.result).toEqual({
+    expect(envelope.result).toStrictEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
     });
@@ -405,65 +410,65 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
       input: { value: "5", width: 3 },
       session: { kind: "service_account", username: "u" },
     });
-    expect(withSession.result).toEqual(result);
-    expect(withSession.result).toEqual({ ok: true, output: "005" });
+    expect(withSession.result).toStrictEqual(result);
+    expect(withSession.result).toStrictEqual({ ok: true, output: "005" });
   });
 
-  it("answers -32000 when the output fails D6 canonicalization", async () => {
+  it("answers -32000 when the output fails canonicalization", async () => {
     // A lone-surrogate input arrives via a JSON escape; python_str's
-    // OUTPUT then carries the surrogate, which the D6 encoder rejects —
-    // a protocol-level error, never a hang or crash (design D14).
-    const line =
-      '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
-      '{"api": "compat.python_str", "input": {"value": "\\ud800"}}}';
+    // output then carries the surrogate, which the canonical encoder
+    // rejects — a protocol-level error, never a hang or crash.
+    const line = `{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ${String.raw`{"api": "compat.python_str", "input": {"value": "\ud800"}}}`}`;
     const envelope = await serveLine(makeServer(), line);
     expect(envelope.error?.code).toBe(JSONRPC_INTERNAL_ERROR);
   });
 });
 
 describe("raw-json: ordered lossless model", () => {
-  it("preserves member order and number tokens", async () => {
+  it("preserves member order and number tokens", () => {
     const value = parseRawJson('{"1": 18.0, "0": null}');
     expect(value).toBeInstanceOf(RawObject);
     const entries = (value as RawObject).entries;
-    expect(entries.map(([key]) => key)).toEqual(["1", "0"]);
+    expect(entries.map(([key]) => key)).toStrictEqual(["1", "0"]);
     expect(entries[0]?.[1]).toBeInstanceOf(JsonNumber);
     expect((entries[0]?.[1] as JsonNumber).raw).toBe("18.0");
   });
 
-  it("flattens to JsonValue for codec/canonicalizer consumers", async () => {
+  it("flattens to JsonValue for codec/canonicalizer consumers", () => {
     const flat = toJsonValue(parseRawJson('{"a": [1, "x"], "b": true}'));
-    expect(flat).toEqual({
+    expect(flat).toStrictEqual({
       a: [new JsonNumber("1"), "x"],
       b: true,
     });
   });
 
-  it("serializes ASCII-safe lines with lone surrogates escaped", async () => {
+  it("serializes ASCII-safe lines with lone surrogates escaped", () => {
     const text = serializeAsciiJson({
-      astral: "\u{1f40d}",
-      lone: "\ud800",
+      astral: "\u{1F40D}",
+      lone: "\uD800",
       token: new JsonNumber("18.0"),
       big: 123456789012345678901n,
     });
-    expect([...text].every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
-    expect(text).toContain("\\ud83d\\udc0d");
-    expect(text).toContain("\\ud800");
+    expect(codepoints(text).every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
+    expect(text).toContain(String.raw`\ud83d\udc0d`);
+    expect(text).toContain(String.raw`\ud800`);
     expect(text).toContain("18.0");
     expect(text).toContain("123456789012345678901");
   });
 
-  it("rejects trailing content and malformed tokens", async () => {
+  it("rejects trailing content and malformed tokens", () => {
     expect(() => parseRawJson('{"a": 1} extra')).toThrow(
       "unexpected trailing content",
     );
     expect(() => parseRawJson('{"a": 01}')).toThrow("at offset");
-    expect(() => parseRawJson('"\\x00"')).toThrow("malformed string token");
+    expect(() => parseRawJson(String.raw`"\x00"`)).toThrow(
+      "malformed string token",
+    );
   });
 });
 
-describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
-  it("reports protocol_version 1.1 (the codec.roundtrip addendum)", async () => {
+describe("types.* surface", () => {
+  it("reports protocol_version 1.1 (the codec.roundtrip addendum)", () => {
     expect(PROTOCOL_VERSION).toBe("1.1");
   });
 
@@ -472,7 +477,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       property: "plan",
       date: "2025-01-01",
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: true,
       output: {
         _property: "plan",
@@ -487,13 +492,13 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
     });
   });
 
-  it("returns coded guard failures as {class, code} DATA (R5.4)", async () => {
+  it("returns coded guard failures as {class, code} data", async () => {
     const result = await call(makeServer(), "types.Filter.in_the_last", {
       property: "p",
       quantity: 0,
       date_unit: "day",
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: false,
       error: {
         class: "ParamValidationError",
@@ -502,7 +507,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
     });
   });
 
-  it("preserves integral-float kwargs via the raw token (D13/Risk #3)", async () => {
+  it("preserves integral-float kwargs via the raw token", async () => {
     // 18.0 must construct as a FLOAT (PyFloat) and render back as the
     // raw token 18.0, exactly like Python's json.loads/json.dumps pair.
     const server = makeServer();
@@ -517,7 +522,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       '{"jsonrpc": "2.0", "id": 10, "method": "oracle.call", "params": ' +
         '{"api": "types.Filter.in_the_last", "input": ' +
         '{"property": "p", "quantity": 18.0, "date_unit": "day"}}}',
-    )) as string;
+    ))!;
     expect(raw).toContain('"_value": 18.0');
   });
 
@@ -530,7 +535,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       computed_at: "",
       project_id: 0,
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: true,
       output: {
         _df_cache: null,
@@ -551,14 +556,14 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       method: "GET",
       path: "/ping",
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
     });
   });
 });
 
-describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
+describe("codec.roundtrip", () => {
   /**
    * Execute one `codec.roundtrip` and return its result payload.
    *
@@ -572,7 +577,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
   ): Promise<Record<string, unknown>> {
     const envelope = await serve(server, "codec.roundtrip", { value });
     expect(envelope.error).toBeUndefined();
-    return envelope.result as Record<string, unknown>;
+    return envelope.result!;
   }
 
   it("round-trips a tagged Filter payload to itself", async () => {
@@ -587,16 +592,19 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
       _list_item_filters: null,
       _list_item_quantifier: null,
     };
-    expect(await roundtrip(makeServer(), payload)).toEqual({
+    await expect(roundtrip(makeServer(), payload)).resolves.toStrictEqual({
       ok: true,
       output: payload,
     });
   });
 
-  it("round-trips SecretStr to the REVEALED value (C8a anti-vacuity)", async () => {
-    expect(
-      await roundtrip(makeServer(), { $type: "SecretStr", value: "s3cr3t" }),
-    ).toEqual({ ok: true, output: { $type: "SecretStr", value: "s3cr3t" } });
+  it("round-trips SecretStr to the revealed value", async () => {
+    await expect(
+      roundtrip(makeServer(), { $type: "SecretStr", value: "s3cr3t" }),
+    ).resolves.toStrictEqual({
+      ok: true,
+      output: { $type: "SecretStr", value: "s3cr3t" },
+    });
   });
 
   it("round-trips plain-position integral floats as raw tokens", async () => {
@@ -604,7 +612,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
     const raw = (await server.handleLine(
       '{"jsonrpc": "2.0", "id": 3, "method": "codec.roundtrip", ' +
         '"params": {"value": [18.0, 1.5, 18]}}',
-    )) as string;
+    ))!;
     const envelope = JSON.parse(raw) as Envelope;
     expect(envelope.error).toBeUndefined();
     expect(raw).toContain("[18.0, 1.5, 18]");
@@ -622,7 +630,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
       _list_item_filters: null,
       _list_item_quantifier: null,
     };
-    expect(await roundtrip(makeServer(), payload)).toEqual({
+    await expect(roundtrip(makeServer(), payload)).resolves.toStrictEqual({
       ok: true,
       output: payload,
     });

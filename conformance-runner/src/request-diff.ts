@@ -1,5 +1,5 @@
 /**
- * Request-side diffing for wire vectors (design D7/D12).
+ * Request-side diffing for wire vectors.
  *
  * After the measured call, every captured request is compared against the
  * interaction slot that served it (positional for ordered interactions,
@@ -8,26 +8,27 @@
  * per-field mismatches all yield divergence strings; any divergence is the
  * `FAIL_REQUEST` verdict.
  *
- * Field semantics (vector.schema.json `expectedRequest` + D5/D6):
+ * Field semantics (`vector.schema.json` `expectedRequest`):
  * - `method`/`path`: exact equality.
- * - `scheme_host`: asserted only when recorded (D9 S4 observability).
+ * - `scheme_host`: asserted only when recorded.
  * - `params`: full canonical equality of the decoded query-param maps; an
  *   omitted recorded `params` means the captured request must carry none.
  * - `params_absent` / `headers_absent`: the listed keys must be absent.
  * - `headers_contain`: subset match via {@link headersMatch} (lowercased
- *   keys, `{pattern}` regex values for authorization, D5.2/D5.6).
- * - body: exactly one of `json_body` (canonical comparison after LOSSLESS
- *   parsing of the captured bytes — raw-token rule, D6 rule 3),
- *   `body_text` (utf8 equality), `body_base64` (byte equality); when all
- *   are absent the captured body must be empty.
+ *   keys, `{pattern}` regex values for authorization).
+ * - body: exactly one of `json_body` (canonical comparison after lossless
+ *   parsing of the captured bytes, so raw number tokens compare by
+ *   spelling), `body_text` (utf8 equality), `body_base64` (byte equality);
+ *   when all are absent the captured body must be empty.
+ *
+ * @see conformance.runner.execute._compare_request
  */
 
 import { canonicalize, headersMatch } from "./canonical.js";
 import type { ParsedInteraction } from "./interactions.js";
 import type { JsonValue } from "./json-value.js";
 import { parseLossless } from "./lossless-json.js";
-import type { CapturedRequest } from "./vector-fetch.js";
-import { paramsToJson } from "./vector-fetch.js";
+import { type CapturedRequest, paramsToJson } from "./vector-fetch.js";
 
 /**
  * Encode bytes as base64 text (local helper; mirror of the codec's).
@@ -79,7 +80,7 @@ function diffOneRequest(
   const actualParams = paramsToJson(captured.params);
   const recordedParams: JsonValue =
     expected.params !== undefined && Object.keys(expected.params).length > 0
-      ? (expected.params as JsonValue)
+      ? expected.params
       : null;
   const actualParamsCanonical = canonicalize(actualParams);
   if (actualParamsCanonical !== canonicalize(recordedParams)) {
@@ -95,7 +96,7 @@ function diffOneRequest(
     }
   }
   if (expected.headersContain !== undefined) {
-    const mutableHeaders: { [key: string]: string } = { ...captured.headers };
+    const mutableHeaders: Record<string, string> = { ...captured.headers };
     for (const [name, value] of Object.entries(expected.headersContain)) {
       if (!headersMatch({ [name]: value }, mutableHeaders)) {
         problems.push(
@@ -135,8 +136,8 @@ function diffBody(
     let actualBody: JsonValue;
     try {
       actualBody = parseLossless(new TextDecoder().decode(captured.bodyBytes));
-    } catch (cause) {
-      return [`${label}: body is not valid JSON (${String(cause)})`];
+    } catch (error) {
+      return [`${label}: body is not valid JSON (${String(error)})`];
     }
     const actualCanonical = canonicalize(actualBody);
     const expectedCanonical = canonicalize(expected.jsonBody ?? null);
@@ -172,14 +173,13 @@ function diffBody(
 }
 
 /**
- * Diff the full replay traffic of one wire vector (design D7 mirror).
+ * Diff the full replay traffic of one wire vector.
  *
  * @param interactions - The vector's parsed interactions.
  * @param captures - Captured requests, in arrival order.
  * @param servingViolations - Sequence violations from the fetch harness.
  * @param unservedSlots - Interaction indices never requested.
  * @returns All divergence strings; empty means the request side matches.
- *
  * @example
  * ```typescript
  * const problems = diffRequestTraffic(
@@ -204,9 +204,9 @@ export function diffRequestTraffic(
       `interaction[${String(index)}] (${slot.request.method} ${slot.request.path}) was never requested`,
     );
   }
-  captures.forEach((captured, order) => {
+  for (const [order, captured] of captures.entries()) {
     if (captured.slotIndex === null) {
-      return; // Already reported as a serving violation.
+      continue; // Already reported as a serving violation.
     }
     const slot = interactions[captured.slotIndex] as ParsedInteraction;
     problems.push(
@@ -216,6 +216,6 @@ export function diffRequestTraffic(
         `request[${String(order)}]→interaction[${String(captured.slotIndex)}]`,
       ),
     );
-  });
+  }
   return problems;
 }

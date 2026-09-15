@@ -1,18 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/_internal/test_expressions.py`
- * (114 LOC, 1 class; Python revision: `ts-port/phase2-contract-support`
- * HEAD), per `b3-packets.md` §"Packet K3". Every test translates; the
- * Hypothesis twin lives in `expressions.pbt.test.ts`.
- *
- * R10.2: assertion-for-assertion. `pytest.mark.parametrize` becomes
- * `it.each`. The escaped expectations are transcribed from the PYTHON
- * literal (Python `'properties["my\\"property"]'` is the 20-character
- * string `properties["my\"property"]`), and the corpus vectors
- * (`segmentation/test_expressions.jsonl`) were re-read to confirm each
- * expected byte sequence — watchlist #2 makes this the file where a
- * mis-transcribed backslash would silently pass a weaker test.
- */
-
+// `normalizeOnExpression` — translation of
+// `tests/unit/_internal/test_expressions.py`; `pytest.mark.parametrize` becomes
+// `it.each`. The escaped expectations are transcribed from the PYTHON literal
+// (Python `'properties["my\\"property"]'` is the 20-character string
+// `properties["my\"property"]`): a mis-transcribed backslash would silently pass.
 import { describe, expect, it } from "vitest";
 
 import { normalizeOnExpression } from "../../src/query/expressions.js";
@@ -74,20 +64,20 @@ describe("normalizeOnExpression", () => {
   // Category 5: Special character escaping
 
   it.each([
-    ['my"property', 'properties["my\\"property"]'],
-    ['"quoted"', 'properties["\\"quoted\\""]'],
-    ['a"b"c', 'properties["a\\"b\\"c"]'],
-    ['say "hello"', 'properties["say \\"hello\\""]'],
+    ['my"property', String.raw`properties["my\"property"]`],
+    ['"quoted"', String.raw`properties["\"quoted\""]`],
+    ['a"b"c', String.raw`properties["a\"b\"c"]`],
+    ['say "hello"', String.raw`properties["say \"hello\""]`],
   ])("escapes double quotes in %s", (nameWithQuotes, expected) => {
     expect(normalizeOnExpression(nameWithQuotes)).toBe(expected);
   });
 
   it("handles a backslash before a quote", () => {
     // Python source literal: `'path\\to\\"file'` == path\to\"file
-    const result = normalizeOnExpression('path\\to\\"file');
+    const result = normalizeOnExpression(String.raw`path\to\"file`);
     // Python expectation literal: `'properties["path\\\\to\\\\\\"file"]'`
     // == properties["path\\to\\\"file"]
-    expect(result).toBe('properties["path\\\\to\\\\\\"file"]');
+    expect(result).toBe(String.raw`properties["path\\to\\\"file"]`);
   });
 
   // Category 4: Idempotency

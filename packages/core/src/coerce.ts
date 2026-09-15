@@ -1,18 +1,18 @@
 /**
- * Pydantic-v2-lax coercion module (rulebook R4.12, phase2-design C1).
+ * Pydantic-v2-lax coercion at the decode and parse boundaries.
  *
  * One shared module replicates Pydantic v2's lax coercion at decode/parse
- * boundaries. The NORMATIVE contract is the R4.12 table:
+ * boundaries. The normative contract is this table:
  *
  * - `coerceInt` accepts `42` / `42.0` / `"42"`, rejects `42.5` and booleans;
  * - `coerceInt64` is the same table without the double's 2^53 ceiling:
  *   it also takes a `bigint` or a lossless `JsonNumber` token and yields a
  *   `bigint` only when the exact value is not a safe integer;
- * - `coerceStr` does NOT coerce numbers/booleans to string;
+ * - `coerceStr` does not coerce numbers/booleans to string;
  * - `coerceBool` accepts exactly the `true|t|yes|y|on|1` /
  *   `false|f|no|n|off|0` string sets (case-insensitive) plus `0`/`1`
  *   numerics;
- * - `default_factory` semantics: a default fires only on an ABSENT key —
+ * - `default_factory` semantics: a default fires only on an absent key —
  *   an explicit `null` flows through to validation (see
  *   {@link resolveWithDefault}).
  *
@@ -20,21 +20,21 @@
  * acceptance (whitespace trim, sign, digit-group underscores, integral
  * `"42.0"` for int, exponent/`inf`/`nan` for float) — verified against
  * pydantic v2 on 2026-08-15. One documented divergence: pydantic's
- * PYTHON-object lax mode accepts `True → 1` for int/float (bool is an int
- * subclass in Python); its JSON mode and the R4.12 table both REJECT
+ * Python-object lax mode accepts `True → 1` for int/float (bool is an int
+ * subclass in Python); its JSON mode and the table above both reject
  * booleans, and JSON is the only cross-language boundary, so booleans are
  * rejected here.
  *
  * Failures throw {@link ParamValidationError} (kind `'param'`) or
- * {@link ResponseValidationError} (kind `'response'`, the default — R4.12
- * is a response-parsing rule) with the generic R5.5 codes; message text is
- * out of contract (R5.4).
+ * {@link ResponseValidationError} (kind `'response'`, the default: coercion
+ * is a response-parsing rule) with the generic validation codes; message text
+ * is out of contract.
  */
 
 import { JsonNumber } from "./client/json-value.js";
 import { ParamValidationError, ResponseValidationError } from "./errors.js";
 
-/** Which R5.5 boundary a failed coercion belongs to. */
+/** Which validation boundary a failed coercion belongs to. */
 export type CoerceKind = "param" | "response";
 
 /** Options accepted by every coercion function. */
@@ -55,7 +55,6 @@ export interface CoerceOptions {
  * @param expected - Human label of the expected type (message only).
  * @param value - The rejected value (repr'd into the message only).
  * @param options - Coercion options (boundary kind + field name).
- * @returns Never returns.
  * @throws ParamValidationError - When `options.kind === 'param'`.
  * @throws ResponseValidationError - Otherwise (default boundary).
  */
@@ -76,26 +75,42 @@ function fail(expected: string, value: unknown, options: CoerceOptions): never {
 }
 
 /**
- * Render a short description of a value for error messages (R5.4:
- * display only, never asserted).
+ * Render a short description of a value for error messages (display only,
+ * never asserted by the conformance corpus).
  *
  * @param value - Any value.
  * @returns A short human-readable description.
+ * @throws TypeError - On a `typeof` result outside the ECMAScript set
+ *   (unreachable; keeps the switch exhaustive).
  */
 function describe(value: unknown): string {
   if (value === null) {
     return "null";
   }
   switch (typeof value) {
-    case "string":
+    case "string": {
       return JSON.stringify(value);
+    }
     case "number":
-    case "boolean":
+    case "boolean": {
       return String(value);
-    case "undefined":
+    }
+    case "undefined": {
       return "undefined";
-    default:
-      return Array.isArray(value) ? "array" : typeof value;
+    }
+    case "object": {
+      return Array.isArray(value) ? "array" : "object";
+    }
+    case "bigint":
+    case "function":
+    case "symbol": {
+      return typeof value;
+    }
+    default: {
+      // Every `typeof` result is listed; TS cannot subtract them from
+      // `unknown`, so it still wants a terminal arm.
+      throw new TypeError(`unexpected typeof result: ${typeof value}`);
+    }
   }
 }
 
@@ -114,7 +129,7 @@ const FLOAT_SPECIAL = /^[+-]?(?:inf|infinity|nan)$/i;
  *
  * Accepts integral numbers (`42`, `42.0` — indistinguishable in JS),
  * and integer strings (`"42"`, `" 42 "`, `"+42"`, `"1_000"`, `"42.0"`).
- * Rejects fractional numbers, booleans (R4.12), and everything else.
+ * Rejects fractional numbers, booleans, and everything else.
  *
  * @param value - The raw value to coerce.
  * @param options - Boundary kind + field name for errors.
@@ -122,6 +137,13 @@ const FLOAT_SPECIAL = /^[+-]?(?:inf|infinity|nan)$/i;
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceInt("42"); // 42
+ * coerceInt(" 1_000 "); // 1000
+ * coerceInt(1.5); // throws ResponseValidationError
+ * coerceInt(true, { kind: "param" }); // throws ParamValidationError
+ * ```
  */
 export function coerceInt(value: unknown, options: CoerceOptions = {}): number {
   if (typeof value === "boolean") {
@@ -136,8 +158,8 @@ export function coerceInt(value: unknown, options: CoerceOptions = {}): number {
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (INT_STRING.test(trimmed)) {
-      const integerPart = trimmed.split(".")[0] ?? trimmed;
-      return Number(integerPart.replace(/_/g, ""));
+      const integerPart = trimmed.split(".", 1)[0] ?? trimmed;
+      return Number(integerPart.replaceAll("_", ""));
     }
   }
   fail("int", value, options);
@@ -181,6 +203,11 @@ function narrowInt64(exact: bigint): number | bigint {
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceInt64(42n); // 42 (a number once it is safe)
+ * coerceInt64("-8644926364725811123"); // -8644926364725811123n
+ * ```
  */
 export function coerceInt64(
   value: unknown,
@@ -198,8 +225,8 @@ export function coerceInt64(
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (INT_STRING.test(trimmed)) {
-      const integerPart = trimmed.split(".")[0] ?? trimmed;
-      return narrowInt64(BigInt(integerPart.replace(/_/g, "")));
+      const integerPart = trimmed.split(".", 1)[0] ?? trimmed;
+      return narrowInt64(BigInt(integerPart.replaceAll("_", "")));
     }
     fail("int", value, options);
   }
@@ -219,6 +246,12 @@ export function coerceInt64(
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceFloat("1e3"); // 1000
+ * coerceFloat("-inf"); // -Infinity
+ * coerceFloat(true); // throws ResponseValidationError
+ * ```
  */
 export function coerceFloat(
   value: unknown,
@@ -240,7 +273,7 @@ export function coerceFloat(
       return negative ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
     }
     if (FLOAT_STRING.test(trimmed)) {
-      return Number(trimmed.replace(/_/g, ""));
+      return Number(trimmed.replaceAll("_", ""));
     }
   }
   fail("float", value, options);
@@ -249,7 +282,7 @@ export function coerceFloat(
 /**
  * Coerce a JSON value to a string with Pydantic-v2-lax semantics.
  *
- * Pydantic v2 does NOT lax-coerce int/float/bool/None to `str` (R4.12);
+ * Pydantic v2 does NOT lax-coerce int/float/bool/None to `str`;
  * only actual strings pass.
  *
  * @param value - The raw value to coerce.
@@ -258,6 +291,11 @@ export function coerceFloat(
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceStr("abc"); // "abc"
+ * coerceStr(42); // throws ResponseValidationError (no int → str coercion)
+ * ```
  */
 export function coerceStr(value: unknown, options: CoerceOptions = {}): string {
   if (typeof value === "string") {
@@ -291,7 +329,7 @@ const FALSE_STRINGS: ReadonlySet<string> = new Set([
  *
  * Accepts booleans, the numerics `0`/`1` (incl. `0.0`/`1.0`), and exactly
  * the case-insensitive string sets `true|t|yes|y|on|1` and
- * `false|f|no|n|off|0` (R4.12). Everything else is rejected.
+ * `false|f|no|n|off|0`. Everything else is rejected.
  *
  * @param value - The raw value to coerce.
  * @param options - Boundary kind + field name for errors.
@@ -299,6 +337,12 @@ const FALSE_STRINGS: ReadonlySet<string> = new Set([
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceBool("yes"); // true
+ * coerceBool("off"); // false
+ * coerceBool("maybe"); // throws ResponseValidationError
+ * ```
  */
 export function coerceBool(
   value: unknown,
@@ -330,29 +374,28 @@ export function coerceBool(
 
 /**
  * Pydantic `default_factory` semantics: the default fires ONLY when the
- * key is ABSENT from the raw object (R4.12). An explicit `null` (or any
+ * key is ABSENT from the raw object. An explicit `null` (or any
  * present value, including an explicit `undefined`, which JSON decoding
  * never produces) is returned as-is for the caller's coercer/validator to
  * accept or reject — Pydantic treats explicit `None` on a non-optional
  * field as a validation error, never as "use the default".
- *
- * Example:
- * ```ts
- * resolveWithDefault({}, "tags", () => []);            // [] (factory fired)
- * resolveWithDefault({ tags: null }, "tags", () => []); // null (no default)
- * ```
  *
  * @param raw - The raw decoded object.
  * @param key - The field key to look up.
  * @param defaultFactory - Factory producing the default value.
  * @returns The present value (verbatim) or the factory product when the
  *   key is absent.
+ * @example
+ * ```ts
+ * resolveWithDefault({}, "tags", () => []); // [] (factory fired)
+ * resolveWithDefault({ tags: null }, "tags", () => []); // null (no default)
+ * ```
  */
-export function resolveWithDefault<T>(
+export function resolveWithDefault(
   raw: Readonly<Record<string, unknown>>,
   key: string,
-  defaultFactory: () => T,
-): unknown | T {
+  defaultFactory: () => unknown,
+): unknown {
   if (!Object.hasOwn(raw, key)) {
     return defaultFactory();
   }

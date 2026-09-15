@@ -1,16 +1,8 @@
-// Browser-bundle recipe gate (heads spec 04 §3, "Vendoring the headless
-// bundle") — proves `scripts/build-browser-bundle.mjs` produces a pinned,
-// reproducible, Node-free pair of artifacts plus a provenance manifest.
-//
-// The desktop app commits the built bundle under
-// `vendor/mixpanel-headless/` and re-verifies it against the manifest
-// (`tests/headless-vendor.test.ts` over there). This repo owns the recipe:
-// the script and the manifest schema are committed here, the artifacts are
-// not (`dist/` is git-ignored).
-//
-// Everything here goes through the CLI — the same entry point the desktop
-// vendoring script and `npm run smoke:browser` call — so the contract under
-// test is the shipped one, not an internal helper.
+// Browser-bundle recipe gate: `scripts/build-browser-bundle.mjs` produces a
+// pinned, reproducible, Node-free artifact pair plus a provenance manifest.
+// The desktop app vendors the built bundle and re-verifies it against the
+// manifest; this repo owns the recipe. Everything goes through the CLI so
+// the contract under test is the shipped one.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -20,6 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -164,7 +157,7 @@ describe("browser bundle recipe", () => {
 
   it("records the real sha256 and byte count of every artifact", () => {
     const manifest = readManifest(outA);
-    expect(Object.keys(manifest.files).sort()).toEqual(
+    expect(Object.keys(manifest.files).sort()).toStrictEqual(
       [...ARTIFACT_NAMES].sort(),
     );
     for (const name of ARTIFACT_NAMES) {
@@ -194,7 +187,11 @@ describe("browser bundle recipe", () => {
     for (const name of ARTIFACT_NAMES) {
       const text = readFileSync(join(outA, name), "utf8");
       for (const needle of IMPURITY_NEEDLES) {
-        expect({ name, needle, count: text.split(needle).length - 1 }).toEqual({
+        expect({
+          name,
+          needle,
+          count: text.split(needle).length - 1,
+        }).toStrictEqual({
           name,
           needle,
           count: 0,
@@ -212,7 +209,7 @@ describe("browser bundle recipe", () => {
 
   it("lists exactly the global's keys, sorted, in manifest.exports", () => {
     const keys = globalKeysOf(readFileSync(join(outA, IIFE_NAME), "utf8"));
-    expect(readManifest(outA).exports).toEqual(keys);
+    expect(readManifest(outA).exports).toStrictEqual(keys);
   });
 
   it("carries the spec-02 identity helpers on the global and in the manifest", () => {
@@ -231,7 +228,7 @@ describe("browser bundle recipe", () => {
     for (const name of [...ARTIFACT_NAMES, MANIFEST_NAME]) {
       const a = sha256(readFileSync(join(outA, name)));
       const b = sha256(readFileSync(join(outB, name)));
-      expect({ name, sha256: b }).toEqual({ name, sha256: a });
+      expect({ name, sha256: b }).toStrictEqual({ name, sha256: a });
     }
   });
 
@@ -246,17 +243,20 @@ describe("browser bundle recipe", () => {
     let failure: string | undefined;
     try {
       runBuild(out);
-    } catch (err) {
-      failure = err instanceof Error ? String(err.message) : String(err);
+    } catch (error) {
+      failure = error instanceof Error ? error.message : String(error);
     }
 
-    if (treeIsDirty) {
-      expect(failure).toBeDefined();
-      expect(existsSync(join(out, MANIFEST_NAME))).toBe(false);
-    } else {
-      expect(failure).toBeUndefined();
-      expect(readManifest(out).dirty).toBeUndefined();
-    }
+    // A dirty tree fails before any manifest is written; a clean tree
+    // succeeds with an honest (undirtied) manifest.
+    expect(failure !== undefined, failure ?? "build succeeded").toBe(
+      treeIsDirty,
+    );
+    const manifest = existsSync(join(out, MANIFEST_NAME))
+      ? readManifest(out)
+      : null;
+    expect(manifest === null).toBe(treeIsDirty);
+    expect(manifest?.dirty).toBeUndefined();
   }, 120_000);
 
   it("marks a dirty build in the manifest so provenance never lies", () => {

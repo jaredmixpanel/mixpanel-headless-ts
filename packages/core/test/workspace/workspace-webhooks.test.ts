@@ -1,30 +1,11 @@
-// B6-W5 Layer-3 translation (packet `b6-packets.md` §7) of the WHOLE
-// of `tests/unit/test_workspace_webhooks.py` (326 lines, 2 classes):
-// `TestWorkspaceWebhookCRUD` (:141) and `TestWorkspaceWebhookTest`
-// (:274).
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` becomes
-// `makeWorkspace(handler)` — the client is built over the OAuth
-// session while the facade carries the service-account `_TEST_SESSION`,
-// exactly as Python does. `temp_dir` has no TS analog and is dropped.
-//
-// ADDITIVE section (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-to-client delegation contracts (argument spelling + the
-// `model_dump(exclude_none=True)` body at `workspace.py:6738`, `:6774`,
-// `:6830`) that the wire suite above cannot observe.
+// Workspace webhook members (list/create/update/delete, testWebhook) over the
+// injected fetch seam. Mirrors tests/unit/test_workspace_webhooks.py (both
+// classes); the client is built over the OAuth session while the facade
+// carries the service-account session, as Python does. Additive: the
+// facade-to-client delegation contracts the wire suite cannot observe.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../client/client-test-helpers.js";
-import type { MixpanelClient } from "../../src/client/client.js";
+
 import {
   CreateWebhookParams,
   ProjectWebhook,
@@ -41,43 +22,14 @@ import {
   testWebhook as testWebhookMember,
   updateWebhook as updateWebhookMember,
 } from "../../src/workspace-members/annotations-webhooks-alerts.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over. */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
+import { ok } from "../../test-support/client-test-helpers.js";
+import {
+  makeFacadeWorkspace,
+  stubClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
-
-/**
- * A minimal webhook dict matching the API shape (`_webhook_json`,
- * :92-116).
+ * A minimal webhook dict matching the API shape (`_webhook_json`).
  *
  * @param id - Webhook UUID.
  * @param name - Webhook name.
@@ -101,7 +53,7 @@ function webhookJson(
 }
 
 /**
- * A webhook mutation-result dict (`_mutation_json`, :119-132).
+ * A webhook mutation-result dict (`_mutation_json`).
  *
  * @param id - Webhook UUID.
  * @param name - Webhook name.
@@ -114,45 +66,12 @@ function mutationJson(
   return { id, name };
 }
 
-/**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
+// --- Workspace webhook CRUD ---
 
-/**
- * A client stub whose single method returns `value` (the additive
- * delegation probes).
- *
- * @param method - The client method name to stub.
- * @param value - The value the stub resolves to.
- * @param calls - Optional log receiving each argument list.
- * @returns The stub cast to the client type.
- */
-function stubClient(
-  method: string,
-  value: unknown,
-  calls: unknown[][] = [],
-): MixpanelClient {
-  return {
-    [method]: (...args: unknown[]): Promise<unknown> => {
-      calls.push(args);
-      return Promise.resolve(value);
-    },
-  } as unknown as MixpanelClient;
-}
-
-// =============================================================================
-// TestWorkspaceWebhookCRUD (:141)
-// =============================================================================
-
-describe("TestWorkspaceWebhookCRUD", () => {
-  it("list_webhooks() returns list of ProjectWebhook objects", async () => {
-    const { ws } = makeWorkspace(() =>
+describe("Workspace webhook CRUD", () => {
+  // python: TestWorkspaceWebhookCRUD
+  it("listWebhooks() returns list of ProjectWebhook objects", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([webhookJson("id-1", "Hook A"), webhookJson("id-2", "Hook B")]),
     );
     const webhooks = await ws.listWebhooks();
@@ -164,13 +83,15 @@ describe("TestWorkspaceWebhookCRUD", () => {
     expect(webhooks[1]?.id).toBe("id-2");
   });
 
-  it("list_webhooks() returns empty list when no webhooks exist", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listWebhooks()).toEqual([]);
+  it("listWebhooks() returns empty list when no webhooks exist", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
+    await expect(ws.listWebhooks()).resolves.toStrictEqual([]);
   });
 
-  it("create_webhook() returns WebhookMutationResult", async () => {
-    const { ws } = makeWorkspace(() => ok(mutationJson("new-id", "New Hook")));
+  it("createWebhook() returns WebhookMutationResult", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
+      ok(mutationJson("new-id", "New Hook")),
+    );
     const params = new CreateWebhookParams({
       name: "New Hook",
       url: "https://example.com",
@@ -182,8 +103,10 @@ describe("TestWorkspaceWebhookCRUD", () => {
     expect(result.name).toBe("New Hook");
   });
 
-  it("create_webhook() sends auth fields when provided", async () => {
-    const { ws } = makeWorkspace(() => ok(mutationJson("new-id", "Secured")));
+  it("createWebhook() sends auth fields when provided", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
+      ok(mutationJson("new-id", "Secured")),
+    );
     const params = new CreateWebhookParams({
       name: "Secured",
       url: "https://example.com",
@@ -197,8 +120,8 @@ describe("TestWorkspaceWebhookCRUD", () => {
     expect(result.name).toBe("Secured");
   });
 
-  it("update_webhook() returns WebhookMutationResult", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("updateWebhook() returns WebhookMutationResult", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(mutationJson("wh-uuid-123", "Renamed")),
     );
     const params = new UpdateWebhookParams({ name: "Renamed" });
@@ -208,24 +131,23 @@ describe("TestWorkspaceWebhookCRUD", () => {
     expect(result.name).toBe("Renamed");
   });
 
-  it("delete_webhook() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+  it("deleteWebhook() resolves to undefined on success", async () => {
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteWebhook("wh-uuid-123")).resolves.toBeUndefined();
   });
 
-  it("delete_webhook() handles 200 response too", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+  it("deleteWebhook() handles 200 response too", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(ws.deleteWebhook("wh-uuid-123")).resolves.toBeUndefined();
   });
 });
 
-// =============================================================================
-// TestWorkspaceWebhookTest (:274)
-// =============================================================================
+// --- Workspace webhook test ---
 
-describe("TestWorkspaceWebhookTest", () => {
-  it("test_webhook() returns WebhookTestResult on success", async () => {
-    const { ws } = makeWorkspace(() =>
+describe("Workspace webhook test", () => {
+  // python: TestWorkspaceWebhookTest
+  it("testWebhook() returns WebhookTestResult on success", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ success: true, status_code: 200, message: "OK" }),
     );
     const params = new WebhookTestParams({ url: "https://example.com/hook" });
@@ -237,8 +159,8 @@ describe("TestWorkspaceWebhookTest", () => {
     expect(result.message).toBe("OK");
   });
 
-  it("test_webhook() returns failure result when test fails", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("testWebhook() returns failure result when test fails", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ success: false, status_code: 500, message: "Connection refused" }),
     );
     const params = new WebhookTestParams({ url: "https://bad.example.com" });
@@ -250,15 +172,13 @@ describe("TestWorkspaceWebhookTest", () => {
   });
 });
 
-// =============================================================================
-// ADDITIVE — delegation contracts (packet §0.2 / B5 Caution #13).
-// =============================================================================
+// --- Additive: delegation contracts the wire suite cannot observe ---
 
 describe("ADDITIVE: webhook member delegation contracts", () => {
   it("listWebhooks / deleteWebhook forward positionally with no options bag", async () => {
     const listCalls: unknown[][] = [];
     await listWebhooksMember(stubClient("listWebhooks", [], listCalls));
-    expect(listCalls[0]).toEqual([]);
+    expect(listCalls[0]).toStrictEqual([]);
 
     const delCalls: unknown[][] = [];
     await deleteWebhookMember(
@@ -268,7 +188,7 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
     expect(delCalls[0]?.[0]).toBe("wh-1");
   });
 
-  it("createWebhook sends the exclude_none dump (`workspace.py:6738`)", async () => {
+  it("createWebhook sends the exclude_none dump", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("createWebhook", mutationJson(), calls);
     await createWebhookMember(
@@ -276,8 +196,8 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
       new CreateWebhookParams({ name: "H", url: "https://e.co" }),
     );
 
-    // auth_type/username/password are None and MUST be absent (R3.5).
-    expect(calls[0]?.[0]).toEqual({ name: "H", url: "https://e.co" });
+    // auth_type/username/password are None and must be absent.
+    expect(calls[0]?.[0]).toStrictEqual({ name: "H", url: "https://e.co" });
   });
 
   it("updateWebhook forwards (webhook_id, exclude_none dump)", async () => {
@@ -290,10 +210,10 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
     );
 
     expect(calls[0]?.[0]).toBe("wh-1");
-    expect(calls[0]?.[1]).toEqual({ name: "Renamed", is_enabled: false });
+    expect(calls[0]?.[1]).toStrictEqual({ name: "Renamed", is_enabled: false });
   });
 
-  it("testWebhook sends the exclude_none dump (`workspace.py:6830`)", async () => {
+  it("testWebhook sends the exclude_none dump", async () => {
     const calls: unknown[][] = [];
     const client = stubClient(
       "testWebhook",
@@ -305,6 +225,6 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
       new WebhookTestParams({ url: "https://e.co" }),
     );
 
-    expect(calls[0]?.[0]).toEqual({ url: "https://e.co" });
+    expect(calls[0]?.[0]).toStrictEqual({ url: "https://e.co" });
   });
 });

@@ -1,57 +1,21 @@
-// Translated workspace-flow tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_workspace_flow.py (R10.2) — ALL 13
-// classes (TestBuildFlowParams :77, TestBuildFlowParamsFilters :360,
-// TestWorkspaceFlowPublicMethods :490, TestMultiStepNormalization :605,
-// TestMultiStepAnchorPosition :759, TestPerStepDirectionValidation :781,
-// TestFlowStepDatetimeFilters :846, TestQueryFlowTreeIntegration :937,
-// TestDataGroupIdFlow :991, TestFlowSessionEvent :1018,
-// TestFlowSegments :1065, TestFlowExclusions :1130,
-// TestFlowPropertyFilters :1176).
-//
-// The Python file also carries a REMOVAL comment for
-// `test_query_flow_raises_on_no_credentials` (:527) — nothing to
-// translate.
-//
-// Translation notes:
-// - `ws._build_flow_params(...)` (the private method) is the exported
-//   free function {@link buildFlowParams} in
-//   `src/workspace-query-params.ts` (R7.2 split; it is `self`-free in
-//   Python too).
-// - `ws._live_query = MagicMock()` (swapping the service to observe the
-//   delegation) becomes a stub `arbFunnelsQuery` on the shared client
-//   plus assertions on the recorded BODY — the same three facts
-//   (`project_id`, `query_type` from `mode`, and a bookmark payload),
-//   read one layer lower because `Workspace.liveQueryService` is a lazy
-//   getter with no setter (the TS field is `#`-private).
-// - `result.df` / `result.to_dict()` / `result.anytree` in the tree
-//   round-trip become `toRows()` / `toJSON()` / `anytree()` (C6 + the
-//   B5-S2 closure of the Phase-2 anytree TODO(port)).
+// Workspace flow queries: buildFlowParams (filters, multi-step normalization,
+// anchor/direction/datetime rules, segments, exclusions), the public queryFlow
+// methods and the tree round-trip. Mirrors all 13 classes of
+// tests/unit/test_workspace_flow.py; `_build_flow_params` is the exported
+// buildFlowParams, `ws._live_query = MagicMock()` a stubbed arbFunnelsQuery.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import { buildFlowParams } from "../../src/workspace-query-params.js";
+
 import { Filter } from "../../src/types/query-params/filter.js";
 import { FlowStep } from "../../src/types/query-params/flow.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
+import { FlowTreeNode } from "../../src/types/results/flow-tree.js";
+import { FlowQueryResult } from "../../src/types/results/query-engine.js";
+import { buildFlowParams } from "../../src/workspace-query-params.js";
 import {
-  FlowQueryResult,
-  FlowTreeNode,
-} from "../../src/types/results/query-engine.js";
-import {
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
-  type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :56-68).
- *
- * @param mock - Optional stub client.
- * @returns The facade under test.
- */
-function makeWs(mock: MockWorkspaceClient = mockWorkspaceClient()): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
+} from "../../test-support/workspace-test-helpers.js";
 
 /** The keyword-only defaults every `_build_flow_params` case shares. */
 const BASE_BUILD = {
@@ -74,11 +38,10 @@ function stepsOf(
   return params["steps"] as Array<Record<string, unknown>>;
 }
 
-// ===========================================================================
-// T020: _build_flow_params
-// ===========================================================================
+// --- _build_flow_params ---
 
-describe("TestBuildFlowParams", () => {
+describe("Build flow params", () => {
+  // python: TestBuildFlowParams
   it("a single-step flow produces the flat structure", () => {
     const params = buildFlowParams({
       ...BASE_BUILD,
@@ -108,7 +71,7 @@ describe("TestBuildFlowParams", () => {
     });
     const dr = params["date_range"] as Record<string, unknown>;
     expect(dr["type"]).toBe("in the last");
-    expect(dr["from_date"]).toEqual({ unit: "day", value: 30 });
+    expect(dr["from_date"]).toStrictEqual({ unit: "day", value: 30 });
     expect(dr["to_date"]).toBe("$now");
   });
 
@@ -173,7 +136,7 @@ describe("TestBuildFlowParams", () => {
     expect(step["forward"]).toBe(2);
     expect(step["reverse"]).toBe(1);
     expect(step["bool_op"]).toBe("and");
-    expect(step["property_filter_params_list"]).toEqual([]);
+    expect(step["property_filter_params_list"]).toStrictEqual([]);
   });
 
   it("collapse_repeated=true shows in the output", () => {
@@ -191,7 +154,7 @@ describe("TestBuildFlowParams", () => {
       steps: [new FlowStep({ event: "Login" })],
       hidden_events: ["X"],
     });
-    expect(params["hidden_events"]).toEqual(["X"]);
+    expect(params["hidden_events"]).toStrictEqual(["X"]);
   });
 
   it("a custom conversion window shows in the output", () => {
@@ -201,15 +164,17 @@ describe("TestBuildFlowParams", () => {
       conversion_window: 14,
       conversion_window_unit: "week",
     });
-    expect(params["conversion_window"]).toEqual({ unit: "week", value: 14 });
+    expect(params["conversion_window"]).toStrictEqual({
+      unit: "week",
+      value: 14,
+    });
   });
 });
 
-// ===========================================================================
-// T021: filter integration in _build_flow_params
-// ===========================================================================
+// --- Filter integration in _build_flow_params ---
 
-describe("TestBuildFlowParamsFilters", () => {
+describe("Build flow params filters", () => {
+  // python: TestBuildFlowParamsFilters
   it("a FlowStep with filters produces the segfilter list", () => {
     const step = new FlowStep({
       event: "Purchase",
@@ -222,7 +187,7 @@ describe("TestBuildFlowParamsFilters", () => {
     const pf = stepsOf(params)[0]!["property_filter_params_list"] as Array<
       Record<string, unknown>
     >;
-    expect(pf.length).toBe(1);
+    expect(pf).toHaveLength(1);
     const property = pf[0]!["property"] as Record<string, unknown>;
     expect(property["name"]).toBe("amount");
     expect(Object.hasOwn(pf[0]!, "filter")).toBe(true);
@@ -249,15 +214,16 @@ describe("TestBuildFlowParamsFilters", () => {
   it("a FlowStep without filters has an empty segfilter list", () => {
     const step = new FlowStep({ event: "Purchase", forward: 3, reverse: 0 });
     const params = buildFlowParams({ ...BASE_BUILD, steps: [step] });
-    expect(stepsOf(params)[0]!["property_filter_params_list"]).toEqual([]);
+    expect(stepsOf(params)[0]!["property_filter_params_list"]).toStrictEqual(
+      [],
+    );
   });
 });
 
-// ===========================================================================
-// T028-T029: workspace public methods
-// ===========================================================================
+// --- Workspace public methods ---
 
-describe("TestWorkspaceFlowPublicMethods", () => {
+describe("Workspace flow public methods", () => {
+  // python: TestWorkspaceFlowPublicMethods
   /** A minimal sankey response the transform accepts. */
   const SANKEY_OK: Record<string, unknown> = {
     computed_at: "2025-01-15T10:00:00",
@@ -272,11 +238,11 @@ describe("TestWorkspaceFlowPublicMethods", () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(SANKEY_OK);
 
-    const result = await makeWs(mock).queryFlow("Login");
+    const result = await makeStubWorkspace(mock).queryFlow("Login");
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.computed_at).toBe("2025-01-15T10:00:00");
-    expect(mock.arbFunnelsCalls.length).toBe(1);
+    expect(mock.arbFunnelsCalls).toHaveLength(1);
     const body = mock.arbFunnelsCalls[0]!;
     expect(body["project_id"]).toBe(12345);
     expect(body["query_type"]).toBe("flows_sankey"); // mode="sankey"
@@ -285,14 +251,14 @@ describe("TestWorkspaceFlowPublicMethods", () => {
 
   it("build_flow_params returns a dict without an API call", async () => {
     const mock = mockWorkspaceClient();
-    const params = await makeWs(mock).buildFlowParams("Login");
+    const params = await makeStubWorkspace(mock).buildFlowParams("Login");
 
     expect(typeof params).toBe("object");
     expect(Object.hasOwn(params, "steps")).toBe(true);
     expect(Object.hasOwn(params, "date_range")).toBe(true);
     expect(Object.hasOwn(params, "chartType")).toBe(true);
     expect(params["version"]).toBe(2);
-    expect(mock.arbFunnelsCalls.length).toBe(0);
+    expect(mock.arbFunnelsCalls).toHaveLength(0);
   });
 
   it("query_flow accepts a FlowStep directly", async () => {
@@ -306,12 +272,12 @@ describe("TestWorkspaceFlowPublicMethods", () => {
       metadata: {},
     });
 
-    const result = await makeWs(mock).queryFlow(
+    const result = await makeStubWorkspace(mock).queryFlow(
       new FlowStep({ event: "Login", forward: 5, reverse: 2 }),
     );
 
     expect(result).toBeInstanceOf(FlowQueryResult);
-    expect(mock.arbFunnelsCalls.length).toBe(1);
+    expect(mock.arbFunnelsCalls).toHaveLength(1);
   });
 
   it("query_flow accepts a list of event names", async () => {
@@ -325,9 +291,12 @@ describe("TestWorkspaceFlowPublicMethods", () => {
       metadata: {},
     });
 
-    const result = await makeWs(mock).queryFlow(["Login", "Purchase"], {
-      mode: "paths",
-    });
+    const result = await makeStubWorkspace(mock).queryFlow(
+      ["Login", "Purchase"],
+      {
+        mode: "paths",
+      },
+    );
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(mock.arbFunnelsCalls[0]!["query_type"]).toBe("flows_top_paths");
@@ -335,15 +304,14 @@ describe("TestWorkspaceFlowPublicMethods", () => {
   });
 });
 
-// ===========================================================================
-// T040-T042: multi-step normalization
-// ===========================================================================
+// --- Multi-step normalization ---
 
-describe("TestMultiStepNormalization", () => {
+describe("Multi step normalization", () => {
+  // python: TestMultiStepNormalization
   it("a list of strings produces N steps with the defaults", async () => {
-    const params = await makeWs().buildFlowParams(["A", "B"]);
+    const params = await makeStubWorkspace().buildFlowParams(["A", "B"]);
     const steps = stepsOf(params);
-    expect(steps.length).toBe(2);
+    expect(steps).toHaveLength(2);
     expect(steps[0]!["event"]).toBe("A");
     expect(steps[1]!["event"]).toBe("B");
     // Top-level defaults: forward=3, reverse=0
@@ -354,12 +322,12 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("a list of FlowSteps preserves per-step forward/reverse", async () => {
-    const params = await makeWs().buildFlowParams([
+    const params = await makeStubWorkspace().buildFlowParams([
       new FlowStep({ event: "A", forward: 3 }),
       new FlowStep({ event: "B", reverse: 2 }),
     ]);
     const steps = stepsOf(params);
-    expect(steps.length).toBe(2);
+    expect(steps).toHaveLength(2);
     expect(steps[0]!["event"]).toBe("A");
     expect(steps[0]!["forward"]).toBe(3);
     expect(steps[1]!["event"]).toBe("B");
@@ -367,12 +335,12 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("a mixed list works correctly", async () => {
-    const params = await makeWs().buildFlowParams([
+    const params = await makeStubWorkspace().buildFlowParams([
       "A",
       new FlowStep({ event: "B", forward: 1 }),
     ]);
     const steps = stepsOf(params);
-    expect(steps.length).toBe(2);
+    expect(steps).toHaveLength(2);
     expect(steps[0]!["event"]).toBe("A");
     expect(steps[0]!["forward"]).toBe(3);
     expect(steps[0]!["reverse"]).toBe(0);
@@ -381,24 +349,24 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("a single string wraps into a one-element list", async () => {
-    const params = await makeWs().buildFlowParams("Purchase");
+    const params = await makeStubWorkspace().buildFlowParams("Purchase");
     const steps = stepsOf(params);
-    expect(steps.length).toBe(1);
+    expect(steps).toHaveLength(1);
     expect(steps[0]!["event"]).toBe("Purchase");
   });
 
   it("a single FlowStep wraps into a one-element list", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "A", forward: 3 }),
     );
     const steps = stepsOf(params);
-    expect(steps.length).toBe(1);
+    expect(steps).toHaveLength(1);
     expect(steps[0]!["event"]).toBe("A");
     expect(steps[0]!["forward"]).toBe(3);
   });
 
   it("string steps inherit the top-level defaults", async () => {
-    const params = await makeWs().buildFlowParams(["X", "Y"], {
+    const params = await makeStubWorkspace().buildFlowParams(["X", "Y"], {
       forward: 5,
       reverse: 2,
     });
@@ -409,7 +377,7 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("explicit FlowStep values override the top-level defaults", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "A", forward: 5, reverse: 4 }),
       { forward: 3, reverse: 0 },
     );
@@ -419,7 +387,7 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("a FlowStep with null values inherits the defaults", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "A" }),
       { forward: 5, reverse: 2 },
     );
@@ -429,24 +397,22 @@ describe("TestMultiStepNormalization", () => {
   });
 });
 
-// ===========================================================================
-// T042: anchor_position
-// ===========================================================================
+// --- anchor_position ---
 
-describe("TestMultiStepAnchorPosition", () => {
+describe("Multi step anchor position", () => {
+  // python: TestMultiStepAnchorPosition
   it("anchor_position is 1", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(params["anchor_position"]).toBe(1);
   });
 });
 
-// ===========================================================================
-// T043: FL5 respects per-step overrides
-// ===========================================================================
+// --- FL5 respects per-step overrides ---
 
-describe("TestPerStepDirectionValidation", () => {
+describe("Per step direction validation", () => {
+  // python: TestPerStepDirectionValidation
   it("a per-step forward override is not rejected when top-level is 0", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "Login", forward: 3 }),
       { forward: 0, reverse: 0 },
     );
@@ -457,15 +423,31 @@ describe("TestPerStepDirectionValidation", () => {
 
   it("FL5 still rejects when no step has a non-zero direction", async () => {
     await expect(
-      makeWs().buildFlowParams(new FlowStep({ event: "Login" }), {
+      makeStubWorkspace().buildFlowParams(new FlowStep({ event: "Login" }), {
         forward: 0,
         reverse: 0,
       }),
     ).rejects.toThrow(/forward or reverse must be > 0/);
   });
 
+  it("an out-of-union filters_combinator is still rejected at runtime (8.11 guard retained)", async () => {
+    // The type says "all" | "any"; the guard exists for untyped callers
+    // (Python raises for anything else) and must survive the lint sweep.
+    await expect(
+      makeStubWorkspace().buildFlowParams(
+        new FlowStep({
+          event: "Login",
+          forward: 3,
+          filters_combinator: "xor" as never,
+        }),
+      ),
+    ).rejects.toThrow(
+      /filters_combinator must be 'all' or 'any' \(got 'xor'\)/,
+    );
+  });
+
   it("mixed per-step overrides pass when one direction is > 0", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       [
         new FlowStep({ event: "A", forward: 3 }),
         new FlowStep({ event: "B", reverse: 2 }),
@@ -480,13 +462,12 @@ describe("TestPerStepDirectionValidation", () => {
   });
 });
 
-// ===========================================================================
-// T044: datetime filter -> segfilter operator mapping
-// ===========================================================================
+// --- Datetime filter -> segfilter operator mapping ---
 
-describe("TestFlowStepDatetimeFilters", () => {
+describe("Flow step datetime filters", () => {
+  // python: TestFlowStepDatetimeFilters
   it("Filter.before produces segfilter operator '>'", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({
         event: "Login",
         filters: [Filter.before("$time", "2026-01-15")],
@@ -501,7 +482,7 @@ describe("TestFlowStepDatetimeFilters", () => {
   });
 
   it("Filter.in_the_last produces operator, operand and unit", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({
         event: "Login",
         filters: [Filter.inTheLast("$time", 7, "day")],
@@ -517,11 +498,9 @@ describe("TestFlowStepDatetimeFilters", () => {
   });
 });
 
-// ===========================================================================
-// T053: end-to-end tree mode
-// ===========================================================================
+// --- End-to-end tree mode ---
 
-/** `_sample_tree_api_response()` (test file :890-935). */
+/** `_sample_tree_api_response()` . */
 function sampleTreeApiResponse(): Record<string, unknown> {
   return {
     computed_at: "2025-01-15T10:00:00",
@@ -562,16 +541,19 @@ function sampleTreeApiResponse(): Record<string, unknown> {
   };
 }
 
-describe("TestQueryFlowTreeIntegration", () => {
+describe("Query flow tree integration", () => {
+  // python: TestQueryFlowTreeIntegration
   it("query_flow(mode='tree') returns a structured result", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(sampleTreeApiResponse());
 
-    const result = await makeWs(mock).queryFlow("Login", { mode: "tree" });
+    const result = await makeStubWorkspace(mock).queryFlow("Login", {
+      mode: "tree",
+    });
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.mode).toBe("tree");
-    expect(result.trees.length).toBe(1);
+    expect(result.trees).toHaveLength(1);
 
     const root = result.trees[0]!;
     expect(root).toBeInstanceOf(FlowTreeNode);
@@ -580,169 +562,164 @@ describe("TestQueryFlowTreeIntegration", () => {
     expect(root.drop_off_count).toBe(20);
     expect(root.converted_count).toBe(80);
 
-    expect(root.children.length).toBe(1);
+    expect(root.children).toHaveLength(1);
     expect(root.children[0]!.event).toBe("Search");
     expect(root.children[0]!.total_count).toBe(80);
 
     // Frame rows work
     const rows = result.toRows();
-    expect(rows.length).toBe(root.node_count);
+    expect(rows).toHaveLength(root.node_count);
     expect(result.rowColumns()).toContain("path");
     expect(rows.map((r) => r["path"])).toContain("Login > Search");
 
     // toJSON is serializable
     const d = result.toJSON();
     const trees = d["trees"] as Array<Record<string, unknown>>;
-    expect(trees.length).toBe(1);
+    expect(trees).toHaveLength(1);
     expect(trees[0]!["event"]).toBe("Login");
 
-    // The anytree view works (B5-S2 closure of the Phase-2 TODO)
+    // The anytree view of the same tree.
     const atRoots = result.anytree();
-    expect(atRoots.length).toBe(1);
+    expect(atRoots).toHaveLength(1);
     expect(atRoots[0]!.event).toBe("Login");
-    expect(atRoots[0]!.children.length).toBe(1);
+    expect(atRoots[0]!.children).toHaveLength(1);
     // The parent back-reference anytree provides
     expect(atRoots[0]!.children[0]!.parent).toBe(atRoots[0]);
   });
 });
 
-// ===========================================================================
-// T032: data_group_id
-// ===========================================================================
+// --- data_group_id ---
 
-describe("TestDataGroupIdFlow", () => {
+describe("Data group ID flow", () => {
+  // python: TestDataGroupIdFlow
   it("data_group_id=5 is emitted snake_case for flows", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       data_group_id: 5,
     });
     expect(result["data_group_id"]).toBe(5);
   });
 
   it("omitting data_group_id omits the key", async () => {
-    const result = await makeWs().buildFlowParams("Login");
+    const result = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(result, "data_group_id")).toBe(false);
   });
 });
 
-// ===========================================================================
-// T038: session_event
-// ===========================================================================
+// --- session_event ---
 
-describe("TestFlowSessionEvent", () => {
+describe("Flow session event", () => {
+  // python: TestFlowSessionEvent
   it("session_event='start' is emitted in the step dict", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "$session_start", session_event: "start" }),
     );
     expect(stepsOf(params)[0]!["session_event"]).toBe("start");
   });
 
   it("session_event='end' is emitted in the step dict", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "$session_end", session_event: "end" }),
     );
     expect(stepsOf(params)[0]!["session_event"]).toBe("end");
   });
 
   it("a regular FlowStep omits the session_event key", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(stepsOf(params)[0]!, "session_event")).toBe(false);
   });
 });
 
-// ===========================================================================
-// T038: segments
-// ===========================================================================
+// --- Segments ---
 
-describe("TestFlowSegments", () => {
+describe("Flow segments", () => {
+  // python: TestFlowSegments
   it("segments=GroupBy('country') produces segments", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       segments: new GroupBy({ property: "country" }),
     });
     expect(Object.hasOwn(params, "segments")).toBe(true);
     const segments = params["segments"] as Array<Record<string, unknown>>;
     expect(Array.isArray(segments)).toBe(true);
-    expect(segments.length).toBe(1);
+    expect(segments).toHaveLength(1);
     expect(segments[0]!["value"]).toBe("country");
   });
 
   it("segments='country' (string shorthand) produces segments", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       segments: "country",
     });
     expect(Object.hasOwn(params, "segments")).toBe(true);
-    expect((params["segments"] as unknown[]).length).toBe(1);
+    expect(params["segments"] as unknown[]).toHaveLength(1);
   });
 
   it("a list of GroupBy produces multiple segments", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       segments: [
         new GroupBy({ property: "country" }),
         new GroupBy({ property: "platform" }),
       ],
     });
-    expect((params["segments"] as unknown[]).length).toBe(2);
+    expect(params["segments"] as unknown[]).toHaveLength(2);
   });
 
   it("no segments omits the key", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(params, "segments")).toBe(false);
   });
 });
 
-// ===========================================================================
-// T038: exclusions
-// ===========================================================================
+// --- Exclusions ---
 
-describe("TestFlowExclusions", () => {
+describe("Flow exclusions", () => {
+  // python: TestFlowExclusions
   it("a single exclusion produces the exclusions list", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       exclusions: ["Error Event"],
     });
-    expect(params["exclusions"]).toEqual(["Error Event"]);
+    expect(params["exclusions"]).toStrictEqual(["Error Event"]);
   });
 
   it("multiple exclusions all appear", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       exclusions: ["Error", "Debug", "Test"],
     });
-    expect(params["exclusions"]).toEqual(["Error", "Debug", "Test"]);
+    expect(params["exclusions"]).toStrictEqual(["Error", "Debug", "Test"]);
   });
 
   it("no exclusions produce an empty list", async () => {
-    const params = await makeWs().buildFlowParams("Login");
-    expect(params["exclusions"]).toEqual([]);
+    const params = await makeStubWorkspace().buildFlowParams("Login");
+    expect(params["exclusions"]).toStrictEqual([]);
   });
 });
 
-// ===========================================================================
-// T038: property filters (filter_by_event)
-// ===========================================================================
+// --- Property filters (filter_by_event) ---
 
-describe("TestFlowPropertyFilters", () => {
+describe("Flow property filters", () => {
+  // python: TestFlowPropertyFilters
   it("where=Filter.equals produces filter_by_event", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.equals("country", "US"),
     });
     expect(Object.hasOwn(params, "filter_by_event")).toBe(true);
     const fbe = params["filter_by_event"] as Record<string, unknown>;
     expect(fbe["operator"]).toBe("and");
     const children = fbe["children"] as Array<Record<string, unknown>>;
-    expect(children.length).toBe(1);
+    expect(children).toHaveLength(1);
     expect(children[0]!["filterOperator"]).toBe("equals");
     expect(children[0]!["propertyName"]).toBe("country");
-    expect(children[0]!["filterValue"]).toEqual(["US"]);
+    expect(children[0]!["filterValue"]).toStrictEqual(["US"]);
   });
 
   it("a list of property filters produces a children array", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       where: [Filter.equals("country", "US"), Filter.greaterThan("age", 18)],
     });
     const fbe = params["filter_by_event"] as Record<string, unknown>;
-    expect((fbe["children"] as unknown[]).length).toBe(2);
+    expect(fbe["children"] as unknown[]).toHaveLength(2);
   });
 
   it("a cohort filter still produces filter_by_cohort", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
     });
     expect(Object.hasOwn(params, "filter_by_cohort")).toBe(true);
@@ -750,7 +727,7 @@ describe("TestFlowPropertyFilters", () => {
   });
 
   it("no where produces neither filter key", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(params, "filter_by_event")).toBe(false);
     expect(Object.hasOwn(params, "filter_by_cohort")).toBe(false);
   });

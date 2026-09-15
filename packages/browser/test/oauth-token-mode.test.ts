@@ -1,18 +1,19 @@
-// Layer-3 suite for the first-class oauth_token mode (b9-packets.md
-// §2.2; contract arbiter R9.3 "oauth_token mode first-class" + plan
-// §4.3 Tier C). Where behavior HAS a Python twin the twin rules:
-// - account/session assembly goes through core `parseAccount` /
-//   `parseSession` (auth_types twins — never hand-assembled unions);
-// - the Authorization header is built by the CORE header path
-//   (`accountAuthHeader` — Python `_get_auth_header`);
-// - workspace-scoped App-API paths come from the core client's
-//   `maybe_scoped_path` twin (no browser re-implementation).
+// First-class oauth_token mode in the browser. Account/session assembly goes
+// through core `parseAccount` / `parseSession`, the Authorization header
+// through the core header path, and workspace-scoped App-API paths through
+// the core client — no browser re-implementation.
 
 import { describe, expect, it } from "vitest";
 
-import { parseAccount } from "../../core/src/auth/account.js";
-import { parseSession, type Session } from "../../core/src/auth/session.js";
-import { ParamValidationError } from "../../core/src/errors.js";
+import {
+  ParamValidationError,
+  parseAccount,
+  parseSession,
+  ResponseValidationError,
+  type Session,
+} from "@mixpanel-headless/core";
+
+import { fakeTransport } from "../../core/test-support/client-test-helpers.js";
 import {
   browserSession,
   createBrowserWorkspace,
@@ -20,10 +21,9 @@ import {
   CREDENTIAL_KEYS,
   InMemoryCredentialStore,
 } from "../src/index.js";
-import { fakeTransport } from "./helpers.js";
 
-describe("browserSession (§2.2) — real parseAccount/parseSession output", () => {
-  it("builds an oauth_token account with default name 'browser' (field spellings per R7.6)", () => {
+describe("browserSession", () => {
+  it("builds an oauth_token account with default name 'browser'", () => {
     const session = browserSession({
       token: "tok-123",
       projectId: "12345",
@@ -32,9 +32,11 @@ describe("browserSession (§2.2) — real parseAccount/parseSession output", () 
     expect(session.account.type).toBe("oauth_token");
     expect(session.account.name).toBe("browser");
     expect(session.account.region).toBe("us");
-    if (session.account.type === "oauth_token") {
-      expect(session.account.token?.reveal()).toBe("tok-123");
-    }
+    const token =
+      session.account.type === "oauth_token"
+        ? session.account.token?.reveal()
+        : undefined;
+    expect(token).toBe("tok-123");
     expect(session.project.id).toBe("12345");
     expect(session.workspace ?? null).toBeNull();
     expect(session.headers.size).toBe(0);
@@ -50,7 +52,7 @@ describe("browserSession (§2.2) — real parseAccount/parseSession output", () 
     });
     expect(session.account.name).toBe("ci-bot");
     expect(session.account.region).toBe("eu");
-    expect(session.workspace).toEqual({ id: 789 });
+    expect(session.workspace).toStrictEqual({ id: 789 });
   });
 
   it("rejects a non-digit projectId at the param boundary", () => {
@@ -64,7 +66,7 @@ describe("browserSession (§2.2) — real parseAccount/parseSession output", () 
   });
 });
 
-describe("createBrowserWorkspace (§2.2) — core Workspace over a guarded transport", () => {
+describe("createBrowserWorkspace", () => {
   it("Query-host call carries Authorization: Bearer <token> built by the core header path (byte-exact)", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: [] }));
     const ws = createBrowserWorkspace({
@@ -101,13 +103,13 @@ describe("createBrowserWorkspace (§2.2) — core Workspace over a guarded trans
     expect(capture.headers["authorization"]).toBe("Bearer tok-123");
   });
 
-  // B9-ARB-A SEM-F1 (b9-reviewA-resolution.md): the "static token
+  // The "static token
   // unresolvable" condition matches the Python twin's code + details
-  // (`OnDiskTokenResolver.get_static_token`, token_resolver.py:273-282
+  // (`OnDiskTokenResolver.get_static_token`, token_resolver.py
   // → OAUTH_TOKEN_ERROR {account_name, env_var}) so the condition is
   // uniform across runtimes; the MESSAGE stays browser-explanatory
-  // (env reading is node-only, R9.4 — out of contract per R5.4).
-  it("token_env account (hand-built session) refuses with the Python-coded OAUTH_TOKEN_ERROR {account_name, env_var} (token_resolver.py:273-282 twin)", async () => {
+  // (env reading is node-only; messages are out of contract).
+  it("a hand-built token_env account refuses with OAUTH_TOKEN_ERROR {account_name, env_var}", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: [] }));
     const session = parseSession(
       {
@@ -138,7 +140,7 @@ describe("createBrowserWorkspace (§2.2) — core Workspace over a guarded trans
     expect(transport.captures).toHaveLength(0);
   });
 
-  it("neither-token-nor-token_env (model-invariant arm) refuses with OAUTH_TOKEN_ERROR {account_name} (token_resolver.py:267-272 twin)", async () => {
+  it("an account with neither token nor token_env refuses with OAUTH_TOKEN_ERROR {account_name}", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: [] }));
     // The XOR invariant makes this account shape unbuildable through
     // `parseAccount` — hand-built literal, exactly the Python
@@ -177,18 +179,16 @@ describe("createBrowserWorkspace (§2.2) — core Workspace over a guarded trans
   });
 });
 
-describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path", () => {
+describe("createBrowserWorkspaceFromStore", () => {
   /**
    * Seed a store with a tokens payload under the per-region key.
    *
    * @param expiresAt - Expiry text for the persisted tokens.
    * @returns The seeded store.
    */
-  async function seededStore(
-    expiresAt: string,
-  ): Promise<InMemoryCredentialStore> {
+  function seededStore(expiresAt: string): InMemoryCredentialStore {
     const store = new InMemoryCredentialStore();
-    await store.set(
+    store.set(
       CREDENTIAL_KEYS.tokens("us"),
       JSON.stringify({
         access_token: "stored-tok",
@@ -205,7 +205,7 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
     const ws = await createBrowserWorkspaceFromStore({
       region: "us",
       projectId: "12345",
-      store: await seededStore("2030-01-01T00:00:00+00:00"),
+      store: seededStore("2030-01-01T00:00:00+00:00"),
       fetch: transport.fetch,
       now: () => Date.parse("2026-01-01T00:00:00Z"),
     });
@@ -221,7 +221,7 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
       createBrowserWorkspaceFromStore({
         region: "us",
         projectId: "12345",
-        store: await seededStore("2020-01-01T00:00:00+00:00"),
+        store: seededStore("2020-01-01T00:00:00+00:00"),
         fetch: fakeTransport(() => ({ status: 200, json: [] })).fetch,
         now: () => Date.parse("2026-01-01T00:00:00Z"),
       }),
@@ -241,7 +241,7 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
 
   it("rejects malformed persisted tokens (strict parse — no lax read path)", async () => {
     const store = new InMemoryCredentialStore();
-    await store.set(
+    store.set(
       CREDENTIAL_KEYS.tokens("us"),
       JSON.stringify({ access_token: "x" }), // missing required fields
     );
@@ -252,6 +252,6 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
         store,
         fetch: fakeTransport(() => ({ status: 200, json: [] })).fetch,
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(ResponseValidationError);
   });
 });

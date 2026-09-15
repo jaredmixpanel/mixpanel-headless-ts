@@ -1,21 +1,23 @@
-// Layer-3 translation of tests/unit/test_app_api_client.py::TestAppRequest
-// (:78-303), ::TestAppRequestFormBody (:306-403), ::TestCodedAppRequestCodes
-// (:873-929), plus the app_request halves of
-// tests/unit/test_api_client.py::TestRetryAfterHardening (:3763-3808) and
-// ::TestErrorContextSymmetry (:4027-4116), and the appRequest-level
-// re-check of tests/unit/test_settings_headers.py::
-// TestSessionHeadersOnOutboundRequests — Phase-3 packet B0-2.
-//
-// Entry-point substitution (B0-notes decision 13): httpx.MockTransport
-// becomes the injected request executor; auth resolution becomes the
-// injected per-call `getAuthHeader` seam (R2.9 — the REAL
-// accountAuthHeader wiring is B4's clientFromSession); `recorded_sleeps`
-// becomes the sleep seam. Deferred to B4 (B0-notes deviation 3): the
-// x-www-form-urlencoded content-type assertion (adapter-owned encoding)
-// and Python's `except ValueError` catchability assert (dual inheritance
-// is Python-only; errors.ts docstring covers it — the class+code
-// assertions are preserved).
+// `appRequest` over an injected request executor: auth header, URL, result
+// unwrapping, status-to-error mapping, form/JSON bodies, retry/backoff and
+// error-context symmetry. Mirrors TestAppRequest, TestAppRequestFormBody and
+// TestCodedAppRequestCodes from tests/unit/test_app_api_client.py plus the
+// app_request halves of TestRetryAfterHardening, TestErrorContextSymmetry and TestSessionHeadersOnOutboundRequests.
+
 import { describe, expect, it } from "vitest";
+
+import {
+  appRequest,
+  type AppRequestDeps,
+} from "../../src/client/app-request.js";
+import { getUserAgent, requestHeaders } from "../../src/client/headers.js";
+import {
+  MixpanelHttpError,
+  type TransportRequestOptions,
+  type WireResponse,
+} from "../../src/client/internals.js";
+import { JsonNumber } from "../../src/client/json-value.js";
+import { ENDPOINTS, type Region } from "../../src/client/url.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
@@ -24,19 +26,6 @@ import {
   RateLimitError,
   ServerError,
 } from "../../src/errors.js";
-import {
-  appRequest,
-  type AppRequestDeps,
-} from "../../src/client/app-request.js";
-import {
-  MixpanelHttpError,
-  type TransportRequestOptions,
-  type WireResponse,
-} from "../../src/client/internals.js";
-import { getUserAgent, requestHeaders } from "../../src/client/headers.js";
-import { ENDPOINTS } from "../../src/client/url.js";
-import { JsonNumber } from "../../src/client/json-value.js";
-import type { Region } from "../../src/client/url.js";
 
 /**
  * Build a canned WireResponse.
@@ -70,15 +59,15 @@ interface Harness {
 }
 
 /**
- * Build appRequest deps over a response script.
+ * Build appRequest deps over a response script. `options` overrides the
+ * auth header, region, retry count, session headers and the custom-header
+ * env pair.
  *
  * @param script - Responses (or thrown errors) per attempt; last repeats.
- * @param options - Overrides (auth header, region, retries, session
- *   headers, env pair).
  * @returns The recorded harness.
  */
 function harness(
-  script: readonly (WireResponse | Error)[],
+  script: ReadonlyArray<WireResponse | Error>,
   options: {
     maxRetries?: number;
     authHeader?: string;
@@ -111,7 +100,7 @@ function harness(
     // asserts request shape, not timeout routing (server-deadline.test.ts
     // owns that).
     defaultTimeoutSeconds: () => 120,
-    // The REAL B0-owned 4-layer merge, pre-bound like B4-C1 will bind it.
+    // The real 4-layer header merge, pre-bound the way the client binds it.
     requestHeaders: (extra) =>
       requestHeaders(
         {
@@ -128,8 +117,10 @@ function harness(
   return { deps, calls, sleepsMs };
 }
 
-describe("TestAppRequest", () => {
-  it("test_uses_bearer_auth_header", async () => {
+describe("App request", () => {
+  // python: TestAppRequest
+  it("uses bearer auth header", async () => {
+    // python: test_uses_bearer_auth_header
     const h = harness([res(200, { status: "ok", results: [] })]);
     await appRequest(h.deps, "GET", "/dashboards");
     expect(h.calls[0]?.headers["Authorization"]).toBe(
@@ -137,7 +128,8 @@ describe("TestAppRequest", () => {
     );
   });
 
-  it("test_uses_basic_auth_when_configured", async () => {
+  it("uses basic auth when configured", async () => {
+    // python: test_uses_basic_auth_when_configured
     const h = harness([res(200, { status: "ok", results: [] })], {
       authHeader: "Basic dGVzdF91c2VyOnRlc3Rfc2VjcmV0",
     });
@@ -147,43 +139,47 @@ describe("TestAppRequest", () => {
     );
   });
 
-  it("test_builds_correct_url", async () => {
+  it("builds correct URL", async () => {
+    // python: test_builds_correct_url
     const h = harness([res(200, { status: "ok", results: [] })]);
     await appRequest(h.deps, "GET", "/projects/12345/dashboards");
-    const expectedBase = ENDPOINTS.get("us")?.get("app");
+    const expectedBase = ENDPOINTS.get("us")!.get("app")!;
     expect(
       h.calls[0]?.url.startsWith(`${expectedBase}/projects/12345/dashboards`),
     ).toBe(true);
   });
 
-  it("test_rate_limit_error_carries_project_id", async () => {
+  it("rate limit error carries project ID", async () => {
+    // python: test_rate_limit_error_carries_project_id
     const h = harness([res(429, "", { "Retry-After": "0" })], {
       maxRetries: 1,
     });
     const error = await appRequest(h.deps, "GET", "/dashboards").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).projectId).toBe("12345");
   });
 
-  it("test_rate_limit_fallthrough_carries_project_id", async () => {
+  it("rate limit fallthrough carries project ID", async () => {
+    // python: test_rate_limit_fallthrough_carries_project_id
     // max_retries below zero: the loop never runs — the reduced-shape
-    // fallthrough raise (api_client.py:1381-1387, FF4) fires.
+    // fallthrough raise in mixpanel_headless.api_client fires.
     const h = harness([res(200, { status: "ok", results: [] })], {
       maxRetries: -1,
     });
     const error = await appRequest(h.deps, "GET", "/dashboards").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).projectId).toBe("12345");
     expect((error as RateLimitError).retryAfter).toBeNull();
     expect((error as RateLimitError).responseBody).toBeNull();
-    expect(h.calls.length).toBe(0);
+    expect(h.calls).toHaveLength(0);
   });
 
-  it("test_unwraps_results_field", async () => {
+  it("unwraps results field", async () => {
+    // python: test_unwraps_results_field
     const h = harness([
       res(200, { status: "ok", results: [{ id: 1, name: "Dashboard 1" }] }),
     ]);
@@ -192,41 +188,47 @@ describe("TestAppRequest", () => {
       "GET",
       "/projects/12345/dashboards",
     );
-    expect(result).toEqual([{ id: new JsonNumber("1"), name: "Dashboard 1" }]);
+    expect(result).toStrictEqual([
+      { id: new JsonNumber("1"), name: "Dashboard 1" },
+    ]);
   });
 
-  it("test_returns_full_response_when_no_results_key", async () => {
+  it("returns full response when no results key", async () => {
+    // python: test_returns_full_response_when_no_results_key
     const h = harness([res(200, { status: "ok", data: "something" })]);
     const result = await appRequest(
       h.deps,
       "GET",
       "/projects/12345/some-endpoint",
     );
-    expect(result).toEqual({ status: "ok", data: "something" });
+    expect(result).toStrictEqual({ status: "ok", data: "something" });
   });
 
-  it("test_handles_204_no_content", async () => {
+  it("handles 204 no content", async () => {
+    // python: test_handles_204_no_content
     const h = harness([res(204)]);
     const result = await appRequest(
       h.deps,
       "DELETE",
       "/projects/12345/dashboards/1",
     );
-    expect(result).toEqual({ status: "ok" });
+    expect(result).toStrictEqual({ status: "ok" });
   });
 
-  it("test_maps_404_to_query_error", async () => {
+  it("maps 404 to query error", async () => {
+    // python: test_maps_404_to_query_error
     const h = harness([res(404, { error: "Not found" })]);
     const error = await appRequest(
       h.deps,
       "GET",
       "/projects/12345/dashboards/999",
-    ).catch((e: unknown) => e);
+    ).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect((error as QueryError).statusCode).toBe(404);
   });
 
-  it("test_maps_422_to_query_error", async () => {
+  it("maps 422 to query error", async () => {
+    // python: test_maps_422_to_query_error
     const h = harness([
       res(422, { error: "Unprocessable entity", details: "bad field" }),
     ]);
@@ -234,26 +236,29 @@ describe("TestAppRequest", () => {
       h.deps,
       "GET",
       "/projects/12345/dashboards",
-    ).catch((e: unknown) => e);
+    ).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect((error as QueryError).statusCode).toBe(422);
   });
 
-  it("test_maps_401_to_authentication_error", async () => {
+  it("maps 401 to authentication error", async () => {
+    // python: test_maps_401_to_authentication_error
     const h = harness([res(401, { error: "Unauthorized" })]);
     await expect(
       appRequest(h.deps, "GET", "/projects/12345/dashboards"),
     ).rejects.toBeInstanceOf(AuthenticationError);
   });
 
-  it("test_maps_5xx_to_server_error", async () => {
+  it("maps 5xx to server error", async () => {
+    // python: test_maps_5xx_to_server_error
     const h = harness([res(500, { error: "Internal server error" })]);
     await expect(
       appRequest(h.deps, "GET", "/projects/12345/dashboards"),
     ).rejects.toBeInstanceOf(ServerError);
   });
 
-  it("test_passes_query_params", async () => {
+  it("passes query params", async () => {
+    // python: test_passes_query_params
     const h = harness([res(200, { status: "ok", results: [] })]);
     await appRequest(h.deps, "GET", "/projects/12345/dashboards", {
       params: { page_size: "50" },
@@ -261,26 +266,28 @@ describe("TestAppRequest", () => {
     expect(h.calls[0]?.params["page_size"]).toBe("50");
   });
 
-  it("NO query_origin on App-API params (packet bullet)", async () => {
-    // api_client.py:1268-1272: caller-supplied params only — some App
-    // API endpoints reject unknown query parameters.
+  it("sends NO query_origin on App-API params", async () => {
+    // Caller-supplied params only — some App API endpoints reject unknown
+    // query parameters.
     const h = harness([res(200, { status: "ok", results: [] })]);
     await appRequest(h.deps, "GET", "/dashboards");
-    expect(h.calls[0]?.params).toEqual({});
+    expect(h.calls[0]?.params).toStrictEqual({});
   });
 
-  it("test_passes_json_body", async () => {
+  it("passes JSON body", async () => {
+    // python: test_passes_json_body
     const h = harness([
       res(200, { status: "ok", results: { id: 1, name: "New" } }),
     ]);
     await appRequest(h.deps, "POST", "/projects/12345/dashboards", {
       jsonBody: { name: "New Dashboard" },
     });
-    expect(h.calls[0]?.jsonBody).toEqual({ name: "New Dashboard" });
+    expect(h.calls[0]?.jsonBody).toStrictEqual({ name: "New Dashboard" });
     expect(h.calls[0]?.formBody).toBeNull();
   });
 
-  it("test_eu_region_uses_eu_endpoint", async () => {
+  it("EU region uses EU endpoint", async () => {
+    // python: test_eu_region_uses_eu_endpoint
     const h = harness([res(200, { status: "ok", results: [] })], {
       region: "eu",
       authHeader: "Bearer eu-token",
@@ -292,33 +299,39 @@ describe("TestAppRequest", () => {
   });
 
   it("raw: true returns the full envelope without unwrapping", async () => {
-    // Python `_raw=True` (api_client.py:1364-1366).
+    // Python `_raw=True` (api_client.py).
     const h = harness([res(200, { status: "ok", results: [1] })]);
     const result = await appRequest(h.deps, "GET", "/dashboards", {
       raw: true,
     });
-    expect(result).toEqual({ status: "ok", results: [new JsonNumber("1")] });
+    expect(result).toStrictEqual({
+      status: "ok",
+      results: [new JsonNumber("1")],
+    });
   });
 });
 
-describe("TestAppRequestFormBody", () => {
-  it("test_form_body_sent_as_form_encoded (B0 half: formBody threading)", async () => {
-    // The wire content-type assertion is the fetch adapter's (B4); the
-    // B0 lock: formBody reaches the transport verbatim, jsonBody stays
-    // null, and the method is preserved.
+describe("App request form body", () => {
+  // python: TestAppRequestFormBody
+  it("form body sent as form encoded (formBody threading)", async () => {
+    // python: test_form_body_sent_as_form_encoded
+    // The wire content-type assertion is the fetch adapter's
+    // (client-request.test.ts); the lock here: formBody reaches the
+    // transport verbatim, jsonBody stays null, and the method is preserved.
     const h = harness([res(200, { status: "ok", results: { id: 1 } })]);
     await appRequest(h.deps, "POST", "/projects/12345/custom_events/", {
       formBody: { name: "X", alternatives: '[{"event": "Y"}]' },
     });
     expect(h.calls[0]?.method).toBe("POST");
-    expect(h.calls[0]?.formBody).toEqual({
+    expect(h.calls[0]?.formBody).toStrictEqual({
       name: "X",
       alternatives: '[{"event": "Y"}]',
     });
     expect(h.calls[0]?.jsonBody).toBeNull();
   });
 
-  it("test_form_body_retries_on_429", async () => {
+  it("form body retries on 429", async () => {
+    // python: test_form_body_retries_on_429
     const h = harness([
       res(429, { error: "rate limited" }, { "Retry-After": "0" }),
       res(200, { status: "ok", results: { id: 1 } }),
@@ -329,62 +342,69 @@ describe("TestAppRequestFormBody", () => {
       "/projects/12345/custom_events/",
       { formBody: { name: "X", alternatives: "[]" } },
     );
-    expect(h.calls.length).toBe(2); // one retry then success
-    expect(result).toEqual({ id: new JsonNumber("1") });
+    expect(h.calls).toHaveLength(2); // one retry then success
+    expect(result).toStrictEqual({ id: new JsonNumber("1") });
   });
 
-  it("test_form_body_wraps_httpx_transport_error", async () => {
+  it("form body wraps httpx transport error", async () => {
+    // python: test_form_body_wraps_httpx_transport_error
     const h = harness([new MixpanelHttpError("connection refused")]);
     const error = await appRequest(
       h.deps,
       "POST",
       "/projects/12345/custom_events/",
       { formBody: { name: "X", alternatives: "[]" } },
-    ).catch((e: unknown) => e);
+    ).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(MixpanelHeadlessError);
     expect((error as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
   });
 
-  it("test_form_body_and_json_body_mutually_exclusive", async () => {
+  it("form body and JSON body mutually exclusive", async () => {
+    // python: test_form_body_and_json_body_mutually_exclusive
     const h = harness([res(200, { status: "ok" })]);
     const error = await appRequest(
       h.deps,
       "POST",
       "/projects/12345/custom_events/",
       { jsonBody: { a: 1 }, formBody: { b: "2" } },
-    ).catch((e: unknown) => e);
+    ).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ParamValidationError);
-    expect(h.calls.length).toBe(0); // guard fires pre-transport
+    expect(h.calls).toHaveLength(0); // guard fires pre-transport
   });
 });
 
-describe("TestCodedAppRequestCodes", () => {
-  it("test_ac1_post_both_bodies_raises_coded_error", async () => {
+describe("Coded app request codes", () => {
+  // python: TestCodedAppRequestCodes
+  it("AC1 post both bodies raises coded error", async () => {
+    // python: test_ac1_post_both_bodies_raises_coded_error
     const h = harness([res(200, { status: "ok", results: [] })]);
     const error = await appRequest(h.deps, "POST", "/projects/12345/x", {
       jsonBody: {},
       formBody: {},
-    }).catch((e: unknown) => e);
+    }).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ParamValidationError);
     expect((error as ParamValidationError).code).toBe(
       "AC1_BODY_MUTUALLY_EXCLUSIVE",
     );
   });
 
-  it("test_ac1_put_both_bodies_raises_coded_error", async () => {
+  it("AC1 put both bodies raises coded error", async () => {
+    // python: test_ac1_put_both_bodies_raises_coded_error
     const h = harness([res(200, { status: "ok", results: [] })]);
     const error = await appRequest(h.deps, "PUT", "/projects/12345/x", {
       jsonBody: { a: 1 },
       formBody: { b: "2" },
-    }).catch((e: unknown) => e);
+    }).catch((error_: unknown) => error_);
     expect((error as ParamValidationError).code).toBe(
       "AC1_BODY_MUTUALLY_EXCLUSIVE",
     );
   });
 });
 
-describe("TestRetryAfterHardening (app_request half)", () => {
-  it("test_app_request_negative_retry_after_uses_backoff", async () => {
+describe("Retry after hardening (appRequest half)", () => {
+  // python: TestRetryAfterHardening
+  it("app request negative retry after uses backoff", async () => {
+    // python: test_app_request_negative_retry_after_uses_backoff
     // Python pins the backoff to 0.5s via monkeypatch; the zero-jitter
     // RNG makes attempt-0 backoff exactly 1s → 1000ms. Assertion content:
     // the negative header never reaches the sleep seam.
@@ -397,11 +417,12 @@ describe("TestRetryAfterHardening (app_request half)", () => {
       "GET",
       "/projects/12345/dashboards",
     );
-    expect(result).toEqual([new JsonNumber("1")]);
-    expect(h.sleepsMs).toEqual([1000]);
+    expect(result).toStrictEqual([new JsonNumber("1")]);
+    expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
-  it("test_app_request_huge_retry_after_is_capped", async () => {
+  it("app request huge retry after is capped", async () => {
+    // python: test_app_request_huge_retry_after_is_capped
     const h = harness(
       [res(429, "", { "Retry-After": "99999" }), res(200, { results: [1] })],
       { maxRetries: 2 },
@@ -411,13 +432,15 @@ describe("TestRetryAfterHardening (app_request half)", () => {
       "GET",
       "/projects/12345/dashboards",
     );
-    expect(result).toEqual([new JsonNumber("1")]);
-    expect(h.sleepsMs).toEqual([60000]);
+    expect(result).toStrictEqual([new JsonNumber("1")]);
+    expect(h.sleepsMs).toStrictEqual([60000]);
   });
 });
 
-describe("TestErrorContextSymmetry (app_request half)", () => {
-  it("test_app_request_422_carries_request_params", async () => {
+describe("Error context symmetry (appRequest half)", () => {
+  // python: TestErrorContextSymmetry
+  it("app request 422 carries request params", async () => {
+    // python: test_app_request_422_carries_request_params
     const h = harness([res(422, { error: "bad field" })]);
     const error = (await appRequest(
       h.deps,
@@ -427,13 +450,14 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
         params: { workspace_id: "77" },
         jsonBody: { title: "x" },
       },
-    ).catch((e: unknown) => e)) as QueryError;
+    ).catch((error_: unknown) => error_)) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
-    expect(error.requestParams).toEqual({ workspace_id: "77" });
-    expect(error.requestBody).toEqual({ title: "x" });
+    expect(error.requestParams).toStrictEqual({ workspace_id: "77" });
+    expect(error.requestBody).toStrictEqual({ title: "x" });
   });
 
-  it("test_app_request_rate_limit_carries_request_params", async () => {
+  it("app request rate limit carries request params", async () => {
+    // python: test_app_request_rate_limit_carries_request_params
     const h = harness([res(429)], { maxRetries: 0 });
     const error = (await appRequest(
       h.deps,
@@ -442,13 +466,14 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
       {
         params: { workspace_id: "77" },
       },
-    ).catch((e: unknown) => e)) as RateLimitError;
+    ).catch((error_: unknown) => error_)) as RateLimitError;
     expect(error).toBeInstanceOf(RateLimitError);
-    expect(error.requestParams).toEqual({ workspace_id: "77" });
+    expect(error.requestParams).toStrictEqual({ workspace_id: "77" });
     expect(error.projectId).toBe("12345");
   });
 
-  it("test_app_request_http_error_details_carry_request_params", async () => {
+  it("app request HTTP error details carry request params", async () => {
+    // python: test_app_request_http_error_details_carry_request_params
     const h = harness([new MixpanelHttpError("connection refused")]);
     const error = (await appRequest(
       h.deps,
@@ -457,13 +482,17 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
       {
         params: { workspace_id: "77" },
       },
-    ).catch((e: unknown) => e)) as MixpanelHeadlessError;
-    expect(error.details["request_params"]).toEqual({ workspace_id: "77" });
+    ).catch((error_: unknown) => error_)) as MixpanelHeadlessError;
+    expect(error.details["request_params"]).toStrictEqual({
+      workspace_id: "77",
+    });
   });
 });
 
-describe("TestSessionHeadersOnOutboundRequests (appRequest level)", () => {
-  it("test_session_headers_included_in_outbound_request", async () => {
+describe("Session headers on outbound requests (appRequest level)", () => {
+  // python: TestSessionHeadersOnOutboundRequests
+  it("session headers included in outbound request", async () => {
+    // python: test_session_headers_included_in_outbound_request
     const h = harness([res(200, { status: "ok", results: [] })], {
       sessionHeaders: {
         "X-Mixpanel-Cluster": "internal-1",
@@ -475,7 +504,8 @@ describe("TestSessionHeadersOnOutboundRequests (appRequest level)", () => {
     expect(h.calls[0]?.headers["X-Tenant"]).toBe("acme");
   });
 
-  it("test_session_headers_take_precedence_over_env_on_collision", async () => {
+  it("session headers take precedence over env on collision", async () => {
+    // python: test_session_headers_take_precedence_over_env_on_collision
     const h = harness([res(200, { status: "ok", results: [] })], {
       sessionHeaders: { "X-Cluster": "from-session" },
       env: { name: "X-Cluster", value: "from-env" },
@@ -485,11 +515,11 @@ describe("TestSessionHeadersOnOutboundRequests (appRequest level)", () => {
   });
 });
 
-describe("app_request 422 with non-JSON body", () => {
+describe("appRequest 422 with non-JSON body", () => {
   it("truncates the text body at 500 codepoints into response_body", async () => {
     const h = harness([res(422, "x".repeat(600))]);
     const error = (await appRequest(h.deps, "GET", "/d").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.responseBody).toBe("x".repeat(500));
@@ -499,15 +529,14 @@ describe("app_request 422 with non-JSON body", () => {
   });
 });
 
-// Arbiter fixes F1 + F3/A2 (b0-review-resolution): the 422 body parse is
-// a `response.json()` site in Python (`api_client.py:1339-1342`) — it
-// accepts json.loads' non-finite constants, and its catch scope is
+// The 422 body parse is a `response.json()` site in Python — it accepts
+// json.loads' non-finite constants, and its catch scope is
 // `except json.JSONDecodeError` only (a RecursionError propagates).
-describe("app_request 422 body-parse fidelity (arbiter fixes F1/F3)", () => {
+describe("appRequest 422 body-parse fidelity", () => {
   it("422 body with a non-finite member keeps DICT shape and error message", async () => {
     const h = harness([res(422, '{"error": "bad field", "v": Infinity}')]);
     const error = (await appRequest(h.deps, "GET", "/d").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.statusCode).toBe(422);
@@ -520,7 +549,7 @@ describe("app_request 422 body-parse fidelity (arbiter fixes F1/F3)", () => {
   it("parser stack overflow on a 422 body PROPAGATES (RecursionError analog)", async () => {
     const h = harness([res(422, "[".repeat(1_000_000))]);
     const error = await appRequest(h.deps, "GET", "/d").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(RangeError);
   });

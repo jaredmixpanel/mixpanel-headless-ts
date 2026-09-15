@@ -1,29 +1,23 @@
-// Layer-3 translation of tests/unit/test_settings_headers.py::
-// TestSessionHeadersOnOutboundRequests (:156-236) — the B0-owned
-// `_request_headers` 4-layer merge lock (playbook B0-2 FF5 row). The
-// config/bridge attachment classes of that file (TestSettingsHeaderAttachment,
-// TestBridgeHeaderAttachment, TestNoEnvMutation) stay in B8 per the playbook.
-//
-// Entry-point substitution (B0-notes decision 13): Python asserts on the
-// wire via `app_request` + MockTransport; here the merge output of
-// `requestHeaders(...)` is asserted directly, plus an appRequest-level
-// re-check lives in app-request.test.ts. Env monkeypatching translates to
-// the injected `getCustomHeaderEnv` provider (B0-notes decision 10 —
-// core reads no env, R9.1/R9.4).
+// The outbound request-header merge (`requestHeaders`: User-Agent default,
+// env custom-header pair, `Session.headers`, caller extras) plus
+// `QUERY_ORIGIN` / `getUserAgent`. Mirrors TestSessionHeadersOnOutboundRequests
+// from tests/unit/test_settings_headers.py, asserting the merge output directly
+// rather than the wire; env monkeypatching becomes the injected `getCustomHeaderEnv`.
 import { describe, expect, it } from "vitest";
+
 import {
-  QUERY_ORIGIN,
   getUserAgent,
+  QUERY_ORIGIN,
   requestHeaders,
-  setEntryPoint,
   type RequestHeadersDeps,
+  setEntryPoint,
 } from "../../src/client/headers.js";
 
 /**
- * Build merge deps mirroring the Python fixtures.
+ * Build merge deps mirroring the Python fixtures: `sessionHeaders` is the
+ * `Session.headers` layer and `env` the `MP_CUSTOM_HEADER_NAME` /
+ * `MP_CUSTOM_HEADER_VALUE` pair.
  *
- * @param sessionHeaders - The `Session.headers` layer.
- * @param env - The `MP_CUSTOM_HEADER_NAME`/`MP_CUSTOM_HEADER_VALUE` pair.
  * @returns The deps bag for `requestHeaders`.
  */
 function deps(
@@ -37,8 +31,10 @@ function deps(
   };
 }
 
-describe("TestSessionHeadersOnOutboundRequests", () => {
-  it("test_session_headers_included_in_outbound_request", () => {
+describe("Session headers on outbound requests", () => {
+  // python: TestSessionHeadersOnOutboundRequests
+  it("session headers included in outbound request", () => {
+    // python: test_session_headers_included_in_outbound_request
     // Python: env pre-cleared; Session.headers rides along on the request.
     const headers = requestHeaders(
       deps({ "X-Mixpanel-Cluster": "internal-1", "X-Tenant": "acme" }),
@@ -48,7 +44,8 @@ describe("TestSessionHeadersOnOutboundRequests", () => {
     expect(headers["X-Tenant"]).toBe("acme");
   });
 
-  it("test_session_headers_take_precedence_over_env_on_collision", () => {
+  it("session headers take precedence over env on collision", () => {
+    // python: test_session_headers_take_precedence_over_env_on_collision
     // Python: MP_CUSTOM_HEADER_NAME=X-Cluster / ..._VALUE=from-env set;
     // Session.headers carries the same name — session wins (layer 3 > 2).
     const headers = requestHeaders(
@@ -62,8 +59,8 @@ describe("TestSessionHeadersOnOutboundRequests", () => {
   });
 });
 
-// Merge-order locks derived from api_client.py:452-481 (the docstring's
-// numbered layers) — additive unit coverage for the B0-owned module.
+// Merge-order locks derived from the numbered layers in the
+// `mixpanel_headless.api_client._request_headers` docstring — TS-only coverage.
 describe("requestHeaders layer order", () => {
   it("layer 1: User-Agent default is always present", () => {
     const headers = requestHeaders(deps({}), {});

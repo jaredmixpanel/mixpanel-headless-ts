@@ -1,25 +1,15 @@
-// Translated LiveQueryService workspace-passthrough tests — 045-report-links
-// (Python PR #223 review). Source: tests/unit/test_live_query_workspace.py
-// (TestWorkspacePassthrough): the four inline query methods forward
-// `workspace_id` / `inject_workspace_id` to `insights_query` /
-// `arb_funnels_query`.
-//
-// Translation notes:
-// - `MagicMock(spec=MixpanelAPIClient)` → a structural stub cast to
-//   `MixpanelClient` (the `live-query-flow.test.ts` precedent) that
-//   records the options bag each inline call receives.
-// - `call_args.kwargs["workspace_id"]` → the recorded second argument of
-//   `insightsQuery` / `arbFunnelsQuery`. The TS service materializes the
-//   Python defaults (`workspace_id=None`, `inject_workspace_id=True`) so
-//   both keys are always present, exactly as the Python kwargs are.
-// - `getattr(service, method)` parametrization → `it.each` over the three
-//   method names, dispatched through a typed switch.
+// LiveQueryService workspace passthrough: the inline query methods forward
+// `workspace_id` / `inject_workspace_id` to insights_query / arb_funnels_query.
+// Mirrors tests/unit/test_live_query_workspace.py (TestWorkspacePassthrough).
+// The spec'd MagicMock is a stub recording each options bag; the TS service
+// materializes the Python defaults so both keys are always present.
 import { describe, expect, it } from "vitest";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
 import {
-  LiveQueryService,
   type InlineQueryScope,
+  LiveQueryService,
 } from "../../src/services/live-query.js";
 
 const INSIGHTS_RAW: JsonValue = {
@@ -97,12 +87,15 @@ function callInsightsMethod(
 ): Promise<unknown> {
   const params = { sections: {} };
   switch (method) {
-    case "query":
+    case "query": {
       return service.query(params, 12345, scope);
-    case "queryFunnel":
+    }
+    case "queryFunnel": {
       return service.queryFunnel(params, 12345, scope);
-    case "queryRetention":
+    }
+    case "queryRetention": {
       return service.queryRetention(params, 12345, scope);
+    }
   }
 }
 
@@ -113,14 +106,15 @@ function callInsightsMethod(
  * @returns The options bag of the most recent call.
  */
 function lastKwargs(calls: readonly RecordedCall[]): InlineQueryScope {
-  const last = calls[calls.length - 1];
+  const last = calls.at(-1);
   expect(last).toBeDefined();
   return last?.options ?? {};
 }
 
-describe("TestWorkspacePassthrough", () => {
+describe("Workspace passthrough", () => {
+  // python: TestWorkspacePassthrough
   it.each(INSIGHTS_METHODS)(
-    "test_insights_methods_forward_workspace[%s]",
+    "insights methods forward workspace[%s]", // python: test_insights_methods_forward_workspace
     async (method) => {
       const mock = mockApiClient();
       const service = new LiveQueryService(mock.client);
@@ -131,7 +125,7 @@ describe("TestWorkspacePassthrough", () => {
   );
 
   it.each(INSIGHTS_METHODS)(
-    "test_insights_methods_default_to_none[%s]",
+    "insights methods default to null[%s]", // python: test_insights_methods_default_to_none
     async (method) => {
       const mock = mockApiClient();
       const service = new LiveQueryService(mock.client);
@@ -141,7 +135,8 @@ describe("TestWorkspacePassthrough", () => {
     },
   );
 
-  it("test_query_flow_forwards_workspace", async () => {
+  it("query flow forwards workspace", async () => {
+    // python: test_query_flow_forwards_workspace
     const mock = mockApiClient();
     const service = new LiveQueryService(mock.client);
     await service.queryFlow({ steps: [] }, 12345, "sankey", {
@@ -152,7 +147,7 @@ describe("TestWorkspacePassthrough", () => {
   });
 
   it.each(INSIGHTS_METHODS)(
-    "test_insights_methods_forward_pin_opt_out[%s]",
+    "insights methods forward pin opt out[%s]", // python: test_insights_methods_forward_pin_opt_out
     async (method) => {
       const mock = mockApiClient();
       const service = new LiveQueryService(mock.client);
@@ -165,7 +160,7 @@ describe("TestWorkspacePassthrough", () => {
   );
 
   it.each(INSIGHTS_METHODS)(
-    "test_insights_methods_default_to_pin_injection[%s]",
+    "insights methods default to pin injection[%s]", // python: test_insights_methods_default_to_pin_injection
     async (method) => {
       const mock = mockApiClient();
       const service = new LiveQueryService(mock.client);
@@ -175,7 +170,8 @@ describe("TestWorkspacePassthrough", () => {
     },
   );
 
-  it("test_query_flow_forwards_pin_opt_out", async () => {
+  it("query flow forwards pin opt out", async () => {
+    // python: test_query_flow_forwards_pin_opt_out
     const mock = mockApiClient();
     const service = new LiveQueryService(mock.client);
     await service.queryFlow({ steps: [] }, 12345, "sankey", {
@@ -185,7 +181,8 @@ describe("TestWorkspacePassthrough", () => {
     expect(lastKwargs(mock.arbFunnelsCalls).inject_workspace_id).toBe(false);
   });
 
-  it("test_query_flow_defaults_to_none", async () => {
+  it("query flow defaults to null", async () => {
+    // python: test_query_flow_defaults_to_none
     const mock = mockApiClient();
     const service = new LiveQueryService(mock.client);
     await service.queryFlow({ steps: [] }, 12345);

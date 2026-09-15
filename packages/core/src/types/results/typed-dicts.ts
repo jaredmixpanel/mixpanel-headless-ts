@@ -1,13 +1,12 @@
 /**
- * TypedDict ports (phase2-design C6-c, packet P2-6) — pure
- * compile-time interfaces mirroring the five Python `TypedDict`s in
- * `mixpanel_headless/types.py`. No runtime artifact exists by design
- * (C8 deferral table: "TypedDicts — compile-time only, tsc lock").
+ * Compile-time interfaces mirroring the five Python `TypedDict`s in
+ * `mixpanel_headless.types`. No runtime artifact exists by design.
  *
- * Optionality: Python `total=False` keys may be ABSENT but never
- * `None` → `?: T | undefined` (R3.9 under
- * `exactOptionalPropertyTypes`); explicitly `T | None` values add
- * `| null`.
+ * Optionality: Python `total=False` keys may be absent but never `None`,
+ * so they become `?: T | undefined` (under `exactOptionalPropertyTypes`);
+ * explicitly `T | None` values add `| null`.
+ *
+ * @see mixpanel_headless.types.QueryMeta
  */
 
 import type { FlowAnchorType, FlowNodeType } from "../literals.js";
@@ -61,12 +60,12 @@ export interface RetentionCohortData {
 
 /**
  * One node of a flows response step — port of `types.FlowStepNode`
- * (`total=False`; wire-shaped camelCase keys kept EXACTLY, R3.6).
+ * (`total=False`; the wire's camelCase keys are kept as-is).
  */
 export interface FlowStepNode {
   /** Event name. */
   readonly event?: string | undefined;
-  /** Node count AS A STRING (flows API quirk — parsed via safeInt). */
+  /** Node count, as a string (flows API quirk — parsed via `safeInt`). */
   readonly totalCount?: string | undefined;
   /** Node type. */
   readonly type?: FlowNodeType | undefined;

@@ -1,30 +1,17 @@
-// Canonical `json.dumps` twin — heads spec 02 §3.1/§3.3
-// (`mixpanel-desktop-app/docs/specs/heads/02-queryref-and-two-body-identity.md`).
-//
-// The contract under test is CPython
-// `json.dumps(value, sort_keys=True, separators=(",", ":"))` with
-// `ensure_ascii=True`, byte for byte, PLUS the numeric normalization rule
-// (any integral number renders as an integer) and the two refusals the
-// canonical form adds over the default twin: non-finite numbers and
-// magnitudes past 2**53 throw rather than being spelled.
-//
-// Every expected string in the table below was produced by CPython 3.14 on
-// 2026-09-03; the bulk table lives in `fixtures/canonical-fixtures.json`,
-// emitted by `scripts/generate-canonical-fixtures.py` (re-run it and then
-// `npm run fmt` — Prettier owns that file's formatting).
-//
-// Non-ASCII and control characters are written as braced `\u{...}` escapes on
-// purpose: the expected values are byte contracts, and a raw astral or C0
-// character in the source is one editor round-trip away from becoming a
-// different byte sequence.
+// `pythonJsonDumpsCanonical` — CPython `json.dumps(v, sort_keys=True,
+// separators=(",", ":"))` byte for byte, plus the canonical form's own rules:
+// integral floats render as ints; NaN/Infinity and magnitudes past 2**53 throw.
+// No Python test file behind this suite; the bulk table is the generated
+// `fixtures/canonical-fixtures.json`. Expected strings are `\u{...}`-escaped on purpose: they are byte contracts.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { pythonJsonDumps } from "../../src/compat/python-json-dumps.js";
 import { pythonJsonDumpsCanonical } from "../../src/compat/python-json-dumps-canonical.js";
 import fixtureTable from "./fixtures/canonical-fixtures.json" with { type: "json" };
 
 describe("pythonJsonDumpsCanonical — CPython oracle table", () => {
-  const oracle: [string, unknown, string][] = [
+  const oracle: Array<[string, unknown, string]> = [
     [
       "sorts nested object keys and uses compact separators",
       { b: { z: 1, a: [1, 2, { k: null }] }, a: true },
@@ -36,17 +23,17 @@ describe("pythonJsonDumpsCanonical — CPython oracle table", () => {
       // and the astral char's high surrogate (0xD83D) is below 0xFF5E.
       // CPython compares code POINTS, so U+FF5E precedes U+1F600.
       "sorts astral-plane keys by code point, not UTF-16 code unit",
-      { "\u{ff5e}": 1, "\u{1f600}": 2, a: 3, Z: 4 },
-      '{"Z":4,"a":3,"\\uff5e":1,"\\ud83d\\ude00":2}',
+      { "\u{FF5E}": 1, "\u{1F600}": 2, a: 3, Z: 4 },
+      String.raw`{"Z":4,"a":3,"\uff5e":1,"\ud83d\ude00":2}`,
     ],
     [
       "escapes control characters, non-ASCII and astral chars (ensure_ascii)",
       {
-        ctl: "\t\n\u{22}\u{5c}\u{1}",
-        nonascii: "caf\u{e9}",
-        astral: "\u{1d4b3}\u{1f600}",
+        ctl: "\t\n\u{22}\u{5C}\u{1}",
+        nonascii: "caf\u{E9}",
+        astral: "\u{1D4B3}\u{1F600}",
       },
-      '{"astral":"\\ud835\\udcb3\\ud83d\\ude00","ctl":"\\t\\n\\"\\\\\\u0001","nonascii":"caf\\u00e9"}',
+      String.raw`{"astral":"\ud835\udcb3\ud83d\ude00","ctl":"\t\n\"\\\u0001","nonascii":"caf\u00e9"}`,
     ],
     [
       "spells integers as bare digits and floats through pythonFloatStr",
@@ -63,11 +50,9 @@ describe("pythonJsonDumpsCanonical — CPython oracle table", () => {
     ["renders a top-level array compactly", [1, "a", false], '[1,"a",false]'],
   ];
 
-  for (const [name, value, expected] of oracle) {
-    it(name, () => {
-      expect(pythonJsonDumpsCanonical(value)).toBe(expected);
-    });
-  }
+  it.each(oracle)("%s", (_name, value, expected) => {
+    expect(pythonJsonDumpsCanonical(value)).toBe(expected);
+  });
 
   it("spells bigints as bare digit runs (beyond IEEE-754 exactness)", () => {
     expect(pythonJsonDumpsCanonical({ n: 10n ** 22n })).toBe(
@@ -225,18 +210,18 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
 
   it.each(fixtures.map((f) => [f.name, f] as const))(
     "%s — canonical string matches CPython byte for byte",
-    (_name, fixture) => {
-      expect(pythonJsonDumpsCanonical(fixture.params)).toBe(fixture.canonical);
+    (_name, entry) => {
+      expect(pythonJsonDumpsCanonical(entry.params)).toBe(entry.canonical);
     },
   );
 
   it.each(fixtures.map((f) => [f.name, f] as const))(
     "%s — sha256 of the canonical bytes matches CPython",
-    async (_name, fixture) => {
-      expect(fixture.sha256).toMatch(/^[0-9a-f]{64}$/);
-      expect(await sha256Hex(pythonJsonDumpsCanonical(fixture.params))).toBe(
-        fixture.sha256,
-      );
+    async (_name, entry) => {
+      expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
+      await expect(
+        sha256Hex(pythonJsonDumpsCanonical(entry.params)),
+      ).resolves.toBe(entry.sha256);
     },
   );
 
@@ -286,14 +271,16 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
       max_safe_as_float: Number.MAX_SAFE_INTEGER - 1,
     };
     expect(pythonJsonDumpsCanonical(fromJs)).toBe(row.canonical);
-    expect(await sha256Hex(pythonJsonDumpsCanonical(fromJs))).toBe(row.sha256);
+    await expect(sha256Hex(pythonJsonDumpsCanonical(fromJs))).resolves.toBe(
+      row.sha256,
+    );
   });
 
   it("escapes every non-ASCII byte out of the canonical form", () => {
     // `ensure_ascii=True` in one assertion: the identity's bytes are pure
     // printable ASCII, so no transport can renormalize them.
-    for (const fixture of fixtures) {
-      expect(fixture.canonical).toMatch(/^[\x20-\x7e]*$/);
+    for (const entry of fixtures) {
+      expect(entry.canonical).toMatch(/^[\x20-\x7E]*$/);
     }
   });
 });
@@ -307,7 +294,7 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
  */
 function reverseKeyOrder(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.map(reverseKeyOrder);
+    return value.map((item) => reverseKeyOrder(item));
   }
   if (typeof value === "object" && value !== null) {
     const out: Record<string, unknown> = {};
@@ -366,7 +353,7 @@ describe("pythonJsonDumpsCanonical — properties (spec §6.4)", () => {
   it("emits only printable ASCII", () => {
     fc.assert(
       fc.property(jsonValue, (value) => {
-        expect(pythonJsonDumpsCanonical(value)).toMatch(/^[\x20-\x7e]*$/);
+        expect(pythonJsonDumpsCanonical(value)).toMatch(/^[\x20-\x7E]*$/);
       }),
     );
   });
@@ -382,7 +369,7 @@ describe("pythonJsonDumpsCanonical — properties (spec §6.4)", () => {
           // Any `", "` / `": "` must be INSIDE a string literal; outside
           // one the canonical form is compact. Stripping every string
           // literal leaves only structure, which must be whitespace-free.
-          const structure = pythonJsonDumpsCanonical(value).replace(
+          const structure = pythonJsonDumpsCanonical(value).replaceAll(
             /"(?:[^"\\]|\\.)*"/g,
             "",
           );

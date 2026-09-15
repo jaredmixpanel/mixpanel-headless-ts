@@ -1,0 +1,754 @@
+// `validateUserArgs` — translation of the `TestValidateUserArgsValid`,
+// `TestValidateUserArgsMutualExclusion`, `TestValidateUserArgsBasic` and
+// `TestValidateUserArgsCohortDependency` classes of `tests/test_user_validators.py`
+// (the rule-family classes are in user-validators-args-rules.test.ts). Dates
+// come from the real clock, as in Python; the `MagicMock(spec=CohortDefinition)` twin is an object whose `toDict` throws.
+import { describe, expect, it } from "vitest";
+
+import {
+  ParamValidationError,
+  type ValidationError,
+} from "../../src/errors.js";
+import { validateUserArgs } from "../../src/query/user-validators.js";
+import {
+  CohortCriteria,
+  CohortDefinition,
+  Filter,
+} from "../../src/types/index.js";
+
+// --- Helpers (ports of the Python module helpers) ---
+
+/**
+ * Check whether a specific error code appears in the error list.
+ *
+ * @param errors - List of validation errors.
+ * @param code - Error code to search for.
+ * @returns True if the code appears at least once.
+ */
+function hasCode(errors: readonly ValidationError[], code: string): boolean {
+  return errors.some((e) => e.code === code);
+}
+
+/**
+ * Build a valid CohortDefinition for testing.
+ *
+ * @returns A CohortDefinition with a single behavioral criterion.
+ */
+function makeCohortDefinition(): CohortDefinition {
+  return CohortDefinition.allOf(
+    CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
+  );
+}
+
+/**
+ * Today's LOCAL calendar date as `YYYY-MM-DD` — the test-side twin of
+ * Python `date.today().isoformat()`.
+ *
+ * @returns Today's date string.
+ */
+function todayIso(): string {
+  const now = new Date();
+  return isoOf(now.getFullYear(), now.getMonth() + 1, now.getDate());
+}
+
+/**
+ * Shift an ISO date string by whole days — twin of Python
+ * `date.today() ± timedelta(days=n)`.
+ *
+ * Arithmetic runs through `Date.UTC` (a numeric constructor, never the
+ * string-parsing one).
+ *
+ * @param iso - Base date as `YYYY-MM-DD`.
+ * @param days - Signed day offset.
+ * @returns The shifted date as `YYYY-MM-DD`.
+ */
+function shiftDays(iso: string, days: number): string {
+  const digits = (s: string): number => {
+    // No `parseInt` / `Number(string)` anywhere in this tree,
+    // test helpers included; the slices are `[0-9]+` by construction.
+    let v = 0;
+    for (let i = 0; i < s.length; i++) {
+      v = v * 10 + (s.charCodeAt(i) - 0x30);
+    }
+    return v;
+  };
+  const y = digits(iso.slice(0, 4));
+  const m = digits(iso.slice(5, 7));
+  const d = digits(iso.slice(8, 10));
+  const shifted = new Date(Date.UTC(y, m - 1, d + days));
+  return isoOf(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + 1,
+    shifted.getUTCDate(),
+  );
+}
+
+/**
+ * Render a Y/M/D triple as a zero-padded `YYYY-MM-DD` string.
+ *
+ * @param year - Full year.
+ * @param month - 1-based month.
+ * @param day - 1-based day.
+ * @returns The ISO date string.
+ */
+function isoOf(year: number, month: number, day: number): string {
+  const p = (n: number, width: number): string =>
+    String(n).padStart(width, "0");
+  return `${p(year, 4)}-${p(month, 2)}-${p(day, 2)}`;
+}
+
+/**
+ * Build a Filter with an empty property name, bypassing the factory
+ * validation exactly as the Python tests do with keyword construction.
+ *
+ * @returns A Filter whose `_property` is the empty string.
+ */
+function emptyPropertyFilter(): Filter {
+  return new Filter({
+    _property: "",
+    _operator: "equals",
+    _value: ["test"],
+    _property_type: "string",
+  });
+}
+
+// --- TestValidateUserArgsValid — Happy-path tests ---
+
+describe("Validate user args valid", () => {
+  // python: TestValidateUserArgsValid
+  it("defaults are valid", () => {
+    // python: test_defaults_are_valid
+    const errors = validateUserArgs();
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with filter", () => {
+    // python: test_profiles_mode_with_filter
+    const errors = validateUserArgs({
+      where: Filter.equals("plan", "premium"),
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with string where", () => {
+    // python: test_profiles_mode_with_string_where
+    const errors = validateUserArgs({
+      where: 'properties["plan"] == "premium"',
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with filter list", () => {
+    // python: test_profiles_mode_with_filter_list
+    const errors = validateUserArgs({
+      where: [Filter.equals("plan", "premium"), Filter.greaterThan("age", 18)],
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with cohort ID", () => {
+    // python: test_profiles_mode_with_cohort_id
+    const errors = validateUserArgs({ cohort: 123, mode: "profiles" });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with cohort definition", () => {
+    // python: test_profiles_mode_with_cohort_definition
+    const errors = validateUserArgs({
+      cohort: makeCohortDefinition(),
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with properties", () => {
+    // python: test_profiles_mode_with_properties
+    const errors = validateUserArgs({
+      properties: ["$email", "$name"],
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with sort by", () => {
+    // python: test_profiles_mode_with_sort_by
+    const errors = validateUserArgs({
+      sort_by: "$last_seen",
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with search", () => {
+    // python: test_profiles_mode_with_search
+    const errors = validateUserArgs({ search: "john", mode: "profiles" });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with distinct ID", () => {
+    // python: test_profiles_mode_with_distinct_id
+    const errors = validateUserArgs({
+      distinct_id: "user123",
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with distinct IDs", () => {
+    // python: test_profiles_mode_with_distinct_ids
+    const errors = validateUserArgs({
+      distinct_ids: ["user1", "user2"],
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with parallel", () => {
+    // python: test_profiles_mode_with_parallel
+    const errors = validateUserArgs({ parallel: true, mode: "profiles" });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with as of date", () => {
+    // python: test_profiles_mode_with_as_of_date
+    const yesterday = shiftDays(todayIso(), -1);
+    const errors = validateUserArgs({ as_of: yesterday, mode: "profiles" });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with as of today", () => {
+    // python: test_profiles_mode_with_as_of_today
+    const errors = validateUserArgs({ as_of: todayIso(), mode: "profiles" });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("profiles mode with as of int", () => {
+    // python: test_profiles_mode_with_as_of_int
+    const errors = validateUserArgs({ as_of: 1700000000, mode: "profiles" });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("aggregate mode count", () => {
+    // python: test_aggregate_mode_count
+    const errors = validateUserArgs({ mode: "aggregate", aggregate: "count" });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("aggregate mode extremes with property", () => {
+    // python: test_aggregate_mode_extremes_with_property
+    const errors = validateUserArgs({
+      mode: "aggregate",
+      aggregate: "extremes",
+      aggregate_property: "ltv",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("aggregate mode numeric summary with property", () => {
+    // python: test_aggregate_mode_numeric_summary_with_property
+    const errors = validateUserArgs({
+      mode: "aggregate",
+      aggregate: "numeric_summary",
+      aggregate_property: "revenue",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("aggregate mode percentile with property", () => {
+    // python: test_aggregate_mode_percentile_with_property
+    const errors = validateUserArgs({
+      mode: "aggregate",
+      aggregate: "percentile",
+      aggregate_property: "age",
+      percentile: 50,
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("aggregate mode with segment by", () => {
+    // python: test_aggregate_mode_with_segment_by
+    const errors = validateUserArgs({
+      mode: "aggregate",
+      aggregate: "count",
+      segment_by: [1, 2, 3],
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("aggregate mode with cohort filter", () => {
+    // python: test_aggregate_mode_with_cohort_filter
+    const errors = validateUserArgs({
+      mode: "aggregate",
+      aggregate: "count",
+      cohort: 123,
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("include all users with cohort", () => {
+    // python: test_include_all_users_with_cohort
+    const errors = validateUserArgs({
+      cohort: 123,
+      include_all_users: true,
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+
+  it("workers valid range", () => {
+    // python: test_workers_valid_range
+    for (const n of [1, 2, 3, 4, 5]) {
+      const errors = validateUserArgs({ workers: n, mode: "profiles" });
+      expect(errors, `workers=${n} should be valid`).toStrictEqual([]);
+    }
+  });
+
+  it("single in cohort filter in where", () => {
+    // python: test_single_in_cohort_filter_in_where
+    const errors = validateUserArgs({
+      where: [Filter.inCohort(123)],
+      mode: "profiles",
+    });
+    expect(errors).toStrictEqual([]);
+  });
+});
+
+// --- TestValidateUserArgsMutualExclusion — Rules U1, U2, U9 ---
+
+describe("Validate user args mutual exclusion", () => {
+  // python: TestValidateUserArgsMutualExclusion
+  it("U1 distinct ID and distinct IDs mutually exclusive", () => {
+    // python: test_u1_distinct_id_and_distinct_ids_mutually_exclusive
+    const errors = validateUserArgs({
+      distinct_id: "user1",
+      distinct_ids: ["user2", "user3"],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U1")).toBe(true);
+  });
+
+  it("U1 only distinct ID is valid", () => {
+    // python: test_u1_only_distinct_id_is_valid
+    const errors = validateUserArgs({ distinct_id: "user1", mode: "profiles" });
+    expect(hasCode(errors, "U1")).toBe(false);
+  });
+
+  it("U1 only distinct IDs is valid", () => {
+    // python: test_u1_only_distinct_ids_is_valid
+    const errors = validateUserArgs({
+      distinct_ids: ["user1"],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U1")).toBe(false);
+  });
+
+  it("U2 cohort and in cohort filter mutually exclusive", () => {
+    // python: test_u2_cohort_and_in_cohort_filter_mutually_exclusive
+    const errors = validateUserArgs({
+      cohort: 123,
+      where: [Filter.inCohort(456)],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U2")).toBe(true);
+  });
+
+  it("U2 cohort without in cohort filter is valid", () => {
+    // python: test_u2_cohort_without_in_cohort_filter_is_valid
+    const errors = validateUserArgs({
+      cohort: 123,
+      where: Filter.equals("plan", "premium"),
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U2")).toBe(false);
+  });
+
+  it("U2 in cohort filter without cohort is valid", () => {
+    // python: test_u2_in_cohort_filter_without_cohort_is_valid
+    const errors = validateUserArgs({
+      where: [Filter.inCohort(456)],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U2")).toBe(false);
+  });
+
+  it("U2 cohort definition and in cohort filter", () => {
+    // python: test_u2_cohort_definition_and_in_cohort_filter
+    const errors = validateUserArgs({
+      cohort: makeCohortDefinition(),
+      where: [Filter.inCohort(789)],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U2")).toBe(true);
+  });
+
+  it("U9 where type is either string or filter not both", () => {
+    // python: test_u9_where_type_is_either_string_or_filter_not_both
+    // A valid string is fine
+    const errorsStr = validateUserArgs({
+      where: 'properties["plan"] == "premium"',
+      mode: "profiles",
+    });
+    expect(hasCode(errorsStr, "U9")).toBe(false);
+
+    // A valid Filter is fine
+    const errorsFilter = validateUserArgs({
+      where: Filter.equals("plan", "premium"),
+      mode: "profiles",
+    });
+    expect(hasCode(errorsFilter, "U9")).toBe(false);
+  });
+});
+
+// --- TestValidateUserArgsBasic — Rules U3-U6, U8, U10, U11, U23 ---
+
+describe("Validate user args basic", () => {
+  // python: TestValidateUserArgsBasic
+  it("U3 limit must be positive", () => {
+    // python: test_u3_limit_must_be_positive
+    const errors = validateUserArgs({ limit: 0, mode: "profiles" });
+    expect(hasCode(errors, "U3")).toBe(true);
+  });
+
+  it("U3 negative limit", () => {
+    // python: test_u3_negative_limit
+    const errors = validateUserArgs({ limit: -5, mode: "profiles" });
+    expect(hasCode(errors, "U3")).toBe(true);
+  });
+
+  it("U3 positive limit is valid", () => {
+    // python: test_u3_positive_limit_is_valid
+    const errors = validateUserArgs({ limit: 10, mode: "profiles" });
+    expect(hasCode(errors, "U3")).toBe(false);
+  });
+
+  it("U3 large limit is valid", () => {
+    // python: test_u3_large_limit_is_valid
+    const errors = validateUserArgs({ limit: 100_000, mode: "profiles" });
+    expect(hasCode(errors, "U3")).toBe(false);
+  });
+
+  it("U4 distinct IDs must be non empty", () => {
+    // python: test_u4_distinct_ids_must_be_non_empty
+    const errors = validateUserArgs({ distinct_ids: [], mode: "profiles" });
+    expect(hasCode(errors, "U4")).toBe(true);
+  });
+
+  it("U4 non empty distinct IDs is valid", () => {
+    // python: test_u4_non_empty_distinct_ids_is_valid
+    const errors = validateUserArgs({
+      distinct_ids: ["user1"],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U4")).toBe(false);
+  });
+
+  it("U5 sort by must be non empty string", () => {
+    // python: test_u5_sort_by_must_be_non_empty_string
+    const errors = validateUserArgs({ sort_by: "", mode: "profiles" });
+    expect(hasCode(errors, "U5")).toBe(true);
+  });
+
+  it("U5 whitespace only sort by", () => {
+    // python: test_u5_whitespace_only_sort_by
+    const errors = validateUserArgs({
+      sort_by: " ".repeat(3),
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U5")).toBe(true);
+  });
+
+  it("U5 valid sort by", () => {
+    // python: test_u5_valid_sort_by
+    const errors = validateUserArgs({
+      sort_by: "$last_seen",
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U5")).toBe(false);
+  });
+
+  it("U6 as of string must be valid date", () => {
+    // python: test_u6_as_of_string_must_be_valid_date
+    const errors = validateUserArgs({ as_of: "not-a-date", mode: "profiles" });
+    expect(hasCode(errors, "U6")).toBe(true);
+  });
+
+  it("U6 invalid date format slash", () => {
+    // python: test_u6_invalid_date_format_slash
+    const errors = validateUserArgs({ as_of: "2025/01/15", mode: "profiles" });
+    expect(hasCode(errors, "U6")).toBe(true);
+  });
+
+  it("U6 invalid calendar date", () => {
+    // python: test_u6_invalid_calendar_date
+    const errors = validateUserArgs({ as_of: "2025-02-30", mode: "profiles" });
+    expect(hasCode(errors, "U6")).toBe(true);
+  });
+
+  it("U6 valid date string", () => {
+    // python: test_u6_valid_date_string
+    const yesterday = shiftDays(todayIso(), -1);
+    const errors = validateUserArgs({ as_of: yesterday, mode: "profiles" });
+    expect(hasCode(errors, "U6")).toBe(false);
+  });
+
+  it("U6 integer as of skips date validation", () => {
+    // python: test_u6_integer_as_of_skips_date_validation
+    const errors = validateUserArgs({ as_of: 1700000000, mode: "profiles" });
+    expect(hasCode(errors, "U6")).toBe(false);
+  });
+
+  it("U8 as of must not be in future", () => {
+    // python: test_u8_as_of_must_not_be_in_future
+    const future = shiftDays(todayIso(), 30);
+    const errors = validateUserArgs({ as_of: future, mode: "profiles" });
+    expect(hasCode(errors, "U8")).toBe(true);
+  });
+
+  it("U8 today is not future", () => {
+    // python: test_u8_today_is_not_future
+    const errors = validateUserArgs({ as_of: todayIso(), mode: "profiles" });
+    expect(hasCode(errors, "U8")).toBe(false);
+  });
+
+  it("U8 past date is valid", () => {
+    // python: test_u8_past_date_is_valid
+    const past = shiftDays(todayIso(), -365);
+    const errors = validateUserArgs({ as_of: past, mode: "profiles" });
+    expect(hasCode(errors, "U8")).toBe(false);
+  });
+
+  it("U10 filter property names must be non empty", () => {
+    // python: test_u10_filter_property_names_must_be_non_empty
+    const f = emptyPropertyFilter();
+    const errors = validateUserArgs({ where: f, mode: "profiles" });
+    expect(hasCode(errors, "U10")).toBe(true);
+  });
+
+  it("U10 filter with valid property name", () => {
+    // python: test_u10_filter_with_valid_property_name
+    const errors = validateUserArgs({
+      where: Filter.equals("country", "US"),
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U10")).toBe(false);
+  });
+
+  it("U10 filter list with empty property", () => {
+    // python: test_u10_filter_list_with_empty_property
+    const fValid = Filter.equals("plan", "premium");
+    const fInvalid = emptyPropertyFilter();
+    const errors = validateUserArgs({
+      where: [fValid, fInvalid],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U10")).toBe(true);
+  });
+
+  it("U29 empty properties list", () => {
+    // python: test_u29_empty_properties_list
+    const errors = validateUserArgs({ properties: [], mode: "profiles" });
+    expect(hasCode(errors, "U29")).toBe(true);
+  });
+
+  it("U29 non empty properties is valid", () => {
+    // python: test_u29_non_empty_properties_is_valid
+    const errors = validateUserArgs({
+      properties: ["$email"],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U29")).toBe(false);
+  });
+
+  it("U29 null properties is valid", () => {
+    // python: test_u29_none_properties_is_valid
+    const errors = validateUserArgs({ properties: null, mode: "profiles" });
+    expect(hasCode(errors, "U29")).toBe(false);
+  });
+
+  it("U11 properties items must be non empty", () => {
+    // python: test_u11_properties_items_must_be_non_empty
+    const errors = validateUserArgs({
+      properties: ["$email", ""],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U11")).toBe(true);
+  });
+
+  it("U11 whitespace only property", () => {
+    // python: test_u11_whitespace_only_property
+    const errors = validateUserArgs({ properties: ["  "], mode: "profiles" });
+    expect(hasCode(errors, "U11")).toBe(true);
+  });
+
+  it("U11 valid properties", () => {
+    // python: test_u11_valid_properties
+    const errors = validateUserArgs({
+      properties: ["$email", "$name", "plan"],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U11")).toBe(false);
+  });
+
+  it("U23 workers below minimum", () => {
+    // python: test_u23_workers_below_minimum
+    const errors = validateUserArgs({ workers: 0, mode: "profiles" });
+    expect(hasCode(errors, "U23")).toBe(true);
+  });
+
+  it("U23 workers negative", () => {
+    // python: test_u23_workers_negative
+    const errors = validateUserArgs({ workers: -1, mode: "profiles" });
+    expect(hasCode(errors, "U23")).toBe(true);
+  });
+
+  it("U23 workers above maximum", () => {
+    // python: test_u23_workers_above_maximum
+    const errors = validateUserArgs({ workers: 6, mode: "profiles" });
+    expect(hasCode(errors, "U23")).toBe(true);
+  });
+
+  it("U23 workers at boundaries", () => {
+    // python: test_u23_workers_at_boundaries
+    for (const n of [1, 5]) {
+      const errors = validateUserArgs({ workers: n, mode: "profiles" });
+      expect(hasCode(errors, "U23"), `workers=${n} should be valid`).toBe(
+        false,
+      );
+    }
+  });
+});
+
+// --- TestValidateUserArgsCohortDependency — Rules U7, U12, U13, U24 ---
+
+describe("Validate user args cohort dependency", () => {
+  // python: TestValidateUserArgsCohortDependency
+  it("U7 include all users requires cohort", () => {
+    // python: test_u7_include_all_users_requires_cohort
+    const errors = validateUserArgs({
+      include_all_users: true,
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U7")).toBe(true);
+  });
+
+  it("U7 include all users with cohort is valid", () => {
+    // python: test_u7_include_all_users_with_cohort_is_valid
+    const errors = validateUserArgs({
+      include_all_users: true,
+      cohort: 123,
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U7")).toBe(false);
+  });
+
+  it("U7 include all users false without cohort is valid", () => {
+    // python: test_u7_include_all_users_false_without_cohort_is_valid
+    const errors = validateUserArgs({
+      include_all_users: false,
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U7")).toBe(false);
+  });
+
+  it("U12 not in cohort filter not supported", () => {
+    // python: test_u12_not_in_cohort_filter_not_supported
+    const errors = validateUserArgs({
+      where: Filter.notInCohort(123),
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U12")).toBe(true);
+  });
+
+  it("U12 not in cohort in list", () => {
+    // python: test_u12_not_in_cohort_in_list
+    const errors = validateUserArgs({
+      where: [Filter.equals("plan", "premium"), Filter.notInCohort(123)],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U12")).toBe(true);
+  });
+
+  it("U12 in cohort is valid", () => {
+    // python: test_u12_in_cohort_is_valid
+    const errors = validateUserArgs({
+      where: Filter.inCohort(123),
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U12")).toBe(false);
+  });
+
+  it("U13 at most one in cohort in where", () => {
+    // python: test_u13_at_most_one_in_cohort_in_where
+    const errors = validateUserArgs({
+      where: [Filter.inCohort(123), Filter.inCohort(456)],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U13")).toBe(true);
+  });
+
+  it("U13 single in cohort is valid", () => {
+    // python: test_u13_single_in_cohort_is_valid
+    const errors = validateUserArgs({
+      where: [Filter.inCohort(123)],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U13")).toBe(false);
+  });
+
+  it("U13 no in cohort is valid", () => {
+    // python: test_u13_no_in_cohort_is_valid
+    const errors = validateUserArgs({
+      where: [Filter.equals("plan", "premium")],
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U13")).toBe(false);
+  });
+
+  it("U24 cohort definition to dict must succeed", () => {
+    // python: test_u24_cohort_definition_to_dict_must_succeed
+    // Python: MagicMock(spec=CohortDefinition) with
+    // to_dict.side_effect = ValueError("broken definition").
+    // TS twin: a real-prototype instance whose toDict throws the
+    // ValueError analog (ParamValidationError, exceptions.py).
+    const broken = Object.create(
+      CohortDefinition.prototype,
+    ) as CohortDefinition;
+    Object.defineProperty(broken, "toDict", {
+      value: (): never => {
+        throw new ParamValidationError("broken definition", "CD_TEST_BROKEN");
+      },
+    });
+    const errors = validateUserArgs({ cohort: broken, mode: "profiles" });
+    expect(hasCode(errors, "U24")).toBe(true);
+  });
+
+  it("U24 cohort definition to dict type error", () => {
+    // python: test_u24_cohort_definition_to_dict_type_error
+    // Extension of the Python test's single case: the Python catch
+    // tuple is (ValueError, TypeError, RuntimeError) — the native
+    // TypeError arm is asserted here (not a weakening; the
+    // Python assertion above is translated verbatim).
+    const broken = Object.create(
+      CohortDefinition.prototype,
+    ) as CohortDefinition;
+    Object.defineProperty(broken, "toDict", {
+      value: (): never => {
+        throw new TypeError("bad criteria");
+      },
+    });
+    const errors = validateUserArgs({ cohort: broken, mode: "profiles" });
+    expect(hasCode(errors, "U24")).toBe(true);
+  });
+
+  it("U24 valid cohort definition", () => {
+    // python: test_u24_valid_cohort_definition
+    const errors = validateUserArgs({
+      cohort: makeCohortDefinition(),
+      mode: "profiles",
+    });
+    expect(hasCode(errors, "U24")).toBe(false);
+  });
+});

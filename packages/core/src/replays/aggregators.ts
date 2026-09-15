@@ -1,36 +1,42 @@
 /**
- * Bundle-level aggregations over normalized actions — TS port of
- * `mixpanel_headless/_internal/replays/aggregators.py` (172 lines,
- * whole file) for Phase-3 batch B5, shard S3
- * (`context/phase3/design/b5-packets.md` §5).
+ * Bundle-level aggregations over normalized replay actions: genuine
+ * clicks, top click targets, rage-click bursts, long pauses and error
+ * sessions.
  *
- * Python returns `pandas.DataFrame`s; the port returns ROW ARRAYS plus
- * a paired column-list function, exactly like the Phase-2 C6 `toRows()`
- * / `rowColumns()` precedent on every result class. A pandas
- * `groupby(...).size()` over an insertion-ordered frame is
- * reproduced with an insertion-ordered `Map`, and
- * `sort_values(..., ascending=False)` with a STABLE sort so ties keep
- * their first-seen order (pandas' default `quicksort` is NOT stable,
- * but `groupby` already emits sorted-by-key groups, so the observable
- * ordering of a tie is the key order — see {@link topClicks}).
+ * Python returns `pandas.DataFrame`s; the port returns row arrays with
+ * the same columns, the `toRows()` shape every result class uses. A
+ * `groupby(...).size()` becomes an insertion-ordered `Map` and
+ * `sort_values(..., ascending=False)` a stable sort, so ties keep the
+ * key order pandas' sorted `groupby` exposes (see {@link topClicks}).
+ * Counts are integers, rates are floats in `[0, 1]`, click thresholds
+ * are milliseconds and {@link longPauses} takes seconds; empty input is
+ * always a valid empty row list, never a throw.
  *
- * Conventions (carried verbatim from the Python module docstring):
- * - counts are integers; rates are floats in `[0, 1]`;
- * - click-pattern thresholds are in milliseconds, `longPauses` in
- *   seconds;
- * - empty input is always a valid empty row list with the documented
- *   columns — never a throw on a zero-action bundle.
+ * @see mixpanel_headless._internal.replays.aggregators
  */
 
 import { compareCodepoints } from "../compat/codepoint.js";
-import type { Replay, ReplayBundle } from "../types/results/replays.js";
+import type { Replay } from "../types/results/replay-models.js";
 import type { Row } from "../types/results/result-base.js";
 
 /**
+ * The slice of `ReplayBundle` the aggregations read — stated
+ * structurally because the bundle's methods delegate here, so this
+ * module has to sit below `types/results/replays.ts` in the import
+ * graph.
+ */
+export interface ReplayCollection {
+  /** Replays in the bundle. */
+  readonly replays: readonly Replay[];
+  /** The bundle `actions_df` projection (replay-id prefixed action rows). */
+  readonly toActionsRows: () => readonly Row[];
+}
+
+/**
  * Genuine clicks from an `actions_df` row list — drops focus-only
- * interactions (`real_clicks`, `aggregators.py:26-49`).
+ * interactions.
  *
- * A real user click fires BOTH a `focused` and a `clicked` rrweb
+ * A real user click fires both a `focused` and a `clicked` rrweb
  * interaction, and the analyzer maps both to the `click` action
  * literal. Counting both double-counts every click and inflates element
  * rankings, so this keeps the `clicked` / `double-clicked` /
@@ -41,6 +47,12 @@ import type { Row } from "../types/results/result-base.js";
  * @returns The subset of click rows excluding focus-only interactions.
  *   Rows with no `interaction` metadata are kept (treated as genuine
  *   clicks).
+ * @example
+ * ```ts
+ * const clicks = realClicks(bundle.toActionsRows());
+ * clicks.every((row) => row.action === "click"); // true
+ * ```
+ * @see mixpanel_headless._internal.replays.aggregators.real_clicks
  */
 export function realClicks(actionsRows: readonly Row[]): readonly Row[] {
   if (actionsRows.length === 0) {
@@ -52,7 +64,7 @@ export function realClicks(actionsRows: readonly Row[]): readonly Row[] {
   }
   return clicks.filter((row) => {
     // Python `(m or {}).get("interaction")` — a None/empty metadata
-    // yields `None`, which is `!= "focused"`, so the row is KEPT.
+    // yields `None`, which is `!= "focused"`, so the row is kept.
     const metadata = row["metadata"];
     const interaction =
       metadata !== null &&
@@ -74,18 +86,7 @@ export interface TopClickRow extends Row {
 }
 
 /**
- * Column contract of the {@link topClicks} frame
- * (`pd.DataFrame(columns=["target_desc", "count"])`).
- *
- * @returns The column list.
- */
-export function topClicksRowColumns(): readonly string[] {
-  return ["target_desc", "count"];
-}
-
-/**
- * Top-N click targets across the bundle (`top_clicks`,
- * `aggregators.py:52-77`).
+ * Top-N click targets across the bundle.
  *
  * Counts genuine clicks only: focus-only interactions are excluded via
  * {@link realClicks} so each user click counts once.
@@ -94,14 +95,20 @@ export function topClicksRowColumns(): readonly string[] {
  * @param n - How many click targets to return. Default 10.
  * @returns Rows with `target_desc` / `count`, sorted descending by
  *   count.
+ * @example
+ * ```ts
+ * topClicks(bundle, 3);
+ * // [{ target_desc: 'button "Sign in"', count: 12 }, ...]
+ * ```
+ * @see mixpanel_headless._internal.replays.aggregators.top_clicks
  */
-export function topClicks(bundle: ReplayBundle, n = 10): TopClickRow[] {
+export function topClicks(bundle: ReplayCollection, n = 10): TopClickRow[] {
   const clicks = realClicks(bundle.toActionsRows());
   if (clicks.length === 0) {
     return [];
   }
   // `groupby("target_desc", dropna=False).size()` — pandas sorts group
-  // KEYS ascending by default (`sort=True`), so the pre-`sort_values`
+  // keys ascending by default (`sort=True`), so the pre-`sort_values`
   // frame is key-ordered; the subsequent descending count sort is
   // stable in this port, which reproduces pandas' observable tie order
   // for the string keys this frame carries.
@@ -138,25 +145,23 @@ export interface RageClickRow extends Row {
 }
 
 /**
- * Column contract of the {@link rageClicks} frame.
- *
- * @returns The column list.
- */
-export function rageClicksRowColumns(): readonly string[] {
-  return ["replay_id", "t_start", "target_desc", "count"];
-}
-
-/**
- * Bursts of ≥ `threshold` clicks on the same target within `windowMs`
- * (`rage_clicks`, `aggregators.py:80-129`).
+ * Bursts of ≥ `threshold` clicks on the same target within `windowMs`.
  *
  * @param bundle - The bundle to scan.
- * @param options - `threshold` (default 3) and `windowMs` (default
- *   1000).
+ * @param options - Burst detection thresholds: `threshold`, the minimum
+ *   number of clicks in a burst (default 3), and `windowMs`, the
+ *   maximum span between the burst's first and last click in
+ *   milliseconds (default 1000).
  * @returns One row per rage burst.
+ * @example
+ * ```ts
+ * rageClicks(bundle, { threshold: 4, windowMs: 1500 });
+ * // [{ replay_id: "r1", t_start: 1700000000000, target_desc: "button \"Buy\"", count: 5 }]
+ * ```
+ * @see mixpanel_headless._internal.replays.aggregators.rage_clicks
  */
 export function rageClicks(
-  bundle: ReplayBundle,
+  bundle: ReplayCollection,
   options: { threshold?: number; windowMs?: number } = {},
 ): RageClickRow[] {
   const threshold = options.threshold ?? 3;
@@ -210,28 +215,24 @@ export interface LongPauseRow extends Row {
 }
 
 /**
- * Column contract of the {@link longPauses} frame.
- *
- * @returns The column list.
- */
-export function longPausesRowColumns(): readonly string[] {
-  return ["replay_id", "t_start", "duration_s"];
-}
-
-/**
- * Idle stretches between consecutive actions longer than `thresholdS`
- * (`long_pauses`, `aggregators.py:132-155`).
+ * Idle stretches between consecutive actions longer than `thresholdS`.
  *
  * @param bundle - The bundle to scan.
  * @param thresholdS - Minimum pause length in seconds. Default 10.
  * @returns One row per qualifying gap.
+ * @example
+ * ```ts
+ * longPauses(bundle, 30);
+ * // [{ replay_id: "r1", t_start: 1700000000000, duration_s: 42.5 }]
+ * ```
+ * @see mixpanel_headless._internal.replays.aggregators.long_pauses
  */
 export function longPauses(
-  bundle: ReplayBundle,
+  bundle: ReplayCollection,
   thresholdS = 10,
 ): LongPauseRow[] {
   // Python `int(threshold_s * 1000)` — truncation toward zero on the
-  // PRODUCT, so a fractional threshold rounds down in ms.
+  // product, so a fractional threshold rounds down in ms.
   const thresholdMs = Math.trunc(thresholdS * 1000);
   const rows: LongPauseRow[] = [];
   for (const replay of bundle.replays) {
@@ -253,14 +254,18 @@ export function longPauses(
 }
 
 /**
- * Replay IDs that emitted at least one `console_error` action
- * (`error_sessions`, `aggregators.py:158-172`).
+ * Replay IDs that emitted at least one `console_error` action.
  *
  * @param bundle - The bundle to scan.
  * @returns Replay IDs in input order. Empty when the bundle has no
  *   console errors.
+ * @example
+ * ```ts
+ * errorSessions(bundle); // ["r1", "r7"]
+ * ```
+ * @see mixpanel_headless._internal.replays.aggregators.error_sessions
  */
-export function errorSessions(bundle: ReplayBundle): string[] {
+export function errorSessions(bundle: ReplayCollection): string[] {
   return bundle.replays
     .filter((replay: Replay) =>
       replay.actions.some((a) => a.action === "console_error"),

@@ -1,10 +1,12 @@
-// transport-errors table tests (src/transport-errors.ts, task TS-5):
-// native-fetch rejection shape (TypeError + cause) per design D12/R2.10.
+// transport-errors table (src/transport-errors.ts): native-fetch rejection
+// shape (TypeError + cause).
+
 import { describe, expect, it } from "vitest";
+
 import {
-  UnknownTransportErrorClass,
   createTransportRejection,
   knownTransportErrorClass,
+  UnknownTransportErrorClass,
 } from "../src/transport-errors.js";
 
 describe("createTransportRejection", () => {
@@ -25,7 +27,7 @@ describe("createTransportRejection", () => {
     expect(cause.code).toBe("UND_ERR_CONNECT_TIMEOUT");
   });
 
-  it("never produces a pre-mapped library error (R2.10)", () => {
+  it("never produces a pre-mapped library error", () => {
     // The rejection must be a plain TypeError, exactly what undici throws —
     // classification into the library taxonomy is the port's job.
     const rejection = createTransportRejection("ReadError");

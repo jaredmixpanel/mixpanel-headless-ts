@@ -1,88 +1,72 @@
 /**
- * Shared validation helpers, custom-property scanning, and the
- * difflib-faithful fuzzy matcher.
+ * Shared validation helpers: the module constants, the character /
+ * date / finiteness predicates, the error collector, the
+ * difflib-faithful fuzzy matcher, `data_group_id` validation and the
+ * custom-property scan every Layer-1 validator runs. Not exported from
+ * the package barrel.
  *
- * Internal module — not exported from the package barrel.
+ * Fidelity rules the helpers encode: `pythonStrip` wherever Python
+ * calls `.strip()`; regex `\s` / `\d` classes come from the pinned
+ * CPython tables, never the JS shorthands; `len(str)` bounds count
+ * codepoints; Python floats arrive either as JS numbers or as the rig's
+ * PyFloat carrier and both spellings are classified.
  *
- * Source: `src/mixpanel_headless/_internal/validation.py` (ranges
- * 91-508: custom-property scan, shared tables/helpers, fuzzy helpers,
- * `_validate_data_group_id`). Python revision:
- * `ts-port/phase2-contract-support` HEAD.
- *
- * Fidelity notes (b2-packets.md Cautions):
- * - §3/§4 (R11.7): `pythonStrip` everywhere Python calls `.strip()`;
- *   `_INVISIBLE_RE` is built from the pinned
- *   `compat/whitespace.gen.ts` table (Python str-pattern `\s` ==
- *   `str.isspace()` set), never a JS `\s` class.
- * - §8: Python `float` values reach TS either as non-integral /
- *   non-finite JS numbers or as the conformance rig's PyFloat carrier
- *   duck-shape `{ spelling: string }` (precedent:
- *   `types/vector-codecs.ts` SignedReplay decode); {@link isPythonFloat}
- *   and {@link _isFinite} classify both spellings.
- * - §9 (R11.6): `len(str)` bounds count codepoints via `cpLength`.
- * - §6: `_suggest` is a faithful `difflib.get_close_matches` port —
- *   SequenceMatcher `ratio()` with the `real_quick_ratio`/`quick_ratio`
- *   pre-filters, candidates from `sortedByCodepoint(valid)`, n=3,
- *   cutoff=0.5, `heapq.nlargest` tie order. Autojunk is implemented
- *   verbatim (it only activates when the query string is >= 200
- *   codepoints — irrelevant at enum sizes but kept for faithfulness).
- *
- * @module validation-shared
+ * @see mixpanel_headless._internal.validation
  * @internal
  */
 
+import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
+import {
+  codepoints,
+  cpLength,
+  getCloseMatches,
+  isFloatCarrier,
+  isPythonInt,
+  pythonListRepr,
+  pythonRepr,
+  pythonStrip,
+  pythonTypeName,
+  sortedByCodepoint,
+} from "../compat/index.js";
+import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ValidationError } from "../errors.js";
 import {
   CustomPropertyRef,
-  InlineCustomProperty,
   Filter,
-  FrequencyFilter,
-  FunnelStep,
-  GroupBy,
-  Metric,
-} from "../types/index.js";
-import type { FlowStep, RetentionEvent } from "../types/index.js";
-import {
-  cpLength,
-  isPythonDict,
-  pythonFloat,
-  pythonFloatStr,
-  pythonRepr,
-  pythonStr,
-  pythonStrip,
-  sortedByCodepoint,
-  type PythonValue,
-} from "../compat/index.js";
-import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
-import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
+  InlineCustomProperty,
+} from "../types/query-params/filter.js";
+import type { FlowStep } from "../types/query-params/flow.js";
+import { FrequencyFilter } from "../types/query-params/frequency.js";
+import { FunnelStep } from "../types/query-params/funnel.js";
+import { GroupBy } from "../types/query-params/group-by.js";
+import { Metric } from "../types/query-params/metric.js";
+import type { RetentionEvent } from "../types/query-params/retention.js";
 
-// =============================================================================
-// Module constants (validation.py:91-92, 338-366, 1162-1176, 1484-1495)
-// =============================================================================
+// --- Module constants ---
 
-/** Port of `_CP_INPUT_KEY_RE` (`validation.py:91`) — ASCII-only class. */
-const _CP_INPUT_KEY_RE = /^[A-Z]$/;
+/** Port of `_CP_INPUT_KEY_RE` — ASCII-only class. */
+const CP_INPUT_KEY_RE = /^[A-Z]$/;
 
-/** Port of `_CP_MAX_FORMULA_LENGTH` (`validation.py:92`). */
-export const _CP_MAX_FORMULA_LENGTH = 20_000;
+/** Port of `_CP_MAX_FORMULA_LENGTH`. */
+const CP_MAX_FORMULA_LENGTH = 20_000;
 
 /**
- * Port of `_SESSION_MATH` (`validation.py:338`): session-based math
+ * Port of `_SESSION_MATH`: session-based math
  * types requiring `conversion_window_unit='session'`.
  */
-export const _SESSION_MATH: ReadonlySet<string> = new Set([
+export const SESSION_MATH: ReadonlySet<string> = new Set([
   "conversion_rate_session",
 ]);
 
 /**
- * Port of `_FORMULA_POSITION_RE` (`validation.py:342`) — ASCII-only
+ * Port of `_FORMULA_POSITION_RE` — ASCII-only
  * class, safe as a JS regex.
  */
-export const _FORMULA_POSITION_RE = /[A-Z]/g;
+export const FORMULA_POSITION_RE: RegExp = /[A-Z]/g;
 
 /**
- * Codepoint test for the `_CONTROL_CHAR_RE` class (`validation.py:343`,
- * `[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`).
+ * Codepoint test for the `_CONTROL_CHAR_RE` class
+ * (`[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`).
  *
  * Ported as an explicit codepoint predicate rather than a JS regex: the
  * character class is ASCII-explicit (no `\s`/`\d` shorthand) so the two
@@ -103,33 +87,32 @@ function isControlCodepoint(cp: number): boolean {
 }
 
 /**
- * The literal extras of `_INVISIBLE_RE` (`validation.py:363`) beyond
+ * The literal extras of `_INVISIBLE_RE` beyond
  * the Python `\s` class: U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ,
  * U+FEFF BOM, U+00AD SOFT HYPHEN, U+2060 WORD JOINER.
  */
-const _INVISIBLE_EXTRAS: ReadonlySet<number> = new Set([
+const INVISIBLE_EXTRAS: ReadonlySet<number> = new Set([
   0x200b, 0x200c, 0x200d, 0xfeff, 0x00ad, 0x2060,
 ]);
 
-/** Port of `_MAX_LAST_DAYS` (`validation.py:364`) — 10 years. */
-export const _MAX_LAST_DAYS = 3650;
+/** Port of `_MAX_LAST_DAYS` — 10 years. */
+export const MAX_LAST_DAYS = 3650;
 
-/** Port of `_MAX_ROLLING` (`validation.py:365`) — rolling window cap. */
-export const _MAX_ROLLING = 365;
+/** Port of `_MAX_ROLLING` — rolling window cap. */
+export const MAX_ROLLING = 365;
 
 /**
- * Port of `_MAX_FILTER_VALUES` (`validation.py:366`) — server rejects
- * very large filter value lists. Consumed by the V1b bookmark
- * validators (B20B/B21); declared here with the other module
- * constants exactly as in the Python source.
+ * Port of `_MAX_FILTER_VALUES` — the server rejects very large filter
+ * value lists. Consumed by the bookmark validators; declared here with
+ * the other module constants exactly as in the Python source.
  */
-export const _MAX_FILTER_VALUES = 1000;
+export const MAX_FILTER_VALUES = 1000;
 
 /**
- * Port of `_VALID_RETENTION_MATH_PUBLIC` (`validation.py:1162-1164`):
+ * Port of `_VALID_RETENTION_MATH_PUBLIC`:
  * public-facing retention math types (Layer 1).
  */
-export const _VALID_RETENTION_MATH_PUBLIC: ReadonlySet<string> = new Set([
+export const VALID_RETENTION_MATH_PUBLIC: ReadonlySet<string> = new Set([
   "retention_rate",
   "unique",
   "total",
@@ -137,333 +120,49 @@ export const _VALID_RETENTION_MATH_PUBLIC: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Port of `_VALID_RETENTION_MODES` (`validation.py:1172`): valid
+ * Port of `_VALID_RETENTION_MODES`: valid
  * display modes for retention queries.
  */
-export const _VALID_RETENTION_MODES: ReadonlySet<string> = new Set([
+export const VALID_RETENTION_MODES: ReadonlySet<string> = new Set([
   "curve",
   "trends",
   "table",
 ]);
 
-/** Port of `_MAX_RETENTION_BUCKETS` (`validation.py:1175`). */
-export const _MAX_RETENTION_BUCKETS = 730;
+/** Port of `_MAX_RETENTION_BUCKETS`. */
+export const MAX_RETENTION_BUCKETS = 730;
 
-/** Port of `_MAX_FLOW_STEPS_DIRECTION` (`validation.py:1484`). */
-export const _MAX_FLOW_STEPS_DIRECTION = 5;
+/** Port of `_MAX_FLOW_STEPS_DIRECTION`. */
+export const MAX_FLOW_STEPS_DIRECTION = 5;
 
-/** Port of `_MAX_FLOW_CARDINALITY` (`validation.py:1487`). */
-export const _MAX_FLOW_CARDINALITY = 50;
+/** Port of `_MAX_FLOW_CARDINALITY`. */
+export const MAX_FLOW_CARDINALITY = 50;
 
 /**
- * Port of `_FLOW_MAX_WINDOW` (`validation.py:1490-1494`): maximum
- * conversion window per unit (366-day equivalent for a leap year).
- * ReadonlyMap per R4.8.
+ * Port of `_FLOW_MAX_WINDOW`: maximum conversion window per unit
+ * (366-day equivalent for a leap year).
  */
-export const _FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
+export const FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
   ["month", 12],
   ["week", 52],
   ["day", 366],
 ]);
 
-// =============================================================================
-// Python value-classification helpers (Caution §8)
-// =============================================================================
+// --- Character / date / finiteness helpers ---
 
 /**
- * Duck-type check for the conformance rig's PyFloat carrier — a
- * non-number object with a string `spelling` field, produced when a
- * Python float (integral spelling like `18.0`, or the non-finite
- * spellings `Infinity`/`-Infinity`/`NaN`) rides a decoded kwargs bag.
- *
- * Precedent: the SignedReplay codec unwrap in
- * `types/vector-codecs.ts` (b2-packets.md Caution §8). Recognizing
- * the shape here lets `isinstance(x, float)` branches (e.g. retention
- * R5_BUCKET_SIZES_INTEGER) classify carriers exactly where Python
- * classifies floats, without any binding-side unwrapping.
- *
- * B2 arbiter tightening (b2-review-resolution.md F1, 2026-08-15): the
- * rig's carrier is a CLASS instance (`conformance-runner/src/codecs.ts`
- * `PyFloat` — its single construction site), never a plain object, so
- * the duck check additionally rejects {@link isPythonDict} values. A
- * consumer dict `{"spelling": "..."}` is a Python dict, not a float —
- * the pre-fix shape test crashed `pythonTruthy` on `{"spelling": "hi"}`
- * (PY_FLOAT_INVALID_LITERAL) where Python returns `bool(dict)`.
- *
- * @param value - Candidate value.
- * @returns True when `value` carries the PyFloat duck-shape.
- */
-export function isFloatCarrier(
-  value: unknown,
-): value is { readonly spelling: string } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    !isPythonDict(value) &&
-    "spelling" in value &&
-    typeof (value as { spelling: unknown }).spelling === "string"
-  );
-}
-
-/**
- * Numeric value of a PyFloat carrier, for the branches that compare a
- * float NUMERICALLY rather than by type (B2 shard V1b: FLB6's
- * `version != 2`, B18's `bool(value)`, the sorting mirror's `int` fields).
- *
- * The spelling is CPython `repr(float)` output produced by the rig's
- * codec, so it is parsed with `pythonFloat` — the R11.3 grammar — never
- * with `Number()`/`parseFloat` (R11.7 / Caution §3).
- *
- * @param carrier - A value that satisfied {@link isFloatCarrier}.
- * @returns The double the carrier stands for (`Infinity` / `NaN`
- *   included).
- * @throws MixpanelHeadlessError - Code `PY_FLOAT_INVALID_LITERAL` when
- *   the spelling is not a CPython float literal (unreachable for
- *   codec-produced carriers).
- */
-export function floatCarrierValue(carrier: {
-  readonly spelling: string;
-}): number {
-  return pythonFloat(carrier.spelling);
-}
-
-/**
- * Python `str(value)` for a value that may be a PyFloat carrier — the
- * ONE implementation of the "stringify an operand whose float-ness the
- * rig preserved" pattern (R10.8).
- *
- * `pythonStr` already matches CPython for strings, bools, `None`,
- * containers and non-integral numbers. The one gap JS cannot close on
- * its own is int-vs-float-ness of an INTEGRAL value; where the
- * conformance rig preserves it ({@link isFloatCarrier}), the carrier's
- * CPython `repr` spelling is used, so `18.0` renders `"18.0"` and not
- * `"18"`.
- *
- * Ported call sites (both are `str(x)` landing in OUTPUT, so
- * `String(...)` is forbidden — `String(true)` is `"true"`, Python's is
- * `"True"`, watchlist #8):
- *
- * - `segfilter.py:187,189,249` — the number/datetime operand positions
- *   (B3-K3; the R10.11 canonicalizer rescue applies only to the numeric
- *   ones, so non-numeric operands must already be Python-spelled).
- * - `query/user_builders.py:42` — `_format_value`'s non-string branch
- *   (B3-K4; the `selector_str` codec compares VERBATIM, no rescue at
- *   all).
- *
- * @param value - The value to stringify.
- * @returns The CPython `str()` rendering.
- * @throws TypeError - When the value is outside the `pythonStr` domain
- *   (class instances, `undefined`) — out-of-annotation input only.
- */
-export function pythonStrValue(value: unknown): string {
-  if (isFloatCarrier(value)) {
-    return pythonFloatStr(floatCarrierValue(value));
-  }
-  return pythonStr(value as PythonValue);
-}
-
-/**
- * TS analog of Python `isinstance(value, float)`.
- *
- * A JS number is a Python float when it is non-integral or non-finite
- * (integral finite JS numbers are Python ints in the ported value
- * domain); a PyFloat carrier ({@link isFloatCarrier}) is always a
- * float.
- *
- * @param value - Candidate value.
- * @returns True when Python would classify the value as a `float`.
- */
-export function isPythonFloat(value: unknown): boolean {
-  if (typeof value === "number") {
-    return !Number.isInteger(value);
-  }
-  return isFloatCarrier(value);
-}
-
-/**
- * TS analog of Python `isinstance(value, int) and not isinstance(value,
- * bool)` — the bool-before-int guard order from Caution §8.
- *
- * @param value - Candidate value.
- * @returns True when Python would classify the value as a non-bool int.
- */
-export function isPythonInt(value: unknown): boolean {
-  return typeof value === "number" && Number.isInteger(value);
-}
-
-/**
- * Display-only `type(x).__name__` analog for ported message text
- * (out of contract, R5.4).
- *
- * @param value - The value whose Python type name to approximate.
- * @returns The Python type name Python would print for the
- *   equivalent value.
- */
-// `isinstance(value, dict)` discrimination (B2 arbiter fix F1) — the
-// implementation MOVED to the leaf `compat/python-dict.ts` at the B6
-// arbiter pass (`b6-review-resolution.md` Finding D) so low-level
-// modules (`types/entities/model-base.ts`) can import it without an
-// evaluation cycle. Re-exported here so every existing consumer's
-// import path keeps working.
-export { isPythonDict };
-
-/**
- * Reproduce CPython's hashing failure for `x in frozenset` membership
- * tests (R10.7 bug-compatibility; B2-M2 finding 2 adjudicated at the
- * B2-BIND differential fuzz — repro
- * `2026-08-15-validation-validate_bookmark.json`).
- *
- * Python hashes the candidate: a `list`/`dict` value raises
- * `TypeError: cannot use 'list' as a set element (unhashable type: …)`
- * instead of yielding the enum error. In the ported value domain the
- * unhashable inputs are exactly JSON arrays and plain dicts; every
- * other decoded value (string, number, bool, null, PyFloat carrier —
- * a Python float — and reconstructed core instances, which hash by
- * identity in Python) is hashable and falls through to the membership
- * test. Callers gate on the same condition Python does (the site's
- * `is not None` short-circuit); a `null`/`undefined` value is a no-op
- * here anyway.
- *
- * @param value - The membership-test candidate.
- * @throws TypeError - When Python's `hash(value)` would raise.
- */
-export function requireHashable(value: unknown): void {
-  if (Array.isArray(value)) {
-    throw new TypeError(
-      "cannot use 'list' as a set element (unhashable type: 'list')",
-    );
-  }
-  if (isPythonDict(value)) {
-    throw new TypeError(
-      "cannot use 'dict' as a set element (unhashable type: 'dict')",
-    );
-  }
-}
-
-/**
- * Elements CPython's iteration protocol would yield, or `null` when the
- * value is not iterable.
- *
- * Strings yield CODE POINTS (never UTF-16 units), lists yield their
- * elements and dicts yield their KEYS. Ported once here (R10.8) because
- * two B3-K3 modules need it: `segfilter`'s range comprehensions
- * (`[str(v) for v in value]`, `segfilter.py:187,247`) and `transforms`'
- * `dict(properties)` copy (`transforms.py:60,123`). Callers decide what
- * a `null` means — CPython's message differs per site — so this helper
- * never throws.
- *
- * @param value - The value being iterated.
- * @returns The drawn elements in order, or `null` for a non-iterable.
- */
-export function pythonIterableElements(value: unknown): unknown[] | null {
-  if (typeof value === "string") {
-    return [...value];
-  }
-  if (Array.isArray(value)) {
-    return [...(value as unknown[])];
-  }
-  if (isPythonDict(value)) {
-    return Object.keys(value);
-  }
-  return null;
-}
-
-export function pythonTypeName(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "NoneType";
-  }
-  if (typeof value === "boolean") {
-    return "bool";
-  }
-  if (typeof value === "number") {
-    return Number.isInteger(value) ? "int" : "float";
-  }
-  if (isFloatCarrier(value)) {
-    return "float";
-  }
-  if (typeof value === "string") {
-    return "str";
-  }
-  if (Array.isArray(value)) {
-    return "list";
-  }
-  if (typeof value === "object") {
-    return value.constructor.name;
-  }
-  return typeof value;
-}
-
-/**
- * Render a list of strings as a Python `list` repr (display-only
- * message helper for the `{sorted(...)}` f-string interpolations).
- *
- * @param items - The (already ordered) list members.
- * @returns Python-style list repr, e.g. `['birth', 'interval_start']`.
- */
-export function pythonListRepr(items: readonly string[]): string {
-  return `[${items.map((item) => pythonRepr(item)).join(", ")}]`;
-}
-
-/**
- * Render a number the way a Python f-string would (display-only, R5.4).
- *
- * JS cannot distinguish `18` from `18.0`, so this delegates to
- * {@link pythonRepr}'s documented number caveat: safe integers render
- * as Python `int`, everything else (including `nan` / `inf`) via
- * `pythonFloatStr`. `null` renders as `None`.
- *
- * @param value - The number (or `null`) to render.
- * @returns The Python `str()` rendering.
- */
-export function pythonNumberStr(value: number | null): string {
-  if (value === null) {
-    return "None";
-  }
-  return pythonRepr(value);
-}
-
-/**
- * `str(value)` for the loosely-typed enum arguments that Python passes
- * through `str(...)` before fuzzy matching (`validation.py:1409`
- * `str(mode)`, `:1421` `str(unit)`).
- *
- * Only the shapes those call sites can actually receive are modelled:
- * strings pass through, `None` renders `"None"`, and anything else
- * falls back to {@link pythonTypeName} (a display-only approximation —
- * out of contract per R5.4).
- *
- * @param value - Candidate enum value.
- * @returns The Python `str()` rendering.
- */
-export function pythonStrLoose(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (value === null || value === undefined) {
-    return "None";
-  }
-  if (typeof value === "boolean") {
-    return value ? "True" : "False";
-  }
-  if (typeof value === "number") {
-    return pythonRepr(value);
-  }
-  return `<${pythonTypeName(value)}>`;
-}
-
-// =============================================================================
-// Character / date / finiteness helpers (validation.py:346-402)
-// =============================================================================
-
-/**
- * Check whether a string contains ASCII control characters.
- *
- * Port of `contains_control_chars` (`validation.py:346-360`): detects
- * `\x00-\x08`, `\x0b`, `\x0c`, `\x0e-\x1f`, and `\x7f` (DEL).
+ * Check whether a string contains ASCII control characters
+ * (`\x00-\x08`, `\x0b`, `\x0c`, `\x0e-\x1f`, and `\x7f`).
  *
  * @param s - The string to check.
  * @returns True if `s` contains at least one control character.
+ * @example
+ * ```ts
+ * containsControlChars("plain"); // false
+ * containsControlChars("tab\tok"); // false — TAB is not in the class
+ * containsControlChars("nul\u0000"); // true
+ * ```
+ * @see mixpanel_headless._internal.validation.contains_control_chars
  */
 export function containsControlChars(s: string): boolean {
   for (const ch of s) {
@@ -475,20 +174,27 @@ export function containsControlChars(s: string): boolean {
 }
 
 /**
- * Port of `_INVISIBLE_RE.match(s)` truthiness (`validation.py:363`):
- * true when EVERY codepoint of `s` is Python-`\s` whitespace (the
- * pinned `str.isspace()` table) or one of the six invisible literals.
+ * Report whether every codepoint of `s` is Python-`\s` whitespace (the
+ * pinned `str.isspace()` table) or one of the six invisible literals —
+ * the truthiness of `_INVISIBLE_RE.match(s)`.
+ *
+ * @remarks
  * True for the empty string (`[...]*` matches zero chars), exactly as
  * the Python regex. Python's `$`-before-trailing-newline nuance is a
  * no-op here because `\n` is itself in the class.
- *
  * @param s - The string to classify.
  * @returns True when the string is invisible-only.
+ * @example
+ * ```ts
+ * isInvisibleOnly(" \u200b\ufeff"); // true
+ * isInvisibleOnly(""); // true
+ * isInvisibleOnly(" a "); // false
+ * ```
  */
 export function isInvisibleOnly(s: string): boolean {
   for (const ch of s) {
     const cp = ch.codePointAt(0) as number;
-    if (!PYTHON_STR_WHITESPACE.has(cp) && !_INVISIBLE_EXTRAS.has(cp)) {
+    if (!PYTHON_STR_WHITESPACE.has(cp) && !INVISIBLE_EXTRAS.has(cp)) {
       return false;
     }
   }
@@ -498,7 +204,7 @@ export function isInvisibleOnly(s: string): boolean {
 /**
  * Unicode decimal-digit (category Nd) test from the pinned CPython
  * table — Python str-pattern `\d` matches exactly this set
- * (`Py_UNICODE_ISDECIMAL`), NOT the ASCII-only JS `\d`.
+ * (`Py_UNICODE_ISDECIMAL`), not the ASCII-only JS `\d`.
  *
  * @param cp - Codepoint to test.
  * @returns True when the codepoint is a Unicode decimal digit.
@@ -513,19 +219,26 @@ function isDecimalDigit(cp: number): boolean {
 }
 
 /**
- * Port of `_DATE_RE.match(s)` truthiness (`validation.py:341`,
- * pattern `^\d{4}-\d{2}-\d{2}$`) with Python `re` semantics:
+ * Report whether `s` matches `_DATE_RE` (`^\d{4}-\d{2}-\d{2}$`) with
+ * Python `re` semantics.
  *
- * - `\d` matches Unicode decimal digits (category Nd), not just
- *   ASCII — see {@link isDecimalDigit};
- * - `$` also matches just before ONE trailing `\n`.
- *
+ * @remarks
+ * `\d` matches Unicode decimal digits (category Nd), not just ASCII —
+ * see {@link isDecimalDigit}; `$` also matches just before one trailing
+ * `\n`.
  * @param s - Candidate date string.
  * @returns True when the Python regex would match.
+ * @example
+ * ```ts
+ * matchesDateRe("2026-01-15"); // true
+ * matchesDateRe("2026-01-15\n"); // true — Python `$` before a final newline
+ * matchesDateRe("٢٠٢٦-٠١-١٥"); // true — Arabic-Indic digits are `\d`
+ * matchesDateRe("2026-1-15"); // false
+ * ```
  */
 export function matchesDateRe(s: string): boolean {
   const core = s.endsWith("\n") ? s.slice(0, -1) : s;
-  const cps = Array.from(core);
+  const cps = codepoints(core);
   if (cps.length !== 10) {
     return false;
   }
@@ -542,32 +255,36 @@ export function matchesDateRe(s: string): boolean {
   return true;
 }
 
-/** Days per month in a non-leap year (calendar table, watchlist #5). */
-const _DAYS_IN_MONTH: readonly number[] = [
+/** Days per month in a non-leap year. */
+const DAYS_IN_MONTH: readonly number[] = [
   31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
 ];
 
 /**
  * Check if a YYYY-MM-DD string is a valid calendar date.
  *
- * Port of `_is_valid_date` (`validation.py:369-384`), which defers to
- * `datetime.date.fromisoformat`. Implemented as a PURE calendar check
- * (watchlist #5 — never `new Date(...)`): Gregorian leap rule, month
- * 1-12, day vs month length, year 1-9999 (`date.MINYEAR`).
- *
- * Contract note: callers only reach this through the
+ * @remarks
+ * Python defers to `datetime.date.fromisoformat`; this is a pure
+ * calendar check (never `new Date(...)`, which would read the local
+ * zone): Gregorian leap rule, month 1–12, day vs month length, year
+ * 1–9999 (`date.MINYEAR`). Callers only reach this through the
  * {@link matchesDateRe} gate, whose accepted set is wider than ASCII
- * (Unicode Nd digits, one trailing newline). CPython's
- * `fromisoformat` C parser accepts ONLY ASCII digits in exactly
- * `YYYY-MM-DD` here, so any gated-but-non-ASCII spelling returns
- * false — matching Python's `ValueError → False` path
- * (`fromisoformat`'s wider grammar — basic format, week dates — can
- * never pass the gate, so it is intentionally not reproduced).
- *
+ * (Unicode Nd digits, one trailing newline). CPython's `fromisoformat`
+ * C parser accepts only ASCII digits in exactly `YYYY-MM-DD` here, so
+ * any gated-but-non-ASCII spelling returns false — matching Python's
+ * `ValueError → False` path. `fromisoformat`'s wider grammar (basic
+ * format, week dates) can never pass the gate and is not reproduced.
  * @param dateStr - Date string (regex-gated by the caller).
  * @returns True if the date is a valid calendar date.
+ * @example
+ * ```ts
+ * isValidDate("2024-02-29"); // true — leap year
+ * isValidDate("2023-02-29"); // false
+ * isValidDate("2026-13-01"); // false
+ * ```
+ * @see mixpanel_headless._internal.validation._is_valid_date
  */
-export function _isValidDate(dateStr: string): boolean {
+export function isValidDate(dateStr: string): boolean {
   if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(dateStr)) {
     return false;
   }
@@ -582,19 +299,24 @@ export function _isValidDate(dateStr: string): boolean {
   }
   const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const maxDay =
-    month === 2 && isLeap ? 29 : (_DAYS_IN_MONTH[month - 1] as number);
+    month === 2 && isLeap ? 29 : (DAYS_IN_MONTH[month - 1] as number);
   return day >= 1 && day <= maxDay;
 }
 
 /**
- * Convert a pre-validated run of ASCII digits to a number (no
- * `parseInt`/`Number` per R11.7; input is guaranteed `[0-9]+` by the
- * caller's regex).
+ * Convert a pre-validated run of ASCII digits to a number.
  *
+ * @remarks
+ * No `parseInt`/`Number` — those accept spellings Python's `int()`
+ * would not; the input is guaranteed `[0-9]+` by the caller's regex.
  * @param digits - ASCII digit string.
  * @returns The base-10 integer value.
+ * @example
+ * ```ts
+ * asciiDigitsToInt("0042"); // 42
+ * ```
  */
-function asciiDigitsToInt(digits: string): number {
+export function asciiDigitsToInt(digits: string): number {
   let value = 0;
   for (let i = 0; i < digits.length; i++) {
     value = value * 10 + (digits.charCodeAt(i) - 0x30);
@@ -603,40 +325,23 @@ function asciiDigitsToInt(digits: string): number {
 }
 
 /**
- * Python-`str` codepoint-wise `a > b` comparison (R11.5 — JS `>` on
- * strings compares UTF-16 units, which diverges for non-BMP vs
- * U+E000..U+FFFF mixes).
- *
- * @param a - Left operand.
- * @param b - Right operand.
- * @returns True when Python would evaluate `a > b`.
- */
-export function codepointGreater(a: string, b: string): boolean {
-  const as = Array.from(a);
-  const bs = Array.from(b);
-  const n = Math.min(as.length, bs.length);
-  for (let i = 0; i < n; i++) {
-    const ca = (as[i] as string).codePointAt(0) as number;
-    const cb = (bs[i] as string).codePointAt(0) as number;
-    if (ca !== cb) {
-      return ca > cb;
-    }
-  }
-  return as.length > bs.length;
-}
-
-/**
  * Check if a numeric value is finite (not NaN, not Inf).
  *
- * Port of `_is_finite` (`validation.py:387-402`): `None` → true;
- * `float` → `math.isfinite`; anything else (ints included) → true.
- * PyFloat carriers are classified per Caution §8: the non-finite
- * spellings are the only non-finite carriers.
- *
- * @param value - Numeric value to check (loose input domain, R4.9).
+ * @remarks
+ * `None` → true; `float` → `math.isfinite`; anything else (ints
+ * included) → true. For PyFloat carriers the non-finite spellings are
+ * the only non-finite values.
+ * @param value - Numeric value to check (loose input domain).
  * @returns True if finite or not a float at all.
+ * @example
+ * ```ts
+ * isFiniteNumber(1.5); // true
+ * isFiniteNumber(Number.POSITIVE_INFINITY); // false
+ * isFiniteNumber("not a number"); // true — only floats can be non-finite
+ * ```
+ * @see mixpanel_headless._internal.validation._is_finite
  */
-export function _isFinite(value: unknown): boolean {
+export function isFiniteNumber(value: unknown): boolean {
   if (value === null || value === undefined) {
     return true;
   }
@@ -649,355 +354,105 @@ export function _isFinite(value: unknown): boolean {
   return true;
 }
 
-// =============================================================================
-// difflib.get_close_matches port (Caution §6)
-// =============================================================================
+// --- Error accumulation ---
 
 /**
- * Faithful port of `difflib.SequenceMatcher` restricted to the
- * surface `get_close_matches` uses (`isjunk=None`, `autojunk=True`):
- * `set_seq1`/`set_seq2`, `find_longest_match`, `get_matching_blocks`,
- * `ratio`, `quick_ratio`, `real_quick_ratio`. Sequences are codepoint
- * arrays (Python `str` indexing is by codepoint, R11.6).
+ * Append one `ValidationError` to a validator's list — the only
+ * capability a per-rule helper receives, so a rule can add errors but
+ * never reorder or drop earlier ones. Emission order is contract: the
+ * corpus checks the error sequence, so helpers are called in Python
+ * source order and each pushes in Python source order.
  *
- * Reference: CPython 3.14 `Lib/difflib.py`.
- *
- * @internal
+ * The positional form builds a severity-`"error"` entry; the
+ * single-argument form appends an already-built error (the
+ * {@link enumError} rules).
  */
-class SequenceMatcher {
-  /** Sequence 1 (the candidate) as codepoints. */
-  private a: readonly string[] = [];
-
-  /** Sequence 2 (the query word) as codepoints. */
-  private b: readonly string[] = [];
-
-  /** Element → ascending indices in `b` (popular entries removed). */
-  private b2j = new Map<string, number[]>();
-
-  /** Autojunk "popular" elements excluded from `b2j`. */
-  private bpopular = new Set<string>();
-
-  /** Element → occurrence count over the FULL `b` (for quick_ratio). */
-  private fullbcount: Map<string, number> | null = null;
-
-  /** Cached matching blocks for the current (a, b) pair. */
-  private matchingBlocks:
-    readonly (readonly [number, number, number])[] | null = null;
-
+export interface PushError {
   /**
-   * Set the first sequence (the candidate string).
+   * Append a new error.
    *
-   * @param a - Candidate string.
+   * @param path - JSONPath-like location.
+   * @param message - Human-readable description (display-only).
+   * @param code - Machine-readable error code.
+   * @param suggestion - Fuzzy-matched alternatives, when the rule has any.
    */
-  setSeq1(a: string): void {
-    this.a = Array.from(a);
-    this.matchingBlocks = null;
-  }
-
+  (
+    path: string,
+    message: string,
+    code: string,
+    suggestion?: readonly string[] | null,
+  ): void;
   /**
-   * Set the second sequence (the query word) and chain its index map
-   * (`__chain_b`), applying the autojunk rule verbatim: when
-   * `len(b) >= 200`, elements occurring more than `len(b)//100 + 1`
-   * times are "popular" and dropped from `b2j`.
+   * Append a built error.
    *
-   * @param b - Query string.
+   * @param error - The error to append.
    */
-  setSeq2(b: string): void {
-    this.b = Array.from(b);
-    this.matchingBlocks = null;
-    this.fullbcount = null;
-    const b2j = new Map<string, number[]>();
-    for (let i = 0; i < this.b.length; i++) {
-      const elt = this.b[i] as string;
-      const indices = b2j.get(elt);
-      if (indices === undefined) {
-        b2j.set(elt, [i]);
-      } else {
-        indices.push(i);
-      }
-    }
-    this.bpopular = new Set();
-    const n = this.b.length;
-    if (n >= 200) {
-      const ntest = Math.floor(n / 100) + 1;
-      for (const [elt, idxs] of b2j) {
-        if (idxs.length > ntest) {
-          this.bpopular.add(elt);
-        }
-      }
-      for (const elt of this.bpopular) {
-        b2j.delete(elt);
-      }
-    }
-    this.b2j = b2j;
-  }
+  (error: ValidationError): void;
+}
 
-  /**
-   * Find the longest matching block in `a[alo:ahi]` / `b[blo:bhi]` —
-   * verbatim port of `find_longest_match` (with `bjunk` empty, the
-   * junk-extension loops reduce to no-ops and are omitted; the
-   * non-junk extension loops are kept).
-   *
-   * @param alo - Start index in `a`.
-   * @param ahi - End index (exclusive) in `a`.
-   * @param blo - Start index in `b`.
-   * @param bhi - End index (exclusive) in `b`.
-   * @returns `[besti, bestj, bestsize]`.
-   */
-  private findLongestMatch(
-    alo: number,
-    ahi: number,
-    blo: number,
-    bhi: number,
-  ): readonly [number, number, number] {
-    const { a, b, b2j } = this;
-    let besti = alo;
-    let bestj = blo;
-    let bestsize = 0;
-    let j2len = new Map<number, number>();
-    for (let i = alo; i < ahi; i++) {
-      const newj2len = new Map<number, number>();
-      const indices = b2j.get(a[i] as string);
-      if (indices !== undefined) {
-        for (const j of indices) {
-          if (j < blo) {
-            continue;
-          }
-          if (j >= bhi) {
-            break;
-          }
-          const k = (j2len.get(j - 1) ?? 0) + 1;
-          newj2len.set(j, k);
-          if (k > bestsize) {
-            besti = i - k + 1;
-            bestj = j - k + 1;
-            bestsize = k;
-          }
-        }
-      }
-      j2len = newj2len;
-    }
-    while (besti > alo && bestj > blo && a[besti - 1] === b[bestj - 1]) {
-      besti -= 1;
-      bestj -= 1;
-      bestsize += 1;
-    }
-    while (
-      besti + bestsize < ahi &&
-      bestj + bestsize < bhi &&
-      a[besti + bestsize] === b[bestj + bestsize]
-    ) {
-      bestsize += 1;
-    }
-    return [besti, bestj, bestsize];
-  }
-
-  /**
-   * Compute (and cache) the matching blocks — verbatim port of the
-   * iterative-queue `get_matching_blocks`, including the
-   * adjacent-block merge and the terminating `(la, lb, 0)` sentinel.
-   *
-   * @returns The merged, sorted matching blocks.
-   */
-  private getMatchingBlocks(): readonly (readonly [number, number, number])[] {
-    if (this.matchingBlocks !== null) {
-      return this.matchingBlocks;
-    }
-    const la = this.a.length;
-    const lb = this.b.length;
-    const queue: [number, number, number, number][] = [[0, la, 0, lb]];
-    const blocks: [number, number, number][] = [];
-    while (queue.length > 0) {
-      const [alo, ahi, blo, bhi] = queue.pop() as [
-        number,
-        number,
-        number,
-        number,
-      ];
-      const [i, j, k] = this.findLongestMatch(alo, ahi, blo, bhi);
-      if (k > 0) {
-        blocks.push([i, j, k]);
-        if (alo < i && blo < j) {
-          queue.push([alo, i, blo, j]);
-        }
-        if (i + k < ahi && j + k < bhi) {
-          queue.push([i + k, ahi, j + k, bhi]);
-        }
-      }
-    }
-    blocks.sort((x, y) => x[0] - y[0] || x[1] - y[1] || x[2] - y[2]);
-    let i1 = 0;
-    let j1 = 0;
-    let k1 = 0;
-    const nonAdjacent: (readonly [number, number, number])[] = [];
-    for (const [i2, j2, k2] of blocks) {
-      if (i1 + k1 === i2 && j1 + k1 === j2) {
-        k1 += k2;
-      } else {
-        if (k1 > 0) {
-          nonAdjacent.push([i1, j1, k1]);
-        }
-        i1 = i2;
-        j1 = j2;
-        k1 = k2;
-      }
-    }
-    if (k1 > 0) {
-      nonAdjacent.push([i1, j1, k1]);
-    }
-    nonAdjacent.push([la, lb, 0]);
-    this.matchingBlocks = nonAdjacent;
-    return nonAdjacent;
-  }
-
-  /**
-   * `_calculate_ratio(matches, length)` — `2.0*M/T`, or 1.0 for two
-   * empty sequences.
-   *
-   * @param matches - Matched element count.
-   * @param length - `len(a) + len(b)`.
-   * @returns The similarity ratio.
-   */
-  private static calculateRatio(matches: number, length: number): number {
-    if (length > 0) {
-      return (2.0 * matches) / length;
-    }
-    return 1.0;
-  }
-
-  /**
-   * Exact similarity ratio over the matching blocks.
-   *
-   * @returns `2.0*M/T` where M sums the matched block sizes.
-   */
-  ratio(): number {
-    let matches = 0;
-    for (const [, , size] of this.getMatchingBlocks()) {
-      matches += size;
-    }
-    return SequenceMatcher.calculateRatio(
-      matches,
-      this.a.length + this.b.length,
-    );
-  }
-
-  /**
-   * Upper bound on {@link ratio} from element multisets (verbatim
-   * `quick_ratio`, including the `avail` bookkeeping).
-   *
-   * @returns The quick upper bound.
-   */
-  quickRatio(): number {
-    if (this.fullbcount === null) {
-      const fullbcount = new Map<string, number>();
-      for (const elt of this.b) {
-        fullbcount.set(elt, (fullbcount.get(elt) ?? 0) + 1);
-      }
-      this.fullbcount = fullbcount;
-    }
-    const fullbcount = this.fullbcount;
-    const avail = new Map<string, number>();
-    let matches = 0;
-    for (const elt of this.a) {
-      const numb = avail.has(elt)
-        ? (avail.get(elt) as number)
-        : (fullbcount.get(elt) ?? 0);
-      avail.set(elt, numb - 1);
-      if (numb > 0) {
-        matches += 1;
-      }
-    }
-    return SequenceMatcher.calculateRatio(
-      matches,
-      this.a.length + this.b.length,
-    );
-  }
-
-  /**
-   * Fastest upper bound on {@link ratio} from lengths alone.
-   *
-   * @returns `2*min(la, lb) / (la + lb)`.
-   */
-  realQuickRatio(): number {
-    const la = this.a.length;
-    const lb = this.b.length;
-    return SequenceMatcher.calculateRatio(Math.min(la, lb), la + lb);
-  }
+/** A validator's error list paired with its {@link PushError} sink. */
+export interface ErrorCollector {
+  /** The accumulated errors, in emission order. */
+  readonly errors: ValidationError[];
+  /** Appends one error with severity `"error"`. */
+  readonly push: PushError;
 }
 
 /**
- * Faithful port of `difflib.get_close_matches(word, possibilities,
- * n, cutoff)` (CPython 3.14), including the `heapq.nlargest` result
- * order: descending `(ratio, candidate)` tuple comparison — ratio
- * first, then candidate string descending by codepoint on ties.
+ * Create the error list a Layer-1 validator returns, seeded with any
+ * errors a delegated check already produced (the `DG1` data_group_id
+ * check runs first in every validator).
  *
- * @param word - The query word.
- * @param possibilities - Candidate strings, in the caller's order.
- * @param n - Maximum number of close matches (must be > 0).
- * @param cutoff - Similarity threshold in [0, 1].
- * @returns The best (at most `n`) matches, best first.
- * @throws RangeError - When `n <= 0` or `cutoff` is outside [0, 1]
- *   (Python raises `ValueError`; RangeError is the TS analog and no
- *   caller in this module can trigger it).
+ * @param initial - Errors to start from.
+ * @returns The list and its sink.
+ * @example
+ * ```ts
+ * const { errors, push } = errorCollector(validateDataGroupId(dataGroupId));
+ * push("last", "last must be positive", "V3_LAST_POSITIVE");
+ * return errors;
+ * ```
  */
-export function getCloseMatches(
-  word: string,
-  possibilities: readonly string[],
-  n = 3,
-  cutoff = 0.6,
-): string[] {
-  if (!(n > 0)) {
-    throw new RangeError(`n must be > 0: ${String(n)}`);
-  }
-  if (!(cutoff >= 0.0 && cutoff <= 1.0)) {
-    throw new RangeError(`cutoff must be in [0.0, 1.0]: ${String(cutoff)}`);
-  }
-  const result: [number, string][] = [];
-  const s = new SequenceMatcher();
-  s.setSeq2(word);
-  for (const x of possibilities) {
-    s.setSeq1(x);
-    if (
-      s.realQuickRatio() >= cutoff &&
-      s.quickRatio() >= cutoff &&
-      s.ratio() >= cutoff
-    ) {
-      result.push([s.ratio(), x]);
-    }
-  }
-  // heapq.nlargest(n, result) == sorted(result, reverse=True)[:n];
-  // tuple comparison breaks ratio ties by candidate string, and
-  // Python string comparison is codepoint-wise.
-  result.sort((p, q) => {
-    if (p[0] !== q[0]) {
-      return q[0] - p[0];
-    }
-    if (p[1] === q[1]) {
-      return 0;
-    }
-    return codepointGreater(q[1], p[1]) ? 1 : -1;
-  });
-  return result.slice(0, n).map(([, x]) => x);
+export function errorCollector(
+  initial: readonly ValidationError[] = [],
+): ErrorCollector {
+  const errors = [...initial];
+  const push: PushError = (
+    pathOrError: string | ValidationError,
+    message: string = "",
+    code: string = "",
+    suggestion: readonly string[] | null = null,
+  ): void => {
+    errors.push(
+      typeof pathOrError === "string"
+        ? new ValidationError(pathOrError, message, code, "error", suggestion)
+        : pathOrError,
+    );
+  };
+  return { errors, push };
 }
 
-// =============================================================================
-// Fuzzy matching helpers (validation.py:410-464)
-// =============================================================================
+// --- Fuzzy matching helpers ---
 
 /**
- * Find closest matches for a mistyped enum value.
+ * Find the closest matches for a mistyped enum value.
  *
- * Port of `_suggest` (`validation.py:410-428`): candidates are
- * `sorted(valid)` (codepoint sort, R11.5), n=3, cutoff=0.5; `None`
+ * @remarks
+ * A faithful `difflib.get_close_matches` port: candidates are
+ * `sorted(valid)` (codepoint order), `heapq.nlargest` tie order; `null`
  * when nothing clears the cutoff.
- *
  * @param value - The invalid value to match against.
  * @param valid - Set of valid values.
- * @param n - Maximum number of suggestions (default 3).
- * @param cutoff - Minimum similarity ratio (default 0.5).
+ * @param n - Maximum number of suggestions.
+ * @param cutoff - Minimum similarity ratio.
  * @returns Frozen array of closest matches, or null if none.
+ * @example
+ * ```ts
+ * suggest("totl", new Set(["total", "unique", "average"])); // ["total"]
+ * suggest("zzz", new Set(["total", "unique"])); // null
+ * ```
+ * @see mixpanel_headless._internal.validation._suggest
  */
-export function _suggest(
+export function suggest(
   value: string,
   valid: ReadonlySet<string>,
   n = 3,
@@ -1012,30 +467,52 @@ export function _suggest(
   return matches.length > 0 ? matches : null;
 }
 
+/** Arguments of {@link enumError} (the Python positional parameters, named). */
+export interface EnumErrorArgs {
+  /** JSONPath-like location. */
+  readonly path: string;
+  /** Human-readable field name. */
+  readonly field: string;
+  /** The invalid value. */
+  readonly value: string;
+  /** Set of valid values. */
+  readonly valid: ReadonlySet<string>;
+  /** Machine-readable error code. */
+  readonly code: string;
+  /**
+   * Error severity level.
+   *
+   * @defaultValue `"error"`
+   */
+  readonly severity?: "error" | "warning" | undefined;
+}
+
 /**
  * Build a validation error for an invalid enum value with suggestions.
  *
- * Port of `_enum_error` (`validation.py:431-464`). Message text is
- * display-only (R5.4) but ported faithfully, including the
+ * @remarks
+ * Message text is display-only but ported faithfully, including the
  * `sorted(valid)[:5]` sample list repr in the no-suggestion branch.
- *
- * @param path - JSONPath-like location.
- * @param field - Human-readable field name.
- * @param value - The invalid value.
- * @param valid - Set of valid values.
- * @param code - Machine-readable error code.
- * @param severity - Error severity level (default `"error"`).
+ * @param args - The finding: `path` (JSONPath-like location), `field`
+ *   (human-readable name), `value` (the invalid text), `valid` (the
+ *   accepted set), `code` and the optional `severity`.
  * @returns ValidationError with fuzzy-matched suggestions.
+ * @example
+ * ```ts
+ * enumError({
+ *   path: "events[0].math",
+ *   field: "math type",
+ *   value: "totl",
+ *   valid: VALID_MATH_INSIGHTS,
+ *   code: "V4_INVALID_MATH",
+ * });
+ * // ValidationError { message: "Invalid math type 'totl'", suggestion: ["total"], … }
+ * ```
+ * @see mixpanel_headless._internal.validation._enum_error
  */
-export function _enumError(
-  path: string,
-  field: string,
-  value: string,
-  valid: ReadonlySet<string>,
-  code: string,
-  severity: "error" | "warning" = "error",
-): ValidationError {
-  const suggestion = _suggest(value, valid);
+export function enumError(args: EnumErrorArgs): ValidationError {
+  const { path, field, value, valid, code, severity = "error" } = args;
+  const suggestion = suggest(value, valid);
   let msg: string;
   if (suggestion !== null && suggestion.length > 0) {
     msg = `Invalid ${field} '${value}'`;
@@ -1046,22 +523,26 @@ export function _enumError(
   return new ValidationError(path, msg, code, severity, suggestion);
 }
 
-// =============================================================================
-// data_group_id validation (validation.py:472-508)
-// =============================================================================
+// --- data_group_id validation ---
 
 /**
  * Validate the `data_group_id` parameter if provided.
  *
- * Port of `_validate_data_group_id` (`validation.py:472-508`). Guard
- * order matters (Caution §8): the bool reject fires BEFORE the int
- * check because Python `bool` IS `int`.
- *
- * @param dataGroupId - Data group ID to validate (loose input, R4.9);
+ * @remarks
+ * Guard order matters: the bool reject fires before the int check
+ * because Python's `bool` is an `int`.
+ * @param dataGroupId - Data group ID to validate (loose input);
  *   `null`/absent skips validation.
  * @returns List with one `ValidationError` if invalid, empty otherwise.
+ * @example
+ * ```ts
+ * validateDataGroupId(42); // []
+ * validateDataGroupId(0); // [ValidationError { code: "DG1_INVALID_DATA_GROUP_ID", … }]
+ * validateDataGroupId(null); // []
+ * ```
+ * @see mixpanel_headless._internal.validation._validate_data_group_id
  */
-export function _validateDataGroupId(dataGroupId: unknown): ValidationError[] {
+export function validateDataGroupId(dataGroupId: unknown): ValidationError[] {
   if (dataGroupId !== null && dataGroupId !== undefined) {
     if (typeof dataGroupId === "boolean" || !isPythonInt(dataGroupId)) {
       return [
@@ -1072,7 +553,7 @@ export function _validateDataGroupId(dataGroupId: unknown): ValidationError[] {
         ),
       ];
     }
-    if ((dataGroupId as number) <= 0) {
+    if (dataGroupId <= 0) {
       return [
         new ValidationError(
           "data_group_id",
@@ -1085,21 +566,25 @@ export function _validateDataGroupId(dataGroupId: unknown): ValidationError[] {
   return [];
 }
 
-// =============================================================================
-// Custom property validation + scanning (validation.py:95-335)
-// =============================================================================
+// --- Custom property validation + scanning ---
 
 /**
- * Validate a custom property specification (rules CP1-CP6).
+ * Validate a custom property specification (rules CP1–CP6).
  *
- * Port of `_validate_custom_property` (`validation.py:95-188`).
- * CP5's formula length bound counts CODEPOINTS (`cpLength`, R11.6).
- *
+ * @remarks
+ * CP5's formula length bound counts codepoints (`cpLength`), as
+ * Python's `len(str)` does.
  * @param prop - A `CustomPropertyRef` or `InlineCustomProperty`.
  * @param path - JSONPath-like location for error reporting.
  * @returns List of validation errors; empty means valid.
+ * @example
+ * ```ts
+ * validateCustomProperty(new CustomPropertyRef({ id: 0 }), "where[0]");
+ * // [ValidationError { path: "where[0]", code: "CP1_INVALID_ID", … }]
+ * ```
+ * @see mixpanel_headless._internal.validation._validate_custom_property
  */
-export function _validateCustomProperty(
+export function validateCustomProperty(
   prop: CustomPropertyRef | InlineCustomProperty,
   path: string,
 ): ValidationError[] {
@@ -1141,7 +626,7 @@ export function _validateCustomProperty(
 
     // CP4: input keys must be single uppercase letters A-Z
     for (const key of Object.keys(prop.inputs)) {
-      if (!_CP_INPUT_KEY_RE.test(key)) {
+      if (!CP_INPUT_KEY_RE.test(key)) {
         errors.push(
           new ValidationError(
             path,
@@ -1154,7 +639,7 @@ export function _validateCustomProperty(
     }
 
     // CP5: formula must not exceed max length
-    if (cpLength(prop.formula) > _CP_MAX_FORMULA_LENGTH) {
+    if (cpLength(prop.formula) > CP_MAX_FORMULA_LENGTH) {
       errors.push(
         new ValidationError(
           path,
@@ -1184,37 +669,47 @@ export function _validateCustomProperty(
 }
 
 /**
- * Scan a list of Filter objects for custom property references.
+ * Python `isinstance(x, (CustomPropertyRef, InlineCustomProperty))` —
+ * the gate every scan position applies before validating a property.
  *
- * Port of `_scan_filters_for_custom_properties`
- * (`validation.py:191-215`).
+ * @param value - A property position's value.
+ * @returns True for either custom-property shape.
+ */
+function isCustomProperty(
+  value: unknown,
+): value is CustomPropertyRef | InlineCustomProperty {
+  return (
+    value instanceof CustomPropertyRef || value instanceof InlineCustomProperty
+  );
+}
+
+/**
+ * Scan a list of Filter objects for custom property references.
  *
  * @param filters - Filter objects to scan.
  * @param basePath - JSONPath prefix for error reporting (e.g.
  *   `"events[0]"` or `"steps[1]"`).
  * @returns List of validation errors for invalid custom properties.
  */
-export function _scanFiltersForCustomProperties(
+function scanFiltersForCustomProperties(
   filters: readonly Filter[],
   basePath: string,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
-  for (let i = 0; i < filters.length; i++) {
-    const f = filters[i] as Filter;
-    if (
-      f._property instanceof CustomPropertyRef ||
-      f._property instanceof InlineCustomProperty
-    ) {
-      const fpath = `${basePath}.filters[${String(i)}]`;
-      errors.push(..._validateCustomProperty(f._property, fpath));
+  for (const [i, f] of filters.entries()) {
+    if (!isCustomProperty(f._property)) {
+      continue;
     }
+
+    const fpath = `${basePath}.filters[${String(i)}]`;
+    errors.push(...validateCustomProperty(f._property, fpath));
   }
   return errors;
 }
 
 /**
- * Options bag for {@link _scanCustomProperties} — mirrors the all-kwonly,
- * all-default-`None` Python signature (R3.9: absent and `null` are
+ * Options bag for {@link scanCustomProperties} — mirrors the all-kwonly,
+ * all-default-`None` Python signature (absent and `null` are
  * equivalent).
  */
 export interface ScanCustomPropertiesOptions {
@@ -1233,17 +728,195 @@ export interface ScanCustomPropertiesOptions {
 }
 
 /**
- * Scan all query positions for custom properties and validate.
+ * The `group_by` position: every `GroupBy` whose property is custom.
  *
- * Port of `_scan_custom_properties` (`validation.py:218-335`):
- * collects `CustomPropertyRef`/`InlineCustomProperty` values from
- * group_by, where, events, funnel/flow steps and retention events,
- * and runs {@link _validateCustomProperty} on each, in source order.
+ * @param groupBy - Breakdown specification (non-null).
+ * @returns Errors in source order.
+ */
+function scanGroupBy(groupBy: unknown): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const groups: readonly unknown[] = Array.isArray(groupBy)
+    ? groupBy
+    : [groupBy];
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    if (g instanceof GroupBy && isCustomProperty(g.property)) {
+      const gpath = groups.length > 1 ? `group_by[${String(i)}]` : "group_by";
+      errors.push(...validateCustomProperty(g.property, gpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * A `FrequencyFilter` in `where`: its nested `event_filters` are
+ * scanned in place of the (absent) `_property`.
  *
+ * @param f - The frequency filter.
+ * @param index - Its position in `where`.
+ * @returns Errors in source order.
+ */
+function scanFrequencyFilter(
+  f: FrequencyFilter,
+  index: number,
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  if (f.event_filters === null || f.event_filters.length === 0) {
+    return errors;
+  }
+  for (let fi = 0; fi < f.event_filters.length; fi++) {
+    const ef = f.event_filters[fi] as Filter;
+    if (isCustomProperty(ef._property)) {
+      const fpath = `where[${String(index)}].event_filters[${String(fi)}]`;
+      errors.push(...validateCustomProperty(ef._property, fpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * The `where` position: `Filter` properties, with `FrequencyFilter`
+ * entries descended into instead.
+ *
+ * @param where - Filter specification (non-null).
+ * @returns Errors in source order.
+ */
+function scanWhere(where: unknown): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const filters: readonly unknown[] = Array.isArray(where) ? where : [where];
+  for (let i = 0; i < filters.length; i++) {
+    const f = filters[i];
+    if (f instanceof FrequencyFilter) {
+      errors.push(...scanFrequencyFilter(f, i));
+      continue;
+    }
+    if (f instanceof Filter && isCustomProperty(f._property)) {
+      const fpath = filters.length > 1 ? `where[${String(i)}]` : "where";
+      errors.push(...validateCustomProperty(f._property, fpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * The `events` position: each `Metric`'s own property, then its filters.
+ *
+ * @param events - Event specifications.
+ * @returns Errors in source order.
+ */
+function scanEvents(events: readonly unknown[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, item] of events.entries()) {
+    if (!(item instanceof Metric)) {
+      continue;
+    }
+    if (isCustomProperty(item.property)) {
+      errors.push(
+        ...validateCustomProperty(item.property, `events[${String(idx)}]`),
+      );
+    }
+    if (item.filters !== null && item.filters.length > 0) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          item.filters,
+          `events[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The funnel `steps` position: `FunnelStep.filters` (instanceof-gated
+ * in source — a bare event name has no filters).
+ *
+ * @param steps - Funnel step specifications.
+ * @returns Errors in source order.
+ */
+function scanFunnelSteps(steps: readonly unknown[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, step] of steps.entries()) {
+    if (
+      step instanceof FunnelStep &&
+      step.filters !== null &&
+      step.filters.length > 0
+    ) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          step.filters,
+          `steps[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The flow `steps` position: `FlowStep.filters`.
+ *
+ * @param steps - Flow step specifications.
+ * @returns Errors in source order.
+ */
+function scanFlowSteps(steps: readonly FlowStep[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, step] of steps.entries()) {
+    if (step.filters !== null && step.filters.length > 0) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          step.filters,
+          `steps[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The retention pair `[born_event, return_event]`: each event's filters,
+ * labelled by role rather than index.
+ *
+ * @param events - The two retention events.
+ * @returns Errors in source order.
+ */
+function scanRetentionEvents(
+  events: readonly RetentionEvent[],
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, rev] of events.entries()) {
+    if (rev.filters === null || rev.filters.length === 0) {
+      continue;
+    }
+
+    const label = idx === 0 ? "born_event" : "return_event";
+    errors.push(...scanFiltersForCustomProperties(rev.filters, label));
+  }
+  return errors;
+}
+
+/**
+ * Scan all query positions for custom properties and validate each.
+ *
+ * @remarks
+ * Collects `CustomPropertyRef`/`InlineCustomProperty` values from
+ * `group_by`, `where`, `events`, funnel/flow steps and retention
+ * events, and runs {@link validateCustomProperty} on each, in source
+ * order.
  * @param options - The scan positions (all optional).
  * @returns List of validation errors; empty means all valid.
+ * @example
+ * ```ts
+ * const errors = scanCustomProperties({
+ *   where: [Filter.equals(new CustomPropertyRef({ id: 0 }), "x")],
+ *   group_by: null,
+ * });
+ * // [ValidationError { path: "where", code: "CP1_INVALID_ID", … }]
+ * ```
+ * @see mixpanel_headless._internal.validation._scan_custom_properties
  */
-export function _scanCustomProperties(
+export function scanCustomProperties(
   options: ScanCustomPropertiesOptions,
 ): ValidationError[] {
   const {
@@ -1256,124 +929,23 @@ export function _scanCustomProperties(
   } = options;
   const errors: ValidationError[] = [];
 
-  // Scan group_by
   if (group_by !== null && group_by !== undefined) {
-    const groups: readonly unknown[] = Array.isArray(group_by)
-      ? group_by
-      : [group_by];
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[i];
-      if (
-        g instanceof GroupBy &&
-        (g.property instanceof CustomPropertyRef ||
-          g.property instanceof InlineCustomProperty)
-      ) {
-        const gpath = groups.length > 1 ? `group_by[${String(i)}]` : "group_by";
-        errors.push(..._validateCustomProperty(g.property, gpath));
-      }
-    }
+    errors.push(...scanGroupBy(group_by));
   }
-
-  // Scan where (filters) — skip FrequencyFilter instances (no _property)
   if (where !== null && where !== undefined) {
-    const filters: readonly unknown[] = Array.isArray(where) ? where : [where];
-    for (let i = 0; i < filters.length; i++) {
-      const f = filters[i];
-      if (f instanceof FrequencyFilter) {
-        if (f.event_filters !== null && f.event_filters.length > 0) {
-          for (let fi = 0; fi < f.event_filters.length; fi++) {
-            const ef = f.event_filters[fi] as Filter;
-            if (
-              ef._property instanceof CustomPropertyRef ||
-              ef._property instanceof InlineCustomProperty
-            ) {
-              const fpath = `where[${String(i)}].event_filters[${String(fi)}]`;
-              errors.push(..._validateCustomProperty(ef._property, fpath));
-            }
-          }
-        }
-        continue;
-      }
-      if (
-        f instanceof Filter &&
-        (f._property instanceof CustomPropertyRef ||
-          f._property instanceof InlineCustomProperty)
-      ) {
-        const fpath = filters.length > 1 ? `where[${String(i)}]` : "where";
-        errors.push(..._validateCustomProperty(f._property, fpath));
-      }
-    }
+    errors.push(...scanWhere(where));
   }
-
-  // Scan events (Metric.property AND Metric.filters)
-  if (events !== null && events !== undefined) {
-    for (let idx = 0; idx < events.length; idx++) {
-      const item = events[idx];
-      if (item instanceof Metric) {
-        if (
-          item.property instanceof CustomPropertyRef ||
-          item.property instanceof InlineCustomProperty
-        ) {
-          errors.push(
-            ..._validateCustomProperty(item.property, `events[${String(idx)}]`),
-          );
-        }
-        if (item.filters !== null && item.filters.length > 0) {
-          errors.push(
-            ..._scanFiltersForCustomProperties(
-              item.filters,
-              `events[${String(idx)}]`,
-            ),
-          );
-        }
-      }
-    }
+  if (events !== null) {
+    errors.push(...scanEvents(events));
   }
-
-  // Scan funnel steps (FunnelStep.filters) — instanceof-gated in source
-  if (funnel_steps !== null && funnel_steps !== undefined) {
-    for (let idx = 0; idx < funnel_steps.length; idx++) {
-      const step = funnel_steps[idx];
-      if (
-        step instanceof FunnelStep &&
-        step.filters !== null &&
-        step.filters.length > 0
-      ) {
-        errors.push(
-          ..._scanFiltersForCustomProperties(
-            step.filters,
-            `steps[${String(idx)}]`,
-          ),
-        );
-      }
-    }
+  if (funnel_steps !== null) {
+    errors.push(...scanFunnelSteps(funnel_steps));
   }
-
-  // Scan flow steps (FlowStep.filters)
-  if (flow_steps !== null && flow_steps !== undefined) {
-    for (let idx = 0; idx < flow_steps.length; idx++) {
-      const fstep = flow_steps[idx] as FlowStep;
-      if (fstep.filters !== null && fstep.filters.length > 0) {
-        errors.push(
-          ..._scanFiltersForCustomProperties(
-            fstep.filters,
-            `steps[${String(idx)}]`,
-          ),
-        );
-      }
-    }
+  if (flow_steps !== null) {
+    errors.push(...scanFlowSteps(flow_steps));
   }
-
-  // Scan retention events (RetentionEvent.filters)
-  // retention_events is always [born_event, return_event]
-  if (retention_events !== null && retention_events !== undefined) {
-    for (let idx = 0; idx < retention_events.length; idx++) {
-      const rev = retention_events[idx] as RetentionEvent;
-      if (rev.filters !== null && rev.filters.length > 0) {
-        const label = idx === 0 ? "born_event" : "return_event";
-        errors.push(..._scanFiltersForCustomProperties(rev.filters, label));
-      }
-    }
+  if (retention_events !== null) {
+    errors.push(...scanRetentionEvents(retention_events));
   }
 
   return errors;

@@ -1,62 +1,28 @@
-// Referee (a) runner feed — B3 gate (playbook P3-7 / phase1-design D15a),
-// extended at the B5 gate (b5-packets.md §7.4): `workspace.build_params`
-// EMITS full insights bookmark params (all 115 output vectors are exactly
-// `{displayOptions, sections}` — the schema's root shape), so P3-7's
-// "if a B5 module emits a bookmark payload anyway, its gate adds the
-// referees" clause fires and its TS-built outputs are fed AS-IS (no
-// skeleton wrap — the D15b routing-table row `workspace.build_params →
-// insights, as-is`, `conformance/referee_bookmark_parser/README.md`).
-//
-// D15a's feed rule: pipe builder-kind vector outputs that are
-// INSIGHTS-SHAPED through the ajv bookmark.json referee as a secondary
-// assert. This suite is that feed: for every insights-shaped B3
-// `bookmark_builders.*` output vector it executes the SAME binding the
-// conformance runner replays (binding-honesty: the real ported builder),
-// injects the TS-BUILT fragment into the recon-proven minimal valid
-// `InsightsBookmarkParams` skeleton at the api's section slot, and
-// requires an ajv ACCEPT.
-//
-// Scope (D15a "INSIGHTS-SHAPED ONLY"):
-// - `build_filter_entry` / `build_frequency_filter_entry` →
-//   `sections.filter` entries; `build_filter_section` → the whole
-//   `sections.filter` array. (Schema power is limited: `Sections.filter`
-//   items are `JsonValue` — root/sections `additionalProperties` and the
-//   skeleton contract still apply.)
-// - `build_group_section` → `sections.group` (`GroupClause` items with
-//   `additionalProperties: false` — the discriminating slot).
-// - `build_time_section` → `sections.time` (items are `JsonValue`).
-// - EXCLUDED, per the referee-(b) routing table
-//   (`conformance/referee_bookmark_parser/README.md`): `build_date_range`
-//   outputs are COMMON-shaped (`{from_date, to_date, type}` — no insights
-//   section hosts them; the Python structural oracle covers them wrapped
-//   as `{"date_range": …}`), and `build_flow_*` outputs are FLOWS-shaped
-//   (feeding either to the insights root would reject correct output —
-//   the D15a dead-weight trap).
-//
-// Error-expectation vectors carry no output and are skipped (counted).
-//
-// NO STANDING DISCLOSURES (R10.7 four-bug batch, 2026-08-17): the
-// dataGroupId int-threading + off-contract `sections.dataGroupId`
-// disclosure pins (B3/B5 gates; fix-of-record
-// `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`)
-// RETIRED with the Python-first fix and the corpus re-pin @ 700db99 —
-// every fed vector must now be accepted; any REJECT is a new finding.
+// Referee feed: every insights-shaped `bookmark_builders.*` output is built
+// through the same binding the runner replays, injected into the minimal
+// valid InsightsBookmarkParams skeleton at its section slot, and must pass
+// the ajv bookmark.json referee; `workspace.build_params` outputs are fed
+// as-is. Common-shaped date ranges and flows-shaped builders are excluded.
+
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { createRunnerDeps } from "../../conformance-runner/src/bindings.js";
-import { canonicalize } from "../../conformance-runner/src/canonical.js";
-import type { JsonValue } from "../../conformance-runner/src/json-value.js";
 import {
+  canonicalize,
+  type ConformanceVector,
+  createRunnerDeps,
+  createShims,
+  type JsonValue,
   loadCorpus,
   loadCorpusConfig,
-} from "../../conformance-runner/src/loader.js";
-import type { ConformanceVector } from "../../conformance-runner/src/vector-types.js";
-import { createShims } from "../../conformance-runner/src/shims.js";
-import { KNOWN_VALID_INSIGHTS_PAYLOAD } from "../referees/bookmark-schema/known-payloads.js";
-import type { JsonObject } from "../referees/bookmark-schema/known-payloads.js";
+} from "@mixpanel-headless/conformance-runner";
+
+import {
+  type JsonObject,
+  KNOWN_VALID_INSIGHTS_PAYLOAD,
+} from "../referees/bookmark-schema/known-payloads.js";
 import { refereeBookmarkPayload } from "../referees/bookmark-schema/referee.js";
 
 /** How each fed api's output lands inside the `sections` object. */
@@ -74,8 +40,7 @@ const FEED_SLOTS: ReadonlyMap<string, (output: unknown) => JsonObject> =
 
 /**
  * Apis whose output IS a full `InsightsBookmarkParams` payload, fed as-is
- * with no skeleton wrap (B5 gate, b5-packets.md §7.4 / the D15b
- * routing-table "as-is" row).
+ * with no skeleton wrap (the referee routing table's "as-is" row).
  */
 const FULL_PAYLOAD_APIS: ReadonlySet<string> = new Set([
   "workspace.build_params",
@@ -111,7 +76,7 @@ function wrapFragment(api: string, output: unknown): JsonObject {
   return payload;
 }
 
-describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
+describe("referee feed — insights-shaped builder outputs", () => {
   const packageDir = resolve(
     fileURLToPath(new URL(".", import.meta.url)),
     "../../conformance-runner",
@@ -148,12 +113,8 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
     const total = fed.length + skippedErrorVectors.length;
     const inCorpus = corpus.vectors.filter((v) => isFedApi(v.api)).length;
     expect(total).toBe(inCorpus);
-    // 99 builder-fragment vectors (98 B3 + the FIX-1
-    // `test_no_custom_property_nesting` addition) + the 127 B5
-    // `workspace.build_params` full payloads (115 + the 10
-    // `test_workspace_report_links` seam hits from Python PR #223,
-    // corpus re-sync 2026-09-03, + the 2 `test_query_limit` `run_params`
-    // seam hits from Python PR #225, corpus re-pin 2026-09-14 @ 0dde506).
+    // 99 builder-fragment vectors + the 127 `workspace.build_params` full
+    // payloads at the current corpus pin.
     expect(fed.length).toBeGreaterThanOrEqual(200);
     expect(perApi.get("workspace.build_params")).toBe(127);
   });
@@ -185,8 +146,7 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
       if (verdict.valid) continue;
       unexpectedRejects.push(`${vector.id}: ${verdict.errors.join("; ")}`);
     }
-    // The R10.7 dataGroupId disclosure pins retired with the four-bug
-    // batch re-pin — ANY reject is a new finding and blocks.
-    expect(unexpectedRejects, unexpectedRejects.join("\n")).toEqual([]);
+    // No standing disclosures — any reject is a new finding and blocks.
+    expect(unexpectedRejects, unexpectedRejects.join("\n")).toStrictEqual([]);
   });
 });

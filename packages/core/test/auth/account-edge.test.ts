@@ -1,28 +1,22 @@
-// Layer-3 translation of `tests/unit/test_042_edge_cases.py::
-// TestAccountNameBoundaries` (:52-104) and
-// `::TestOAuthTokenValidatorUnderCopy` (:105-167) — B7-A2 packet §2.4
-// (B6 ledger `b6-packets.md:1032` inbound deferral).
-//
-// Mechanism substitutions (header-cited per R10.2 / packet §2.4):
-// - Pydantic `ValidationError` at construction translates to the parse
-//   factory's `ResponseValidationError` (the Phase-2 default boundary,
-//   `auth/account.ts`).
-// - `model_copy(update=..., deep=True)` translates to object spread —
-//   the packet pin: copy does NOT re-validate; the TS twin pins
-//   spread behavior over the frozen parse-once model.
-// - `TypeAdapter(Account).validate_python(payload)` translates to
-//   `parseAccount(payload)` (the discriminated-union re-validation
-//   escape hatch).
+// Account-name boundaries and the oauth_token XOR validator under copy,
+// mirroring `TestAccountNameBoundaries` / `TestOAuthTokenValidatorUnderCopy`
+// in `tests/unit/test_042_edge_cases.py`. Pydantic `ValidationError` becomes
+// `ResponseValidationError`; `model_copy(update=…)` becomes object spread
+// (no re-validation); `TypeAdapter.validate_python` becomes `parseAccount`.
+
 import { describe, expect, it } from "vitest";
+
 import {
-  parseAccount,
   type OAuthTokenAccount,
+  parseAccount,
 } from "../../src/auth/account.js";
 import { ResponseValidationError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
 
-describe("TestAccountNameBoundaries", () => {
-  it("test_account_name_64_chars_passes", () => {
+describe("Account name boundaries", () => {
+  // python: TestAccountNameBoundaries
+  it("account name 64 chars passes", () => {
+    // python: test_account_name_64_chars_passes
     const sa = parseAccount({
       type: "service_account",
       name: "a".repeat(64),
@@ -30,10 +24,11 @@ describe("TestAccountNameBoundaries", () => {
       username: "u",
       secret: "s",
     });
-    expect(sa.name.length).toBe(64);
+    expect(sa.name).toHaveLength(64);
   });
 
-  it("test_account_name_65_chars_fails", () => {
+  it("account name 65 chars fails", () => {
+    // python: test_account_name_65_chars_fails
     expect(() =>
       parseAccount({
         type: "service_account",
@@ -51,11 +46,12 @@ describe("TestAccountNameBoundaries", () => {
     ["team/slash"], // slash
     ["team\nnewline"], // newline
     ["team\x00null"], // null byte
-    ["team\x7fdel"], // DEL char
+    ["team\x7Fdel"], // DEL char
     ["teaméaccent"], // accented char
     ["team😀emoji"], // emoji
     ["team\ttab"], // tab
-  ])("test_account_name_rejects_exotic_chars[%j]", (name) => {
+  ])("account name rejects exotic chars[%j]", (name) => {
+    // python: test_account_name_rejects_exotic_chars
     // Pattern allows only [a-zA-Z0-9_-]; everything else raises.
     expect(() =>
       parseAccount({
@@ -69,8 +65,10 @@ describe("TestAccountNameBoundaries", () => {
   });
 });
 
-describe("TestOAuthTokenValidatorUnderCopy", () => {
-  it("test_model_copy_setting_both_does_not_revalidate", () => {
+describe("OAuth token validator under copy", () => {
+  // python: TestOAuthTokenValidatorUnderCopy
+  it("spreading both token fields onto a copy does not re-validate", () => {
+    // python: test_model_copy_setting_both_does_not_revalidate
     // `model_copy(update=...)` bypasses the XOR validator (Pydantic
     // limitation); the TS twin: object spread over the parse-once
     // model never re-fires parseAccount's guard.
@@ -83,11 +81,12 @@ describe("TestOAuthTokenValidatorUnderCopy", () => {
     const bad: OAuthTokenAccount = { ...original, token_env: "MY_ENV" };
     // Both fields are now set — the XOR validator never re-fired.
     expect(bad.token).not.toBeNull();
-    expect(bad.token).not.toBeUndefined();
+    expect(bad.token).toBeDefined();
     expect(bad.token_env).toBe("MY_ENV");
   });
 
-  it("test_validate_python_round_trip_enforces_xor", () => {
+  it("re-parsing the copy through parseAccount enforces the XOR", () => {
+    // python: test_validate_python_round_trip_enforces_xor
     // The escape hatch: round-tripping via the parse factory
     // re-validates (the TypeAdapter.validate_python twin).
     const original = parseAccount({

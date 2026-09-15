@@ -1,11 +1,9 @@
 /**
- * Re-export shim: `parseLossless` moved into the library at Phase-3 B0-2
- * (`packages/core/src/client/lossless-json.ts`) so every wire response
- * body parses losslessly in the LIBRARY (GATE-VERDICT R5), not only in
- * the rig. The rig re-imports from core (GF5 direction rule); its unit
- * suite moved with the parser (colocated per R7.1).
+ * Re-export shim for the library's lossless JSON parser
+ * (`packages/core/src/client/lossless-json.ts`).
+ *
+ * The parser lives in core so every wire response body parses losslessly in
+ * the library itself, not only in the rig; the rig re-imports it and never
+ * the other way round. Its unit suite is colocated with the parser.
  */
-export {
-  LosslessJsonError,
-  parseLossless,
-} from "../../packages/core/src/client/lossless-json.js";
+export { LosslessJsonError, parseLossless } from "@mixpanel-headless/core";

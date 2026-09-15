@@ -1,51 +1,39 @@
 /**
- * Single-function resolver for {@link Session} construction — TS port of
- * `mixpanel_headless/_internal/auth/resolver.py` (whole file, B7-A2
- * packet §2.1-§2.2, `b7-packets.md`).
+ * Pure-functional {@link Session} resolution. Three independent axes each
+ * consult `env → param → target → bridge → config` (account ends at
+ * `[active].account`, project at `account.default_project`, workspace at
+ * `[active].workspace`); perturbing one axis never affects another, and
+ * an unresolvable axis raises a {@link ConfigError} listing every fix
+ * path. Python reads `os.environ` inline and defaults its config and
+ * bridge sources; this module takes them all injected ({@link ResolverSources})
+ * and does no I/O of its own — `@mixpanel-headless/node` supplies
+ * `process.env`, the TOML `ConfigManager` and the bridge loader.
  *
- * One pure-functional {@link resolveSession} consults independent
- * priority axes:
- *
- *     Account axis:    env → param → target → bridge → [active].account
- *     Project axis:    env → param → target → bridge → account.default_project
- *     Workspace axis:  env → param → target → bridge → [active].workspace
- *
- * Each axis is independent — perturbing one input never affects the
- * others. The project axis chain ends at the resolved account (its
- * `default_project` field) — there is no `[active].project` fallback
- * (FR-033). Per FR-024, when an axis cannot be resolved, the raised
- * {@link ConfigError} lists every fix path the user can try.
- *
- * **R9.4 — injected sources (THE core decision of the shard)**: Python
- * reads `os.environ` inline and defaults `config=ConfigManager()` /
- * `bridge=load_bridge()`. This core takes REQUIRED injected sources —
- * no defaults, no I/O, no `process.env`, no `node:*` (R9.1); B8
- * (`packages/node`) wires `process.env`, the TOML `ConfigManager`, and
- * the bridge loader to these interfaces BY NAME.
+ * @see mixpanel_headless._internal.auth.resolver
  */
 
 import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr } from "../compat/python-str.js";
 import { ConfigError, ParamValidationError } from "../errors.js";
-import { Target } from "../types/entities/accounts.js";
+import type { Target } from "../types/entities/accounts.js";
 import {
-  REGION_VALUES,
-  parseAccount,
   type Account,
+  parseAccount,
   type Region,
+  REGION_VALUES,
 } from "./account.js";
 import {
+  type ActiveSession,
   parseProject,
   parseWorkspaceRef,
-  type ActiveSession,
   type Project,
   type Session,
   type WorkspaceRef,
 } from "./session.js";
 
-// ── Injected-source interfaces (packet §2.2 — B8 implements) ───────────
+// --- Injected-source interfaces ---
 
-/** The six `MP_*` reads, as a plain readonly bag. B8 wires `process.env`. */
+/** The six `MP_*` reads, as a plain readonly bag (`process.env` on Node). */
 export interface ResolverEnv {
   /** Service-account username (SA quad member). */
   readonly MP_USERNAME?: string | undefined;
@@ -62,8 +50,8 @@ export interface ResolverEnv {
 }
 
 /**
- * Config reads the resolver consults. B8's `ConfigManager` satisfies it
- * (the on-disk TOML half stays B8 — packet §3.2).
+ * Config reads the resolver consults. The Node `ConfigManager` satisfies
+ * it; the on-disk TOML handling stays in `@mixpanel-headless/node`.
  */
 export interface ResolverConfigSource {
   /**
@@ -71,38 +59,38 @@ export interface ResolverConfigSource {
    *
    * @param name - Account name.
    * @returns The account record.
-   * @throws ConfigError - Coded error on an unknown name
+   * @throws {@link ConfigError} - Coded error on an unknown name
    *   (`AccountNotFoundError` in the ConfigManager implementation).
    */
-  getAccount(name: string): Account;
+  getAccount: (name: string) => Account;
 
   /**
    * Read the persisted `[active]` block.
    *
    * @returns The active session (may be empty).
    */
-  getActive(): ActiveSession;
+  getActive: () => ActiveSession;
 
   /**
    * Load a named target.
    *
    * @param name - Target name.
    * @returns The target record.
-   * @throws ConfigError - Coded error on an unknown name.
+   * @throws {@link ConfigError} - Coded error on an unknown name.
    */
-  getTarget(name: string): Target;
+  getTarget: (name: string) => Target;
 
   /**
    * Read `[settings].custom_header`.
    *
    * @returns The single `(name, value)` entry, or `null` when unset.
    */
-  getCustomHeader(): readonly [string, string] | null;
+  getCustomHeader: () => readonly [string, string] | null;
 }
 
 /**
- * The bridge fields the resolver reads (`bridge.py` stays B8; this is
- * the VIEW — packet §2.2).
+ * The bridge fields the resolver reads — a view, not the file model
+ * (`BridgeFile` and its loader live in `@mixpanel-headless/node`).
  */
 export interface BridgeView {
   /** The bridge's account. */
@@ -125,38 +113,50 @@ export interface ResolverSources {
   readonly bridge: BridgeView | null;
 }
 
-/** The per-axis explicit overrides (Python kwonly params, R3.8). */
+/** The per-axis explicit overrides (Python keyword-only parameters). */
 export interface ResolveSessionOptions {
-  /** Explicit account name (e.g. from `--account NAME`). */
+  /**
+   * Explicit account name (e.g. from `--account NAME`).
+   *
+   * @defaultValue `null`
+   */
   readonly account?: string | null | undefined;
-  /** Explicit project ID (e.g. from `--project ID`). */
+  /**
+   * Explicit project ID (e.g. from `--project ID`).
+   *
+   * @defaultValue `null`
+   */
   readonly project?: string | null | undefined;
-  /** Explicit workspace ID (e.g. from `--workspace ID`). */
+  /**
+   * Explicit workspace ID (e.g. from `--workspace ID`).
+   *
+   * @defaultValue `null`
+   */
   readonly workspace?: number | null | undefined;
   /**
    * Named target whose three axes apply (mutually exclusive with
-   * `account`/`project`/`workspace`).
+   * `account` / `project` / `workspace`).
+   *
+   * @defaultValue `null`
    */
   readonly target?: string | null | undefined;
 }
 
-// ── Internals ───────────────────────────────────────────────────────────
+// --- Internals ---
 
 /**
- * Runtime region set derived from the Phase-2 literal table — never a
- * re-derived list (packet §2.1: the `_VALID_REGIONS` twin,
- * `resolver.py:53`).
+ * Runtime region set derived from the shared literal table, never a
+ * re-derived list (the `_VALID_REGIONS` twin).
  */
 const VALID_REGIONS: ReadonlySet<string> = new Set(REGION_VALUES);
 
 /**
  * Return `MP_REGION` if it's a valid region literal, else `null`
- * (`_env_region`, `resolver.py:56-78`). Empty string = absent
- * (watchlist #6).
+ * (`_env_region`). An empty string counts as absent.
  *
  * @param env - The env bag.
  * @returns The region value when set, or `null` when absent/empty.
- * @throws ConfigError - `MP_REGION` set to a value outside the allowed
+ * @throws {@link ConfigError} - `MP_REGION` set to a value outside the allowed
  *   set — surfaced loudly (silently dropping an invalid region would
  *   route requests to the wrong data residency); details
  *   `{env_var: "MP_REGION", value}`.
@@ -179,16 +179,16 @@ function envRegion(env: ResolverEnv): Region | null {
 
 /**
  * Synthesize a `ServiceAccount` if the full SA env quad is present
- * (`_env_account_from_service_quad`, `resolver.py:81-107`).
+ * (`_env_account_from_service_quad`).
  *
- * Evaluation order is byte-for-byte: {@link envRegion} runs BEFORE the
+ * Evaluation order matches Python: {@link envRegion} runs before the
  * completeness guard, so an invalid `MP_REGION` aborts resolution even
- * when the quad is otherwise incomplete (packet Caution #2).
+ * when the quad is otherwise incomplete.
  *
  * @param env - The env bag.
  * @returns A synthesized service account, or `null` if any quad member
  *   is missing.
- * @throws ConfigError - Invalid `MP_REGION` (via {@link envRegion}).
+ * @throws {@link ConfigError} - Invalid `MP_REGION` (via {@link envRegion}).
  */
 function envAccountFromServiceQuad(env: ResolverEnv): Account | null {
   const username = env.MP_USERNAME;
@@ -224,14 +224,14 @@ function envAccountFromServiceQuad(env: ResolverEnv): Account | null {
 
 /**
  * Synthesize an `OAuthTokenAccount` from `MP_OAUTH_TOKEN` env
- * (`_env_account_from_oauth_token`, `resolver.py:110-132`). Requires
- * `MP_OAUTH_TOKEN` + `MP_PROJECT_ID` + `MP_REGION`; the SA quad takes
- * precedence (PR #125 — preserved by {@link resolveAccountAxis}).
+ * (`_env_account_from_oauth_token`). Requires `MP_OAUTH_TOKEN` +
+ * `MP_PROJECT_ID` + `MP_REGION`; the SA quad takes precedence
+ * ({@link resolveAccountAxis} checks it first, as Python does).
  *
  * @param env - The env bag.
  * @returns A synthesized oauth-token account, or `null` if any
  *   required env var is missing.
- * @throws ConfigError - Invalid `MP_REGION` (via {@link envRegion}).
+ * @throws {@link ConfigError} - Invalid `MP_REGION` (via {@link envRegion}).
  */
 function envAccountFromOAuthToken(env: ResolverEnv): Account | null {
   const token = env.MP_OAUTH_TOKEN;
@@ -259,7 +259,7 @@ function envAccountFromOAuthToken(env: ResolverEnv): Account | null {
   }
 }
 
-/** Arguments of {@link resolveAccountAxis} (Python kwonly, R3.8). */
+/** Arguments of {@link resolveAccountAxis} (Python keyword-only). */
 export interface ResolveAccountAxisArgs {
   /** Value of the `account=` kwarg. */
   readonly explicit: string | null;
@@ -269,22 +269,33 @@ export interface ResolveAccountAxisArgs {
   readonly bridge: BridgeView | null;
   /** Config source (may have an empty `[active]` block). */
   readonly config: ResolverConfigSource;
-  /** The env bag (Python reads `os.environ` inline; R9.4 seam). */
+  /** The env bag (Python reads `os.environ` inline). */
   readonly env: ResolverEnv;
 }
 
 /**
- * Resolve the account axis per the documented priority order (port of
- * `resolve_account_axis`, `resolver.py:135-176`).
+ * Resolve the account axis per the documented priority order.
  *
- * Order: env SA quad first (PR #125), then OAuth-token env, then
- * explicit `account=` (config load), then the target's account, then
- * the bridge's account, then `[active].account`.
+ * Order: env SA quad first, then OAuth-token env, then explicit
+ * `account=` (config load), then the target's account, then the
+ * bridge's account, then `[active].account`.
  *
  * @param args - The axis inputs.
  * @returns The resolved account, or `null` if no source produced one.
- * @throws ConfigError - Invalid `MP_REGION`; unknown account names
+ * @throws {@link ConfigError} - Invalid `MP_REGION`; unknown account names
  *   (propagated from the config source).
+ * @example
+ * ```typescript
+ * const account = resolveAccountAxis({
+ *   explicit: "team",
+ *   target_account_name: null,
+ *   bridge: null,
+ *   config,
+ *   env: { MP_OAUTH_TOKEN: "t", MP_PROJECT_ID: "1", MP_REGION: "us" },
+ * });
+ * // account?.type === "oauth_token" — env outranks the explicit name
+ * ```
+ * @see mixpanel_headless._internal.auth.resolver.resolve_account_axis
  */
 export function resolveAccountAxis(
   args: ResolveAccountAxisArgs,
@@ -313,7 +324,7 @@ export function resolveAccountAxis(
   return null;
 }
 
-/** Arguments of {@link resolveProjectAxis} (Python kwonly, R3.8). */
+/** Arguments of {@link resolveProjectAxis} (Python keyword-only). */
 export interface ResolveProjectAxisArgs {
   /** Value of the `project=` kwarg. */
   readonly explicit: string | null;
@@ -323,44 +334,50 @@ export interface ResolveProjectAxisArgs {
   readonly bridge: BridgeView | null;
   /** The resolved account whose `default_project` bottoms the chain. */
   readonly account: Account | null;
-  /** The env bag (R9.4 seam). */
+  /** The env bag. */
   readonly env: ResolverEnv;
 }
 
 /**
- * Resolve the project axis per the documented priority order (port of
- * `resolve_project_axis`, `resolver.py:179-221`).
+ * Resolve the project axis per the documented priority order.
  *
- * Order (FR-017): env > param > target > bridge >
- * `account.default_project`. There is NO `[active].project` rung —
- * project lives on the account itself (FR-033).
+ * Order: env → param → target → bridge → `account.default_project`.
+ * There is no `[active].project` rung — project lives on the account
+ * itself.
  *
- * The env guard is Python `str.isdigit()` on the whole string — ported
- * as `/^\p{Nd}+$/u` (decimal digit codepoints), NOT the `pythonInt`
- * grammar (packet Caution #4: two different parsers three lines apart;
- * `isdigit` admits no sign/underscore/whitespace but DOES admit
- * non-ASCII decimal digits).
+ * The env guard is Python `str.isdigit()` on the whole string, ported as
+ * `/^\p{Nd}+$/u` (decimal-digit codepoints). It is deliberately not the
+ * `pythonInt` grammar used three lines away for `MP_WORKSPACE_ID`:
+ * `isdigit` admits no sign, underscore or whitespace but does admit
+ * non-ASCII decimal digits.
  *
  * @param args - The axis inputs.
  * @returns Project ID (digit string), or `null` if no source resolves.
- * @throws ConfigError - `MP_PROJECT_ID` set but not a digit string;
+ * @throws {@link ConfigError} - `MP_PROJECT_ID` set but not a digit string;
  *   details `{env_var: "MP_PROJECT_ID", value}`.
+ * @example
+ * ```typescript
+ * resolveProjectAxis({
+ *   explicit: "222",
+ *   target_project: null,
+ *   bridge: null,
+ *   account: null,
+ *   env: { MP_PROJECT_ID: "111" },
+ * });
+ * // "111" — env outranks the explicit parameter
+ * ```
+ * @see mixpanel_headless._internal.auth.resolver.resolve_project_axis
  */
 export function resolveProjectAxis(
   args: ResolveProjectAxisArgs,
 ): string | null {
   const envVal = args.env.MP_PROJECT_ID;
   if (envVal !== undefined && envVal !== "") {
-    // DISCLOSED DIVERGENCE (ruled by the pair-A arbiter,
-    // `b7-reviewA-resolution.md` ruling R1 — accepted as message-only;
-    // no pinned Numeric_Type table): `str.isdigit()` also accepts
-    // Numeric_Type=Digit codepoints outside Nd (e.g. "²"), which
-    // CPython then REJECTS at `Project(id=...)` with "Invalid project
-    // ID" (verified live 2026-08-16, B7-A2 RUN record). JS regex has
-    // no Numeric_Type property, so those characters fail THIS guard
-    // instead — same ConfigError class + code (`CONFIG_ERROR`, the R5
-    // contract), different message/details. Nd digits (e.g. "٤٢")
-    // pass both guards in BOTH languages and resolve.
+    // Divergence: `str.isdigit()` also accepts Numeric_Type=Digit
+    // codepoints outside Nd (e.g. "²"), which CPython then rejects at
+    // `Project(id=…)`; JS has no Numeric_Type property, so they fail this
+    // guard instead — same ConfigError class and code, different message.
+    // Nd digits (e.g. "٤٢") pass both guards in both languages.
     if (!/^\p{Nd}+$/u.test(envVal)) {
       throw new ConfigError(
         `MP_PROJECT_ID=${pythonRepr(envVal)} must be a digit string.`,
@@ -386,20 +403,26 @@ export function resolveProjectAxis(
 
 /**
  * Return `MP_WORKSPACE_ID` as a validated positive int, or `null`
- * (port of `env_workspace_id`, `resolver.py:224-253`; consumed by name
- * from the W1-D1 `ResolverSeams.envWorkspaceId` seam).
+ * (also the `ResolverSeams.envWorkspaceId` default).
  *
- * Parsing is the CPython `int(str)` grammar via `pythonInt` (R11.7 —
- * underscores, surrounding whitespace, signs, non-ASCII decimal
- * digits). A magnitude beyond 2^53−1 (`PY_INT_UNSAFE_INTEGER`) maps to
- * the SAME coded ConfigError (packet §2.2 — Discrepancy #6/#7 family,
- * not vector-observable; recorded in the shard RUN notes).
+ * Parsing is the CPython `int(str)` grammar via `pythonInt` —
+ * underscores, surrounding whitespace, signs, non-ASCII decimal digits.
+ * A magnitude beyond 2^53−1 (`PY_INT_UNSAFE_INTEGER`) maps to the same
+ * coded ConfigError as any other malformed value.
  *
  * @param env - The env bag.
  * @returns Parsed positive integer, or `null` if the env var is
  *   unset/empty.
- * @throws ConfigError - `MP_WORKSPACE_ID` set but not a positive
+ * @throws {@link ConfigError} - `MP_WORKSPACE_ID` set but not a positive
  *   integer; details `{env_var: "MP_WORKSPACE_ID", value}`.
+ * @example
+ * ```typescript
+ * envWorkspaceId({ MP_WORKSPACE_ID: " 4_2 " });
+ * // 42 — the CPython int() grammar
+ * envWorkspaceId({});
+ * // null
+ * ```
+ * @see mixpanel_headless._internal.auth.resolver.env_workspace_id
  */
 export function envWorkspaceId(env: ResolverEnv): number | null {
   const envVal = env.MP_WORKSPACE_ID;
@@ -409,11 +432,11 @@ export function envWorkspaceId(env: ResolverEnv): number | null {
   let parsed: number;
   try {
     parsed = pythonInt(envVal);
-  } catch (exc) {
+  } catch (error) {
     throw new ConfigError(
       `MP_WORKSPACE_ID=${pythonRepr(envVal)} is not a positive integer.`,
       { env_var: "MP_WORKSPACE_ID", value: envVal },
-      { cause: exc },
+      { cause: error },
     );
   }
   if (parsed <= 0) {
@@ -440,16 +463,16 @@ interface ResolveWorkspaceAxisArgs {
 }
 
 /**
- * Resolve the workspace axis per the documented priority order (port
- * of `resolve_workspace_axis`, `resolver.py:256-289`).
+ * Resolve the workspace axis per the documented priority order
+ * (`resolve_workspace_axis`).
  *
- * Order (FR-017): env > param > target > bridge >
- * `[active].workspace`. `null` is a valid terminal value (lazy
- * resolution on first workspace-scoped API call, FR-025).
+ * Order: env → param → target → bridge → `[active].workspace`. `null`
+ * is a valid terminal value (lazy resolution on the first
+ * workspace-scoped API call).
  *
  * @param args - The axis inputs.
  * @returns Workspace ID, or `null` (lazy-resolve later).
- * @throws ConfigError - Malformed `MP_WORKSPACE_ID` (via
+ * @throws {@link ConfigError} - Malformed `MP_WORKSPACE_ID` (via
  *   {@link envWorkspaceId}).
  */
 function resolveWorkspaceAxis(args: ResolveWorkspaceAxisArgs): number | null {
@@ -471,12 +494,11 @@ function resolveWorkspaceAxis(args: ResolveWorkspaceAxisArgs): number | null {
 }
 
 /**
- * Collect custom HTTP headers from settings + bridge (port of
- * `_resolve_headers`, `resolver.py:292-315`).
+ * Collect custom HTTP headers from settings + bridge (`_resolve_headers`).
  *
  * `[settings].custom_header` contributes a single entry; the bridge
- * contributes a multi-entry map. Bridge wins on collision (packet
- * §2.2: settings entry first, bridge overrides).
+ * contributes a multi-entry map. Bridge wins on collision (the settings
+ * entry is written first, then the bridge overrides).
  *
  * @param bridge - Loaded bridge view, if any.
  * @param config - Config source.
@@ -500,13 +522,13 @@ function resolveHeaders(
 }
 
 /**
- * Return the multi-line FR-024 error text for an unresolvable account
- * axis (port of `format_no_account_error`, `resolver.py:318-330`).
- * Message text is out of contract (R5.4) but ported as-is.
+ * Return the multi-line error text for an unresolvable account axis
+ * (`format_no_account_error`). Message text is out of contract but
+ * ported as-is.
  *
  * @returns The error message body.
  */
-export function formatNoAccountError(): string {
+function formatNoAccountError(): string {
   return (
     "No account configured.\n" +
     "\n" +
@@ -521,15 +543,15 @@ export function formatNoAccountError(): string {
 }
 
 /**
- * Return the multi-line FR-024 error text for an unresolvable project
- * axis (port of `format_no_project_error`, `resolver.py:333-359` —
- * two message shapes: with and without a resolved account).
+ * Return the multi-line error text for an unresolvable project axis
+ * (`format_no_project_error` — two message shapes: with and without a
+ * resolved account).
  *
  * @param account - The resolved account (when available) so the error
  *   can name it explicitly.
  * @returns The error message body.
  */
-export function formatNoProjectError(account: Account | null = null): string {
+function formatNoProjectError(account: Account | null = null): string {
   if (account !== null) {
     return (
       `No project configured for account ${pythonRepr(account.name)}.\n` +
@@ -554,30 +576,27 @@ export function formatNoProjectError(account: Account | null = null): string {
 }
 
 /**
- * Resolve a {@link Session} from per-axis inputs and injected sources
- * (port of `resolve_session`, `resolver.py:362-465`).
+ * Resolve a {@link Session} from per-axis inputs and injected sources.
  *
- * Per FR-016 the three axes resolve independently; per FR-017 each
- * axis consults env → param → target → bridge → config in priority
- * order. Pure-functional: no token I/O, no source mutation, no
- * network; deterministic on identical inputs.
+ * The three axes resolve independently; each consults env → param →
+ * target → bridge → config in priority order. Pure-functional: no token
+ * I/O, no source mutation, no network; deterministic on identical
+ * inputs.
  *
- * Divergence from Python (packet §2.2, R9.4): `config` / `bridge` have
- * NO defaults here — the caller passes the full {@link ResolverSources}
- * bag. B8's node wiring supplies the `ConfigManager()` / `load_bridge()`
- * defaults Python builds inline (`resolver.py:407-408`).
+ * Divergence: no inline `ConfigManager()` / bridge defaults — the caller
+ * passes the full {@link ResolverSources} bag and
+ * `@mixpanel-headless/node` supplies the defaults Python builds inline.
  *
  * @param options - The per-axis explicit overrides.
  * @param sources - The injected env / config / bridge sources.
  * @returns A session with account, project, optional workspace, and
  *   any custom headers attached.
- * @throws ParamValidationError - `target` combined with any axis kwarg
- *   (code `WS1_TARGET_MUTUALLY_EXCLUSIVE` — the W1 guard's code; Python
- *   raises a bare `ValueError`, R5 maps it to the EXISTING code, packet
- *   Caution #14).
- * @throws ConfigError - An axis cannot be resolved or refers to an
+ * @throws {@link ParamValidationError} - `target` combined with any axis kwarg
+ *   (code `WS1_TARGET_MUTUALLY_EXCLUSIVE`, the same code the
+ *   `Workspace` facade uses for this guard; Python raises a bare
+ *   `ValueError`).
+ * @throws {@link ConfigError} - An axis cannot be resolved or refers to an
  *   unknown account / target; invalid env values.
- *
  * @example
  * ```typescript
  * const session = resolveSession(
@@ -586,6 +605,7 @@ export function formatNoProjectError(account: Account | null = null): string {
  * );
  * // session.account.name === "team"
  * ```
+ * @see mixpanel_headless._internal.auth.resolver.resolve_session
  */
 export function resolveSession(
   options: ResolveSessionOptions,
@@ -619,7 +639,7 @@ export function resolveSession(
     targetProject = t.project;
     // `Target.workspace` is `null` when unset (Pydantic default) —
     // normalize a hypothetical `undefined` too so the axis chain's
-    // `!== null` rungs stay faithful (watchlist #6).
+    // `!== null` rungs stay faithful.
     targetWorkspace = t.workspace ?? null;
   }
 
@@ -647,11 +667,11 @@ export function resolveSession(
   let projectObj: Project;
   try {
     projectObj = parseProject({ id: projectId });
-  } catch (exc) {
+  } catch (error) {
     throw new ConfigError(
       `Invalid project ID: ${pythonRepr(projectId)}. Must match \`^\\d+$\`.`,
       null,
-      { cause: exc },
+      { cause: error },
     );
   }
 
@@ -666,11 +686,11 @@ export function resolveSession(
   if (workspaceId !== null) {
     try {
       workspaceObj = parseWorkspaceRef({ id: workspaceId });
-    } catch (exc) {
+    } catch (error) {
       throw new ConfigError(
         `Invalid workspace ID: ${String(workspaceId)}. Must be > 0.`,
         null,
-        { cause: exc },
+        { cause: error },
       );
     }
   }

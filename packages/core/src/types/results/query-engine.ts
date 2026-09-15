@@ -1,27 +1,32 @@
 /**
- * Query-engine result dataclasses (phase2-design C6-c, packet P2-6) —
- * TS ports of `QueryResult`, `FunnelQueryResult`,
- * `RetentionQueryResult`, `FlowTreeNode`, `FlowQueryResult`, and
- * `UserQueryResult` from `mixpanel_headless/types.py`.
+ * Query-engine result dataclasses: `QueryResult`, `FunnelQueryResult`,
+ * `RetentionQueryResult`, `FlowQueryResult` and `UserQueryResult`.
+ * These are the results whose `.df` is not the uniform rows pattern:
+ * `QueryResult` picks one of four column layouts, `UserQueryResult` has
+ * five branches plus a post-frame column reorder, and `FlowQueryResult`
+ * is mode-aware with auxiliary `nodes_df` / `edges_df` / `trees_df`.
+ * `FlowTreeNode` lives in `flow-tree.ts` and the flow frame builders in
+ * `flow-graph.ts`; `FlowQueryResult` delegates to them.
  *
- * These carry the four DIVERGENT `.df` row contracts called out in the
- * phase2-design C6 per-class row specs (`QueryResult` four column
- * layouts; `UserQueryResult` five branches + post-frame column
- * reorder; `FlowQueryResult` mode-aware frames + auxiliary
- * `nodes_df`/`edges_df`/`trees_df`).
+ * @see mixpanel_headless.types.QueryResult
  */
 
-import { pythonFloatCoerce, pythonInt } from "../../compat/index.js";
-import { MixpanelHeadlessError } from "../../errors.js";
-import type {
-  FlowAnchorType,
-  FlowChartType,
-  FlowNodeType,
-} from "../literals.js";
+import { compareCodeUnits, pythonFloatCoerce } from "../../compat/index.js";
+import { setOwn } from "../../compat/python-dict.js";
+import type { FlowChartType } from "../literals.js";
+import {
+  buildFlowGraph,
+  flowDropOffSummary,
+  flowEdgesRows,
+  type FlowGraph,
+  flowNodesRows,
+  flowTreesRows,
+  safeInt,
+} from "./flow-graph.js";
+import { type AnyTreeNode, FlowTreeNode } from "./flow-tree.js";
 import {
   decodeFail,
   expectArray,
-  expectBool,
   expectFloat,
   expectInt,
   expectNullCache,
@@ -39,73 +44,35 @@ import {
 } from "./result-base.js";
 
 /**
- * Parse a value to int, returning `default_` on failure — mirror of
- * `types._safe_int` (the flows API returns `totalCount` as a string).
- * Python's `warnings.warn` side channel is not ported (out of
- * contract).
- *
- * @param value - Value to parse (typically a numeric string).
- * @param default_ - Fallback when parsing fails. Default: `0`.
- * @returns Parsed integer, or `default_`.
- * @internal
- */
-export function safeInt(value: unknown, default_ = 0): number {
-  if (typeof value === "number" && Number.isInteger(value)) {
-    return value;
-  }
-  if (typeof value === "boolean") {
-    // Python: bool is excluded from the int fast path and warned on.
-    return default_;
-  }
-  if (typeof value === "string") {
-    // Python: try int(value) except ValueError -> default. `pythonInt`
-    // IS the CPython int(str) grammar (underscores, non-ASCII Nd
-    // digits, the CPython numeric-whitespace surround) — the previous
-    // `\s`-regex + parseInt pair diverged on all three plus U+FEFF
-    // (B0-gate RUN.md 2026-08-15). PY_INT_UNSAFE_INTEGER (>2^53-1,
-    // where CPython returns the exact big int) also maps to the
-    // default: R4.5 leaves no faithful numeric representation (the
-    // playbook Discrepancy #6 pattern; the old parseInt path returned
-    // an IMPRECISE number there, which was no more faithful).
-    try {
-      return pythonInt(value);
-    } catch (cause) {
-      // Guarded catch (b0-review-resolution F3/A2 pattern): only the
-      // coded parse rejections are the ValueError analog; anything
-      // else propagates.
-      if (cause instanceof MixpanelHeadlessError) {
-        return default_;
-      }
-      throw cause;
-    }
-  }
-  return default_;
-}
-
-/**
  * Strip timezone offsets from ISO timestamps — mirror of
  * `types._normalize_date_key`.
  *
- * @param date_key - Date string from an API response.
+ * @param dateKey - Date string from an API response.
  * @returns The first 19 characters when the key is longer than 19 and
  *   contains a `T`; otherwise unchanged.
  * @internal
  */
-export function normalizeDateKey(date_key: string): string {
-  if (date_key.length > 19 && date_key.includes("T")) {
-    return date_key.slice(0, 19);
+function normalizeDateKey(dateKey: string): string {
+  if (dateKey.length > 19 && dateKey.includes("T")) {
+    return dateKey.slice(0, 19);
   }
-  return date_key;
+  return dateKey;
 }
 
 /**
- * Python `sorted()` over string keys (codepoint-ordered `<`).
+ * Python `sorted()` over string keys.
+ *
+ * Python orders by code point; this keeps the engine's UTF-16 code-unit
+ * order, which differs only when a surrogate pair meets a BMP character
+ * above U+D7FF. No corpus key exercises that case, so the switch to
+ * `compareCodepoints` is a behaviour change to make together with a
+ * vector that proves it, not silently here.
  *
  * @param keys - Keys to sort.
  * @returns A new sorted array.
  */
 function sortedKeys(keys: readonly string[]): readonly string[] {
-  return [...keys].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...keys].sort(compareCodeUnits);
 }
 
 // ---------------------------------------------------------------------------
@@ -120,25 +87,50 @@ export interface QueryResultFields {
   readonly from_date: string;
   /** Effective end date from the response. */
   readonly to_date: string;
-  /** Column headers from the insights response. Default: `[]`. */
+  /**
+   * Column headers from the insights response.
+   *
+   * @defaultValue `[]`
+   */
   readonly headers?: readonly string[];
-  /** Query result data (structure varies by mode). Default: `{}`. */
+  /**
+   * Query result data (structure varies by mode).
+   *
+   * @defaultValue `{}`
+   */
   readonly series?: Readonly<Record<string, unknown>>;
-  /** Generated bookmark params sent to the API. Default: `{}`. */
+  /**
+   * Generated bookmark params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Structured output of a `Workspace.query()` execution — TS port of
- * `types.QueryResult`.
+ * Structured output of a `Workspace.query()` execution.
  *
- * `.df` picks among FOUR column layouts (timeseries / total /
+ * @remarks
+ * `.df` picks among four column layouts (timeseries / total /
  * segmented timeseries / segmented total) with an explicit per-branch
- * column list — phase2-design C6 per-class row spec.
+ * column list; `rowColumns()` reports the active layout.
+ * @example
+ * ```ts
+ * const result = await ws.query({ event: "Signup", from_date: "2026-01-01", to_date: "2026-01-02" });
+ * result.toRows();
+ * // [{ date: "2026-01-01", event: "Signup", count: 42 },
+ * //  { date: "2026-01-02", event: "Signup", count: 37 }]
+ * result.rowColumns(); // ["date", "event", "count"]
+ * ```
+ * @see mixpanel_headless.types.QueryResult
  */
 export class QueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -193,60 +185,59 @@ export class QueryResult {
     readonly has_dates: boolean;
   } {
     const rows: Row[] = [];
-    let has_segments = false;
-    let has_dates = false;
-    for (const [metric_name, date_values] of Object.entries(this.series)) {
-      if (!isPlainRecord(date_values)) {
+    let hasSegments = false;
+    let hasDates = false;
+    for (const [metricName, dateValues] of Object.entries(this.series)) {
+      if (!isPlainRecord(dateValues)) {
         continue;
       }
-      const first_value = Object.values(date_values)[0];
-      if (isPlainRecord(first_value)) {
-        has_segments = true;
-        for (const [segment_name, segment_data] of Object.entries(
-          date_values,
-        )) {
-          if (!isPlainRecord(segment_data)) {
+      const firstValue = Object.values(dateValues)[0];
+      if (isPlainRecord(firstValue)) {
+        hasSegments = true;
+        for (const [segmentName, segmentData] of Object.entries(dateValues)) {
+          if (!isPlainRecord(segmentData)) {
             continue;
           }
-          for (const [date_key, value] of Object.entries(segment_data)) {
-            if (date_key === "all") {
+          for (const [dateKey, value] of Object.entries(segmentData)) {
+            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
+            if (dateKey === "all") {
               rows.push({
-                event: metric_name,
-                segment: segment_name,
+                event: metricName,
+                segment: segmentName,
                 count: value,
               });
             } else {
-              has_dates = true;
+              hasDates = true;
               rows.push({
-                date: normalizeDateKey(date_key),
-                event: metric_name,
-                segment: segment_name,
+                date: normalizeDateKey(dateKey),
+                event: metricName,
+                segment: segmentName,
                 count: value,
               });
             }
           }
         }
       } else {
-        for (const [date_key, value] of Object.entries(date_values)) {
-          if (date_key === "all") {
-            rows.push({ event: metric_name, count: value });
+        for (const [dateKey, value] of Object.entries(dateValues)) {
+          if (dateKey === "all") {
+            rows.push({ event: metricName, count: value });
           } else {
-            has_dates = true;
+            hasDates = true;
             rows.push({
-              date: normalizeDateKey(date_key),
-              event: metric_name,
+              date: normalizeDateKey(dateKey),
+              event: metricName,
               count: value,
             });
           }
         }
       }
     }
-    return { rows, has_segments, has_dates };
+    return { rows, has_segments: hasSegments, has_dates: hasDates };
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body (mode-dependent row key
-   * sets; see the class doc).
+   * Build the pre-pandas rows of Python's `.df` (layout-dependent row
+   * key sets; see the class doc).
    *
    * @returns The rows list.
    */
@@ -262,17 +253,21 @@ export class QueryResult {
    * @returns The column list.
    */
   rowColumns(): readonly string[] {
-    const { rows, has_segments, has_dates } = this.#buildRows();
+    const {
+      rows,
+      has_segments: hasSegments,
+      has_dates: hasDates,
+    } = this.#buildRows();
     if (rows.length === 0) {
       return ["date", "event", "count"];
     }
-    if (has_segments && has_dates) {
+    if (hasSegments && hasDates) {
       return ["date", "event", "segment", "count"];
     }
-    if (has_segments) {
+    if (hasSegments) {
       return ["event", "segment", "count"];
     }
-    if (has_dates) {
+    if (hasDates) {
       return ["date", "event", "count"];
     }
     return ["event", "count"];
@@ -300,7 +295,7 @@ export class QueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): QueryResult {
@@ -353,21 +348,48 @@ export interface FunnelQueryResultFields {
   readonly from_date: string;
   /** Effective end date from the response. */
   readonly to_date: string;
-  /** Per-step aggregate dicts from the funnels response. Default: `[]`. */
+  /**
+   * Per-step aggregate dicts from the funnels response.
+   *
+   * @defaultValue `[]`
+   */
   readonly steps_data?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Raw series payload. Default: `{}`. */
+  /**
+   * Raw series payload.
+   *
+   * @defaultValue `{}`
+   */
   readonly series?: Readonly<Record<string, unknown>>;
-  /** Generated bookmark params sent to the API. Default: `{}`. */
+  /**
+   * Generated bookmark params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Structured output of a `Workspace.query_funnel()` execution — TS
- * port of `types.FunnelQueryResult`.
+ * Structured output of a `Workspace.queryFunnel()` execution: one row
+ * per step with counts, conversion ratios and timings.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ step: 1, event: "Signup", count: 200, step_conv_ratio: 1,
+ * //    overall_conv_ratio: 1, avg_time: 0, avg_time_from_start: 0 },
+ * //  { step: 2, event: "Purchase", count: 120, step_conv_ratio: 0.6,
+ * //    overall_conv_ratio: 0.6, avg_time: 3600, avg_time_from_start: 3600 }]
+ * result.overall_conversion_rate; // 0.6
+ * ```
+ * @see mixpanel_headless.types.FunnelQueryResult
  */
 export class FunnelQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -421,21 +443,18 @@ export class FunnelQueryResult {
     if (this.steps_data.length === 0) {
       return 0.0;
     }
-    const last = this.steps_data[this.steps_data.length - 1];
+    const last = this.steps_data.at(-1);
     const value = Object.hasOwn(last ?? {}, "overall_conv_ratio")
       ? last?.["overall_conv_ratio"]
       : 0.0;
-    // Python applies float(...) to the looked-up value: the full R11.7
-    // CPython coercion ladder (string grammar via pythonFloat inside;
-    // bool -> 1.0/0.0; None/list/dict -> TypeError twins). B5-ARB
-    // ASR-F6b fixed the string arm; the non-string ladder landed at the
-    // B6 gate via the `pythonFloatCoerce` compat twin (B5-notes.md
-    // outbound ledger item 5).
+    // Python applies float(...) to the looked-up value, so the full
+    // CPython coercion ladder applies: the float string grammar, bool
+    // to 1.0/0.0, and TypeError twins for None/list/dict.
     return pythonFloatCoerce(value);
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: one row per step with
+   * Build the pre-pandas rows of Python's `.df`: one row per step with
    * the seven fixed columns and Python's per-key defaults (`event` →
    * `"Step {i}"` with 1-based `i`, `count` → `0`, ratios/times →
    * `0.0`).
@@ -459,7 +478,7 @@ export class FunnelQueryResult {
 
   /**
    * Column contract of the `.df` frame (explicit `columns=cols` in
-   * Python for empty AND non-empty).
+   * Python for empty and non-empty).
    *
    * @returns The column list.
    */
@@ -497,7 +516,7 @@ export class FunnelQueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FunnelQueryResult {
@@ -550,21 +569,45 @@ export interface RetentionQueryResultFields {
   readonly from_date: string;
   /** Effective end date from the response. */
   readonly to_date: string;
-  /** Unsegmented cohorts: `{date: {first, counts, rates, ...}}`. Default: `{}`. */
+  /**
+   * Unsegmented cohorts: `{date: {first, counts, rates, ...}}`.
+   *
+   * @defaultValue `{}`
+   */
   readonly cohorts?: Readonly<
     Record<string, Readonly<Record<string, unknown>>>
   >;
-  /** Average retention payload. Default: `{}`. */
+  /**
+   * Average retention payload.
+   *
+   * @defaultValue `{}`
+   */
   readonly average?: Readonly<Record<string, unknown>>;
-  /** Generated bookmark params sent to the API. Default: `{}`. */
+  /**
+   * Generated bookmark params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
-  /** Segmented cohorts: `{segment: {date: cohort}}`. Default: `{}`. */
+  /**
+   * Segmented cohorts: `{segment: {date: cohort}}`.
+   *
+   * @defaultValue `{}`
+   */
   readonly segments?: Readonly<
     Record<string, Readonly<Record<string, Readonly<Record<string, unknown>>>>>
   >;
-  /** Per-segment averages. Default: `{}`. */
+  /**
+   * Per-segment averages.
+   *
+   * @defaultValue `{}`
+   */
   readonly segment_averages?: Readonly<
     Record<string, Readonly<Record<string, unknown>>>
   >;
@@ -573,8 +616,17 @@ export interface RetentionQueryResultFields {
 }
 
 /**
- * Structured output of a `Workspace.query_retention()` execution — TS
- * port of `types.RetentionQueryResult`.
+ * Structured output of a `Workspace.queryRetention()` execution: one
+ * row per (cohort, bucket), segmented when the query was.
+ *
+ * @example
+ * ```ts
+ * result.toRows();
+ * // [{ cohort_date: "2026-01-01", bucket: 0, count: 500, rate: 1 },
+ * //  { cohort_date: "2026-01-01", bucket: 1, count: 210, rate: 0.42 }]
+ * result.rowColumns(); // ["cohort_date", "bucket", "count", "rate"]
+ * ```
+ * @see mixpanel_headless.types.RetentionQueryResult
  */
 export class RetentionQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -657,32 +709,36 @@ export class RetentionQueryResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: segmented rows
-   * (`segment, cohort_date, bucket, count, rate`) when `segments` is
-   * non-empty, else unsegmented rows (`cohort_date, bucket, count,
-   * rate`); keys iterated in sorted order.
+   * Build the pre-pandas rows of Python's `.df`: segmented rows
+   * (`segment`, `cohort_date`, `bucket`, `count`, `rate`) when
+   * `segments` is non-empty, else unsegmented rows (`cohort_date`,
+   * `bucket`, `count`, `rate`); keys iterated in sorted order.
    *
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
     if (Object.keys(this.segments).length > 0) {
-      for (const segment_name of sortedKeys(Object.keys(this.segments))) {
-        const segment_cohorts = this.segments[segment_name] ?? {};
-        for (const cohort_date of sortedKeys(Object.keys(segment_cohorts))) {
-          const cohort = segment_cohorts[cohort_date] ?? {};
+      for (const segmentName of sortedKeys(Object.keys(this.segments))) {
+        const segmentCohorts = this.segments[segmentName] ?? {};
+        for (const cohortDate of sortedKeys(Object.keys(segmentCohorts))) {
+          const cohort = segmentCohorts[cohortDate] ?? {};
           rows.push(
             ...RetentionQueryResult.#cohortRows(cohort, {
-              segment: segment_name,
-              cohort_date,
+              segment: segmentName,
+              cohort_date: cohortDate,
             }),
           );
         }
       }
     } else {
-      for (const cohort_date of sortedKeys(Object.keys(this.cohorts))) {
-        const cohort = this.cohorts[cohort_date] ?? {};
-        rows.push(...RetentionQueryResult.#cohortRows(cohort, { cohort_date }));
+      for (const cohortDate of sortedKeys(Object.keys(this.cohorts))) {
+        const cohort = this.cohorts[cohortDate] ?? {};
+        rows.push(
+          ...RetentionQueryResult.#cohortRows(cohort, {
+            cohort_date: cohortDate,
+          }),
+        );
       }
     }
     return rows;
@@ -702,7 +758,7 @@ export class RetentionQueryResult {
 
   /**
    * Serialize for JSON output — byte-shape of Python `to_dict()`
-   * (`segments`/`segment_averages` emitted ONLY when non-empty).
+   * (`segments` / `segment_averages` emitted only when non-empty).
    *
    * @returns The plain dict shape.
    */
@@ -730,7 +786,7 @@ export class RetentionQueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): RetentionQueryResult {
@@ -797,452 +853,6 @@ export class RetentionQueryResult {
 }
 
 // ---------------------------------------------------------------------------
-// FlowTreeNode
-// ---------------------------------------------------------------------------
-
-/** Declared fields of {@link FlowTreeNode} (Python field order). */
-export interface FlowTreeNodeFields {
-  /** Event name at this node. */
-  readonly event: string;
-  /** Node type. */
-  readonly type: FlowNodeType;
-  /** Zero-based step number. */
-  readonly step_number: number;
-  /** Users reaching this node. */
-  readonly total_count: number;
-  /** Users dropping off at this node. Default: `0`. */
-  readonly drop_off_count?: number;
-  /** Users converting from this node. Default: `0`. */
-  readonly converted_count?: number;
-  /** Anchor type. Default: `"NORMAL"`. */
-  readonly anchor_type?: FlowAnchorType;
-  /** Whether the node was computed (vs observed). Default: `false`. */
-  readonly is_computed?: boolean;
-  /** Child nodes (Python tuple → ReadonlyArray). Default: `[]`. */
-  readonly children?: readonly FlowTreeNode[];
-  /** Time percentiles from flow start. Default: `{}`. */
-  readonly time_percentiles_from_start?: Readonly<Record<string, unknown>>;
-  /** Time percentiles from the previous step. Default: `{}`. */
-  readonly time_percentiles_from_prev?: Readonly<Record<string, unknown>>;
-}
-
-/** One node of the {@link FlowQueryResult.graph} adjacency object. */
-export interface FlowGraphNode {
-  /** `"{event}@{step}"` — Python's networkx node key. */
-  readonly id: string;
-  /** Zero-based step index. */
-  readonly step: number;
-  /** Event name (`""` when absent). */
-  readonly event: unknown;
-  /** Node type (`""` when absent). */
-  readonly type: unknown;
-  /** `_safe_int(node["totalCount"])`. */
-  readonly count: number;
-  /** Anchor classification (`""` when absent). */
-  readonly anchor_type: unknown;
-}
-
-/** One edge of the {@link FlowQueryResult.graph} adjacency object. */
-export interface FlowGraphEdge {
-  /** Source node id. */
-  readonly source: string;
-  /** Target node id (`"{event}@{targetStep}"`). */
-  readonly target: string;
-  /** `_safe_int(edge["totalCount"])`. */
-  readonly count: number;
-  /** Edge type (`""` when absent). */
-  readonly type: unknown;
-}
-
-/**
- * The plain adjacency object {@link FlowQueryResult.graph} emits — the
- * stand-in for `networkx.DiGraph` (B5-S2 closure of the Phase-2
- * TODO(port)).
- */
-export interface FlowGraph {
-  /** Nodes, in Python's `add_node` order. */
-  readonly nodes: readonly FlowGraphNode[];
-  /** Edges, in Python's `add_edge` order. */
-  readonly edges: readonly FlowGraphEdge[];
-}
-
-/**
- * The parent-linked node {@link FlowTreeNode.toAnytree} emits — the
- * plain-object stand-in for `anytree.AnyNode` (B5-S2 closure of the
- * Phase-2 TODO(port)).
- */
-export interface AnyTreeNode {
-  /** Parent node, or `null` at the root. */
-  readonly parent: AnyTreeNode | null;
-  /** Event name at this node. */
-  readonly event: string;
-  /** Node type. */
-  readonly type: FlowNodeType;
-  /** Zero-based step number. */
-  readonly step_number: number;
-  /** Users reaching this node. */
-  readonly total_count: number;
-  /** Users dropping off at this node. */
-  readonly drop_off_count: number;
-  /** Users converting from this node. */
-  readonly converted_count: number;
-  /** Anchor classification. */
-  readonly anchor_type: string;
-  /** Whether the node is computed. */
-  readonly is_computed: boolean;
-  /** Child nodes (populated during the walk). */
-  readonly children: AnyTreeNode[];
-}
-
-/**
- * One node of a tree-mode flow query — TS port of
- * `types.FlowTreeNode`. `to_anytree()` IS ported (B5-S2) as
- * {@link FlowTreeNode.toAnytree}, emitting the plain
- * {@link AnyTreeNode} tree rather than `anytree.AnyNode` objects.
- */
-export class FlowTreeNode {
-  /** Event name at this node. */
-  readonly event: string;
-
-  /** Node type. */
-  readonly type: FlowNodeType;
-
-  /** Zero-based step number. */
-  readonly step_number: number;
-
-  /** Users reaching this node. */
-  readonly total_count: number;
-
-  /** Users dropping off at this node. */
-  readonly drop_off_count: number;
-
-  /** Users converting from this node. */
-  readonly converted_count: number;
-
-  /** Anchor type. */
-  readonly anchor_type: FlowAnchorType;
-
-  /** Whether the node was computed (vs observed). */
-  readonly is_computed: boolean;
-
-  /** Child nodes (Python tuple → ReadonlyArray). */
-  readonly children: readonly FlowTreeNode[];
-
-  /** Time percentiles from flow start. */
-  readonly time_percentiles_from_start: Readonly<Record<string, unknown>>;
-
-  /** Time percentiles from the previous step. */
-  readonly time_percentiles_from_prev: Readonly<Record<string, unknown>>;
-
-  /**
-   * Create a flow tree node.
-   *
-   * @param fields - Declared fields; Python defaults apply to absent
-   *   optionals.
-   */
-  constructor(fields: FlowTreeNodeFields) {
-    this.event = fields.event;
-    this.type = fields.type;
-    this.step_number = fields.step_number;
-    this.total_count = fields.total_count;
-    this.drop_off_count = fields.drop_off_count ?? 0;
-    this.converted_count = fields.converted_count ?? 0;
-    this.anchor_type = fields.anchor_type ?? "NORMAL";
-    this.is_computed = fields.is_computed ?? false;
-    this.children = fields.children ?? [];
-    this.time_percentiles_from_start = fields.time_percentiles_from_start ?? {};
-    this.time_percentiles_from_prev = fields.time_percentiles_from_prev ?? {};
-  }
-
-  /**
-   * Longest child chain below this node (`0` for a leaf).
-   *
-   * @returns The depth.
-   */
-  get depth(): number {
-    if (this.children.length === 0) {
-      return 0;
-    }
-    return 1 + Math.max(...this.children.map((c) => c.depth));
-  }
-
-  /**
-   * Total nodes in this subtree (including this node).
-   *
-   * @returns The node count.
-   */
-  get node_count(): number {
-    return 1 + this.children.reduce((sum, c) => sum + c.node_count, 0);
-  }
-
-  /**
-   * Leaves in this subtree (`1` for a leaf).
-   *
-   * @returns The leaf count.
-   */
-  get leaf_count(): number {
-    if (this.children.length === 0) {
-      return 1;
-    }
-    return this.children.reduce((sum, c) => sum + c.leaf_count, 0);
-  }
-
-  /**
-   * The parent-linked tree view — TS twin of Python `to_anytree()`
-   * (`types.py:10985-11037`), closed at B5-S2 per the packet §3
-   * instruction ("implement `FlowTreeNode.toAnytree()`-equivalent as a
-   * PLAIN nested-object tree").
-   *
-   * `anytree.AnyNode` has no vendored TS library, so the port emits
-   * {@link AnyTreeNode}: the SAME eight attributes Python copies onto
-   * each `AnyNode`, plus the `parent` back-reference and `children`
-   * array that make the anytree navigation surface (`node.parent`,
-   * `node.children`, `node.path`) reproducible in plain TS.
-   * `RenderTree` and `findall` are library helpers, not data, and have
-   * no twin.
-   *
-   * @returns The root of the parallel tree (`parent === null`).
-   *
-   * @example
-   * ```typescript
-   * const at = root.toAnytree();
-   * at.children[0]?.parent === at; // true
-   * ```
-   */
-  toAnytree(): AnyTreeNode {
-    return this.#buildAnytreeNode(null);
-  }
-
-  /**
-   * Recursively build the parallel tree (`_build_anytree_node`,
-   * `types.py:11013-11037`).
-   *
-   * @param parent - The parent node, or `null` for the root.
-   * @returns The node with its children attached.
-   */
-  #buildAnytreeNode(parent: AnyTreeNode | null): AnyTreeNode {
-    const node: AnyTreeNode = {
-      parent,
-      event: this.event,
-      type: this.type,
-      step_number: this.step_number,
-      total_count: this.total_count,
-      drop_off_count: this.drop_off_count,
-      converted_count: this.converted_count,
-      anchor_type: this.anchor_type,
-      is_computed: this.is_computed,
-      children: [],
-    };
-    for (const child of this.children) {
-      // Python attaches by passing `parent=node`; anytree mutates the
-      // parent's `children` tuple. The TS twin pushes explicitly.
-      node.children.push(child.#buildAnytreeNode(node));
-    }
-    return node;
-  }
-
-  /**
-   * `converted_count / total_count` (`0.0` when `total_count == 0`).
-   *
-   * @returns The conversion rate.
-   */
-  get conversion_rate(): number {
-    if (this.total_count === 0) {
-      return 0.0;
-    }
-    return this.converted_count / this.total_count;
-  }
-
-  /**
-   * `drop_off_count / total_count` (`0.0` when `total_count == 0`).
-   *
-   * @returns The drop-off rate.
-   */
-  get drop_off_rate(): number {
-    if (this.total_count === 0) {
-      return 0.0;
-    }
-    return this.drop_off_count / this.total_count;
-  }
-
-  /**
-   * Every root-to-leaf path through this subtree.
-   *
-   * @returns Paths as node lists (a single `[this]` path for a leaf).
-   */
-  allPaths(): ReadonlyArray<readonly FlowTreeNode[]> {
-    if (this.children.length === 0) {
-      return [[this]];
-    }
-    const paths: FlowTreeNode[][] = [];
-    for (const child of this.children) {
-      for (const child_path of child.allPaths()) {
-        paths.push([this, ...child_path]);
-      }
-    }
-    return paths;
-  }
-
-  /**
-   * Every node in this subtree whose event matches.
-   *
-   * @param event - Event name to match.
-   * @returns Matching nodes in preorder.
-   */
-  find(event: string): readonly FlowTreeNode[] {
-    const results: FlowTreeNode[] = [];
-    if (this.event === event) {
-      results.push(this);
-    }
-    for (const child of this.children) {
-      results.push(...child.find(event));
-    }
-    return results;
-  }
-
-  /**
-   * All nodes of this subtree in preorder.
-   *
-   * @returns The flattened node list.
-   */
-  flatten(): readonly FlowTreeNode[] {
-    const result: FlowTreeNode[] = [this];
-    for (const child of this.children) {
-      result.push(...child.flatten());
-    }
-    return result;
-  }
-
-  /**
-   * Serialize for JSON output — byte-shape of Python `to_dict()`
-   * (recursive over `children`).
-   *
-   * @returns The plain dict shape.
-   */
-  toJSON(): Record<string, unknown> {
-    return {
-      event: this.event,
-      type: this.type,
-      step_number: this.step_number,
-      total_count: this.total_count,
-      drop_off_count: this.drop_off_count,
-      converted_count: this.converted_count,
-      anchor_type: this.anchor_type,
-      is_computed: this.is_computed,
-      children: this.children.map((c) => c.toJSON()),
-      time_percentiles_from_start: this.time_percentiles_from_start,
-      time_percentiles_from_prev: this.time_percentiles_from_prev,
-    };
-  }
-
-  /**
-   * ASCII-art rendering of this subtree, byte-identical to Python's
-   * `render()` (box-drawing connectors, `event (total_count)` lines).
-   *
-   * @param _prefix - Accumulated indentation (internal recursion).
-   * @param _is_last - Whether this node is its parent's last child.
-   * @param _is_root - Whether this node is the render root.
-   * @returns The rendered text (trailing newline included).
-   */
-  render(_prefix = "", _is_last = true, _is_root = true): string {
-    let line: string;
-    let child_prefix: string;
-    if (_is_root) {
-      line = `${this.event} (${String(this.total_count)})\n`;
-      child_prefix = "";
-    } else {
-      const connector = _is_last ? "└── " : "├── ";
-      line = `${_prefix}${connector}${this.event} (${String(this.total_count)})\n`;
-      child_prefix = _prefix + (_is_last ? "    " : "│   ");
-    }
-    this.children.forEach((child, i) => {
-      const is_last_child = i === this.children.length - 1;
-      line += child.render(child_prefix, is_last_child, false);
-    });
-    return line;
-  }
-
-  /**
-   * Strictly decode a recorded payload (recursive over `children`).
-   *
-   * @param raw - The payload.
-   * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
-   * @internal
-   */
-  static fromDict(raw: unknown): FlowTreeNode {
-    const cls = "FlowTreeNode";
-    const payload = expectPayload(raw, cls);
-    rejectUnknownKeys(
-      payload,
-      new Set([
-        "event",
-        "type",
-        "step_number",
-        "total_count",
-        "drop_off_count",
-        "converted_count",
-        "anchor_type",
-        "is_computed",
-        "children",
-        "time_percentiles_from_start",
-        "time_percentiles_from_prev",
-      ]),
-      cls,
-    );
-    return new FlowTreeNode({
-      event: expectStr(payload, "event", cls),
-      type: expectStr(payload, "type", cls) as FlowNodeType,
-      step_number: expectInt(payload, "step_number", cls),
-      total_count: expectInt(payload, "total_count", cls),
-      ...(Object.hasOwn(payload, "drop_off_count")
-        ? { drop_off_count: expectInt(payload, "drop_off_count", cls) }
-        : {}),
-      ...(Object.hasOwn(payload, "converted_count")
-        ? { converted_count: expectInt(payload, "converted_count", cls) }
-        : {}),
-      ...(Object.hasOwn(payload, "anchor_type")
-        ? {
-            anchor_type: expectStr(
-              payload,
-              "anchor_type",
-              cls,
-            ) as FlowAnchorType,
-          }
-        : {}),
-      ...(Object.hasOwn(payload, "is_computed")
-        ? { is_computed: expectBool(payload, "is_computed", cls) }
-        : {}),
-      ...(Object.hasOwn(payload, "children")
-        ? {
-            children: expectArray(payload, "children", cls).map((item) =>
-              FlowTreeNode.fromDict(item),
-            ),
-          }
-        : {}),
-      ...(Object.hasOwn(payload, "time_percentiles_from_start")
-        ? {
-            time_percentiles_from_start: expectRecord(
-              payload,
-              "time_percentiles_from_start",
-              cls,
-            ),
-          }
-        : {}),
-      ...(Object.hasOwn(payload, "time_percentiles_from_prev")
-        ? {
-            time_percentiles_from_prev: expectRecord(
-              payload,
-              "time_percentiles_from_prev",
-              cls,
-            ),
-          }
-        : {}),
-    });
-  }
-}
-
-// ---------------------------------------------------------------------------
 // FlowQueryResult
 // ---------------------------------------------------------------------------
 
@@ -1250,21 +860,53 @@ export class FlowTreeNode {
 export interface FlowQueryResultFields {
   /** When the query was computed (ISO text). */
   readonly computed_at: string;
-  /** Sankey step dicts (`{nodes: [...]}` per step). Default: `[]`. */
+  /**
+   * Sankey step dicts (`{nodes: [...]}` per step).
+   *
+   * @defaultValue `[]`
+   */
   readonly steps?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Paths-mode flow dicts (`{flowSteps: [...]}`). Default: `[]`. */
+  /**
+   * Paths-mode flow dicts (`{flowSteps: [...]}`).
+   *
+   * @defaultValue `[]`
+   */
   readonly flows?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Breakdown dicts. Default: `[]`. */
+  /**
+   * Breakdown dicts.
+   *
+   * @defaultValue `[]`
+   */
   readonly breakdowns?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Overall conversion rate. Default: `0.0`. */
+  /**
+   * Overall conversion rate.
+   *
+   * @defaultValue `0.0`
+   */
   readonly overall_conversion_rate?: number;
-  /** Generated bookmark params sent to the API. Default: `{}`. */
+  /**
+   * Generated bookmark params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
-  /** Flow chart mode. Default: `"sankey"`. */
+  /**
+   * Flow chart mode.
+   *
+   * @defaultValue `"sankey"`
+   */
   readonly mode?: FlowChartType;
-  /** Tree-mode roots. Default: `[]`. */
+  /**
+   * Tree-mode roots.
+   *
+   * @defaultValue `[]`
+   */
   readonly trees?: readonly FlowTreeNode[];
   /** Codec-visible DataFrame cache slots — always `null` in TS. */
   readonly _df_cache?: null | undefined;
@@ -1281,19 +923,29 @@ export interface FlowQueryResultFields {
 }
 
 /**
- * Structured output of a `Workspace.query_flow()` execution — TS port
- * of `types.FlowQueryResult`.
+ * Structured output of a `Workspace.queryFlow()` execution.
  *
- * A multi-DataFrame surface (phase2-design C6): `nodes_df`/`edges_df`
- * (+ `trees_df`) become `toNodesRows()`/`toEdgesRows()`
- * (+ `toTreesRows()`), and the main `.df` is MODE-AWARE (sankey →
- * nodes frame, tree → trees frame, paths → its own row shape).
- *
- * `graph` (networkx) and `anytree` are ported at B5-S2 as the plain
- * {@link FlowQueryResult.graph} adjacency object and the
+ * @remarks
+ * Python's `nodes_df` / `edges_df` / `trees_df` become `toNodesRows()`
+ * / `toEdgesRows()` / `toTreesRows()`, and the main `toRows()` is
+ * mode-aware: sankey → nodes frame, tree → trees frame, paths → its own
+ * row shape. Python's `graph` (networkx) and `anytree` properties are
+ * the plain {@link FlowQueryResult.graph} adjacency object and the
  * {@link FlowQueryResult.anytree} parent-linked roots; their
  * codec-visible cache slots (`_graph_cache`, `_anytree_cache`) exist
  * and stay `null` because both builds are pure.
+ * @example
+ * ```ts
+ * const result = await ws.queryFlow({ … }); // sankey mode
+ * result.toRows();
+ * // [{ step: 0, event: "Signup", type: "NORMAL", count: 120, anchor_type: "ANCHOR",
+ * //    is_custom_event: false, conversion_rate_change: 0 }]
+ * result.toEdgesRows();
+ * // [{ source_step: 0, source_event: "Signup", target_step: 1,
+ * //    target_event: "Purchase", count: 48, target_type: "NORMAL" }]
+ * result.dropOffSummary(); // { step_0: { total: 120, dropoff: 72, rate: 0.6 } }
+ * ```
+ * @see mixpanel_headless.types.FlowQueryResult
  */
 export class FlowQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1360,114 +1012,50 @@ export class FlowQueryResult {
   }
 
   /**
-   * The directed flow graph — TS twin of Python's `graph` property
-   * (`types.py:11203-11255`), closed at B5-S2 per the packet §3
-   * instruction ("`FlowQueryResult.graph` as a plain adjacency object
-   * (nodes/edges arrays mirroring what Python feeds networkx)").
+   * Build the directed flow graph — Python's `graph` property — as the
+   * plain `{nodes, edges}` adjacency object {@link buildFlowGraph}
+   * emits in place of `networkx.DiGraph`.
    *
-   * `networkx.DiGraph` has no vendored TS library, so the port emits
-   * the adjacency data Python hands to `add_node` / `add_edge`, in the
-   * same order and with the same per-key defaults: node ids are
-   * `"{event}@{step}"`, node attributes are `step` / `event` / `type` /
-   * `count` / `anchor_type`, and edge attributes are `count` / `type`
-   * with the `step_idx + 1` target-step fallback.
-   *
+   * @remarks
    * Python caches into `_graph_cache`; the TS build is pure and
-   * deterministic, so the codec-visible slot stays `null` (the
-   * Phase-2 caching convention: repeated calls are equal).
-   *
+   * deterministic, so the codec-visible slot stays `null` (repeated
+   * calls are equal).
    * @returns The `{nodes, edges}` adjacency object (empty arrays when
    *   `steps` is empty).
-   *
    * @example
-   * ```typescript
+   * ```ts
    * const g = result.graph();
    * g.nodes.find((n) => n.id === "Login@0")?.count; // 100
    * ```
+   * @see mixpanel_headless.types.FlowQueryResult.graph
    */
   graph(): FlowGraph {
-    const nodes: FlowGraphNode[] = [];
-    const edges: FlowGraphEdge[] = [];
-    this.steps.forEach((step, step_idx) => {
-      for (const node of FlowQueryResult.#stepNodes(step)) {
-        const nodeId = `${String(node["event"] ?? "")}@${String(step_idx)}`;
-        nodes.push({
-          id: nodeId,
-          step: step_idx,
-          event: node["event"] ?? "",
-          type: node["type"] ?? "",
-          count: safeInt(node["totalCount"] ?? "0"),
-          anchor_type: node["anchorType"] ?? "",
-        });
-        for (const edge of FlowQueryResult.#nodeEdges(node)) {
-          const targetStep = safeInt(
-            edge["step"] ?? step_idx + 1,
-            step_idx + 1,
-          );
-          edges.push({
-            source: nodeId,
-            target: `${String(edge["event"] ?? "")}@${String(targetStep)}`,
-            count: safeInt(edge["totalCount"] ?? "0"),
-            type: edge["type"] ?? "",
-          });
-        }
-      }
-    });
-    return { nodes, edges };
+    return buildFlowGraph(this.steps);
   }
 
   /**
-   * The parent-linked roots of the tree-mode data — TS twin of
-   * Python's `anytree` property (`types.py:11475-11498`), closed at
-   * B5-S2 alongside {@link FlowTreeNode.toAnytree}.
+   * Build the parent-linked roots of the tree-mode data — Python's
+   * `anytree` property — via {@link FlowTreeNode.toAnytree}.
    *
+   * @remarks
    * Python caches into `_anytree_cache`; the TS build is pure, so the
    * codec-visible slot stays `null`.
-   *
    * @returns One {@link AnyTreeNode} root per member of `trees`.
+   * @see mixpanel_headless.types.FlowQueryResult.anytree
    */
   anytree(): AnyTreeNode[] {
     return this.trees.map((t) => t.toAnytree());
   }
 
   /**
-   * Nodes of one sankey step dict (`step.get("nodes", [])`).
-   *
-   * @param step - The step dict.
-   * @returns The node dicts.
-   */
-  static #stepNodes(
-    step: Readonly<Record<string, unknown>>,
-  ): ReadonlyArray<Readonly<Record<string, unknown>>> {
-    const nodes = step["nodes"];
-    return Array.isArray(nodes)
-      ? (nodes as ReadonlyArray<Readonly<Record<string, unknown>>>)
-      : [];
-  }
-
-  /**
-   * Pre-pandas rows of the Python `nodes_df` body: one row per sankey
-   * node with Python's per-key defaults (`totalCount` string parsed
-   * via `_safe_int`).
+   * Build the pre-pandas rows of Python's `nodes_df`: one row per
+   * sankey node with Python's per-key defaults (`totalCount` string
+   * parsed via `safeInt`).
    *
    * @returns The rows list.
    */
   toNodesRows(): readonly Row[] {
-    const rows: Row[] = [];
-    this.steps.forEach((step, step_idx) => {
-      for (const node of FlowQueryResult.#stepNodes(step)) {
-        rows.push({
-          step: step_idx,
-          event: node["event"] ?? "",
-          type: node["type"] ?? "",
-          count: safeInt(node["totalCount"] ?? "0"),
-          anchor_type: node["anchorType"] ?? "",
-          is_custom_event: node["isCustomEvent"] ?? false,
-          conversion_rate_change: node["conversionRateChange"] ?? 0.0,
-        });
-      }
-    });
-    return rows;
+    return flowNodesRows(this.steps);
   }
 
   /**
@@ -1488,43 +1076,13 @@ export class FlowQueryResult {
   }
 
   /**
-   * Edges of one node dict (`node.get("edges", [])`).
-   *
-   * @param node - The node dict.
-   * @returns The edge dicts.
-   */
-  static #nodeEdges(
-    node: Readonly<Record<string, unknown>>,
-  ): ReadonlyArray<Readonly<Record<string, unknown>>> {
-    const edges = node["edges"];
-    return Array.isArray(edges)
-      ? (edges as ReadonlyArray<Readonly<Record<string, unknown>>>)
-      : [];
-  }
-
-  /**
-   * Pre-pandas rows of the Python `edges_df` body: one row per
+   * Build the pre-pandas rows of Python's `edges_df`: one row per
    * (node, edge) pair.
    *
    * @returns The rows list.
    */
   toEdgesRows(): readonly Row[] {
-    const rows: Row[] = [];
-    this.steps.forEach((step, step_idx) => {
-      for (const node of FlowQueryResult.#stepNodes(step)) {
-        for (const edge of FlowQueryResult.#nodeEdges(node)) {
-          rows.push({
-            source_step: step_idx,
-            source_event: node["event"] ?? "",
-            target_step: safeInt(edge["step"] ?? step_idx + 1, step_idx + 1),
-            target_event: edge["event"] ?? "",
-            count: safeInt(edge["totalCount"] ?? "0"),
-            target_type: edge["type"] ?? "",
-          });
-        }
-      }
-    });
-    return rows;
+    return flowEdgesRows(this.steps);
   }
 
   /**
@@ -1544,18 +1102,14 @@ export class FlowQueryResult {
   }
 
   /**
-   * Pre-pandas rows of the Python `_build_tree_df` body: preorder
-   * flattening of every tree with `tree_index`/`depth`/`" > "`-joined
-   * `path`.
+   * Build the pre-pandas rows of Python's `trees_df`: a preorder
+   * flattening of every tree with `tree_index`, `depth` and a
+   * `" > "`-joined `path`.
    *
    * @returns The rows list.
    */
   toTreesRows(): readonly Row[] {
-    const rows: Row[] = [];
-    this.trees.forEach((tree, tree_idx) => {
-      FlowQueryResult.#flattenTreeNode(tree, tree_idx, [], rows);
-    });
-    return rows;
+    return flowTreesRows(this.trees);
   }
 
   /**
@@ -1578,40 +1132,9 @@ export class FlowQueryResult {
   }
 
   /**
-   * Preorder tree flattening — mirror of Python
-   * `FlowQueryResult._flatten_tree_node`.
-   *
-   * @param node - Current node.
-   * @param tree_index - Root index.
-   * @param ancestors - Ancestor event names.
-   * @param rows - Output row accumulator.
-   */
-  static #flattenTreeNode(
-    node: FlowTreeNode,
-    tree_index: number,
-    ancestors: readonly string[],
-    rows: Row[],
-  ): void {
-    const path_parts = [...ancestors, node.event];
-    rows.push({
-      tree_index,
-      depth: ancestors.length,
-      path: path_parts.join(" > "),
-      event: node.event,
-      type: node.type,
-      step_number: node.step_number,
-      total_count: node.total_count,
-      drop_off_count: node.drop_off_count,
-      converted_count: node.converted_count,
-    });
-    for (const child of node.children) {
-      FlowQueryResult.#flattenTreeNode(child, tree_index, path_parts, rows);
-    }
-  }
-
-  /**
-   * Pre-pandas rows of the MODE-AWARE Python `.df`: sankey → nodes
-   * frame; tree → trees frame; paths → one row per (flow, flowStep).
+   * Build the pre-pandas rows of Python's mode-aware `.df`: sankey →
+   * nodes frame; tree → trees frame; paths → one row per (flow,
+   * flowStep).
    *
    * @returns The rows list.
    */
@@ -1623,22 +1146,22 @@ export class FlowQueryResult {
       return this.toTreesRows();
     }
     const rows: Row[] = [];
-    this.flows.forEach((flow, path_idx) => {
-      const flow_steps = flow["flowSteps"];
+    for (const [pathIdx, flow] of this.flows.entries()) {
+      const flowSteps = flow["flowSteps"];
       const steps: ReadonlyArray<Readonly<Record<string, unknown>>> =
-        Array.isArray(flow_steps)
-          ? (flow_steps as ReadonlyArray<Readonly<Record<string, unknown>>>)
+        Array.isArray(flowSteps)
+          ? (flowSteps as ReadonlyArray<Readonly<Record<string, unknown>>>)
           : [];
-      steps.forEach((fs, step_idx) => {
+      for (const [stepIdx, fs] of steps.entries()) {
         rows.push({
-          path_index: path_idx,
-          step: step_idx,
+          path_index: pathIdx,
+          step: stepIdx,
           event: fs["event"] ?? "",
           type: fs["type"] ?? "",
           count: safeInt(fs["totalCount"] ?? "0"),
         });
-      });
-    });
+      }
+    }
     return rows;
   }
 
@@ -1662,7 +1185,8 @@ export class FlowQueryResult {
    * `top_transitions()` (which sorts `edges_df` by `count`
    * descending and formats `event@step` labels).
    *
-   * @param n - Max transitions to return. Default: `10`.
+   * @param n - Maximum transitions to return.
+   * @defaultValue `n` is `10`
    * @returns `[source, target, count]` triples.
    */
   topTransitions(n = 10): ReadonlyArray<readonly [string, string, number]> {
@@ -1687,29 +1211,7 @@ export class FlowQueryResult {
    *   no steps).
    */
   dropOffSummary(): Record<string, unknown> {
-    if (this.steps.length === 0) {
-      return {};
-    }
-    const summary: Record<string, unknown> = {};
-    this.steps.forEach((step, step_idx) => {
-      let total = 0;
-      let dropoff = 0;
-      for (const node of FlowQueryResult.#stepNodes(step)) {
-        const count = safeInt(node["totalCount"] ?? "0");
-        const node_type = node["type"] ?? "";
-        total += count;
-        if (node_type !== "DROPOFF") {
-          for (const edge of FlowQueryResult.#nodeEdges(node)) {
-            if (edge["type"] === "DROPOFF") {
-              dropoff += safeInt(edge["totalCount"] ?? "0");
-            }
-          }
-        }
-      }
-      const rate = total > 0 ? dropoff / total : 0.0;
-      summary[`step_${String(step_idx)}`] = { total, dropoff, rate };
-    });
-    return summary;
+    return flowDropOffSummary(this.steps);
   }
 
   /**
@@ -1737,7 +1239,7 @@ export class FlowQueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): FlowQueryResult {
@@ -1827,28 +1329,57 @@ export interface UserQueryResultFields {
   readonly computed_at: string;
   /** Total matching users. */
   readonly total: number;
-  /** Profile dicts (profiles mode). Default: `[]`. */
+  /**
+   * Profile dicts (profiles mode).
+   *
+   * @defaultValue `[]`
+   */
   readonly profiles?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Generated engage params sent to the API. Default: `{}`. */
+  /**
+   * Generated engage params sent to the API.
+   *
+   * @defaultValue `{}`
+   */
   readonly params?: Readonly<Record<string, unknown>>;
-  /** Response metadata. Default: `{}`. */
+  /**
+   * Response metadata.
+   *
+   * @defaultValue `{}`
+   */
   readonly meta?: Readonly<Record<string, unknown>>;
-  /** Result mode. Default: `"aggregate"`. */
+  /**
+   * Result mode.
+   *
+   * @defaultValue `"aggregate"`
+   */
   readonly mode?: UserQueryMode;
-  /** Aggregate payload (dict, scalar, or `null`). Default: `null`. */
+  /**
+   * Aggregate payload (dict, scalar, or `null`).
+   *
+   * @defaultValue `null`
+   */
   readonly aggregate_data?: Readonly<Record<string, unknown>> | number | null;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * Structured output of a `Workspace.query_user()` execution — TS port
- * of `types.UserQueryResult`.
+ * Structured output of a `Workspace.queryUser()` execution: profiles,
+ * or an aggregate (optionally segmented) depending on the mode.
  *
- * `.df` has FIVE branches plus a post-frame column reorder in profiles
+ * @remarks
+ * `.df` has five branches plus a post-frame column reorder in profiles
  * mode (`distinct_id` first, `last_seen` second, remaining
- * alphabetical) — the reorder IS part of the column contract
- * (phase2-design C6 per-class row spec).
+ * alphabetical); the reorder is part of the column contract.
+ * @example
+ * ```ts
+ * result.toRows(); // profiles mode
+ * // [{ distinct_id: "u1", last_seen: "2026-01-15T12:00:00", plan: "pro" }]
+ * result.rowColumns(); // ["distinct_id", "last_seen", "plan"]
+ * result.toRows(); // aggregate mode
+ * // [{ metric: "count", value: 1200 }]
+ * ```
+ * @see mixpanel_headless.types.UserQueryResult
  */
 export class UserQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1908,8 +1439,8 @@ export class UserQueryResult {
       const props = profile["properties"];
       if (isPlainRecord(props)) {
         for (const [key, val] of Object.entries(props)) {
-          const clean_key = key.startsWith("$") ? key.slice(1) : key;
-          row[clean_key] = val;
+          const cleanKey = key.startsWith("$") ? key.slice(1) : key;
+          setOwn(row, cleanKey, val);
         }
       }
       return row;
@@ -1935,7 +1466,7 @@ export class UserQueryResult {
   }
 
   /**
-   * Pre-pandas rows of the FIVE-branch Python `.df` body.
+   * Build the pre-pandas rows of Python's five-branch `.df`.
    *
    * @returns The rows list.
    */
@@ -1964,7 +1495,7 @@ export class UserQueryResult {
   }
 
   /**
-   * Column contract of the `.df` frame per branch, INCLUDING the
+   * Column contract of the `.df` frame per branch, including the
    * profiles-mode post-frame reorder (`distinct_id`, `last_seen`,
    * remaining alphabetical).
    *
@@ -2047,7 +1578,7 @@ export class UserQueryResult {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
    * @internal
    */
   static fromDict(raw: unknown): UserQueryResult {
@@ -2069,11 +1600,11 @@ export class UserQueryResult {
     );
     expectNullCache(payload, "_df_cache", cls);
     const aggregate = payload["aggregate_data"];
-    const aggregate_value = floatValue(aggregate);
+    const aggregateValue = floatValue(aggregate);
     if (
       Object.hasOwn(payload, "aggregate_data") &&
       aggregate !== null &&
-      aggregate_value === undefined &&
+      aggregateValue === undefined &&
       !isPlainRecord(aggregate)
     ) {
       decodeFail(cls, "aggregate_data", "object | number | null", aggregate);
@@ -2097,7 +1628,7 @@ export class UserQueryResult {
         ? {
             aggregate_data: isPlainRecord(aggregate)
               ? aggregate
-              : ((aggregate_value ?? null) as number | null),
+              : (aggregateValue ?? null),
           }
         : {}),
     });

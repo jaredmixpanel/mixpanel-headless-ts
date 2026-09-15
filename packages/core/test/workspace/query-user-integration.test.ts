@@ -1,71 +1,35 @@
-// Translated query-user integration tests (B5-S2, packet §3):
-// assertion-for-assertion port of
-// tests/test_workspace_query_user_integration.py (R10.2) — ALL 11
-// classes (TestBehavioralFilteringAllOf :182,
-// TestBehavioralFilteringAnyOf :275,
-// TestBehavioralFilteringSavedCohort :359,
-// TestBehavioralFilteringCombinedCohortAndWhere :428,
-// TestBehavioralFilteringCohortPlusInCohortError :519,
-// TestBehavioralFilteringCohortSerializationError :591,
-// TestCrossEngineDistinctIds :652,
-// TestCrossEngineDataFrameComposition :752,
-// TestCrossEngineFilterConsistency :895,
-// TestCrossEngineCohortIdFromFunnel :1010,
-// TestUFilterWrapPreservation :1116).
-//
-// Translation notes:
-// - `export_profiles_page.call_args.kwargs.get(k)` becomes the recorded
-//   options bag (`mock.exportPageCalls[0].options[k]`).
-// - `patch.object(CohortDefinition, "to_dict", side_effect=...)` becomes
-//   a per-instance `toDict` override (the same observable: the U24
-//   validator's call raises).
-// - `TestCrossEngineDataFrameComposition` asserts PANDAS operations
-//   (`groupby`, `describe`, `merge`, boolean indexing,
-//   `isinstance(df, pd.DataFrame)`). There is no pandas in TS
-//   (phase2-design C6: `.df` becomes `toRows()` + `rowColumns()`), so
-//   each case is translated to the equivalent computation over the row
-//   list — the SAME numbers, asserted on the data the frame would be
-//   built from. `test_df_is_pandas_dataframe` becomes an assertion that
-//   `toRows()` is an array (the frame body); the pandas type check
-//   itself is a header-cited exclusion.
-// - `assert isinstance(excinfo.value.__cause__, ParamValidationError)`
-//   maps to the `cause` property the facade sets on the wrap (Python's
-//   `raise ... from exc`).
+// `Workspace.queryUser` integration: behavioural cohort filtering (all_of,
+// any_of, saved cohorts, cohort + where, U2 / U24 errors), cross-engine
+// distinct_ids and row composition, Filter consistency and the U_FILTER
+// wrap. Mirrors all 11 classes of
+// `tests/test_workspace_query_user_integration.py`; pandas ops become `toRows()` math.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  BookmarkValidationError,
-  ParamValidationError,
-} from "../../src/errors.js";
+
 import {
   RuntimeError as PyRuntimeError,
   ValueError as PyValueError,
-} from "../../src/query/python-builtins.js";
-import { Filter } from "../../src/types/query-params/filter.js";
+} from "../../src/compat/python-builtins.js";
+import {
+  type BookmarkValidationError,
+  ParamValidationError,
+} from "../../src/errors.js";
 import {
   CohortCriteria,
   CohortDefinition,
 } from "../../src/types/query-params/cohort.js";
-import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import { Filter } from "../../src/types/query-params/filter.js";
 import type { ProfilePageResult } from "../../src/types/results/discovery.js";
+import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import { codesOf } from "../../test-support/error-codes.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
   makePageResult,
   makeRawProfile,
-  mockWorkspaceClient,
-  TEST_SESSION,
+  makeStubWorkspace,
   type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :141-168).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
+  mockWorkspaceClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * Install a fixed page result.
@@ -80,18 +44,13 @@ function returnValue(
   mock.setPageHandler(() => result);
 }
 
-/** Read the collected `BookmarkValidationError` codes. */
-function codesOf(exc: unknown): string[] {
-  return (exc as BookmarkValidationError).errors.map((e) => e.code);
-}
-
 /** Parse the recorded `filter_by_cohort` JSON text. */
 function parseCohortParam(mock: MockWorkspaceClient): Record<string, unknown> {
   const raw = mock.exportPageCalls[0]!.options["filter_by_cohort"];
   return JSON.parse(raw as string) as Record<string, unknown>;
 }
 
-// Mock data (test file :117-131)
+// Mock data
 const RAW_PROFILE_PREMIUM = makeRawProfile("user_001", undefined, {
   plan: "premium",
   email: "alice@example.com",
@@ -117,15 +76,16 @@ const RAW_PROFILE_PREMIUM_2 = makeRawProfile("user_004", undefined, {
 // T020: behavioural filtering — all_of
 // ===========================================================================
 
-describe("TestBehavioralFilteringAllOf", () => {
-  it("all_of(did_event) sets filter_by_cohort with raw_cohort", async () => {
+describe("Behavioral filtering all of", () => {
+  // python: TestBehavioralFilteringAllOf
+  it("allOf(did_event) sets filter_by_cohort with raw_cohort", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
     const cohort = CohortDefinition.allOf(
       CohortCriteria.didEvent("Purchase", { at_least: 3, within_days: 30 }),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -148,7 +108,7 @@ describe("TestBehavioralFilteringAllOf", () => {
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 7 }),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -177,7 +137,7 @@ describe("TestBehavioralFilteringAllOf", () => {
       CohortCriteria.hasProperty("plan", "premium"),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -194,7 +154,8 @@ describe("TestBehavioralFilteringAllOf", () => {
 // T020: behavioural filtering — any_of
 // ===========================================================================
 
-describe("TestBehavioralFilteringAnyOf", () => {
+describe("Behavioral filtering any of", () => {
+  // python: TestBehavioralFilteringAnyOf
   it("any_of produces a selector with the OR operator", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -206,7 +167,7 @@ describe("TestBehavioralFilteringAnyOf", () => {
       CohortCriteria.hasProperty("plan", "premium"),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 2,
@@ -226,7 +187,7 @@ describe("TestBehavioralFilteringAnyOf", () => {
       CohortCriteria.hasProperty("plan", "premium"),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -235,7 +196,7 @@ describe("TestBehavioralFilteringAnyOf", () => {
     const fbc = parseCohortParam(mock);
     const rawCohort = fbc["raw_cohort"] as Record<string, unknown>;
     const selector = rawCohort["selector"] as Record<string, unknown>;
-    expect((selector["children"] as unknown[]).length).toBe(2);
+    expect(selector["children"] as unknown[]).toHaveLength(2);
   });
 
   it("any_of uses raw_cohort, not id", async () => {
@@ -245,7 +206,7 @@ describe("TestBehavioralFilteringAnyOf", () => {
       CohortCriteria.didEvent("Signup", { at_least: 1, within_days: 7 }),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -261,12 +222,13 @@ describe("TestBehavioralFilteringAnyOf", () => {
 // T020: behavioural filtering — saved cohort
 // ===========================================================================
 
-describe("TestBehavioralFilteringSavedCohort", () => {
+describe("Behavioral filtering saved cohort", () => {
+  // python: TestBehavioralFilteringSavedCohort
   it("an integer cohort sets filter_by_cohort with id", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 12345,
       limit: 1,
@@ -275,14 +237,14 @@ describe("TestBehavioralFilteringSavedCohort", () => {
     expect(
       mock.exportPageCalls[0]!.options["filter_by_cohort"] ?? null,
     ).not.toBeNull();
-    expect(parseCohortParam(mock)).toEqual({ id: 12345 });
+    expect(parseCohortParam(mock)).toStrictEqual({ id: 12345 });
   });
 
   it("an integer cohort has no raw_cohort key", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 99999,
       limit: 1,
@@ -295,7 +257,7 @@ describe("TestBehavioralFilteringSavedCohort", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 12345,
       limit: 1,
@@ -311,12 +273,13 @@ describe("TestBehavioralFilteringSavedCohort", () => {
 // T020: combined cohort + where
 // ===========================================================================
 
-describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
+describe("Behavioral filtering combined cohort and where", () => {
+  // python: TestBehavioralFilteringCombinedCohortAndWhere
   it("cohort + where filter sends both", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 12345,
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
@@ -335,7 +298,7 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
@@ -350,7 +313,7 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 12345,
       where: [
@@ -370,57 +333,55 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
 // T020: cohort + in_cohort -> U2
 // ===========================================================================
 
-describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
+describe("Behavioral filtering cohort plus in cohort error", () => {
+  // python: TestBehavioralFilteringCohortPlusInCohortError
   it("cohort param + Filter.in_cohort raises U2", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const ws = makeStubWorkspace(mockWorkspaceClient());
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         cohort: 12345,
         where: Filter.inCohort(67890),
         limit: 1,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U2");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U2");
   });
 
   it("CohortDefinition + Filter.in_cohort raises U2", async () => {
     const cohort = CohortDefinition.allOf(
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
     );
-    const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const ws = makeStubWorkspace(mockWorkspaceClient());
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         cohort,
         where: Filter.inCohort(67890),
         limit: 1,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U2");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U2");
   });
 
   it("the U2 message mentions mutual exclusivity", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const ws = makeStubWorkspace(mockWorkspaceClient());
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         cohort: 12345,
         where: Filter.inCohort(67890),
         limit: 1,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const u2 = (exc as BookmarkValidationError).errors.filter(
-        (e) => e.code === "U2",
-      );
-      expect(u2.length).toBe(1);
-      expect(u2[0]!.message.toLowerCase()).toContain("mutually exclusive");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    const u2 = (error as BookmarkValidationError).errors.filter(
+      (e) => e.code === "U2",
+    );
+    expect(u2).toHaveLength(1);
+    expect(u2[0]!.message.toLowerCase()).toContain("mutually exclusive");
   });
 });
 
@@ -428,7 +389,8 @@ describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
 // T020: cohort serialization failure -> U24
 // ===========================================================================
 
-describe("TestBehavioralFilteringCohortSerializationError", () => {
+describe("Behavioral filtering cohort serialization error", () => {
+  // python: TestBehavioralFilteringCohortSerializationError
   it("a to_dict failure produces U24", async () => {
     const brokenCohort = CohortDefinition.allOf(
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
@@ -438,13 +400,12 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
       throw new PyRuntimeError("serialization failed");
     };
 
-    const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U24");
-    }
+    const ws = makeStubWorkspace(mockWorkspaceClient());
+    const error = await expectRejects(
+      ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U24");
   });
 
   it("the U24 message includes the underlying exception text", async () => {
@@ -455,17 +416,16 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
       throw new PyValueError("bad selector node");
     };
 
-    const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const u24 = (exc as BookmarkValidationError).errors.filter(
-        (e) => e.code === "U24",
-      );
-      expect(u24.length).toBe(1);
-      expect(u24[0]!.message).toContain("bad selector node");
-    }
+    const ws = makeStubWorkspace(mockWorkspaceClient());
+    const error = await expectRejects(
+      ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 }),
+      "expected BookmarkValidationError",
+    );
+    const u24 = (error as BookmarkValidationError).errors.filter(
+      (e) => e.code === "U24",
+    );
+    expect(u24).toHaveLength(1);
+    expect(u24[0]!.message).toContain("bad selector node");
   });
 });
 
@@ -473,7 +433,8 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
 // T024: cross-engine distinct_ids
 // ===========================================================================
 
-describe("TestCrossEngineDistinctIds", () => {
+describe("Cross engine distinct IDs", () => {
+  // python: TestCrossEngineDistinctIds
   it("distinct_ids is a list of strings", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -484,7 +445,7 @@ describe("TestCrossEngineDistinctIds", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 3,
     });
@@ -492,7 +453,7 @@ describe("TestCrossEngineDistinctIds", () => {
     const ids = result.distinct_ids;
     expect(Array.isArray(ids)).toBe(true);
     expect(ids.every((i) => typeof i === "string")).toBe(true);
-    expect(ids).toEqual(["user_001", "user_002", "user_003"]);
+    expect(ids).toStrictEqual(["user_001", "user_002", "user_003"]);
   });
 
   it("distinct_ids can drive a subsequent query", async () => {
@@ -505,7 +466,7 @@ describe("TestCrossEngineDistinctIds", () => {
       }),
     );
 
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const result1 = await ws.queryUser({ mode: "profiles", limit: 2 });
     const ids = result1.distinct_ids;
 
@@ -515,8 +476,8 @@ describe("TestCrossEngineDistinctIds", () => {
       limit: 100_000,
     });
 
-    expect(result2.profiles.length).toBe(2);
-    expect(result2.distinct_ids).toEqual(ids);
+    expect(result2.profiles).toHaveLength(2);
+    expect(result2.distinct_ids).toStrictEqual(ids);
   });
 
   it("an empty result yields an empty distinct_ids list", async () => {
@@ -526,9 +487,11 @@ describe("TestCrossEngineDistinctIds", () => {
       makePageResult([], { total: 0, has_more: false, session_id: null }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
-    expect(result.distinct_ids).toEqual([]);
+    expect(result.distinct_ids).toStrictEqual([]);
     expect(Array.isArray(result.distinct_ids)).toBe(true);
   });
 
@@ -542,12 +505,12 @@ describe("TestCrossEngineDistinctIds", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
 
-    expect(result.distinct_ids.length).toBe(result.profiles.length);
+    expect(result.distinct_ids).toHaveLength(result.profiles.length);
   });
 });
 
@@ -555,7 +518,8 @@ describe("TestCrossEngineDistinctIds", () => {
 // T024: frame composition (pandas ops -> row-list equivalents)
 // ===========================================================================
 
-describe("TestCrossEngineDataFrameComposition", () => {
+describe("Cross engine data frame composition", () => {
+  // python: TestCrossEngineDataFrameComposition
   it("rows can be grouped by a property column", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -571,7 +535,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 4,
     });
@@ -596,14 +560,14 @@ describe("TestCrossEngineDataFrameComposition", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 3,
     });
 
     // `df["revenue"].describe()` — count / min / max
     const revenues = result.toRows().map((r) => r["revenue"] as number);
-    expect(revenues.length).toBe(3);
+    expect(revenues).toHaveLength(3);
     expect(Math.min(...revenues)).toBe(0.0);
     expect(Math.max(...revenues)).toBe(500.0);
   });
@@ -618,7 +582,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
@@ -639,7 +603,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
         converted: externalById.get(r["distinct_id"] as string),
       }));
 
-    expect(merged.length).toBe(2);
+    expect(merged).toHaveLength(2);
     expect(Object.hasOwn(merged[0]!, "converted")).toBe(true);
     expect(
       merged.find((r) => r["distinct_id"] === "user_001")!["converted"],
@@ -656,13 +620,13 @@ describe("TestCrossEngineDataFrameComposition", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 3,
     });
 
     const premiumUsers = result.toRows().filter((r) => r["plan"] === "premium");
-    expect(premiumUsers.length).toBe(1);
+    expect(premiumUsers).toHaveLength(1);
     expect(premiumUsers[0]!["distinct_id"]).toBe("user_001");
   });
 
@@ -670,7 +634,9 @@ describe("TestCrossEngineDataFrameComposition", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(Array.isArray(result.toRows())).toBe(true);
   });
@@ -680,26 +646,27 @@ describe("TestCrossEngineDataFrameComposition", () => {
 // T024: Filter consistency
 // ===========================================================================
 
-describe("TestCrossEngineFilterConsistency", () => {
+describe("Cross engine filter consistency", () => {
+  // python: TestCrossEngineFilterConsistency
   it("Filter.equals is accepted by query_user", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
       limit: 1,
     });
 
     expect(result).toBeInstanceOf(UserQueryResult);
-    expect(result.profiles.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
   });
 
   it("a Filter list is accepted by query_user", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       where: [
         Filter.equals("plan", "premium", { resource_type: "people" }),
@@ -712,7 +679,7 @@ describe("TestCrossEngineFilterConsistency", () => {
   });
 
   it("Filter.equals is valid for build_user_params", async () => {
-    const params = await workspaceFactory(
+    const params = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildUserParams({
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
@@ -723,7 +690,7 @@ describe("TestCrossEngineFilterConsistency", () => {
   });
 
   it("a Filter list is valid for build_user_params", async () => {
-    const params = await workspaceFactory(
+    const params = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildUserParams({
       where: [
@@ -740,7 +707,7 @@ describe("TestCrossEngineFilterConsistency", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
       limit: 1,
@@ -756,7 +723,8 @@ describe("TestCrossEngineFilterConsistency", () => {
 // T024: cohort ID from funnel analysis
 // ===========================================================================
 
-describe("TestCrossEngineCohortIdFromFunnel", () => {
+describe("Cross engine cohort ID from funnel", () => {
+  // python: TestCrossEngineCohortIdFromFunnel
   it("a funnel cohort id works with query_user", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -767,15 +735,15 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 42,
       limit: 100_000,
     });
 
     expect(result).toBeInstanceOf(UserQueryResult);
-    expect(result.profiles.length).toBe(2);
-    expect(parseCohortParam(mock)).toEqual({ id: 42 });
+    expect(result.profiles).toHaveLength(2);
+    expect(parseCohortParam(mock)).toStrictEqual({ id: 42 });
   });
 
   it("the cohort-filtered result has composable distinct_ids", async () => {
@@ -788,14 +756,14 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 42,
       limit: 100_000,
     });
 
     const ids = result.distinct_ids;
-    expect(ids.length).toBe(2);
+    expect(ids).toHaveLength(2);
     expect(ids).toContain("user_001");
     expect(ids).toContain("user_003");
   });
@@ -810,14 +778,14 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 42,
       limit: 100_000,
     });
 
     const rows = result.toRows();
-    expect(rows.length).toBe(2);
+    expect(rows).toHaveLength(2);
     const totalRevenue = rows.reduce(
       (sum, r) => sum + (r["revenue"] as number),
       0,
@@ -829,7 +797,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 42,
       limit: 1,
@@ -840,29 +808,29 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
 });
 
 // ===========================================================================
-// U_FILTER wrap preservation over converted ES* guards (RR-4)
+// U_FILTER wrap preservation over converted ES* guards
 // ===========================================================================
 
-describe("TestUFilterWrapPreservation", () => {
+describe("U filter wrap preservation", () => {
+  // python: TestUFilterWrapPreservation
   it("a converted ES11 raise surfaces as U_FILTER", async () => {
     const bad = new Filter({
       _property: "prop",
-      _operator: "is between" as never,
+      _operator: "is between",
       _value: ["low", 10] as never,
     });
 
-    const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.buildUserParams({ where: [bad] });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toEqual(["U_FILTER"]);
-      // The chained cause is the converted coded guard error itself.
-      const cause = (exc as { cause?: unknown }).cause;
-      expect(cause).toBeInstanceOf(ParamValidationError);
-      expect((cause as ParamValidationError).code).toBe(
-        "ES11_BETWEEN_LOWER_NOT_NUMBER",
-      );
-    }
+    const ws = makeStubWorkspace(mockWorkspaceClient());
+    const error = await expectRejects(
+      ws.buildUserParams({ where: [bad] }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toStrictEqual(["U_FILTER"]);
+    // The chained cause is the converted coded guard error itself.
+    const cause = (error as { cause?: unknown }).cause;
+    expect(cause).toBeInstanceOf(ParamValidationError);
+    expect((cause as ParamValidationError).code).toBe(
+      "ES11_BETWEEN_LOWER_NOT_NUMBER",
+    );
   });
 });

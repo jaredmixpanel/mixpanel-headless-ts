@@ -22,7 +22,7 @@
 
 import { pythonRepr } from "./compat/python-str.js";
 import { pythonStrip } from "./compat/python-strip.js";
-import { UrlSplitError, urlsplit } from "./compat/urllib.js";
+import { urlsplit, UrlSplitError } from "./compat/urllib.js";
 import { ParamValidationError, ReportLinkParseError } from "./errors.js";
 import type { Region } from "./types/literals.js";
 
@@ -38,7 +38,7 @@ export const SLUG_ALPHABET =
 export const SLUG_LENGTH = 12;
 
 /** The server-side slug regex. Wider than the mint alphabet on purpose. */
-export const SLUG_RE = /^[0-9a-zA-Z_-]{12}$/u;
+export const SLUG_RE: RegExp = /^[0-9a-zA-Z_-]{12}$/u;
 
 /** Web host per region. Builders always emit these hosts. Read-only. */
 export const WEB_HOSTS: ReadonlyMap<string, string> = new Map([
@@ -86,7 +86,7 @@ export const APP_TO_REPORT_TYPE: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** What a parsed link points at. */
-export type ReportLinkKind =
+type ReportLinkKind =
   "slug" | "bookmark" | "short_link" | "dashboard" | "legacy_jsurl";
 
 /** Recognized web hosts. `mixpanel.org` parses as US; builders never emit it. */
@@ -114,7 +114,7 @@ const ASCII_DIGITS_RE = /^[0-9]+$/u;
 const SCHEME_RE = /^https?:\/\//iu;
 
 /** A percent-encoded `#`. The only escape the parser decodes. */
-const PERCENT_HASH_RE = /%23/giu;
+const PERCENT_HASH_RE = /%23/gu;
 
 /** Shortlink code after `/s/`. */
 const SHORT_CODE_RE = /^[0-9A-Za-z_-]+$/u;
@@ -156,18 +156,24 @@ export interface ParsedReportLink {
   readonly project_id: number | null;
   /** From `/view/{wid}/`. */
   readonly workspace_id: number | null;
-  /** The app path segment (`insights`, `funnels`, `retention`, `flows`,
-   * `impact`, `boards`). */
+  /**
+   * The app path segment (`insights`, `funnels`, `retention`, `flows`,
+   * `impact`, `boards`).
+   */
   readonly app: string | null;
-  /** `APP_TO_REPORT_TYPE[app]`. The server-stored type is authoritative;
-   * this is a hint only. */
+  /**
+   * `APP_TO_REPORT_TYPE[app]`. The server-stored type is authoritative;
+   * this is a hint only.
+   */
   readonly report_type_hint: string | null;
   /** Set when `kind === "slug"`. */
   readonly slug: string | null;
   /** Set when `kind === "bookmark"`. */
   readonly bookmark_id: number | null;
-  /** Set for `boards#id=` links, kept when an `edited-bookmark` slug is
-   * also present. */
+  /**
+   * Set for `boards#id=` links, kept when an `edited-bookmark` slug is
+   * also present.
+   */
   readonly dashboard_id: number | null;
   /** Set when `kind === "short_link"`. */
   readonly short_code: string | null;
@@ -187,6 +193,11 @@ export type ParsedReportLinkInit = Pick<ParsedReportLink, "kind" | "raw"> &
  *
  * @param init - `kind` + `raw` plus any set fields.
  * @returns The frozen parsed link.
+ * @example
+ * ```ts
+ * const link = parsedReportLink({ kind: "slug", raw: url, slug: "aB3_-xYz09Qw" });
+ * link.bookmark_id; // null (dataclass default)
+ * ```
  */
 export function parsedReportLink(init: ParsedReportLinkInit): ParsedReportLink {
   return Object.freeze({
@@ -218,6 +229,10 @@ export function parsedReportLink(init: ParsedReportLinkInit): ParsedReportLink {
  * @returns The host, for example `eu.mixpanel.com`.
  * @throws ParamValidationError - `RL3_UNKNOWN_REGION` when the region is
  *   not in {@link WEB_HOSTS}.
+ * @example
+ * ```ts
+ * webHost("eu"); // "eu.mixpanel.com"
+ * ```
  */
 export function webHost(region: string): string {
   const host = WEB_HOSTS.get(region);
@@ -236,6 +251,11 @@ export function webHost(region: string): string {
  *
  * @param value - Any string.
  * @returns `true` for exactly 12 characters from `[0-9A-Za-z_-]`.
+ * @example
+ * ```ts
+ * isSlug("aB3_-xYz09Qw"); // true
+ * isSlug("too-short"); // false
+ * ```
  */
 export function isSlug(value: string): boolean {
   return SLUG_RE.test(value);
@@ -276,7 +296,6 @@ export interface GenerateSlugOptions {
  *
  * @param options - Optional injected chooser.
  * @returns A slug for which {@link isSlug} is true.
- *
  * @example
  * ```typescript
  * generateSlug({ choice: (alphabet) => alphabet[0] });
@@ -383,7 +402,6 @@ export interface BuildSlugUrlArgs {
  * @throws ParamValidationError - `RL3_UNKNOWN_REGION`,
  *   `RL1_UNKNOWN_REPORT_TYPE`, `RL2_INVALID_SLUG`, or `RL6_INVALID_ID`
  *   (a zero or negative project or workspace id).
- *
  * @example
  * ```typescript
  * buildSlugUrl({
@@ -430,7 +448,6 @@ export interface BuildBookmarkUrlArgs {
  * @throws ParamValidationError - `RL3_UNKNOWN_REGION`,
  *   `RL1_UNKNOWN_REPORT_TYPE`, or `RL6_INVALID_ID` (a zero or negative
  *   project, workspace, or bookmark id).
- *
  * @example
  * ```typescript
  * buildBookmarkUrl({
@@ -442,9 +459,10 @@ export interface BuildBookmarkUrlArgs {
 export function buildBookmarkUrl(args: BuildBookmarkUrlArgs): string {
   const host = webHost(args.region);
   requirePositiveId("bookmark_id", args.bookmark_id);
+  // Replacer function: a string replacement would interpret `$` patterns.
   const tail = lookupType(BOOKMARK_HASH_FOR_TYPE, args.report_type).replace(
     "{id}",
-    String(args.bookmark_id),
+    () => String(args.bookmark_id),
   );
   const path = projectPath(args.project_id, args.workspace_id ?? null);
   return `https://${host}${path}/app/${tail}`;
@@ -481,11 +499,13 @@ function unparseable(raw: string): ReportLinkParseError {
 function startsWithKnownHost(value: string): boolean {
   const lowered = value.toLowerCase();
   for (const host of HOST_TO_REGION.keys()) {
-    if (lowered.startsWith(host)) {
-      const rest = lowered.slice(host.length);
-      if (rest === "" || "/:#?".includes(rest[0] as string)) {
-        return true;
-      }
+    if (!lowered.startsWith(host)) {
+      continue;
+    }
+
+    const rest = lowered.slice(host.length);
+    if (rest === "" || "/:#?".includes(rest[0] as string)) {
+      return true;
     }
   }
   return false;
@@ -515,6 +535,7 @@ const NO_PATH: ParsedPath = {
  * @param segments - Non-empty path segments.
  * @returns The parsed path.
  */
+// eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 function parsePath(segments: readonly string[]): ParsedPath {
   const n = segments.length;
   if (
@@ -524,9 +545,9 @@ function parsePath(segments: readonly string[]): ParsedPath {
   ) {
     return { ...NO_PATH, short_code: segments[1] as string };
   }
-  let pidS: string | null = null;
+  let pidS: string;
   let widS: string | null = null;
-  let app: string | null = null;
+  let app: string;
   if (n === 4 && segments[0] === "project" && segments[2] === "app") {
     pidS = segments[1] as string;
     app = segments[3] as string;
@@ -549,19 +570,19 @@ function parsePath(segments: readonly string[]): ParsedPath {
   } else {
     return NO_PATH;
   }
-  if (pidS === null || !ASCII_DIGITS_RE.test(pidS)) {
+  if (!ASCII_DIGITS_RE.test(pidS)) {
     return NO_PATH;
   }
   if (widS !== null && !ASCII_DIGITS_RE.test(widS)) {
     return NO_PATH;
   }
-  if (app === null || !KNOWN_APPS.has(app)) {
+  if (!KNOWN_APPS.has(app)) {
     return NO_PATH;
   }
   return {
     short_code: null,
     project_id: Number(pidS),
-    workspace_id: widS !== null ? Number(widS) : null,
+    workspace_id: widS === null ? null : Number(widS),
     app,
   };
 }
@@ -627,7 +648,6 @@ function trimFragment(fragment: string): string {
  * @throws ReportLinkParseError - With code `REPORT_LINK_UNPARSEABLE`,
  *   `REPORT_LINK_NOT_MIXPANEL_HOST`, `REPORT_LINK_UNRECOGNIZED_PATH`,
  *   `REPORT_LINK_UNRECOGNIZED_HASH`, or `REPORT_LINK_EMPTY_HASH`.
- *
  * @example
  * ```typescript
  * const parsed = parseReportLink(
@@ -638,8 +658,9 @@ function trimFragment(fragment: string): string {
  * parsed.slug;       // "EBrV5bW2u9Mw"
  * ```
  */
+// eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function parseReportLink(value: string): ParsedReportLink {
-  // Python `value.strip()` — the CPython whitespace set (R11.3), not JS `trim()`.
+  // Python `value.strip()` — the CPython whitespace set, not JS `trim()`.
   const raw = pythonStrip(value);
   if (raw === "") {
     throw unparseable(raw);
@@ -650,7 +671,7 @@ export function parseReportLink(value: string): ParsedReportLink {
 
   let normalized = raw;
   if (!normalized.includes("#")) {
-    normalized = normalized.replace(PERCENT_HASH_RE, "#");
+    normalized = normalized.replaceAll(PERCENT_HASH_RE, "#");
   }
   if (!SCHEME_RE.test(normalized)) {
     if (!startsWithKnownHost(normalized)) {
@@ -662,11 +683,11 @@ export function parseReportLink(value: string): ParsedReportLink {
   let parts;
   try {
     parts = urlsplit(normalized);
-  } catch (cause) {
-    if (cause instanceof UrlSplitError) {
+  } catch (error) {
+    if (error instanceof UrlSplitError) {
       throw unparseable(raw);
     }
-    throw cause;
+    throw error;
   }
   const host = parts.hostname;
   if (host === null || host === "") {

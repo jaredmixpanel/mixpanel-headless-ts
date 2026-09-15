@@ -1,13 +1,10 @@
-// CPython `random.Random` parity lock (packet B5-S3 decision S3-D1,
-// `b5-packets.md:529-540`). The probe matrix is GENERATED — regenerate
-// from the Python repo with the snippet recorded in
-// `context/phase3/notes/B5-S3-notes.md` §S3-D1 and copy
-// `conformance/goldens/rrweb/python-random-probe.json` here.
-//
-// There is no Python test file behind this suite: it is the pinned
-// CPython evidence the packet mandates in place of a
-// sanctioned-deviation filing for `ReplayBundle.sample`.
+// `PythonRandom.getrandbits` / `pythonSample` — CPython `random.Random` parity
+// (Mersenne Twister seeding, getrandbits, `sample`) behind `ReplayBundle.sample`.
+// No Python test file behind this suite: the probe matrix is generated in the
+// Python repo (`conformance/goldens/rrweb/generate.py`) and copied here as
+// `python-random-probe.json`; regenerate there, never hand-edit it.
 import { describe, expect, it } from "vitest";
+
 import { PythonRandom, pythonSample } from "../../src/compat/python-random.js";
 import probe from "./python-random-probe.json" with { type: "json" };
 
@@ -29,7 +26,7 @@ describe("PythonRandom.getrandbits matches CPython", () => {
     (_i, testCase) => {
       const rng = new PythonRandom(testCase.seed);
       const got = testCase.values.map(() => rng.getrandbits(testCase.k));
-      expect(got).toEqual(testCase.values.map((v) => BigInt(v)));
+      expect(got).toStrictEqual(testCase.values.map(BigInt));
     },
   );
 });
@@ -46,20 +43,20 @@ describe("pythonSample matches CPython random.Random(seed).sample", () => {
         { length: testCase.n },
         (_v, i) => `r-${String(i)}`,
       );
-      expect(pythonSample(population, testCase.k, testCase.seed)).toEqual(
+      expect(pythonSample(population, testCase.k, testCase.seed)).toStrictEqual(
         testCase.result,
       );
     },
   );
 
   it("rejects k > n with the CPython range code", () => {
-    expect(() => pythonSample(["a", "b"], 3, 42)).toThrowError(
+    expect(() => pythonSample(["a", "b"], 3, 42)).toThrow(
       /Sample larger than population/,
     );
   });
 
   it("rejects a negative k", () => {
-    expect(() => pythonSample(["a", "b"], -1, 42)).toThrowError(
+    expect(() => pythonSample(["a", "b"], -1, 42)).toThrow(
       /Sample larger than population/,
     );
   });

@@ -1,18 +1,20 @@
-// Unit tests for Session/Project/WorkspaceRef/ActiveSession parse
-// factories + free functions (packet P2-4, phase2-design C4). Extra-key
-// behavior mirrors each Pydantic model_config: Project/WorkspaceRef/
-// Session IGNORE extras (frozen only); ActiveSession is extra='forbid'
-// and rejects `project` by name.
+// Session / Project / WorkspaceRef / ActiveSession parse factories and free
+// functions. Extra-key behavior mirrors each Pydantic model_config:
+// Project/WorkspaceRef/Session IGNORE extras (frozen only); ActiveSession is
+// extra='forbid' and rejects `project` by name. TS unit tests over
+// `session.py`'s documented behaviour; no Python suite is mirrored.
+
 import { describe, expect, it } from "vitest";
-import { type TokenResolver } from "../../src/auth/account.js";
+
+import type { TokenResolver } from "../../src/auth/account.js";
 import {
   parseActiveSession,
   parseProject,
   parseSession,
   parseWorkspaceRef,
+  type Session,
   sessionAuthHeader,
   sessionReplace,
-  type Session,
 } from "../../src/auth/session.js";
 import {
   ParamTypeError,
@@ -66,7 +68,7 @@ describe("parseProject", () => {
 describe("parseWorkspaceRef", () => {
   it("parses a positive integer id with lax coercion", () => {
     expect(parseWorkspaceRef({ id: 3448414 }).id).toBe(3448414);
-    // Pydantic lax mode accepts digit strings for int fields (R4.12).
+    // Pydantic lax mode accepts digit strings for int fields.
     expect(parseWorkspaceRef({ id: "42" }).id).toBe(42);
   });
 
@@ -124,7 +126,7 @@ describe("parseSession", () => {
       parseSession({ ...SESSION_PAYLOAD, headers: { "X-N": 5 } }),
     ).toThrow(ResponseValidationError);
     // default_factory fires on ABSENT only — explicit null is an error
-    // (headers is a required Mapping, session.py:145 / R4.12).
+    // (headers is a required Mapping, `session.py`).
     expect(() => parseSession({ ...SESSION_PAYLOAD, headers: null })).toThrow(
       ResponseValidationError,
     );
@@ -195,7 +197,7 @@ describe("sessionReplace (Python Session.replace parity)", () => {
     });
     expect(swapped.project.id).toBe("3018488");
     expect(swapped.account).toBe(original.account);
-    expect(swapped.workspace).toEqual({ id: 7 });
+    expect(swapped.workspace).toStrictEqual({ id: 7 });
     expect(swapped.headers.get("X-A")).toBe("1");
     expect(original.project.id).toBe("3713224");
   });
@@ -204,7 +206,7 @@ describe("sessionReplace (Python Session.replace parity)", () => {
     const cleared = sessionReplace(original, { workspace: null });
     expect(cleared.workspace).toBeNull();
     // Omitting the key preserves.
-    expect(sessionReplace(original, {}).workspace).toEqual({ id: 7 });
+    expect(sessionReplace(original, {}).workspace).toStrictEqual({ id: 7 });
   });
 
   it("clears headers with an empty map", () => {
@@ -231,7 +233,7 @@ describe("sessionReplace (Python Session.replace parity)", () => {
 
 describe("parseActiveSession (extra='forbid')", () => {
   it("parses account/workspace with both optional", () => {
-    expect(parseActiveSession({})).toEqual({});
+    expect(parseActiveSession({})).toStrictEqual({});
     const full = parseActiveSession({ account: "team", workspace: 3448414 });
     expect(full.account).toBe("team");
     expect(full.workspace).toBe(3448414);

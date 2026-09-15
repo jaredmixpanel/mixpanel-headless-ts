@@ -1,25 +1,12 @@
-// Regression tests for the B0-gate attempt-1 differential divergence
-// (conformance/differential/oracle/RUN.md, 2026-08-15 entry; shrunken
-// repro 2026-08-15-types-RetentionEvent.json): every emptiness guard in
-// packages/core/src/types/** must use `pythonStrip` (CPython
-// `str.strip()` whitespace set, pinned whitespace.gen.ts), NOT JS
-// `String.trim()`. The two sets differ in both directions:
-//   - Python-only blanks: U+001C..U+001F, U+0085 (str.strip() removes,
-//     .trim() keeps) — these inputs must be REJECTED as blank;
-//   - JS-only blank: U+FEFF (BOM; .trim() removes, str.strip() keeps)
-//     — a FEFF-only input is NON-blank in Python and must be ACCEPTED.
-// Guard order is also locked: the strip-emptiness check precedes the
-// control-char check (Python source order), so a U+001C-only event
-// raises EV1_EMPTY_EVENT, never EV2_CONTROL_CHAR_EVENT.
-// Python counterparts: types.py:9116, 9153, 7129, 10162, 8309, 8231,
-// 8707, 8720, 8953, 8392, 9532, 9644, 4921, and _safe_int (:10548 —
-// covered in flow-query-result.test.ts).
+// Every emptiness guard under src/types must use `pythonStrip` (CPython
+// `str.strip()` whitespace, pinned in whitespace.gen.ts), never JS `trim()`:
+// U+001C..U+001F and U+0085 are Python-only blanks (must be REJECTED), U+FEFF
+// is JS-only blank (must be ACCEPTED); the strip check precedes the
+// control-char check, so a U+001C-only event raises EV1, never EV2. Additive.
 import { describe, expect, it } from "vitest";
-import {
-  MixpanelHeadlessError,
-  ParamValidationError,
-  ResponseValidationError,
-} from "../../../src/errors.js";
+
+import { ResponseValidationError } from "../../../src/errors.js";
+import { CreateCustomEventParams } from "../../../src/types/entities/data-governance.js";
 import { CohortCriteria } from "../../../src/types/query-params/cohort.js";
 import {
   Filter,
@@ -37,7 +24,7 @@ import {
 } from "../../../src/types/query-params/guards.js";
 import { Formula } from "../../../src/types/query-params/metric.js";
 import { RetentionEvent } from "../../../src/types/query-params/retention.js";
-import { CreateCustomEventParams } from "../../../src/types/entities/data-governance.js";
+import { expectGuard } from "../../../test-support/raises.js";
 
 /**
  * Python-blank / JS-trim-nonblank strings: each is `""` under CPython
@@ -46,34 +33,17 @@ import { CreateCustomEventParams } from "../../../src/types/entities/data-govern
  */
 const PY_ONLY_BLANKS = [
   "\u0085",
-  "\x1c",
-  "\x1d",
-  "\x1e",
-  "\x1f",
+  "\x1C",
+  "\x1D",
+  "\x1E",
+  "\x1F",
   " \t\u0085\n",
 ];
 
 /** JS-blank / Python-nonblank string (the inverse direction). */
-const BOM = "\ufeff";
+const BOM = "\uFEFF";
 
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (cause) {
-    thrown = cause;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
-
-describe("pythonStrip emptiness guards (RUN.md 2026-08-15 divergence class)", () => {
+describe("pythonStrip emptiness guards (differential divergence class)", () => {
   it("EV1_EMPTY_EVENT: validateEventName rejects Python-only blanks (the repro class)", () => {
     for (const event of PY_ONLY_BLANKS) {
       expectGuard(() => validateEventName(event, "X"), "EV1_EMPTY_EVENT");
@@ -85,7 +55,7 @@ describe("pythonStrip emptiness guards (RUN.md 2026-08-15 divergence class)", ()
   it("EV1 precedes EV2 for control-char blanks (Python guard order)", () => {
     // U+001C..1F are BOTH in CONTROL_CHAR_RE and Python-blank; Python
     // raises EV1 because the strip-emptiness guard runs first.
-    expectGuard(() => validateEventName("\x1c", "X"), "EV1_EMPTY_EVENT");
+    expectGuard(() => validateEventName("\x1C", "X"), "EV1_EMPTY_EVENT");
   });
 
   it("validateEventName accepts a U+FEFF-only event (Python keeps the BOM)", () => {
@@ -218,6 +188,6 @@ describe("pythonStrip emptiness guards (RUN.md 2026-08-15 divergence class)", ()
       name: "e",
       alternatives: [BOM],
     });
-    expect(valid.alternatives).toEqual([BOM]);
+    expect(valid.alternatives).toStrictEqual([BOM]);
   });
 });

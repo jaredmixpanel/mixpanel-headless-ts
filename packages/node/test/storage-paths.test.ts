@@ -1,22 +1,8 @@
-// Layer-3 translation of `tests/unit/test_storage.py` (327 lines, 15
-// tests; all 5 classes covered — 13/15 members translated, 2
-// Python-only members cited below — b8-packets.md §3.3 row 2; header
-// wording corrected per B8-ARB-A ASR-F3, `b8-reviewA-resolution.md`).
-//
-// Python's `monkeypatch.setenv("HOME", ...)` isolation translates to a
-// saved/restored `process.env.HOME` (node `os.homedir()` reads `$HOME`
-// at call time on POSIX); every path lives under `mkdtempSync` tmp dirs
-// (packet §7 caution 3 — the real-home guard in `helpers.ts`).
-//
-// PYTHON-ONLY members (header-cited per §3.3 / §2.1 drop):
-// - `TestOAuthStorageSymlinkRejection::
-//   test_check_and_fix_permissions_uses_fchmod_not_chmod` (:275) —
-//   fd-flag mechanism probe (fd-flag hardening dropped per plan §4.2 /
-//   R9.2); its lstat-expressible siblings are translated below.
-// - `test_windows_skip_does_not_crash` (:303) — probes a
-//   `monkeypatch.delattr(os, "O_NOFOLLOW")` platform shim with no node
-//   analog (the TS no-op branch keys on `process.platform`) — same
-//   citation.
+// storageRoot / accountDir / ensureAccountDir and OAuthStorage symlink
+// rejection. Mirrors tests/unit/test_storage.py; the two fd-flag members
+// (`test_check_and_fix_permissions_uses_fchmod_not_chmod`,
+// `test_windows_skip_does_not_crash`) probe mechanisms node has no analogue
+// for and are not ported.
 
 import {
   chmodSync,
@@ -26,37 +12,30 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ParamValidationError } from "../../core/src/errors.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { ParamValidationError } from "@mixpanel-headless/core";
+
 import {
-  OAuthStorage,
   accountDir,
   ensureAccountDir,
-  storageRoot,
+  OAuthStorage,
   type StorageLogger,
+  storageRoot,
 } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
-const itPosix = POSIX ? it : it.skip;
 
-const cleanups: (() => void)[] = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
+const cleanups: Array<() => void> = [];
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -76,7 +55,8 @@ function recordingLogger(): { logger: StorageLogger; lines: string[] } {
   };
 }
 
-describe("TestAccountDirNameValidation (test_storage.py:26)", () => {
+describe("accountDir name validation", () => {
+  // python: test_storage.py::TestAccountDirNameValidation
   const malicious = [
     "../etc",
     "a/b",
@@ -96,8 +76,9 @@ describe("TestAccountDirNameValidation (test_storage.py:26)", () => {
   ];
 
   it.each(malicious.map((name) => [JSON.stringify(name), name]))(
-    "test_account_dir_rejects_invalid_names[%s]",
+    "rejects %s",
     (_label, name) => {
+      // python: test_account_dir_rejects_invalid_names
       expect(() => accountDir(name)).toThrow(ParamValidationError);
     },
   );
@@ -113,111 +94,128 @@ describe("TestAccountDirNameValidation (test_storage.py:26)", () => {
     "MIXED_Case-123",
   ];
 
-  it.each(valid.map((name) => [name]))(
-    "test_account_dir_accepts_valid_names[%s]",
-    (name) => {
-      const tmp = makeTempDir(cleanups);
-      process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
-      expect(accountDir(name)).toBe(join(tmp, "accounts", name));
-    },
-  );
+  it.each(valid.map((name) => [name]))("accepts %s", (name) => {
+    // python: test_account_dir_accepts_valid_names
+    const tmp = makeTempDir(cleanups);
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
+    expect(accountDir(name)).toBe(join(tmp, "accounts", name));
+  });
 });
 
-describe("TestStorageRoot (test_storage.py:76)", () => {
-  it("test_env_var_overrides_default", () => {
+describe("storageRoot", () => {
+  // python: test_storage.py::TestStorageRoot
+  it("MP_OAUTH_STORAGE_DIR overrides the default", () => {
+    // python: test_env_var_overrides_default
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     expect(storageRoot()).toBe(tmp);
   });
 
-  it("test_default_is_home_dot_mp", () => {
+  it("defaults to ~/.mp", () => {
+    // python: test_default_is_home_dot_mp
     const tmp = makeTempDir(cleanups);
-    delete process.env["MP_OAUTH_STORAGE_DIR"];
-    process.env["HOME"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
+    vi.stubEnv("HOME", tmp);
     expect(storageRoot()).toBe(join(tmp, ".mp"));
   });
 
-  it("test_resolves_lazily", () => {
+  it("resolves on every call", () => {
+    // python: test_resolves_lazily
     const tmp = makeTempDir(cleanups);
-    delete process.env["MP_OAUTH_STORAGE_DIR"];
-    process.env["HOME"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
+    vi.stubEnv("HOME", tmp);
     const first = storageRoot();
-    process.env["MP_OAUTH_STORAGE_DIR"] = join(tmp, "alt");
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", join(tmp, "alt"));
     const second = storageRoot();
     expect(first).not.toBe(second);
     expect(second).toBe(join(tmp, "alt"));
   });
 });
 
-describe("TestAccountDirHonorsStorageRoot (test_storage.py:107)", () => {
-  it("test_account_dir_under_env_var_root", () => {
+describe("accountDir under the storage root", () => {
+  // python: test_storage.py::TestAccountDirHonorsStorageRoot
+  it("lives under the MP_OAUTH_STORAGE_DIR root", () => {
+    // python: test_account_dir_under_env_var_root
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = join(tmp, "root");
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", join(tmp, "root"));
     expect(accountDir("foo")).toBe(join(tmp, "root", "accounts", "foo"));
   });
 
-  it("test_account_dir_default_under_home_dot_mp", () => {
+  it("defaults to ~/.mp/accounts/<name>", () => {
+    // python: test_account_dir_default_under_home_dot_mp
     const tmp = makeTempDir(cleanups);
-    delete process.env["MP_OAUTH_STORAGE_DIR"];
-    process.env["HOME"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
+    vi.stubEnv("HOME", tmp);
     expect(accountDir("foo")).toBe(join(tmp, ".mp", "accounts", "foo"));
   });
 });
 
-describe("TestEnsureAccountDir (test_storage.py:126)", () => {
-  itPosix("test_creates_with_mode_0o700", () => {
+describe("ensureAccountDir", () => {
+  // python: test_storage.py::TestEnsureAccountDir
+  it.skipIf(!POSIX)("creates the directory 0o700", () => {
+    // python: test_creates_with_mode_0o700
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     const path = ensureAccountDir("foo");
     const st = statSync(path);
     expect(st.isDirectory()).toBe(true);
     expect(st.mode & 0o7777).toBe(0o700);
   });
 
-  it("test_idempotent", () => {
+  it("is idempotent", () => {
+    // python: test_idempotent
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     ensureAccountDir("foo");
     const path = ensureAccountDir("foo");
     expect(statSync(path).isDirectory()).toBe(true);
   });
 
-  it("test_rejects_invalid_name", () => {
+  it("rejects an invalid account name", () => {
+    // python: test_rejects_invalid_name
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     expect(() => ensureAccountDir("../etc")).toThrow(ParamValidationError);
   });
 });
 
-describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
-  itPosix("test_read_symlinked_tokens_returns_none_and_warns", () => {
-    const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
-    const attacker = join(tmp, "attacker.json");
-    mkdirSync(tmp, { recursive: true });
-    writeFileSync(attacker, '{"access_token":"stolen"}', { encoding: "utf8" });
-    chmodSync(attacker, 0o600);
-    const { logger, lines } = recordingLogger();
-    const storage = new OAuthStorage({ logger });
-    storage.ensureDir();
-    const target = storage.tokensPath("us");
-    symlinkSync(attacker, target);
-
-    expect(storage.loadTokens("us")).toBeNull();
-    expect(
-      lines.some(
-        (line) =>
-          line.toLowerCase().includes("symlink") ||
-          line.toLowerCase().includes("refusing"),
-      ),
-    ).toBe(true);
-  });
-
-  itPosix(
-    "test_check_and_fix_permissions_does_not_chmod_through_symlink",
+describe("OAuthStorage symlink rejection", () => {
+  // python: test_storage.py::TestOAuthStorageSymlinkRejection
+  it.skipIf(!POSIX)(
+    "loadTokens returns null and warns for a symlinked tokens file",
     () => {
+      // python: test_read_symlinked_tokens_returns_none_and_warns
       const tmp = makeTempDir(cleanups);
-      process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+      vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
+      const attacker = join(tmp, "attacker.json");
+      mkdirSync(tmp, { recursive: true });
+      writeFileSync(attacker, '{"access_token":"stolen"}', {
+        encoding: "utf8",
+      });
+      chmodSync(attacker, 0o600);
+      const { logger, lines } = recordingLogger();
+      const storage = new OAuthStorage({ logger });
+      storage.ensureDir();
+      const target = storage.tokensPath("us");
+      symlinkSync(attacker, target);
+
+      expect(storage.loadTokens("us")).toBeNull();
+      expect(
+        lines.some(
+          (line) =>
+            line.toLowerCase().includes("symlink") ||
+            line.toLowerCase().includes("refusing"),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it.skipIf(!POSIX)(
+    "does not chmod through a symlink when fixing permissions",
+    () => {
+      // python: test_check_and_fix_permissions_does_not_chmod_through_symlink
+      const tmp = makeTempDir(cleanups);
+      vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
       const attacker = join(tmp, "attacker.json");
       writeFileSync(attacker, "x", { encoding: "utf8" });
       chmodSync(attacker, 0o644);
@@ -234,33 +232,37 @@ describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
     },
   );
 
-  itPosix("test_dangling_symlink_returns_none_and_warns", () => {
-    const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
-    const { logger, lines } = recordingLogger();
-    const storage = new OAuthStorage({ logger });
-    storage.ensureDir();
-    const target = storage.tokensPath("us");
-    symlinkSync(join(tmp, "missing.json"), target);
+  it.skipIf(!POSIX)(
+    "loadTokens returns null and warns for a dangling symlink",
+    () => {
+      // python: test_dangling_symlink_returns_none_and_warns
+      const tmp = makeTempDir(cleanups);
+      vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
+      const { logger, lines } = recordingLogger();
+      const storage = new OAuthStorage({ logger });
+      storage.ensureDir();
+      const target = storage.tokensPath("us");
+      symlinkSync(join(tmp, "missing.json"), target);
 
-    expect(storage.loadTokens("us")).toBeNull();
-    expect(
-      lines.some(
-        (line) =>
-          line.toLowerCase().includes("symlink") ||
-          line.toLowerCase().includes("refusing"),
-      ),
-    ).toBe(true);
-  });
+      expect(storage.loadTokens("us")).toBeNull();
+      expect(
+        lines.some(
+          (line) =>
+            line.toLowerCase().includes("symlink") ||
+            line.toLowerCase().includes("refusing"),
+        ),
+      ).toBe(true);
+    },
+  );
 
-  // PYTHON-ONLY (fd-flag hardening dropped, plan §4.2 / packet §2.1):
-  // test_check_and_fix_permissions_uses_fchmod_not_chmod (:275) — the
+  // Python-only (fd-flag hardening is not ported):
+  // test_check_and_fix_permissions_uses_fchmod_not_chmod — the
   // Path.chmod-patch probe asserts the fchmod-on-fd mechanism itself.
   // The lstat-substituted TS repair path IS Path.chmod-shaped by
   // design; the observable repair behavior is locked in
   // auth-storage.test.ts (TestOAuthStorageSecurityHardening).
   //
-  // PYTHON-ONLY: test_windows_skip_does_not_crash (:303) — probes a
+  // Python-only: test_windows_skip_does_not_crash — probes a
   // `delattr(os, "O_NOFOLLOW")` shim; the TS twin's Windows no-op keys
   // on `process.platform` and has no removable attribute to probe.
 });

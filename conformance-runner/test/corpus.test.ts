@@ -1,15 +1,12 @@
-// Full-corpus vitest harness (task TS-5, design D12 reporting): one
-// dynamic `describe` per capability, one `it` per vector id.
-//
-// Verdict handling per D12: `UNPORTED` vectors are SKIPPED (counted, never
-// failing, until their module's port batch is declared done per R10.5);
-// every other non-PASS verdict fails its test. At TS-5 the snapshot
-// contains no authored compat vectors (Python PR-7 had not landed at
-// sync time), so every vector skips as UNPORTED; TS-6 re-syncs the corpus
-// and flips the compat vectors to live PASS assertions.
+// Full-corpus vitest harness: one `describe` per capability, one `it` per
+// vector id. UNPORTED vectors skip (counted); every other non-PASS verdict
+// fails its test.
+
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
 import { createRunnerDeps } from "../src/bindings.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
 import { runVector, vectorCapability } from "../src/runner.js";
@@ -37,16 +34,14 @@ for (const vector of corpus.vectors) {
 
 for (const [capability, vectors] of byCapability) {
   describe(`conformance: ${capability}`, () => {
-    for (const vector of vectors) {
-      it(vector.id, async (ctx) => {
-        const result = await runVector(vector, deps);
-        if (result.verdict === "UNPORTED") {
-          ctx.skip();
-          return;
-        }
-        expect.soft(result.diff ?? "", `verdict ${result.verdict}`).toBe("");
-        expect(result.verdict).toBe("PASS");
-      });
-    }
+    it.for(vectors)("$id", async (vector, { skip }) => {
+      const result = await runVector(vector, deps);
+      if (result.verdict === "UNPORTED") {
+        skip();
+        return;
+      }
+      expect.soft(result.diff ?? "", `verdict ${result.verdict}`).toBe("");
+      expect(result.verdict).toBe("PASS");
+    });
   });
 }

@@ -1,35 +1,29 @@
-// Layer-3 translation — tests/unit/test_api_client_pbt.py → fast-check
-// (Phase-3 packet B4-C1; same strategy shapes). Classes:
-//
-// - ::TestAuthHeaderProperties (:98) — through the real client's
-//   per-request auth path (C1).
-// - ::TestBackoffProperties (:206), ::TestUrlBuildProperties (:336),
-//   ::TestIterJsonlLinesProperties (:537) — these lock B0-owned modules
-//   (`backoff.ts`, `url.ts`, `jsonl.ts`) but were NOT translated at B0
-//   (packet C1 §Layer-3: "translate them HERE against the B0 modules").
-// - ::TestActivityFeedDateRange (:673) → B4-C2 (header exclusion; the
-//   date-range builder is C2 source range).
-//
-// Strategy-shape notes: Hypothesis `st.characters(categories=...)`
-// alphabets translate to explicit alphabets carrying non-ASCII members
-// of the same categories (incl. the non-BMP 𝒳, code-point-safe
-// indexing) — the B2 arbiter M1-PBT precedent; Python `.strip()`
-// filters translate via `pythonStrip` (R11.7).
+// Property tests for the client's auth header round-trip, `calculateBackoff`
+// bounds, `buildUrl` path normalisation and `iterJsonlLines` chunk
+// invariance. Mirrors tests/unit/test_api_client_pbt.py (fast-check for
+// Hypothesis; TestActivityFeedDateRange is in client-queries-pbt.test.ts).
+// Hypothesis category alphabets become explicit alphabets with non-ASCII and non-BMP members.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
   BACKOFF_MAX_SECONDS,
   calculateBackoff,
 } from "../../src/client/backoff.js";
+import { createMixpanelClient } from "../../src/client/client.js";
 import { iterJsonlLines } from "../../src/client/jsonl.js";
 import {
   buildUrl,
   type EndpointKind,
   type Region,
 } from "../../src/client/url.js";
+import { codepoints } from "../../src/compat/codepoint.js";
 import { pythonStrip } from "../../src/compat/index.js";
-import { createMixpanelClient } from "../../src/client/client.js";
-import { makeSession } from "./client-test-helpers.js";
+import {
+  asyncIterableOf,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** Decode a base64 payload to UTF-8 text (the tests' b64decode+decode). */
 function decodeBase64Utf8(encoded: string): string {
@@ -41,9 +35,11 @@ function decodeBase64Utf8(encoded: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-/** Header-safe text: no NUL, no lone surrogates (`unit: "binary"` is
+/**
+ * Header-safe text: no NUL, no lone surrogates (`unit: "binary"` is
  * code-point based), non-blank after Python strip — the `usernames` /
- * `secrets` strategy shape (:45-64). */
+ * `secrets` strategy shape.
+ */
 const credentialText = fc
   .string({ unit: "binary", minLength: 1, maxLength: 100 })
   .filter((s) => !s.includes("\x00"))
@@ -57,8 +53,10 @@ const apiTypeArb = fc.constantFrom<EndpointKind>(
   "app",
 );
 
-describe("TestAuthHeaderProperties", () => {
-  it("test_auth_header_roundtrip", async () => {
+describe("Auth header properties", () => {
+  // python: TestAuthHeaderProperties
+  it("auth header roundtrip", async () => {
+    // python: test_auth_header_roundtrip
     await fc.assert(
       fc.asyncProperty(
         credentialText,
@@ -89,7 +87,8 @@ describe("TestAuthHeaderProperties", () => {
     );
   });
 
-  it("test_auth_header_handles_colons_in_username", async () => {
+  it("auth header handles colons in username", async () => {
+    // python: test_auth_header_handles_colons_in_username
     const prefix = fc
       .string({ unit: "binary", minLength: 1, maxLength: 20 })
       .filter((s) => !s.includes("\x00"))
@@ -129,8 +128,10 @@ describe("TestAuthHeaderProperties", () => {
   });
 });
 
-describe("TestBackoffProperties", () => {
-  it("test_backoff_within_bounds", () => {
+describe("Backoff properties", () => {
+  // python: TestBackoffProperties
+  it("backoff within bounds", () => {
+    // python: test_backoff_within_bounds
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 20 }), (attempt) => {
         const delay = calculateBackoff(attempt, Math.random);
@@ -147,7 +148,8 @@ describe("TestBackoffProperties", () => {
     );
   });
 
-  it("test_backoff_caps_at_60_seconds_base", () => {
+  it("backoff caps at 60 seconds base", () => {
+    // python: test_backoff_caps_at_60_seconds_base
     fc.assert(
       fc.property(fc.integer({ min: 10, max: 100 }), (attempt) => {
         const delay = calculateBackoff(attempt, Math.random);
@@ -158,7 +160,8 @@ describe("TestBackoffProperties", () => {
     );
   });
 
-  it("test_backoff_monotonically_increasing_base", () => {
+  it("backoff monotonically increasing base", () => {
+    // python: test_backoff_monotonically_increasing_base
     fc.assert(
       fc.property(
         fc.integer({ min: 0, max: 5 }),
@@ -176,14 +179,16 @@ describe("TestBackoffProperties", () => {
   });
 });
 
-// `url_paths` alphabet (:80-87): categories L/N plus "/-_." — mirrored
+// `url_paths` alphabet: categories L/N plus "/-_." — mirrored
 // with non-ASCII L/N members (é Ω ٤ ㅎ) and the non-BMP 𝒳 (category L),
 // drawn per CODE POINT so surrogate halves never split.
 const URL_PATH_ALPHABET = [
-  ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-  ..."éΩ٤ㅎ",
+  ...codepoints(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  ),
+  ...codepoints("éΩ٤ㅎ"),
   "𝒳",
-  ..."/-_.",
+  ...codepoints("/-_."),
 ];
 
 const urlPathArb = fc
@@ -198,8 +203,10 @@ function lstripSlashes(path: string): string {
   return path.replace(/^\/+/, "");
 }
 
-describe("TestUrlBuildProperties", () => {
-  it("test_url_path_normalization_idempotent", () => {
+describe("URL build properties", () => {
+  // python: TestUrlBuildProperties
+  it("URL path normalization idempotent", () => {
+    // python: test_url_path_normalization_idempotent
     fc.assert(
       fc.property(
         apiTypeArb,
@@ -217,7 +224,8 @@ describe("TestUrlBuildProperties", () => {
     );
   });
 
-  it("test_url_contains_path", () => {
+  it("URL contains path", () => {
+    // python: test_url_contains_path
     fc.assert(
       fc.property(
         apiTypeArb,
@@ -233,7 +241,8 @@ describe("TestUrlBuildProperties", () => {
     );
   });
 
-  it("test_url_starts_with_https", () => {
+  it("URL starts with HTTPS", () => {
+    // python: test_url_starts_with_https
     fc.assert(
       fc.property(
         apiTypeArb,
@@ -250,20 +259,21 @@ describe("TestUrlBuildProperties", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// TestIterJsonlLinesProperties — chunk-boundary invariance of the B0
-// jsonl splitter (the core bug the Python module fixed).
-// ---------------------------------------------------------------------------
+// --- Iter JSONL lines properties: chunk-boundary invariance of the splitter ---
 
-/** `json_line_content` alphabet (:514-528): L/N/P/S categories plus
- * '{}[]":, ', minus newlines — mirrored with non-ASCII members (§ ± 𝒳)
- * per the strategy-shape rule. */
+/**
+ * `json_line_content` alphabet: L/N/P/S categories plus the JSON
+ * punctuation `{}[]":,` and space, minus newlines — mirrored with
+ * non-ASCII members (§ ± 𝒳).
+ */
 const LINE_ALPHABET = [
-  ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-  ..."!#$%&'()*+-./;<=>?@\\^_`|~",
-  ..."§±éΩ",
+  ...codepoints(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  ),
+  ...codepoints("!#$%&'()*+-./;<=>?@\\^_`|~"),
+  ...codepoints("§±éΩ"),
   "𝒳",
-  ...'{}[]":, ',
+  ...codepoints('{}[]":, '),
 ];
 
 const jsonLineContent = fc
@@ -280,7 +290,7 @@ const chunkPositions = fc.array(fc.integer({ min: 0, max: 1000 }), {
   maxLength: 20,
 });
 
-/** `_split_bytes_at_positions` (:469-491). */
+/** `_split_bytes_at_positions`. */
 function splitBytesAtPositions(
   data: Uint8Array,
   positions: readonly number[],
@@ -302,15 +312,11 @@ function splitBytesAtPositions(
   return data.length > 0 ? [data] : [new Uint8Array(0)];
 }
 
-/** `_collect_lines_from_chunks` (:494-511) over the B0 splitter. */
+/** `_collect_lines_from_chunks` over `iterJsonlLines`. */
 async function collectLinesFromChunks(
   chunks: readonly Uint8Array[],
 ): Promise<string[]> {
-  const source = (async function* (): AsyncIterable<Uint8Array> {
-    for (const chunk of chunks) {
-      yield chunk;
-    }
-  })();
+  const source = asyncIterableOf(chunks);
   const lines: string[] = [];
   for await (const line of iterJsonlLines(source)) {
     lines.push(line);
@@ -318,8 +324,10 @@ async function collectLinesFromChunks(
   return lines;
 }
 
-describe("TestIterJsonlLinesProperties", () => {
-  it("test_chunk_invariance", async () => {
+describe("Iter JSONL lines properties", () => {
+  // python: TestIterJsonlLinesProperties
+  it("chunk invariance", async () => {
+    // python: test_chunk_invariance
     await fc.assert(
       fc.asyncProperty(
         jsonlDocuments,
@@ -331,27 +339,29 @@ describe("TestIterJsonlLinesProperties", () => {
           const chunks = splitBytesAtPositions(contentBytes, splitPositions);
           const chunkedLines = await collectLinesFromChunks(chunks);
           // Output should be identical regardless of chunking.
-          expect(chunkedLines).toEqual(referenceLines);
+          expect(chunkedLines).toStrictEqual(referenceLines);
         },
       ),
       { numRuns: 100 },
     );
   });
 
-  it("test_content_preservation", async () => {
+  it("content preservation", async () => {
+    // python: test_content_preservation
     await fc.assert(
       fc.asyncProperty(jsonlDocuments, async (lines) => {
         const content = `${lines.join("\n")}\n`;
         const contentBytes = new TextEncoder().encode(content);
         const outputLines = await collectLinesFromChunks([contentBytes]);
         // All input lines should appear in output.
-        expect(outputLines).toEqual(lines);
+        expect(outputLines).toStrictEqual(lines);
       }),
       { numRuns: 50 },
     );
   });
 
-  it("test_never_raises_on_arbitrary_bytes", async () => {
+  it("never raises on arbitrary bytes", async () => {
+    // python: test_never_raises_on_arbitrary_bytes
     await fc.assert(
       fc.asyncProperty(fc.uint8Array({ maxLength: 500 }), async (data) => {
         // Should not raise any exception (errors='replace' decoding).
@@ -365,7 +375,8 @@ describe("TestIterJsonlLinesProperties", () => {
     );
   });
 
-  it("test_byte_by_byte_chunking", async () => {
+  it("byte by byte chunking", async () => {
+    // python: test_byte_by_byte_chunking
     await fc.assert(
       fc.asyncProperty(jsonlDocuments, async (lines) => {
         const content = `${lines.join("\n")}\n`;
@@ -376,7 +387,7 @@ describe("TestIterJsonlLinesProperties", () => {
           (byte) => new Uint8Array([byte]),
         );
         const outputLines = await collectLinesFromChunks(byteChunks);
-        expect(outputLines).toEqual(lines);
+        expect(outputLines).toStrictEqual(lines);
       }),
       { numRuns: 30 },
     );

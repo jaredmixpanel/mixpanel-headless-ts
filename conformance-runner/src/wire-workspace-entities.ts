@@ -1,104 +1,81 @@
 /**
- * B6 (b′) binding module — the 143 W2–W8 `workspace.<member>` entity
- * api names (b6-packets.md §11.3: sibling of `wire-workspace.ts`,
- * which owns the B5 names + the 11 B6-W1 lifecycle names and the
- * shared `workspaceFromSession` / `runFacade` / `optionsBag` plumbing).
+ * `workspace.<member>` entity bindings: dashboards, bookmarks and
+ * cohorts, feature flags and experiments, annotations/webhooks/alerts,
+ * lexicon definitions, drop filters/custom properties/lookup
+ * tables/custom events, and schema registry/enforcement/audit/anomalies/
+ * deletion requests. The sibling `wire-workspace.ts` owns the query and
+ * lifecycle members and the shared `workspaceFromSession` / `runFacade`
+ * / `optionsBag` plumbing.
  *
- * Binding honesty (P3-5 rule 3 / §11.4): every registration calls the
- * REAL `Workspace` member the recorder wrapped
- * (`registry.py` targets `workspace:Workspace.<name>`) — never the
- * underlying client method, never a re-derived flatten. The ONLY
- * adaptations are positional pulls (`requireWireKwarg` — the runner's
- * `decodeInputKwargs` has already reconstructed `$type`-tagged params
- * payloads into the real Phase-2 entity-params instances) and kwonly →
- * options-bag plumbing (`optionsBag` — Python kwonly names ARE the TS
- * option keys). Output encoding rides `runFacade` →
- * `encodeFacadeValue`: entity models serialize through their
- * `toVectorPayload()` walk (datetime `$type` tags kept), lossless
- * `JsonNumber` tokens keep their recorded spellings, and
- * `Uint8Array` results (`download_lookup_table`) encode through the
- * codec registry's `$type: bytes` branch.
- *
- * Kinds: all 143 names are **wire_api** (`registry.py:99-104` — the
- * only `_WORKSPACE_STATE_NAMES` entries are `use`/`close`/
- * `clear_discovery_cache`, none of which live here). B6 adds ZERO
- * builder-kind apis, so there is no oracle-strategy registration in
- * this module (b6-packets.md §11.5).
+ * Every registration calls the real `Workspace` member the recorder
+ * wrapped (`conformance.record.registry` targets
+ * `workspace:Workspace.<name>`) — never the underlying client method,
+ * never a re-derived flatten. The only adaptations are positional pulls
+ * (`requireWireKwarg` — the runner's `decodeInputKwargs` has already
+ * reconstructed `$type`-tagged params payloads into the real
+ * entity-params instances) and kwonly → options-bag plumbing
+ * (`optionsBag` — Python kwonly names are the TS option keys). Output
+ * encoding rides `runFacade` → `encodeFacadeValue`: entity models
+ * serialize through their `toVectorPayload()` walk (datetime `$type`
+ * tags kept), lossless `JsonNumber` tokens keep their recorded
+ * spellings, and `Uint8Array` results (`download_lookup_table`) encode
+ * through the codec registry's `$type: bytes` branch. Every name here is
+ * wire_api (the only `_WORKSPACE_STATE_NAMES` are
+ * `use`/`close`/`clear_discovery_cache`, which live in the sibling), so
+ * this module registers no oracle strategies.
  */
 
 import type {
   BlueprintFinishParams,
-  CreateDashboardParams,
-  CreateRcaDashboardParams,
-  UpdateDashboardParams,
-  UpdateReportLinkParams,
-  UpdateTextCardParams,
-} from "../../packages/core/src/types/entities/dashboards.js";
-import type {
-  BulkUpdateBookmarkEntry,
-  CreateBookmarkParams,
-  UpdateBookmarkParams,
-} from "../../packages/core/src/types/entities/bookmarks.js";
-import type {
-  BulkUpdateCohortEntry,
-  CreateCohortParams,
-  UpdateCohortParams,
-} from "../../packages/core/src/types/entities/cohorts.js";
-import type {
-  CreateFeatureFlagParams,
-  SetTestUsersParams,
-  UpdateFeatureFlagParams,
-} from "../../packages/core/src/types/entities/feature-flags.js";
-import type {
-  CreateExperimentParams,
-  DuplicateExperimentParams,
-  ExperimentDecideParams,
-  UpdateExperimentParams,
-} from "../../packages/core/src/types/entities/experiments.js";
-import type {
-  CreateAnnotationParams,
-  CreateAnnotationTagParams,
-  UpdateAnnotationParams,
-} from "../../packages/core/src/types/entities/annotations.js";
-import type {
-  CreateWebhookParams,
-  UpdateWebhookParams,
-  WebhookTestParams,
-} from "../../packages/core/src/types/entities/webhooks.js";
-import type {
-  CreateAlertParams,
-  UpdateAlertParams,
-  ValidateAlertsForBookmarkParams,
-} from "../../packages/core/src/types/entities/alerts.js";
-import type {
-  BulkUpdateEventsParams,
-  BulkUpdatePropertiesParams,
-  CreateTagParams,
-  UpdateEventDefinitionParams,
-  UpdatePropertyDefinitionParams,
-  UpdateTagParams,
-} from "../../packages/core/src/types/entities/lexicon.js";
-import type {
-  CreateCustomEventParams,
-  CreateCustomPropertyParams,
-  CreateDropFilterParams,
-  MarkLookupTableReadyParams,
-  UpdateCustomPropertyParams,
-  UpdateDropFilterParams,
-  UpdateLookupTableParams,
-  UploadLookupTableParams,
-} from "../../packages/core/src/types/entities/data-governance.js";
-import type {
   BulkCreateSchemasParams,
   BulkUpdateAnomalyParams,
+  BulkUpdateBookmarkEntry,
+  BulkUpdateCohortEntry,
+  BulkUpdateEventsParams,
+  BulkUpdatePropertiesParams,
+  CreateAlertParams,
+  CreateAnnotationParams,
+  CreateAnnotationTagParams,
+  CreateBookmarkParams,
+  CreateCohortParams,
+  CreateCustomEventParams,
+  CreateCustomPropertyParams,
+  CreateDashboardParams,
   CreateDeletionRequestParams,
+  CreateDropFilterParams,
+  CreateExperimentParams,
+  CreateFeatureFlagParams,
+  CreateRcaDashboardParams,
+  CreateTagParams,
+  CreateWebhookParams,
+  DuplicateExperimentParams,
+  ExperimentDecideParams,
   InitSchemaEnforcementParams,
+  MarkLookupTableReadyParams,
   PreviewDeletionFiltersParams,
   ReplaceSchemaEnforcementParams,
+  SetTestUsersParams,
+  UpdateAlertParams,
+  UpdateAnnotationParams,
   UpdateAnomalyParams,
+  UpdateBookmarkParams,
+  UpdateCohortParams,
+  UpdateCustomPropertyParams,
+  UpdateDashboardParams,
+  UpdateDropFilterParams,
+  UpdateEventDefinitionParams,
+  UpdateExperimentParams,
+  UpdateFeatureFlagParams,
+  UpdateLookupTableParams,
+  UpdatePropertyDefinitionParams,
+  UpdateReportLinkParams,
   UpdateSchemaEnforcementParams,
-} from "../../packages/core/src/types/entities/schemas.js";
-import type {
+  UpdateTagParams,
+  UpdateTextCardParams,
+  UpdateWebhookParams,
+  UploadLookupTableParams,
+  ValidateAlertsForBookmarkParams,
+  WebhookTestParams,
   Workspace,
   WorkspaceConcludeExperimentOptions,
   WorkspaceDeleteSchemasOptions,
@@ -123,9 +100,10 @@ import type {
   WorkspaceListLookupTablesOptions,
   WorkspaceListSchemaRegistryOptions,
   WorkspaceUploadLookupTableOptions,
-} from "../../packages/core/src/workspace.js";
-import { EntityModel } from "../../packages/core/src/types/entities/model-base.js";
-import { PyFloat, type CodecRegistry } from "./codecs.js";
+} from "@mixpanel-headless/core";
+import { EntityModel } from "@mixpanel-headless/core/internal";
+
+import { type CodecRegistry, PyFloat } from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { requireWireKwarg } from "./wire-client.js";
@@ -138,33 +116,34 @@ import {
 declare global {
   interface JSON {
     /**
-     * TC39 raw-JSON proposal (Node ≥ 21; present on this repo's Node 24
-     * toolchain) — absent from the pinned `ES2022` lib, declared here
+     * TC39 raw-JSON proposal (Node ≥ 21; present on this repo's Node
+     * toolchain) — absent from the pinned TypeScript lib, declared here
      * for the rig only.
      *
      * @param text - A valid JSON scalar token.
      * @returns The branded raw-JSON marker `JSON.stringify` emits
      *   verbatim.
      */
-    rawJSON(text: string): unknown;
+    rawJSON: (text: string) => unknown;
   }
 }
 
 /**
  * Input-codec float twin for entity-params payloads (the request-side
- * counterpart of the B5 output float twins; Discrepancy #12 mechanics).
+ * counterpart of the output float twins in `wire-workspace.ts`).
  *
- * The recorder tags INTEGRAL floats inside rich (`$type`-tagged model)
- * payloads as `{$type: "float", value: repr}` (`codecs.py:185-207`), and
- * the runner decodes those tags to {@link PyFloat} carriers. Python's
+ * The recorder tags integral floats inside rich (`$type`-tagged model)
+ * payloads as `{$type: "float", value: repr}`
+ * (`conformance.record.codecs`), and the runner decodes those tags to
+ * {@link PyFloat} carriers. Python's
  * replay passes a real `float` whose `json.dumps` spelling is exactly
  * that repr (`1.0`, not `1`); a native JS number cannot carry the
  * spelling through `JSON.stringify`, so a leaked carrier would either
  * serialize as `{"spelling":"1.0"}` (the raw class) or collapse to `1`
  * (native) — both diverge from the recorded request bytes under the
- * D6 rule-3 raw-token comparison (`request-diff.ts:19-20`; the corpus
- * carries exactly two such vectors, both `workspace.create_feature_flag`
- * ruleset splits). Instances of this wrapper travel OPAQUELY through
+ * raw-token comparison in `request-diff.ts` (the corpus carries exactly
+ * two such vectors, both `workspace.create_feature_flag` ruleset
+ * splits). Instances of this wrapper travel opaquely through
  * the real facade/model-dump/transport path (class instances pass
  * `dumpValue` by reference) and re-emit the recorded token at the one
  * legal place — `JSON.stringify` inside the core transport — via the
@@ -209,7 +188,7 @@ function isWalkableRecord(value: object): value is Record<string, unknown> {
 
 /**
  * Deep-replace finite {@link PyFloat} carriers with {@link WireRawFloat}
- * wrappers, IN PLACE, across arrays, plain records, and entity-model
+ * wrappers, in place, across arrays, plain records, and entity-model
  * instances (own enumerable fields incl. the `__extras` spillover bag).
  * Non-finite carriers (`NaN`/`Infinity`) stay untouched — they are not
  * valid JSON tokens and no corpus vector routes one into a request
@@ -230,10 +209,10 @@ function twinPyFloatsInPlace(value: unknown, seen: Set<object>): void {
   if (Array.isArray(value)) {
     for (let index = 0; index < value.length; index += 1) {
       const replaced = twin(value[index]);
-      if (replaced !== value[index]) {
-        value[index] = replaced;
-      } else {
+      if (replaced === value[index]) {
         twinPyFloatsInPlace(value[index], seen);
+      } else {
+        value[index] = replaced;
       }
     }
     return;
@@ -243,10 +222,10 @@ function twinPyFloatsInPlace(value: unknown, seen: Set<object>): void {
     for (const key of Object.keys(record)) {
       const member: unknown = record[key];
       const replaced = twin(member);
-      if (replaced !== member) {
-        record[key] = replaced;
-      } else {
+      if (replaced === member) {
         twinPyFloatsInPlace(member, seen);
+      } else {
+        record[key] = replaced;
       }
     }
   }
@@ -254,7 +233,7 @@ function twinPyFloatsInPlace(value: unknown, seen: Set<object>): void {
 
 /**
  * One facade-member invocation: receives the vector's memoized facade
- * and its context, performs the REAL member call, and returns the raw
+ * and its context, performs the real member call, and returns the raw
  * library value (encoding is `runFacade`'s job).
  */
 type FacadeCall = (
@@ -279,10 +258,9 @@ function bindFacade(
 ): void {
   implementations.register(api, async (context): Promise<JsonValue> => {
     const ws = workspaceFromSession(context);
-    // Request-side float twin (see {@link WireRawFloat}): applied to
-    // the decoded kwargs BEFORE the real member call so tagged
-    // integral floats inside entity-params payloads keep their
-    // recorded wire spelling.
+    // Request-side float twin (see WireRawFloat): applied to the decoded
+    // kwargs before the real member call so tagged integral floats
+    // inside entity-params payloads keep their recorded wire spelling.
     const seen = new Set<object>();
     for (const kwarg of Object.values(context.kwargs)) {
       twinPyFloatsInPlace(kwarg, seen);
@@ -292,19 +270,24 @@ function bindFacade(
 }
 
 /**
- * Register the 143 W2–W8 `workspace.<member>` entity bindings
- * (b6-packets.md §11.1 minus the 11 W1 names registered in
- * `wire-workspace.ts`).
+ * Register the `workspace.<member>` entity bindings.
  *
  * @param implementations - The registry to extend.
  * @param codecs - The codec registry (output encoding + rich inputs).
+ * @example
+ * ```ts
+ * const implementations = new ImplementationRegistry();
+ * const codecs = new CodecRegistry();
+ * registerWorkspaceEntityBindings(implementations, codecs);
+ * ```
  */
+// eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerWorkspaceEntityBindings(
   implementations: ImplementationRegistry,
   codecs: CodecRegistry,
 ): void {
   /**
-   * Shard-local shorthand over {@link bindFacade}.
+   * Local shorthand over {@link bindFacade}.
    *
    * @param api - The recorder api name.
    * @param call - The real facade-member invocation.
@@ -313,9 +296,7 @@ export function registerWorkspaceEntityBindings(
     bindFacade(implementations, codecs, api, call);
   };
 
-  // -------------------------------------------------------------------
-  // W2 — dashboards: CRUD + advanced operations (22)
-  // -------------------------------------------------------------------
+  // --- Dashboards: CRUD + advanced operations ---
 
   bind("workspace.list_dashboards", (ws, c) =>
     ws.listDashboards(optionsBag<WorkspaceListDashboardsOptions>(c, [])),
@@ -409,9 +390,7 @@ export function registerWorkspaceEntityBindings(
     ),
   );
 
-  // -------------------------------------------------------------------
-  // W3 — bookmarks/reports + cohorts (16)
-  // -------------------------------------------------------------------
+  // --- Bookmarks/reports + cohorts ---
 
   bind("workspace.list_bookmarks_v2", (ws, c) =>
     ws.listBookmarksV2(optionsBag<WorkspaceListBookmarksV2Options>(c, [])),
@@ -475,9 +454,7 @@ export function registerWorkspaceEntityBindings(
     ),
   );
 
-  // -------------------------------------------------------------------
-  // W4 — feature flags + experiments (23)
-  // -------------------------------------------------------------------
+  // --- Feature flags + experiments ---
 
   bind("workspace.list_feature_flags", (ws, c) =>
     ws.listFeatureFlags(optionsBag<WorkspaceListFeatureFlagsOptions>(c, [])),
@@ -570,9 +547,7 @@ export function registerWorkspaceEntityBindings(
   );
   bind("workspace.list_erf_experiments", (ws) => ws.listErfExperiments());
 
-  // -------------------------------------------------------------------
-  // W5 — annotations + webhooks + alerts (23)
-  // -------------------------------------------------------------------
+  // --- Annotations + webhooks + alerts ---
 
   bind("workspace.list_annotations", (ws, c) =>
     ws.listAnnotations(optionsBag<WorkspaceListAnnotationsOptions>(c, [])),
@@ -658,9 +633,7 @@ export function registerWorkspaceEntityBindings(
     ),
   );
 
-  // -------------------------------------------------------------------
-  // W6 — lexicon data definitions + tracking & history (15)
-  // -------------------------------------------------------------------
+  // --- Lexicon data definitions + tracking & history ---
 
   bind("workspace.get_event_definitions", (ws, c) =>
     ws.getEventDefinitions(
@@ -726,10 +699,7 @@ export function registerWorkspaceEntityBindings(
     ws.exportLexicon(optionsBag<WorkspaceExportLexiconOptions>(c, [])),
   );
 
-  // -------------------------------------------------------------------
-  // W7 — drop filters + custom properties + lookup tables +
-  //      custom events (24)
-  // -------------------------------------------------------------------
+  // --- Drop filters + custom properties + lookup tables + custom events ---
 
   bind("workspace.list_drop_filters", (ws) => ws.listDropFilters());
   bind("workspace.create_drop_filter", (ws, c) =>
@@ -830,10 +800,7 @@ export function registerWorkspaceEntityBindings(
     ws.deleteCustomEvent(requireWireKwarg(c, "custom_event_id") as number),
   );
 
-  // -------------------------------------------------------------------
-  // W8 — schema registry + enforcement + audit + anomalies +
-  //      deletion requests (20)
-  // -------------------------------------------------------------------
+  // --- Schema registry + enforcement + audit + anomalies + deletion requests ---
 
   bind("workspace.list_schema_registry", (ws, c) =>
     ws.listSchemaRegistry(

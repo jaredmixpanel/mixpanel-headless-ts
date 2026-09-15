@@ -1,32 +1,19 @@
-// Translated retention-transform tests (B5-S2, packet §3 + §8): the
-// B3-K3 deferral (`B3-K3-notes.md:85-92`) — assertion-for-assertion port
-// of tests/test_transform_retention.py (R10.2), ALL 6 classes
-// (TestTransformRetentionBasic :62, TestTransformRetentionErrors :138,
-// TestTransformRetentionNonDictSeries :321,
-// TestTransformRetentionSegments :407,
-// TestTransformRetentionDateNormalization :469,
-// TestTransformRetentionFormatVariations :538).
-//
-// Translation notes:
-// - `_transform_retention_result` is {@link transformRetentionResult} in
-//   `services/live-query-transforms.ts` (R7.2 split).
-// - `_mock_response(**overrides)` becomes {@link mockResponse}; the
-//   `del raw["key"]` cases build the record without that key (a JS
-//   `delete` on a fresh literal is equivalent, but omitting is clearer
-//   and identical to Python's post-delete dict).
-// - The regex `match=` strings translate verbatim as JS regexes;
-//   `series.*list.*expected dict` relies on the same single-line text.
-// - `sorted(result.segments.keys())` is code-point ordered (R11.5), so
-//   the expected `["Android", "iOS"]` order holds ("A" < "i").
+// transformRetentionResult: cohort / average extraction, QueryError paths,
+// non-dict series rejection, segments, cohort-key date normalization and
+// format variations. Mirrors tests/test_transform_retention.py (all six
+// classes). `del raw[key]` cases build the record without the key; Python's
+// `sorted(keys)` is code-point order, so ["Android", "iOS"] holds.
 
 import { describe, expect, it } from "vitest";
-import { transformRetentionResult } from "../../src/services/live-query-transforms.js";
-import { QueryError } from "../../src/errors.js";
-import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
+
 import { sortedByCodepoint } from "../../src/compat/codepoint.js";
+import { QueryError } from "../../src/errors.js";
+import { transformRetentionResult } from "../../src/services/live-query-transforms.js";
+import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 // ===========================================================================
-// Shared fixtures (test_transform_retention.py:13-52)
+// Shared fixtures (test_transform_retention.py)
 // ===========================================================================
 
 const BOOKMARK_PARAMS: Record<string, unknown> = {
@@ -36,7 +23,7 @@ const BOOKMARK_PARAMS: Record<string, unknown> = {
 
 /**
  * Build a mock retention API response with sensible defaults
- * (`_mock_response`, test_transform_retention.py:20-52).
+ * (`_mock_response`, test_transform_retention.py).
  *
  * @param overrides - Keys to override in the default response dict.
  * @returns A record mimicking the retention query response shape.
@@ -64,10 +51,11 @@ function mockResponse(
 }
 
 // ===========================================================================
-// TestTransformRetentionBasic (T017)
+// Basic extraction
 // ===========================================================================
 
-describe("TestTransformRetentionBasic", () => {
+describe("Transform retention basic", () => {
+  // python: TestTransformRetentionBasic
   it("return type is RetentionQueryResult", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     expect(result).toBeInstanceOf(RetentionQueryResult);
@@ -92,22 +80,22 @@ describe("TestTransformRetentionBasic", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     expect(Object.hasOwn(result.cohorts, "2025-01-01")).toBe(true);
     expect(Object.hasOwn(result.cohorts, "2025-01-02")).toBe(true);
-    expect(Object.keys(result.cohorts).length).toBe(2);
+    expect(Object.keys(result.cohorts)).toHaveLength(2);
   });
 
   it("each cohort entry contains first, counts and rates", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     const cohort = result.cohorts["2025-01-01"]!;
     expect(cohort["first"]).toBe(100);
-    expect(cohort["counts"]).toEqual([100, 50, 25]);
-    expect(cohort["rates"]).toEqual([1.0, 0.5, 0.25]);
+    expect(cohort["counts"]).toStrictEqual([100, 50, 25]);
+    expect(cohort["rates"]).toStrictEqual([1.0, 0.5, 0.25]);
   });
 
   it("average is extracted from series['$average']", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     expect(result.average["first"]).toBe(90);
-    expect(result.average["counts"]).toEqual([90, 45, 22]);
-    expect(result.average["rates"]).toEqual([1.0, 0.5, 0.244]);
+    expect(result.average["counts"]).toStrictEqual([90, 45, 22]);
+    expect(result.average["rates"]).toStrictEqual([1.0, 0.5, 0.244]);
   });
 
   it("$average does not appear in the cohorts dict", () => {
@@ -117,20 +105,21 @@ describe("TestTransformRetentionBasic", () => {
 
   it("params preserves the bookmark_params argument", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
-    expect(result.params).toEqual(BOOKMARK_PARAMS);
+    expect(result.params).toStrictEqual(BOOKMARK_PARAMS);
   });
 
   it("meta is extracted from raw['meta']", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
-    expect(result.meta).toEqual({ sampling_factor: 1.0 });
+    expect(result.meta).toStrictEqual({ sampling_factor: 1.0 });
   });
 });
 
 // ===========================================================================
-// TestTransformRetentionErrors (T018)
+// Errors
 // ===========================================================================
 
-describe("TestTransformRetentionErrors", () => {
+describe("Transform retention errors", () => {
+  // python: TestTransformRetentionErrors
   it("response containing 'error' raises QueryError with the message", () => {
     const errorResponse: Record<string, unknown> = { error: "invalid query" };
     expect(() =>
@@ -143,23 +132,21 @@ describe("TestTransformRetentionErrors", () => {
 
   it("QueryError from an error response has statusCode 200", () => {
     const errorResponse: Record<string, unknown> = { error: "bad params" };
-    try {
-      transformRetentionResult(errorResponse, BOOKMARK_PARAMS);
-      expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(QueryError);
-      expect((exc as QueryError).statusCode).toBe(200);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, BOOKMARK_PARAMS),
+      "expected QueryError",
+    );
+    expect(error).toBeInstanceOf(QueryError);
+    expect((error as QueryError).statusCode).toBe(200);
   });
 
   it("QueryError includes the raw response as responseBody", () => {
     const errorResponse: Record<string, unknown> = { error: "timeout" };
-    try {
-      transformRetentionResult(errorResponse, BOOKMARK_PARAMS);
-      expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect((exc as QueryError).responseBody).toEqual(errorResponse);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, BOOKMARK_PARAMS),
+      "expected QueryError",
+    );
+    expect((error as QueryError).responseBody).toStrictEqual(errorResponse);
   });
 
   it("QueryError includes bookmark_params as requestBody", () => {
@@ -167,12 +154,11 @@ describe("TestTransformRetentionErrors", () => {
     const params: Record<string, unknown> = {
       sections: { filters: "invalid" },
     };
-    try {
-      transformRetentionResult(errorResponse, params);
-      expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect((exc as QueryError).requestBody).toEqual(params);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, params),
+      "expected QueryError",
+    );
+    expect((error as QueryError).requestBody).toStrictEqual(params);
   });
 
   it("missing series raises QueryError", () => {
@@ -192,8 +178,8 @@ describe("TestTransformRetentionErrors", () => {
   it("empty series produces empty cohorts", () => {
     const raw = mockResponse({ series: {} });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.cohorts).toEqual({});
-    expect(result.average).toEqual({});
+    expect(result.cohorts).toStrictEqual({});
+    expect(result.average).toStrictEqual({});
   });
 
   it("multiple top-level series keys raise QueryError", () => {
@@ -278,10 +264,11 @@ describe("TestTransformRetentionErrors", () => {
 });
 
 // ===========================================================================
-// TestTransformRetentionNonDictSeries (T056)
+// Non-dict series
 // ===========================================================================
 
-describe("TestTransformRetentionNonDictSeries", () => {
+describe("Transform retention non dict series", () => {
+  // python: TestTransformRetentionNonDictSeries
   it("series=[] raises QueryError with a descriptive message", () => {
     const raw = mockResponse({ series: [] });
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
@@ -338,7 +325,7 @@ describe("TestTransformRetentionNonDictSeries", () => {
 });
 
 // ===========================================================================
-// TestTransformRetentionSegments (T055)
+// Segments
 // ===========================================================================
 
 const SEGMENTED_SERIES: Record<string, unknown> = {
@@ -358,11 +345,12 @@ const SEGMENTED_SERIES: Record<string, unknown> = {
   },
 };
 
-describe("TestTransformRetentionSegments", () => {
+describe("Transform retention segments", () => {
+  // python: TestTransformRetentionSegments
   it("segment names match the response keys (excluding $overall)", () => {
     const raw = mockResponse({ series: SEGMENTED_SERIES });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(sortedByCodepoint(Object.keys(result.segments))).toEqual([
+    expect(sortedByCodepoint(Object.keys(result.segments))).toStrictEqual([
       "Android",
       "iOS",
     ]);
@@ -374,8 +362,8 @@ describe("TestTransformRetentionSegments", () => {
 
     const iosCohort = result.segments["iOS"]!["2025-01-01"]!;
     expect(iosCohort["first"]).toBe(120);
-    expect(iosCohort["counts"]).toEqual([120, 60]);
-    expect(iosCohort["rates"]).toEqual([1.0, 0.5]);
+    expect(iosCohort["counts"]).toStrictEqual([120, 60]);
+    expect(iosCohort["rates"]).toStrictEqual([1.0, 0.5]);
   });
 
   it("$average within each segment goes to segment_averages", () => {
@@ -388,8 +376,8 @@ describe("TestTransformRetentionSegments", () => {
 
   it("unsegmented response has an empty segments dict", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
-    expect(result.segments).toEqual({});
-    expect(result.segment_averages).toEqual({});
+    expect(result.segments).toStrictEqual({});
+    expect(result.segment_averages).toStrictEqual({});
   });
 
   it("$overall with no named segments has empty segments", () => {
@@ -403,16 +391,17 @@ describe("TestTransformRetentionSegments", () => {
       },
     });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.segments).toEqual({});
-    expect(result.segment_averages).toEqual({});
+    expect(result.segments).toStrictEqual({});
+    expect(result.segment_averages).toStrictEqual({});
   });
 });
 
 // ===========================================================================
-// TestTransformRetentionDateNormalization (T056)
+// Date normalization
 // ===========================================================================
 
-describe("TestTransformRetentionDateNormalization", () => {
+describe("Transform retention date normalization", () => {
+  // python: TestTransformRetentionDateNormalization
   it("ISO timestamp cohort keys are normalized to YYYY-MM-DD", () => {
     const raw = mockResponse({
       series: {
@@ -471,13 +460,14 @@ describe("TestTransformRetentionDateNormalization", () => {
 });
 
 // ===========================================================================
-// TestTransformRetentionFormatVariations (T054)
+// Format variations
 // ===========================================================================
 
-describe("TestTransformRetentionFormatVariations", () => {
+describe("Transform retention format variations", () => {
+  // python: TestTransformRetentionFormatVariations
   it("direct cohort dict format is parsed correctly", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
-    expect(Object.keys(result.cohorts).length).toBe(2);
+    expect(Object.keys(result.cohorts)).toHaveLength(2);
   });
 
   it("missing date_range produces empty from_date/to_date", () => {
@@ -492,7 +482,7 @@ describe("TestTransformRetentionFormatVariations", () => {
     const raw = mockResponse();
     delete raw["meta"];
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.meta).toEqual({});
+    expect(result.meta).toStrictEqual({});
   });
 
   it("missing computed_at produces an empty string", () => {
@@ -511,8 +501,8 @@ describe("TestTransformRetentionFormatVariations", () => {
       },
     });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.average).toEqual({});
-    expect(Object.keys(result.cohorts).length).toBe(1);
+    expect(result.average).toStrictEqual({});
+    expect(Object.keys(result.cohorts)).toHaveLength(1);
   });
 
   it("single cohort date in series is handled correctly", () => {
@@ -525,14 +515,14 @@ describe("TestTransformRetentionFormatVariations", () => {
       },
     });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(Object.keys(result.cohorts).length).toBe(1);
+    expect(Object.keys(result.cohorts)).toHaveLength(1);
     expect(Object.hasOwn(result.cohorts, "2025-01-01")).toBe(true);
   });
 
   it("empty dict inside the metric wrapper produces empty cohorts", () => {
     const raw = mockResponse({ series: { "Signup and then Login": {} } });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.cohorts).toEqual({});
-    expect(result.average).toEqual({});
+    expect(result.cohorts).toStrictEqual({});
+    expect(result.average).toStrictEqual({});
   });
 });

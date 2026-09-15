@@ -1,9 +1,9 @@
 /**
- * Property-breakdown query-param type — TS port of `types.GroupBy`
- * (phase2-design C7, packet P2-5a).
+ * `GroupBy`: a property breakdown with optional numeric bucketing or a
+ * list-item sub-property breakdown. Constructor guards fire in the Python
+ * `__post_init__` order, one comment per rule code.
  *
- * Guard blocks are transcribed from the Python `__post_init__` IN SOURCE
- * ORDER (Risk #1), one comment per registry code.
+ * @see mixpanel_headless.types.GroupBy
  */
 
 import { pythonStrip } from "../../compat/index.js";
@@ -15,25 +15,57 @@ import { ListItemGroupMode, type PropertySpec } from "./filter.js";
 export interface GroupByFields {
   /** Property to break down by (name, ref, or inline). */
   readonly property: PropertySpec;
-  /** Data type of the property. Default: `"string"`. */
+  /**
+   * Data type of the property.
+   *
+   * @defaultValue `"string"`
+   */
   readonly property_type?: CustomPropertyType;
-  /** Bucket width for numeric properties. Default: `null`. */
+  /**
+   * Bucket width for numeric properties.
+   *
+   * @defaultValue `null`
+   */
   readonly bucket_size?: number | null;
-  /** Minimum value for numeric buckets. Default: `null`. */
+  /**
+   * Minimum value for numeric buckets.
+   *
+   * @defaultValue `null`
+   */
   readonly bucket_min?: number | null;
-  /** Maximum value for numeric buckets. Default: `null`. */
+  /**
+   * Maximum value for numeric buckets.
+   *
+   * @defaultValue `null`
+   */
   readonly bucket_max?: number | null;
-  /** List-item breakdown discriminator. Default: `null`. */
+  /**
+   * List-item breakdown discriminator.
+   *
+   * @defaultValue `null`
+   */
   readonly _list_item_mode?: ListItemGroupMode | null;
 }
 
 /**
- * Specifies a property breakdown with optional numeric bucketing — TS
- * port of `types.GroupBy`.
+ * A property breakdown with optional numeric bucketing.
  *
- * String properties are broken down by distinct values; numeric
+ * String properties are broken down by distinct value; numeric
  * properties can be bucketed into ranges. List-item breakdowns are
  * constructed via {@link listItem}.
+ *
+ * @example
+ * ```ts
+ * const byCountry = new GroupBy({ property: "country" });
+ * const byAge = new GroupBy({
+ *   property: "age",
+ *   property_type: "number",
+ *   bucket_size: 10,
+ *   bucket_min: 0,
+ *   bucket_max: 100,
+ * });
+ * ```
+ * @see mixpanel_headless.types.GroupBy
  */
 export class GroupBy {
   /** Property to break down by (name, ref, or inline). */
@@ -58,27 +90,26 @@ export class GroupBy {
   readonly bucket_max: number | null;
 
   /**
-   * List-item breakdown discriminator; set by {@link listItem}.
+   * List-item breakdown discriminator; set by {@link listItem}. Kept under
+   * its Python spelling because the conformance codec reads it by name.
    *
-   * @internal Codec-visible under its exact Python spelling.
+   * @internal
    */
   readonly _list_item_mode: ListItemGroupMode | null;
 
   /**
-   * Create a breakdown (guards fire exactly as Python's
-   * `__post_init__`).
+   * Create a breakdown; the guards fire in Python `__post_init__` order.
    *
    * @param fields - Declared fields; absent optionals take the Python
    *   defaults.
-   * @throws ParamValidationError - `GB1_EMPTY_PROPERTY`,
+   * @throws {@link ParamValidationError} - `GB1_EMPTY_PROPERTY`,
    *   `V12_BUCKET_SIZE_POSITIVE`, `V18_BUCKET_ORDER`,
    *   `GB4_LIST_ITEM_BUCKETING`, `GB5_LIST_ITEM_PROPERTY_TYPE`
    *   (transcribed in Python source order).
    */
   constructor(fields: GroupByFields) {
     this.property = fields.property;
-    this.property_type =
-      fields.property_type === undefined ? "string" : fields.property_type;
+    this.property_type = fields.property_type ?? "string";
     this.bucket_size = fields.bucket_size ?? null;
     this.bucket_min = fields.bucket_min ?? null;
     this.bucket_max = fields.bucket_max ?? null;
@@ -134,23 +165,23 @@ export class GroupBy {
   }
 
   /**
-   * Break down by a subproperty of objects inside a list property —
-   * port of `GroupBy.list_item`.
+   * Break down by a sub-property of the objects inside a list property.
    *
-   * @param property - Name of the list-of-object property.
-   * @param sub - Subproperty name to break down by.
-   * @param options - Optional bag: `sub_type` (default `"string"`).
-   * @returns GroupBy whose serialization emits a `listItemGroup`
+   * @param property - Name of the list-of-objects property.
+   * @param sub - Sub-property name to break down by.
+   * @param options - Bag with `sub_type`, the scalar type of the
+   *   sub-property (defaults to `"string"`).
+   * @returns A `GroupBy` whose serialization emits a `listItemGroup`
    *   structure in the bookmark JSON.
-   * @throws ParamValidationError - `LG1_EMPTY_SUB`/`LG2_INVALID_SUB_TYPE`
-   *   via the `ListItemGroupMode` constructor, or any `GroupBy`
-   *   constructor guard.
-   *
+   * @throws {@link ParamValidationError} - `LG1_EMPTY_SUB` /
+   *   `LG2_INVALID_SUB_TYPE` from the `ListItemGroupMode` constructor, or
+   *   any `GroupBy` constructor guard.
    * @example
-   * ```typescript
+   * ```ts
    * const g = GroupBy.listItem("cart", "Brand");
    * // g._list_item_mode: ListItemGroupMode { sub: "Brand", sub_type: "string" }
    * ```
+   * @see mixpanel_headless.types.GroupBy.list_item
    */
   static listItem(
     property: string,

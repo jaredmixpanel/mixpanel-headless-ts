@@ -7,13 +7,22 @@
  * {@link JsonNumber} leaves); this module lifts the wire-replay fields into
  * typed structures for `VectorFetch` (serving) and the runner (request
  * diffing). Values that participate in canonical comparison (`params`,
- * `json_body`, `headers_contain`) stay `JsonValue` so the D6 raw-token
- * rules apply unchanged.
+ * `json_body`, `headers_contain`) stay `JsonValue` so the canonicalizer's
+ * raw-token rules apply unchanged.
  */
 
+import { boundJsonReaders } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 
-/** Raised when a vector's `expect.interactions` violates the schema. */
+/**
+ * Raised when a vector's `expect.interactions` violates the schema.
+ *
+ * @example
+ * ```ts
+ * parseInteractions([{ request: "GET /x" }], "funnels/demo");
+ * // throws MalformedInteractionError: funnels/demo interactions[0].request: expected a JSON object
+ * ```
+ */
 export class MalformedInteractionError extends Error {
   /**
    * Create a malformed-interaction error.
@@ -26,7 +35,12 @@ export class MalformedInteractionError extends Error {
   }
 }
 
-/** One `body_stream` chunk (chunk boundaries are contract, design D2). */
+/** The object/string readers, raising {@link MalformedInteractionError}. */
+const { asObject, optionalString } = boundJsonReaders(
+  (message) => new MalformedInteractionError(message),
+);
+
+/** One `body_stream` chunk (chunk boundaries are part of the contract). */
 export interface StreamChunk {
   /** Chunk text encoding (`utf8` or `base64`). */
   readonly encoding: "utf8" | "base64";
@@ -54,7 +68,7 @@ export interface ExpectedRequest {
   readonly bodyBase64?: string;
   /** Subset-matched headers (values: string or `{pattern}`), when recorded. */
   readonly headersContain?: Readonly<Record<string, JsonValue>>;
-  /** Header names only a Node runner can assert (D5.6). */
+  /** Header names only a Node runner can assert. */
   readonly headersNodeOnly: readonly string[];
   /** Header names asserted absent. */
   readonly headersAbsent: readonly string[];
@@ -78,7 +92,7 @@ export interface GivenResponse {
   readonly bodyText?: string;
   /** Binary body, base64, when recorded. */
   readonly bodyBase64?: string;
-  /** Chunk-boundary-preserving stream body, when recorded (D2). */
+  /** Chunk-boundary-preserving stream body, when recorded. */
   readonly bodyStream?: readonly StreamChunk[];
 }
 
@@ -90,10 +104,11 @@ export interface TransportErrorResponse {
   readonly httpxClass: string;
   /**
    * The recorded exception message, when captured. The Python replay
-   * transport re-raises `cls(message)` (`transport.py:144-162`), and
-   * `str(e)` flows into wire `details_contain.error` bags — so the TS
-   * rejection must carry it too (threaded into the fetch rejection's
-   * `cause.message` by `vector-fetch.ts`).
+   * transport re-raises `cls(message)`
+   * (`conformance.runner.transport.build_transport_error`), and `str(e)`
+   * flows into wire `details_contain.error` bags — so the TS rejection
+   * must carry it too (threaded into the fetch rejection's `cause.message`
+   * by `vector-fetch.ts`).
    */
   readonly message?: string;
 }
@@ -102,7 +117,7 @@ export interface TransportErrorResponse {
 export interface ParsedInteraction {
   /** Zero-based position in `expect.interactions[]`. */
   readonly index: number;
-  /** Multiset group id (D2), when the interaction is unordered. */
+  /** Multiset group id, when the interaction is unordered. */
   readonly unorderedGroup?: number;
   /** The expected request. */
   readonly request: ExpectedRequest;
@@ -110,55 +125,6 @@ export interface ParsedInteraction {
   readonly response: GivenResponse | TransportErrorResponse;
   /** The raw interaction object (for diff rendering). */
   readonly raw: Readonly<Record<string, JsonValue>>;
-}
-
-/**
- * Narrow a value to a plain JSON object.
- *
- * @param value - The candidate value.
- * @param context - Location for the error message.
- * @returns The object.
- * @throws MalformedInteractionError - When not a plain object.
- */
-function asObject(
-  value: JsonValue | undefined,
-  context: string,
-): Record<string, JsonValue> {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value) ||
-    value instanceof JsonNumber
-  ) {
-    throw new MalformedInteractionError(`${context}: expected a JSON object`);
-  }
-  return value;
-}
-
-/**
- * Read an optional string field.
- *
- * @param record - The containing object.
- * @param key - Field name.
- * @param context - Location for the error message.
- * @returns The string, or `undefined` when absent.
- * @throws MalformedInteractionError - When present but not a string.
- */
-function optionalString(
-  record: Record<string, JsonValue>,
-  key: string,
-  context: string,
-): string | undefined {
-  const value = record[key];
-  if (value === undefined) {
-    return undefined;
-  }
-  if (typeof value !== "string") {
-    throw new MalformedInteractionError(
-      `${context}: field ${JSON.stringify(key)} must be a string`,
-    );
-  }
-  return value;
 }
 
 /**
@@ -219,25 +185,25 @@ function parseRequest(value: JsonValue, context: string): ExpectedRequest {
   );
   return {
     method,
-    ...(schemeHost !== undefined ? { schemeHost } : {}),
+    ...(schemeHost === undefined ? {} : { schemeHost }),
     path,
-    ...(params !== undefined
-      ? { params: asObject(params, `${context}.request.params`) }
-      : {}),
+    ...(params === undefined
+      ? {}
+      : { params: asObject(params, `${context}.request.params`) }),
     ...(Object.hasOwn(record, "json_body")
       ? { jsonBody: record["json_body"] as JsonValue }
       : {}),
     hasJsonBody: Object.hasOwn(record, "json_body"),
-    ...(bodyText !== undefined ? { bodyText } : {}),
-    ...(bodyBase64 !== undefined ? { bodyBase64 } : {}),
-    ...(headersContain !== undefined
-      ? {
+    ...(bodyText === undefined ? {} : { bodyText }),
+    ...(bodyBase64 === undefined ? {} : { bodyBase64 }),
+    ...(headersContain === undefined
+      ? {}
+      : {
           headersContain: asObject(
             headersContain,
             `${context}.request.headers_contain`,
           ),
-        }
-      : {}),
+        }),
     headersNodeOnly: stringArray(record, "headers_node_only", context),
     headersAbsent: stringArray(record, "headers_absent", context),
     paramsAbsent: stringArray(record, "params_absent", context),
@@ -267,7 +233,7 @@ function parseResponse(
     return {
       type: "transport_error",
       httpxClass: transportError,
-      ...(message !== undefined ? { message } : {}),
+      ...(message === undefined ? {} : { message }),
     };
   }
   const status = record["status"];
@@ -330,9 +296,9 @@ function parseResponse(
       ? { body: record["body"] as JsonValue }
       : {}),
     hasBody: Object.hasOwn(record, "body"),
-    ...(bodyText !== undefined ? { bodyText } : {}),
-    ...(bodyBase64 !== undefined ? { bodyBase64 } : {}),
-    ...(bodyStream !== undefined ? { bodyStream } : {}),
+    ...(bodyText === undefined ? {} : { bodyText }),
+    ...(bodyBase64 === undefined ? {} : { bodyBase64 }),
+    ...(bodyStream === undefined ? {} : { bodyStream }),
   };
 }
 
@@ -344,7 +310,6 @@ function parseResponse(
  * @param vectorId - The vector id, for error messages.
  * @returns The parsed interactions in recorded order (empty when absent).
  * @throws MalformedInteractionError - On any schema-shape violation.
- *
  * @example
  * ```typescript
  * const parsed = parseInteractions(vector.expect["interactions"], vector.id);
@@ -378,7 +343,7 @@ export function parseInteractions(
     }
     return {
       index,
-      ...(unorderedGroup !== undefined ? { unorderedGroup } : {}),
+      ...(unorderedGroup === undefined ? {} : { unorderedGroup }),
       request: parseRequest(record["request"] as JsonValue, context),
       response: parseResponse(record["response"] as JsonValue, context),
       raw: record,

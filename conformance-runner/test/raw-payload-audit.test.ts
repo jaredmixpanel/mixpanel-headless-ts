@@ -1,25 +1,16 @@
-// C8(a)/C8(b) anti-vacuity repo audit (phase2-design C8, arbiter V3,
-// packet P2-8): forbid raw-payload retention in the contract layer.
-//
-// A codec/`fromDict` implementation that stores the incoming payload
-// (`this.raw = payload` style) and echoes it back from `toDict`/encode
-// would round-trip every golden and sweep vector vacuously. The sweep's
-// `instanceof` probes catch decode-to-plain-object; THIS audit catches
-// the store-and-echo variant at the source level: no file under
-// `packages/core/src/types/` may assign the whole raw/payload
-// identifier (or a spread clone of it) to an instance field, nor
-// mass-assign an unvalidated bag onto `this`.
-//
-// (`Object.assign(this, out)` in model-base.ts is legal: `out` is the
-// per-field coerced/validated bag, not the raw payload — the forbidden
-// identifiers below are exactly the raw-input names the decode paths
-// use: `raw` in EntityModel/fromDict seams, `payload` in codecs.)
+// Source-level anti-vacuity audit: no file under packages/core/src/types/
+// may store the raw decode payload (or a spread of it) on an instance or
+// mass-assign an unvalidated bag onto `this` — a store-and-echo model would
+// round-trip every golden vacuously. `Object.assign(this, out)` over the
+// per-field validated bag in model-base.ts is legal.
+
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
-/** The audited directory (the Phase-2 contract layer). */
+/** The audited directory (the contract layer). */
 const TYPES_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../packages/core/src/types",
@@ -89,7 +80,7 @@ describe("raw-payload retention audit (packages/core/src/types)", () => {
     const violations: string[] = [];
     for (const file of listSources(TYPES_DIR)) {
       const lines = readFileSync(file, "utf8").split("\n");
-      lines.forEach((line, index) => {
+      for (const [index, line] of lines.entries()) {
         for (const rule of RULES) {
           if (rule.pattern.test(line)) {
             violations.push(
@@ -97,9 +88,9 @@ describe("raw-payload retention audit (packages/core/src/types)", () => {
             );
           }
         }
-      });
+      }
     }
-    expect(violations).toEqual([]);
+    expect(violations).toStrictEqual([]);
   });
 
   it("the rules themselves match the forbidden idioms (self-check)", () => {

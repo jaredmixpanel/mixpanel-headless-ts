@@ -1,26 +1,10 @@
-/**
- * Layer-3 translation of `tests/unit/test_bookmark_enums.py` (Python
- * revision: `ts-port/phase2-contract-support` HEAD; 270 LOC, 6 classes).
- *
- * Scope per b3-packets.md §K1: all six classes
- * (`TestMathTypeCompleteness`, `TestPerUserAggregationCompleteness`,
- * `TestPropertyTypeCompleteness`, `TestEnumCardinality`,
- * `TestNewEnumConstants`, `TestExtendedMathFunnels`). The tables
- * themselves landed at P2-3 in `src/bookmarks/enums.ts`; this file is
- * the missing lock.
- *
- * R10.2: assertion-for-assertion. Python `frozenset` subset/equality
- * asserts become explicit set operations here — `<=` is
- * {@link isSubset}, `==` is {@link setEquals} — never weakened to
- * "contains some".
- *
- * The Python `isinstance(X, frozenset)` asserts (immutability intent)
- * translate to `instanceof Set` plus the compile-time `ReadonlySet`
- * annotation on the export; there is no frozen-Set primitive in JS, so
- * the runtime half of that assertion is the type check.
- */
+// The bookmark enum tables in `bookmarks/enums` — translation of
+// `tests/unit/test_bookmark_enums.py` (all six classes). Python `frozenset`
+// `<=` / `==` asserts become explicit `isSubset` / `setEquals` checks, never
+// "contains some"; `isinstance(X, frozenset)` becomes `instanceof Set` plus
+// the compile-time `ReadonlySet` annotation (JS has no frozen Set).
+import { describe, expect, it } from "vitest";
 
-import { describe, it, expect } from "vitest";
 import {
   MATH_NO_PER_USER,
   MATH_PROPERTY_OPTIONAL,
@@ -102,121 +86,156 @@ function intersection(
   return new Set([...a].filter((v) => b.has(v)));
 }
 
-describe("TestMathTypeCompleteness", () => {
-  // Port of `USER_FACING_ALIASES` (`test_bookmark_enums.py:49`).
+describe("Math type completeness", () => {
+  // python: TestMathTypeCompleteness
+  // Port of `USER_FACING_ALIASES`.
   const USER_FACING_ALIASES: ReadonlySet<string> = new Set(["percentile"]);
 
-  it("test_math_type_literal_subset_of_insights", () => {
+  it("math type literal subset of insights", () => {
+    // python: test_math_type_literal_subset_of_insights
     const literalValues = difference(MATH_TYPE_VALUES, USER_FACING_ALIASES);
-    expect(missingFrom(literalValues, VALID_MATH_INSIGHTS)).toEqual([]);
+    expect(missingFrom(literalValues, VALID_MATH_INSIGHTS)).toStrictEqual([]);
   });
 
-  it("test_math_type_literal_subset_of_all", () => {
+  it("math type literal subset of all", () => {
+    // python: test_math_type_literal_subset_of_all
     const literalValues = difference(MATH_TYPE_VALUES, USER_FACING_ALIASES);
-    expect(missingFrom(literalValues, VALID_MATH_TYPES)).toEqual([]);
+    expect(missingFrom(literalValues, VALID_MATH_TYPES)).toStrictEqual([]);
   });
 
-  it("test_insights_subset_of_all", () => {
-    expect(missingFrom(VALID_MATH_INSIGHTS, VALID_MATH_TYPES)).toEqual([]);
+  it("insights subset of all", () => {
+    // python: test_insights_subset_of_all
+    expect(missingFrom(VALID_MATH_INSIGHTS, VALID_MATH_TYPES)).toStrictEqual(
+      [],
+    );
   });
 
-  it("test_funnels_subset_of_all", () => {
-    expect(missingFrom(VALID_MATH_FUNNELS, VALID_MATH_TYPES)).toEqual([]);
+  it("funnels subset of all", () => {
+    // python: test_funnels_subset_of_all
+    expect(missingFrom(VALID_MATH_FUNNELS, VALID_MATH_TYPES)).toStrictEqual([]);
   });
 
-  it("test_retention_subset_of_all", () => {
-    expect(missingFrom(VALID_MATH_RETENTION, VALID_MATH_TYPES)).toEqual([]);
+  it("retention subset of all", () => {
+    // python: test_retention_subset_of_all
+    expect(missingFrom(VALID_MATH_RETENTION, VALID_MATH_TYPES)).toStrictEqual(
+      [],
+    );
   });
 
-  it("test_requiring_property_subset_of_insights", () => {
+  it("requiring property subset of insights", () => {
+    // python: test_requiring_property_subset_of_insights
     expect(
       missingFrom(
         difference(MATH_REQUIRING_PROPERTY, USER_FACING_ALIASES),
         VALID_MATH_INSIGHTS,
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
-  it("test_property_optional_subset_of_insights", () => {
-    expect(missingFrom(MATH_PROPERTY_OPTIONAL, VALID_MATH_INSIGHTS)).toEqual(
+  it("property optional subset of insights", () => {
+    // python: test_property_optional_subset_of_insights
+    expect(
+      missingFrom(MATH_PROPERTY_OPTIONAL, VALID_MATH_INSIGHTS),
+    ).toStrictEqual([]);
+  });
+
+  it("no per user subset of insights", () => {
+    // python: test_no_per_user_subset_of_insights
+    expect(missingFrom(MATH_NO_PER_USER, VALID_MATH_INSIGHTS)).toStrictEqual(
       [],
     );
   });
 
-  it("test_no_per_user_subset_of_insights", () => {
-    expect(missingFrom(MATH_NO_PER_USER, VALID_MATH_INSIGHTS)).toEqual([]);
-  });
-
-  it("test_no_overlap_requiring_and_optional", () => {
+  it("no overlap requiring and optional", () => {
+    // python: test_no_overlap_requiring_and_optional
     expect(
       sorted(intersection(MATH_REQUIRING_PROPERTY, MATH_PROPERTY_OPTIONAL)),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });
 
-describe("TestPerUserAggregationCompleteness", () => {
-  it("test_literal_subset_of_valid", () => {
+describe("Per user aggregation completeness", () => {
+  // python: TestPerUserAggregationCompleteness
+  it("literal subset of valid", () => {
+    // python: test_literal_subset_of_valid
     expect(
       missingFrom(PER_USER_AGGREGATION_VALUES, VALID_PER_USER_AGGREGATIONS),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });
 
-describe("TestPropertyTypeCompleteness", () => {
-  it("test_filter_property_type_subset", () => {
+describe("Property type completeness", () => {
+  // python: TestPropertyTypeCompleteness
+  it("filter property type subset", () => {
+    // python: test_filter_property_type_subset
     expect(
       missingFrom(FILTER_PROPERTY_TYPE_VALUES, VALID_PROPERTY_TYPES),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });
 
-describe("TestEnumCardinality", () => {
-  it("test_valid_math_types_size", () => {
+describe("Enum cardinality", () => {
+  // python: TestEnumCardinality
+  it("valid math types size", () => {
+    // python: test_valid_math_types_size
     expect(VALID_MATH_TYPES.size).toBeGreaterThanOrEqual(20);
   });
 
-  it("test_valid_math_insights_size", () => {
+  it("valid math insights size", () => {
+    // python: test_valid_math_insights_size
     expect(VALID_MATH_INSIGHTS.size).toBeGreaterThanOrEqual(15);
   });
 
-  it("test_valid_per_user_size", () => {
+  it("valid per user size", () => {
+    // python: test_valid_per_user_size
     expect(VALID_PER_USER_AGGREGATIONS.size).toBeGreaterThanOrEqual(5);
   });
 
-  it("test_valid_property_types_size", () => {
+  it("valid property types size", () => {
+    // python: test_valid_property_types_size
     expect(VALID_PROPERTY_TYPES.size).toBeGreaterThanOrEqual(6);
   });
 
-  it("test_valid_time_units_size", () => {
+  it("valid time units size", () => {
+    // python: test_valid_time_units_size
     expect(VALID_TIME_UNITS.size).toBeGreaterThanOrEqual(7);
   });
 
-  it("test_valid_query_time_units_size", () => {
-    expect(missingFrom(VALID_TIME_UNITS, VALID_QUERY_TIME_UNITS)).toEqual([]);
+  it("valid query time units size", () => {
+    // python: test_valid_query_time_units_size
+    expect(missingFrom(VALID_TIME_UNITS, VALID_QUERY_TIME_UNITS)).toStrictEqual(
+      [],
+    );
   });
 
-  it("test_valid_resource_types_size", () => {
+  it("valid resource types size", () => {
+    // python: test_valid_resource_types_size
     expect(VALID_RESOURCE_TYPES.size).toBeGreaterThanOrEqual(6);
   });
 
-  it("test_valid_metric_types_size", () => {
+  it("valid metric types size", () => {
+    // python: test_valid_metric_types_size
     expect(VALID_METRIC_TYPES.size).toBeGreaterThanOrEqual(8);
   });
 
-  it("test_valid_chart_types_size", () => {
+  it("valid chart types size", () => {
+    // python: test_valid_chart_types_size
     expect(VALID_CHART_TYPES.size).toBeGreaterThanOrEqual(8);
   });
 
-  it("test_valid_filter_operators_size", () => {
+  it("valid filter operators size", () => {
+    // python: test_valid_filter_operators_size
     expect(VALID_FILTER_OPERATORS.size).toBeGreaterThanOrEqual(20);
   });
 
-  it("test_valid_filters_determiner_values", () => {
-    expect(sorted(VALID_FILTERS_DETERMINER)).toEqual(["all", "any"]);
+  it("valid filters determiner values", () => {
+    // python: test_valid_filters_determiner_values
+    expect(sorted(VALID_FILTERS_DETERMINER)).toStrictEqual(["all", "any"]);
   });
 
-  it("test_valid_analysis_types_values", () => {
-    expect(sorted(VALID_ANALYSIS_TYPES)).toEqual([
+  it("valid analysis types values", () => {
+    // python: test_valid_analysis_types_values
+    expect(sorted(VALID_ANALYSIS_TYPES)).toStrictEqual([
       "cumulative",
       "linear",
       "logarithmic",
@@ -225,17 +244,21 @@ describe("TestEnumCardinality", () => {
   });
 });
 
-describe("TestNewEnumConstants", () => {
-  it("test_valid_funnel_order_values", () => {
-    expect(sorted(VALID_FUNNEL_ORDER)).toEqual(["any", "loose"]);
+describe("New enum constants", () => {
+  // python: TestNewEnumConstants
+  it("valid funnel order values", () => {
+    // python: test_valid_funnel_order_values
+    expect(sorted(VALID_FUNNEL_ORDER)).toStrictEqual(["any", "loose"]);
   });
 
-  it("test_valid_funnel_order_is_frozenset", () => {
+  it("valid funnel order is frozenset", () => {
+    // python: test_valid_funnel_order_is_frozenset
     expect(VALID_FUNNEL_ORDER).toBeInstanceOf(Set);
   });
 
-  it("test_valid_conversion_window_units_values", () => {
-    expect(sorted(VALID_CONVERSION_WINDOW_UNITS)).toEqual([
+  it("valid conversion window units values", () => {
+    // python: test_valid_conversion_window_units_values
+    expect(sorted(VALID_CONVERSION_WINDOW_UNITS)).toStrictEqual([
       "day",
       "hour",
       "minute",
@@ -246,56 +269,71 @@ describe("TestNewEnumConstants", () => {
     ]);
   });
 
-  it("test_valid_conversion_window_units_is_frozenset", () => {
+  it("valid conversion window units is frozenset", () => {
+    // python: test_valid_conversion_window_units_is_frozenset
     expect(VALID_CONVERSION_WINDOW_UNITS).toBeInstanceOf(Set);
   });
 
-  it("test_valid_retention_units_values", () => {
-    expect(sorted(VALID_RETENTION_UNITS)).toEqual(["day", "month", "week"]);
+  it("valid retention units values", () => {
+    // python: test_valid_retention_units_values
+    expect(sorted(VALID_RETENTION_UNITS)).toStrictEqual([
+      "day",
+      "month",
+      "week",
+    ]);
   });
 
-  it("test_valid_retention_units_is_frozenset", () => {
+  it("valid retention units is frozenset", () => {
+    // python: test_valid_retention_units_is_frozenset
     expect(VALID_RETENTION_UNITS).toBeInstanceOf(Set);
   });
 
-  it("test_valid_retention_alignment_values", () => {
-    expect(sorted(VALID_RETENTION_ALIGNMENT)).toEqual([
+  it("valid retention alignment values", () => {
+    // python: test_valid_retention_alignment_values
+    expect(sorted(VALID_RETENTION_ALIGNMENT)).toStrictEqual([
       "birth",
       "interval_start",
     ]);
   });
 
-  it("test_valid_retention_alignment_is_frozenset", () => {
+  it("valid retention alignment is frozenset", () => {
+    // python: test_valid_retention_alignment_is_frozenset
     expect(VALID_RETENTION_ALIGNMENT).toBeInstanceOf(Set);
   });
 
-  it("test_valid_flows_count_types_values", () => {
-    expect(sorted(VALID_FLOWS_COUNT_TYPES)).toEqual([
+  it("valid flows count types values", () => {
+    // python: test_valid_flows_count_types_values
+    expect(sorted(VALID_FLOWS_COUNT_TYPES)).toStrictEqual([
       "session",
       "total",
       "unique",
     ]);
   });
 
-  it("test_valid_flows_count_types_is_frozenset", () => {
+  it("valid flows count types is frozenset", () => {
+    // python: test_valid_flows_count_types_is_frozenset
     expect(VALID_FLOWS_COUNT_TYPES).toBeInstanceOf(Set);
   });
 
-  it("test_valid_flows_chart_types_values", () => {
-    expect(sorted(VALID_FLOWS_CHART_TYPES)).toEqual([
+  it("valid flows chart types values", () => {
+    // python: test_valid_flows_chart_types_values
+    expect(sorted(VALID_FLOWS_CHART_TYPES)).toStrictEqual([
       "sankey",
       "top-paths",
       "tree",
     ]);
   });
 
-  it("test_valid_flows_chart_types_is_frozenset", () => {
+  it("valid flows chart types is frozenset", () => {
+    // python: test_valid_flows_chart_types_is_frozenset
     expect(VALID_FLOWS_CHART_TYPES).toBeInstanceOf(Set);
   });
 });
 
-describe("TestExtendedMathFunnels", () => {
-  it("test_contains_original_values", () => {
+describe("Extended math funnels", () => {
+  // python: TestExtendedMathFunnels
+  it("contains original values", () => {
+    // python: test_contains_original_values
     const original = [
       "general",
       "unique",
@@ -306,10 +344,11 @@ describe("TestExtendedMathFunnels", () => {
       "conversion_rate_total",
       "conversion_rate_session",
     ];
-    expect(missingFrom(original, VALID_MATH_FUNNELS)).toEqual([]);
+    expect(missingFrom(original, VALID_MATH_FUNNELS)).toStrictEqual([]);
   });
 
-  it("test_contains_property_aggregation_types", () => {
+  it("contains property aggregation types", () => {
+    // python: test_contains_property_aggregation_types
     const propertyAgg = [
       "average",
       "median",
@@ -320,11 +359,12 @@ describe("TestExtendedMathFunnels", () => {
       "p90",
       "p99",
     ];
-    expect(missingFrom(propertyAgg, VALID_MATH_FUNNELS)).toEqual([]);
+    expect(missingFrom(propertyAgg, VALID_MATH_FUNNELS)).toStrictEqual([]);
   });
 
-  it("test_all_expected_values", () => {
-    expect(sorted(VALID_MATH_FUNNELS)).toEqual(
+  it("all expected values", () => {
+    // python: test_all_expected_values
+    expect(sorted(VALID_MATH_FUNNELS)).toStrictEqual(
       [
         "general",
         "unique",
@@ -347,7 +387,8 @@ describe("TestExtendedMathFunnels", () => {
     );
   });
 
-  it("test_funnels_still_subset_of_all", () => {
-    expect(missingFrom(VALID_MATH_FUNNELS, VALID_MATH_TYPES)).toEqual([]);
+  it("funnels still subset of all", () => {
+    // python: test_funnels_still_subset_of_all
+    expect(missingFrom(VALID_MATH_FUNNELS, VALID_MATH_TYPES)).toStrictEqual([]);
   });
 });

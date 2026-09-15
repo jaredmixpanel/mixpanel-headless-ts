@@ -1,0 +1,23 @@
+// Library build: the three publishable packages extend this (composite,
+// declaration + source maps into `dist/`). Test/rig projects extend
+// `tsconfig.base.json` directly with `noEmit`.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "isolatedDeclarations": true,
+    // `stripInternal` stays off. tsc strips every declaration whose leading
+    // comment contains "@internal" — prose mentions included — and the
+    // white-box test projects consume core's emitted .d.ts through project
+    // references while reading `@internal` members (`Filter._property`,
+    // `MixpanelClient.core`, …), so `tsc -b` itself fails with the flag on;
+    // a `skipLibCheck: false` pass over the emitted .d.ts also reports
+    // dangling references between them. Flipping it needs those members
+    // untagged first. The boundary the flag would enforce — nothing tagged
+    // `@internal` reachable from the public barrel — is locked by
+    // tests/core-public-surface.test.ts.
+    "declarationMap": true,
+    "sourceMap": true
+  }
+}

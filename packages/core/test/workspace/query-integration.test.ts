@@ -1,51 +1,25 @@
-// Translated insights-query integration tests (B5-S2, packet §3):
-// assertion-for-assertion port of tests/unit/test_query_integration.py
-// (R10.2) — ALL 9 classes (TestQueryTimeseries :109,
-// TestQueryNonExistentEvent :191, TestMultiEventIntegration :233,
-// TestFormulaIntegration :266, TestTotalModeIntegration :290,
-// TestQueryPersistence :310, TestTransformQueryResultValidation :330,
-// TestFormulaInListIntegration :374, TestBuildParamsNoApiCall :430).
-//
-// Translation notes:
-// - `mock_api_client` / `ws` come from the shared
-//   `workspace-test-helpers.ts` stub; the Python `ws` fixture builds a
-//   real Workspace and then assigns `_api_client`, which is the injected
-//   `client` option here.
-// - `insights_query.call_args` becomes the recorded body
-//   (`mock.insightsCalls[0]`).
-// - `.df` asserts become `toRows()` / `rowColumns()` (C6);
-//   `df.iloc[0]["count"]` becomes `toRows()[0]["count"]`.
-// - `test_works_without_credentials` builds a Workspace with NO injected
-//   client. In TS the constructor would build a real one from the
-//   session, which is exactly Python's behaviour (a client object exists
-//   but is never called) — the case still proves `build_params` issues
-//   no request, asserted through the fake transport's empty capture log.
+// `Workspace.query` end to end over a canned insights response: result
+// shape, rows/columns, request body, formula and total modes, transform
+// validation and `buildParams` issuing no request. Mirrors all 9 classes
+// of `tests/unit/test_query_integration.py`; `insights_query.call_args`
+// becomes `mock.insightsCalls[0]` and `.df` asserts become `toRows()`.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { QueryError } from "../../src/errors.js";
 import { Filter } from "../../src/types/query-params/filter.js";
 import { Formula, Metric } from "../../src/types/query-params/metric.js";
 import { QueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   createMockClient,
   makeSession,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import {
-  mockWorkspaceClient,
-  TEST_SESSION,
+  makeStubWorkspace,
   type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
-
-/**
- * The `ws` fixture (test file :47-52).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
+  mockWorkspaceClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 const TIMESERIES_RESPONSE: Record<string, unknown> = {
   computed_at: "2024-01-31T12:00:00+00:00",
@@ -128,7 +102,7 @@ function wsWith(response: unknown): {
 } {
   const mock = mockWorkspaceClient();
   mock.setInsightsResponse(response);
-  return { ws: workspaceFactory(mock), mock };
+  return { ws: makeStubWorkspace(mock), mock };
 }
 
 /** Read `params.sections.show`. */
@@ -143,10 +117,11 @@ function showOf(
 // T009: end-to-end timeseries
 // ===========================================================================
 
-describe("TestQueryTimeseries", () => {
+describe("Query timeseries", () => {
+  // python: TestQueryTimeseries
   it("returns a QueryResult", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
-    expect(await ws.query("Login")).toBeInstanceOf(QueryResult);
+    await expect(ws.query("Login")).resolves.toBeInstanceOf(QueryResult);
   });
 
   it("carries computed_at from the response", async () => {
@@ -171,8 +146,8 @@ describe("TestQueryTimeseries", () => {
   it("the timeseries frame has 3 rows and date/event/count columns", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.query("Login");
-    expect(result.toRows().length).toBe(3);
-    expect(result.rowColumns()).toEqual(["date", "event", "count"]);
+    expect(result.toRows()).toHaveLength(3);
+    expect(result.rowColumns()).toStrictEqual(["date", "event", "count"]);
   });
 
   it("calls insights_query with the correct body structure", async () => {
@@ -203,12 +178,13 @@ describe("TestQueryTimeseries", () => {
 // T009b: non-existent event
 // ===========================================================================
 
-describe("TestQueryNonExistentEvent", () => {
+describe("Query non existent event", () => {
+  // python: TestQueryNonExistentEvent
   it("an empty response raises nothing and yields zero rows", async () => {
     const { ws } = wsWith(EMPTY_RESPONSE);
     const result = await ws.query("NonExistentEvent");
     expect(result).toBeInstanceOf(QueryResult);
-    expect(result.toRows().length).toBe(0);
+    expect(result.toRows()).toHaveLength(0);
   });
 
   it("an empty result still has computed_at", async () => {
@@ -222,13 +198,14 @@ describe("TestQueryNonExistentEvent", () => {
 // T033: multi-event
 // ===========================================================================
 
-describe("TestMultiEventIntegration", () => {
+describe("Multi event integration", () => {
+  // python: TestMultiEventIntegration
   it("returns rows for all metrics", async () => {
     const { ws } = wsWith(MULTI_EVENT_RESPONSE);
     const result = await ws.query(["Signup", "Login", "Purchase"], {
       math: "unique",
     });
-    expect(result.toRows().length).toBe(3);
+    expect(result.toRows()).toHaveLength(3);
     const events = new Set(result.toRows().map((r) => r["event"]));
     expect(events.size).toBe(3);
   });
@@ -238,7 +215,8 @@ describe("TestMultiEventIntegration", () => {
 // T037: formula
 // ===========================================================================
 
-describe("TestFormulaIntegration", () => {
+describe("Formula integration", () => {
+  // python: TestFormulaIntegration
   it("a formula query returns the formula series", async () => {
     const { ws } = wsWith(FORMULA_RESPONSE);
     const result = await ws.query(
@@ -249,7 +227,7 @@ describe("TestFormulaIntegration", () => {
       { formula: "(B / A) * 100", formula_label: "Conversion Rate" },
     );
     expect(Object.hasOwn(result.series, "Conversion Rate")).toBe(true);
-    expect(result.toRows().length).toBe(2);
+    expect(result.toRows()).toHaveLength(2);
   });
 });
 
@@ -257,12 +235,13 @@ describe("TestFormulaIntegration", () => {
 // T046: total mode
 // ===========================================================================
 
-describe("TestTotalModeIntegration", () => {
+describe("Total mode integration", () => {
+  // python: TestTotalModeIntegration
   it("total mode returns a single row per metric", async () => {
     const { ws } = wsWith(TOTAL_RESPONSE);
     const result = await ws.query("Login", { math: "unique", mode: "total" });
-    expect(result.toRows().length).toBe(1);
-    expect(result.rowColumns()).toEqual(["event", "count"]);
+    expect(result.toRows()).toHaveLength(1);
+    expect(result.rowColumns()).toStrictEqual(["event", "count"]);
     expect(result.toRows()[0]!["count"]).toBe(3551);
   });
 });
@@ -271,7 +250,8 @@ describe("TestTotalModeIntegration", () => {
 // T050: persistence
 // ===========================================================================
 
-describe("TestQueryPersistence", () => {
+describe("Query persistence", () => {
+  // python: TestQueryPersistence
   it("params is suitable for create_bookmark", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.query("Login", { math: "unique", last: 7 });
@@ -286,7 +266,8 @@ describe("TestQueryPersistence", () => {
 // Response validation in the transform
 // ===========================================================================
 
-describe("TestTransformQueryResultValidation", () => {
+describe("Transform query result validation", () => {
+  // python: TestTransformQueryResultValidation
   it("an error-as-200 raises QueryError", async () => {
     const { ws } = wsWith({ error: "invalid query", status: "fail" });
     await expect(ws.query("Login")).rejects.toThrow(
@@ -321,7 +302,8 @@ describe("TestTransformQueryResultValidation", () => {
 // Formula-in-list
 // ===========================================================================
 
-describe("TestFormulaInListIntegration", () => {
+describe("Formula in list integration", () => {
+  // python: TestFormulaInListIntegration
   it("a Formula in the events list produces a formula show clause", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.query([
@@ -331,7 +313,7 @@ describe("TestFormulaInListIntegration", () => {
     ]);
 
     const show = showOf(result.params);
-    expect(show.length).toBe(3);
+    expect(show).toHaveLength(3);
     expect((show[0]!["behavior"] as Record<string, unknown>)["name"]).toBe(
       "Signup",
     );
@@ -378,11 +360,12 @@ describe("TestFormulaInListIntegration", () => {
 // T054d: build_params() does not invoke the API
 // ===========================================================================
 
-describe("TestBuildParamsNoApiCall", () => {
+describe("Build params no API call", () => {
+  // python: TestBuildParamsNoApiCall
   it("build_params returns params without calling the client", async () => {
     const { ws, mock } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.buildParams("Login");
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
     expect(typeof result).toBe("object");
   });
 
@@ -399,6 +382,6 @@ describe("TestBuildParamsNoApiCall", () => {
     const result = await workspace.buildParams("Login");
 
     expect(Object.hasOwn(result, "sections")).toBe(true);
-    expect(transport.captures.length).toBe(0);
+    expect(transport.captures).toHaveLength(0);
   });
 });

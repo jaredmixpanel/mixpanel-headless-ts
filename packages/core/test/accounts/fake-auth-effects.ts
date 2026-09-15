@@ -1,17 +1,8 @@
-// B7-A1 test infrastructure — an in-memory `AuthEffects` fake whose
-// config member implements the `ConfigManager` transaction semantics
-// the interface JSDoc pins (`config.py:494-1002`), so the Python
-// suites' tmp-`$HOME` fixtures re-express over injected fakes (packet
-// §3.4 header rule; Caution #19: `~/.mp` is NEVER touched by tests).
+// In-memory `AuthEffects` fake for the accounts/auth suites. Its config
+// member implements the `ConfigManager` transaction semantics the
+// interface JSDoc pins (`config.py`), so the Python suites' tmp-`$HOME`
+// fixtures re-express over injected fakes; `~/.mp` is never touched.
 
-import type { Account, Region, TokenResolver } from "../../src/auth/account.js";
-import { parseAccount } from "../../src/auth/account.js";
-import type { ActiveSession, Session } from "../../src/auth/session.js";
-import type { OAuthTokens } from "../../src/auth/token.js";
-import type {
-  BridgeView,
-  ResolverConfigSource,
-} from "../../src/auth/resolver.js";
 import type {
   AddAccountParams,
   AddTargetOptions,
@@ -21,6 +12,18 @@ import type {
   SetActiveUpdate,
   UpdateAccountFields,
 } from "../../src/accounts/auth-effects.js";
+import {
+  type Account,
+  parseAccount,
+  type Region,
+  type TokenResolver,
+} from "../../src/auth/account.js";
+import type {
+  BridgeView,
+  ResolverConfigSource,
+} from "../../src/auth/resolver.js";
+import type { ActiveSession, Session } from "../../src/auth/session.js";
+import type { OAuthTokens } from "../../src/auth/token.js";
 import type { MeResponse } from "../../src/client/me.js";
 import {
   AccountInUseError,
@@ -32,7 +35,7 @@ import { Secret } from "../../src/secret.js";
 import { AccountSummary, Target } from "../../src/types/entities/accounts.js";
 
 /** Mutable state behind a {@link FakeConfig}. */
-export interface FakeConfigState {
+interface FakeConfigState {
   /** Account records keyed by name (insertion order preserved). */
   readonly accounts: Map<string, Account>;
   /** The `[active]` block. */
@@ -47,7 +50,7 @@ export interface FakeConfigState {
 }
 
 /** The fake config: reads + writes + the exposed state. */
-export interface FakeConfig extends ResolverConfigSource, ConfigWrites {
+interface FakeConfig extends ResolverConfigSource, ConfigWrites {
   /** Direct state access for assertions. */
   readonly state: FakeConfigState;
 }
@@ -103,7 +106,7 @@ function toText(value: Secret | string | null | undefined): string | null {
  *
  * @returns The fake, with `state` exposed for assertions.
  */
-export function fakeConfig(): FakeConfig {
+function fakeConfig(): FakeConfig {
   const state: FakeConfigState = {
     accounts: new Map<string, Account>(),
     active: {},
@@ -112,7 +115,7 @@ export function fakeConfig(): FakeConfig {
   };
 
   const referencedBy = (name: string): string[] =>
-    [...state.targets.entries()]
+    [...state.targets]
       .filter(([, block]) => block.account === name)
       .map(([tname]) => tname)
       .sort();
@@ -161,10 +164,9 @@ export function fakeConfig(): FakeConfig {
     getCustomHeader: (): readonly [string, string] | null => state.customHeader,
     addAccount: (name: string, params: AddAccountParams): void => {
       if (state.accounts.has(name)) {
-        // PLAIN ConfigError, matching `ConfigManager._apply_add_account`
-        // (`config.py:446`). `AccountExistsError` is reserved for the
-        // login_unified name-collision path (`accounts.py:1689`) —
-        // B7-ARB-B fix, `b7-reviewB-resolution.md` B-E2E-F1.
+        // PLAIN ConfigError, matching `ConfigManager._apply_add_account`;
+        // `AccountExistsError` is reserved for the login_unified
+        // name-collision path (`accounts.py`).
         throw new ConfigError(`Account '${name}' already exists.`);
       }
       const raw: Record<string, unknown> = {
@@ -200,22 +202,22 @@ export function fakeConfig(): FakeConfig {
       let account: Account;
       try {
         account = parseAccount(raw);
-      } catch (exc) {
+      } catch (error) {
         // ConfigManager wraps ValidationError in ConfigError.
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Invalid account fields for '${name}': ${rendered}`,
           null,
           {
-            cause: exc,
+            cause: error,
           },
         );
       }
       const isFirst = state.accounts.size === 0;
       state.accounts.set(name, account);
       if (isFirst) {
-        // FR-045 first-account promotion — same transaction
-        // (`accounts.py:472-489` / interface JSDoc).
+        // First-account promotion happens in the same transaction
+        // (`accounts.py` / interface JSDoc).
         state.active.account = name;
       }
     },
@@ -268,13 +270,13 @@ export function fakeConfig(): FakeConfig {
       let account: Account;
       try {
         account = parseAccount(raw);
-      } catch (exc) {
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+      } catch (error) {
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Invalid account fields for '${name}': ${rendered}`,
           null,
           {
-            cause: exc,
+            cause: error,
           },
         );
       }
@@ -300,7 +302,7 @@ export function fakeConfig(): FakeConfig {
     },
     listAccounts: (): AccountSummary[] =>
       [...state.accounts.keys()].sort().map((name) => {
-        const account = state.accounts.get(name) as Account;
+        const account = state.accounts.get(name)!;
         return new AccountSummary({
           name: account.name,
           type: account.type,
@@ -316,15 +318,15 @@ export function fakeConfig(): FakeConfig {
       const workspace = update.workspace ?? null;
       const clearWorkspace = update.clear_workspace ?? false;
       if (workspace !== null && clearWorkspace) {
-        // Python raises bare ValueError (`config.py:826-829`).
+        // Python raises bare ValueError (`config.py`).
         throw new ParamValidationError(
           "`workspace=` and `clear_workspace=True` are mutually exclusive.",
         );
       }
       if (account !== null || workspace !== null) {
         setActive({
-          ...(account !== null ? { account } : {}),
-          ...(workspace !== null ? { workspace } : {}),
+          ...(account === null ? {} : { account }),
+          ...(workspace === null ? {} : { workspace }),
         });
       }
       if (clearWorkspace) {
@@ -361,7 +363,7 @@ export function fakeConfig(): FakeConfig {
       raw["default_project"] = block.project;
       state.accounts.set(block.account, parseAccount(raw));
       // Replace [active] wholesale — a target with no workspace clears
-      // any prior pin (`config.py:995-999`).
+      // any prior pin (`config.py`).
       state.active = { account: block.account };
       if (block.workspace !== null) {
         state.active.workspace = block.workspace;
@@ -385,13 +387,13 @@ export function fakeConfig(): FakeConfig {
           project: options.project,
           workspace: options.workspace ?? null,
         });
-      } catch (exc) {
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+      } catch (error) {
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Invalid target fields for '${name}': ${rendered}`,
           null,
           {
-            cause: exc,
+            cause: error,
           },
         );
       }
@@ -426,7 +428,7 @@ export function fakeConfig(): FakeConfig {
 }
 
 /** The in-memory token store plus its captured state. */
-export interface FakeTokenStore {
+interface FakeTokenStore {
   /** Tokens written per account name. */
   readonly written: Map<string, OAuthTokens>;
   /** Account dirs removed (rollback calls). */
@@ -440,7 +442,7 @@ export interface FakeTokenStore {
  *
  * @returns The fake plus its capture maps.
  */
-export function fakeTokenStore(): FakeTokenStore {
+function fakeTokenStore(): FakeTokenStore {
   const written = new Map<string, OAuthTokens>();
   const removedDirs: string[] = [];
   return {
@@ -471,8 +473,8 @@ export function fakeTokenStore(): FakeTokenStore {
 
 /**
  * A fetch stub answering EVERY request with the given JSON payload —
- * the `monkeypatch.setattr(MixpanelAPIClient, "me", …)` twin (packet
- * §3.4 header rule; only `/me` is ever requested by these paths).
+ * the `monkeypatch.setattr(MixpanelAPIClient, "me", …)` twin (only
+ * `/me` is ever requested by these paths).
  *
  * @param payload - The `/me` payload (or a thunk for per-call bodies).
  * @param status - HTTP status (default 200).
@@ -482,7 +484,7 @@ export function meFetch(
   payload: Record<string, unknown> | (() => Record<string, unknown>),
   status = 200,
 ): typeof fetch {
-  return (async (): Promise<Response> => {
+  return (): Promise<Response> => {
     const body = typeof payload === "function" ? payload() : payload;
     // The app-API envelope: `appRequest` unwraps `results` (matching
     // Python's `api_client.me()`, which the monkeypatched `_fake_me`
@@ -491,11 +493,13 @@ export function meFetch(
       status === 200 && !Object.hasOwn(body, "results")
         ? { results: body }
         : body;
-    return new Response(JSON.stringify(wrapped), {
-      status,
-      headers: { "content-type": "application/json" },
-    });
-  }) as typeof fetch;
+    return Promise.resolve(
+      Response.json(wrapped, {
+        status,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  };
 }
 
 /** Options of {@link makeEffects}. */
@@ -546,7 +550,7 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
   const meCachePuts = new Map<string, MeResponse>();
   const narrations: string[] = [];
   const persisted: Session[] = [];
-  const envBag: Record<string, string> = { ...(options.env ?? {}) };
+  const envBag: Record<string, string> = { ...options.env };
 
   const envRead = (name: string): string | undefined => envBag[name];
 
@@ -581,9 +585,9 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
           // Mirror OnDiskTokenResolver.get_browser_token: serve the
           // persisted per-account tokens (the fake store here), else
           // the actionable missing-tokens error.
-          const persisted = tokenStore.written.get(name);
-          if (persisted !== undefined) {
-            return Promise.resolve(persisted.access_token.reveal());
+          const written = tokenStore.written.get(name);
+          if (written !== undefined) {
+            return Promise.resolve(written.access_token.reveal());
           }
           return Promise.reject(
             new OAuthError(
@@ -647,9 +651,8 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
     },
     fetchImpl:
       options.fetchImpl ??
-      ((async (): Promise<Response> => {
-        throw new TypeError("fetch failed (no fetchImpl stubbed)");
-      }) as typeof fetch),
+      ((): Promise<Response> =>
+        Promise.reject(new TypeError("fetch failed (no fetchImpl stubbed)"))),
     now: (): number => Date.now(),
   };
 
@@ -678,7 +681,7 @@ export function setEnv(
   value: string | undefined,
 ): void {
   if (value === undefined) {
-    delete bundle.envBag[name];
+    Reflect.deleteProperty(bundle.envBag, name);
     return;
   }
   bundle.envBag[name] = value;

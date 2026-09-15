@@ -1,20 +1,20 @@
-// Layer-3 translation — Phase-3 packet B4-C3 assigned suite. Source:
-// tests/unit/test_api_client_bookmarks.py (ALL classes). The methods
-// under lock (`list_bookmarks` legacy, `query_saved_flows`,
-// `query_saved_report` routing) are B4-C2 client members — the packet's
-// C3 row owns this FILE (b4-packets.md §Packet C3 Layer-3 scope), so the
-// locks land here against the already-landed C2 methods.
-//
-// Date-defaulting tests replace live `datetime.now()` reads with the
-// injected frozen clock (B4-C2 precedent, D12 seam); the assertion
-// content (30-day arithmetic, today cap) is preserved (R10.2).
-import { describe, expect, it } from "vitest";
-import { AuthenticationError, QueryError } from "../../src/errors.js";
-import { toNativeJson } from "../../src/client/json-value.js";
-import { createMockClient, makeSession } from "./client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
+// Legacy `listBookmarks`, `querySavedFlows` and the `querySavedReport`
+// type routing (insights / funnels / retention / flows, including the
+// 30-day funnel date defaults and today cap). Mirrors every class of
+// tests/unit/test_api_client_bookmarks.py; live `datetime.now()` reads become
+// the injected frozen clock, the date arithmetic under assertion is unchanged.
 
-/** The `test_credentials` fixture twin (test_api_client_bookmarks.py:21-29). */
+import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
+import { toNativeJson } from "../../src/client/json-value.js";
+import { AuthenticationError, QueryError } from "../../src/errors.js";
+import {
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
+
+/** The `test_credentials` fixture twin. */
 function testCredentials(): Session {
   return makeSession({
     username: "test_user",
@@ -27,8 +27,10 @@ function testCredentials(): Session {
 /** A frozen instant for the date-defaulting tests (UTC noon). */
 const FROZEN_NOW = new Date("2026-08-15T12:00:00Z");
 
-describe("TestListBookmarks", () => {
-  it("test_list_bookmarks_endpoint_url", async () => {
+describe("List bookmarks", () => {
+  // python: TestListBookmarks
+  it("list bookmarks endpoint URL", async () => {
+    // python: test_list_bookmarks_endpoint_url
     const capturedUrls: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -39,7 +41,8 @@ describe("TestListBookmarks", () => {
     expect(capturedUrls[0]).toContain("v=2");
   });
 
-  it("test_list_bookmarks_returns_results", async () => {
+  it("list bookmarks returns results", async () => {
+    // python: test_list_bookmarks_returns_results
     const { client } = createMockClient(testCredentials(), () => ({
       status: 200,
       json: {
@@ -73,7 +76,8 @@ describe("TestListBookmarks", () => {
     expect(result["results"]?.[1]?.["type"]).toBe("funnels");
   });
 
-  it("test_list_bookmarks_with_type_filter", async () => {
+  it("list bookmarks with type filter", async () => {
+    // python: test_list_bookmarks_with_type_filter
     const capturedUrls: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -101,7 +105,8 @@ describe("TestListBookmarks", () => {
     expect(result["results"]?.[0]?.["type"]).toBe("insights");
   });
 
-  it("test_list_bookmarks_all_types", async () => {
+  it("list bookmarks all types", async () => {
+    // python: test_list_bookmarks_all_types
     const bookmarkTypes = [
       "insights",
       "funnels",
@@ -114,12 +119,12 @@ describe("TestListBookmarks", () => {
         status: 200,
         json: { results: [] },
       }));
-      // Should not raise
-      await client.listBookmarks(bmType);
+      await expect(client.listBookmarks(bmType)).resolves.toBeDefined();
     }
   });
 
-  it("test_list_bookmarks_empty_results", async () => {
+  it("list bookmarks empty results", async () => {
+    // python: test_list_bookmarks_empty_results
     const { client } = createMockClient(testCredentials(), () => ({
       status: 200,
       json: { results: [] },
@@ -128,10 +133,11 @@ describe("TestListBookmarks", () => {
       string,
       unknown
     >;
-    expect(result["results"]).toEqual([]);
+    expect(result["results"]).toStrictEqual([]);
   });
 
-  it("test_list_bookmarks_full_metadata", async () => {
+  it("list bookmarks full metadata", async () => {
+    // python: test_list_bookmarks_full_metadata
     const { client } = createMockClient(testCredentials(), () => ({
       status: 200,
       json: {
@@ -156,7 +162,7 @@ describe("TestListBookmarks", () => {
       string,
       Array<Record<string, unknown>>
     >;
-    const bookmark = result["results"]?.[0] as Record<string, unknown>;
+    const bookmark = result["results"]![0]!;
     expect(bookmark["id"]).toBe(63877017);
     expect(bookmark["name"]).toBe("Monthly Recurring Revenue");
     expect(bookmark["type"]).toBe("insights");
@@ -171,8 +177,10 @@ describe("TestListBookmarks", () => {
   });
 });
 
-describe("TestListBookmarksErrors", () => {
-  it("test_list_bookmarks_auth_error_on_401", async () => {
+describe("List bookmarks errors", () => {
+  // python: TestListBookmarksErrors
+  it("list bookmarks auth error on 401", async () => {
+    // python: test_list_bookmarks_auth_error_on_401
     const { client } = createMockClient(testCredentials(), () => ({
       status: 401,
       json: { error: "Invalid credentials" },
@@ -182,31 +190,37 @@ describe("TestListBookmarksErrors", () => {
     );
   });
 
-  it("test_list_bookmarks_query_error_on_403", async () => {
+  it("list bookmarks query error on 403", async () => {
+    // python: test_list_bookmarks_query_error_on_403
     const { client } = createMockClient(testCredentials(), () => ({
       status: 403,
       json: { error: "Permission denied" },
     }));
-    const err: unknown = await client.listBookmarks().catch((e: unknown) => e);
+    const err: unknown = await client
+      .listBookmarks()
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(QueryError);
     expect(String(err)).toContain("Permission denied");
   });
 
-  it("test_list_bookmarks_query_error_on_400", async () => {
+  it("list bookmarks query error on 400", async () => {
+    // python: test_list_bookmarks_query_error_on_400
     const { client } = createMockClient(testCredentials(), () => ({
       status: 400,
       json: { error: "Invalid type parameter" },
     }));
     const err: unknown = await client
       .listBookmarks("invalid")
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(QueryError);
     expect(String(err)).toContain("Invalid type parameter");
   });
 });
 
-describe("TestQueryFlows", () => {
-  it("test_query_saved_flows_endpoint_url", async () => {
+describe("Query flows", () => {
+  // python: TestQueryFlows
+  it("query saved flows endpoint URL", async () => {
+    // python: test_query_saved_flows_endpoint_url
     const capturedUrls: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -226,7 +240,8 @@ describe("TestQueryFlows", () => {
     expect(capturedUrls[0]).toContain("bookmark_id=12345");
   });
 
-  it("test_query_saved_flows_returns_raw_response", async () => {
+  it("query saved flows returns raw response", async () => {
+    // python: test_query_saved_flows_returns_raw_response
     const { client } = createMockClient(testCredentials(), () => ({
       status: 200,
       json: {
@@ -250,7 +265,8 @@ describe("TestQueryFlows", () => {
     expect(result["computed_at"]).toBe("2024-01-15T10:00:00");
   });
 
-  it("test_query_saved_flows_auth_error_on_401", async () => {
+  it("query saved flows auth error on 401", async () => {
+    // python: test_query_saved_flows_auth_error_on_401
     const { client } = createMockClient(testCredentials(), () => ({
       status: 401,
       json: { error: "Invalid credentials" },
@@ -260,21 +276,24 @@ describe("TestQueryFlows", () => {
     );
   });
 
-  it("test_query_saved_flows_query_error_on_404", async () => {
+  it("query saved flows query error on 404", async () => {
+    // python: test_query_saved_flows_query_error_on_404
     const { client } = createMockClient(testCredentials(), () => ({
       status: 404,
       json: { error: "Bookmark not found" },
     }));
     const err: unknown = await client
       .querySavedFlows(99999)
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(QueryError);
     expect(String(err)).toContain("Bookmark not found");
   });
 });
 
-describe("TestQuerySavedReportRouting", () => {
-  it("test_query_saved_report_default_routes_to_insights", async () => {
+describe("Query saved report routing", () => {
+  // python: TestQuerySavedReportRouting
+  it("query saved report default routes to insights", async () => {
+    // python: test_query_saved_report_default_routes_to_insights
     const capturedUrls: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -295,10 +314,11 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain("/api/query/insights");
     expect(capturedUrls[0]).toContain("bookmark_id=12345");
     expect(Object.hasOwn(result, "headers")).toBe(true);
-    expect(result["headers"]).toEqual(["$metric"]);
+    expect(result["headers"]).toStrictEqual(["$metric"]);
   });
 
-  it("test_query_saved_report_insights_type_routes_to_insights", async () => {
+  it("query saved report insights type routes to insights", async () => {
+    // python: test_query_saved_report_insights_type_routes_to_insights
     const capturedUrls: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -316,7 +336,8 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain("/api/query/insights");
   });
 
-  it("test_query_saved_report_funnels_routes_to_funnels_endpoint", async () => {
+  it("query saved report funnels routes to funnels endpoint", async () => {
+    // python: test_query_saved_report_funnels_routes_to_funnels_endpoint
     const capturedUrls: string[] = [];
     const { client } = createMockClient(
       testCredentials(),
@@ -337,7 +358,8 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain("/api/query/funnels");
   });
 
-  it("test_query_saved_report_funnels_uses_funnel_id_param", async () => {
+  it("query saved report funnels uses funnel ID param", async () => {
+    // python: test_query_saved_report_funnels_uses_funnel_id_param
     const capturedUrls: string[] = [];
     const { client } = createMockClient(
       testCredentials(),
@@ -355,7 +377,8 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain("funnel_id=12345");
   });
 
-  it("test_query_saved_report_funnels_default_dates_last_30_days", async () => {
+  it("query saved report funnels default dates last 30 days", async () => {
+    // python: test_query_saved_report_funnels_default_dates_last_30_days
     // Frozen clock: today = 2026-08-15; 30 days earlier = 2026-07-16.
     const today = "2026-08-15";
     const thirtyDaysAgo = "2026-07-16";
@@ -376,7 +399,8 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain(`to_date=${today}`);
   });
 
-  it("test_query_saved_report_funnels_uses_provided_dates", async () => {
+  it("query saved report funnels uses provided dates", async () => {
+    // python: test_query_saved_report_funnels_uses_provided_dates
     const capturedUrls: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -394,7 +418,8 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain("to_date=2024-06-30");
   });
 
-  it("test_query_saved_report_retention_routes_to_retention_endpoint", async () => {
+  it("query saved report retention routes to retention endpoint", async () => {
+    // python: test_query_saved_report_retention_routes_to_retention_endpoint
     const capturedUrls: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -410,7 +435,8 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain("bookmark_id=12345");
   });
 
-  it("test_query_saved_report_flows_routes_to_arb_funnels", async () => {
+  it("query saved report flows routes to arb funnels", async () => {
+    // python: test_query_saved_report_flows_routes_to_arb_funnels
     const capturedUrls: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -430,7 +456,8 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain("query_type=flows_sankey");
   });
 
-  it("test_query_saved_report_funnels_only_to_date_derives_from_date", async () => {
+  it("query saved report funnels only to date derives from date", async () => {
+    // python: test_query_saved_report_funnels_only_to_date_derives_from_date
     // When only to_date is provided, from_date should be derived as 30
     // days before to_date, not 30 days before today. This prevents
     // inverted date ranges when querying historical data.
@@ -456,7 +483,8 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain(`to_date=${historicalToDate}`);
   });
 
-  it("test_query_saved_report_funnels_only_from_date_derives_to_date", async () => {
+  it("query saved report funnels only from date derives to date", async () => {
+    // python: test_query_saved_report_funnels_only_from_date_derives_to_date
     // When only from_date is provided, to_date should be derived as 30
     // days after from_date, but capped at today to avoid querying
     // future dates.

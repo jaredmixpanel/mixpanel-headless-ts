@@ -1,23 +1,20 @@
-// Layer-3 browser-contract suite — NO Python twin exists for the
-// CredentialStore surface (new browser code). Contract arbiter:
-// rulebook R9.3 ("injectable `CredentialStore`; default in-memory;
-// documented localStorage adapter with security warning") +
-// b9-packets.md §2.1 (the pasted interface contract + design notes) —
-// the phase2-audit A2 header style, cited in lieu of a Python file.
+// CredentialStore contract (in-memory default and the localStorage adapter
+// with its security warning). Browser-only surface, no Python twin.
 
 import { describe, expect, it } from "vitest";
+
+import { OAuthError } from "@mixpanel-headless/core";
 
 import localStorageAdapterSource from "../src/credential-store.ts?raw";
 import {
   CREDENTIAL_KEYS,
+  type CredentialStore,
   InMemoryCredentialStore,
   LocalStorageCredentialStore,
-  type CredentialStore,
 } from "../src/index.js";
-import { OAuthError } from "../../core/src/errors.js";
 import { fakeStorage } from "./helpers.js";
 
-describe("CREDENTIAL_KEYS (b9-packets.md §2.1 — the namespace table)", () => {
+describe("CREDENTIAL_KEYS", () => {
   it("keys are per-region and library-namespaced", () => {
     expect(CREDENTIAL_KEYS.tokens("us")).toBe("mp.tokens.us");
     expect(CREDENTIAL_KEYS.clientInfo("eu")).toBe("mp.oauth_client.eu");
@@ -26,6 +23,9 @@ describe("CREDENTIAL_KEYS (b9-packets.md §2.1 — the namespace table)", () => 
 });
 
 // ONE shared contract suite over both implementations (§2.6 row 1).
+/* eslint-disable vitest/prefer-expect-resolves -- `CredentialStore.get`
+   returns a MaybePromise (the in-memory store answers synchronously), so
+   `expect(await …)` is the correct form; `.resolves` would throw on it. */
 describe.each<[string, () => CredentialStore]>([
   [
     "InMemoryCredentialStore",
@@ -37,7 +37,7 @@ describe.each<[string, () => CredentialStore]>([
       new LocalStorageCredentialStore(fakeStorage().storage),
   ],
 ])("CredentialStore contract — %s", (_name, makeStore) => {
-  it("get of an absent key returns null (never undefined — R3.9)", async () => {
+  it("get of an absent key returns null, never undefined", async () => {
     const store = makeStore();
     expect(await store.get("mp.tokens.us")).toBeNull();
   });
@@ -93,15 +93,16 @@ describe.each<[string, () => CredentialStore]>([
     expect(await store.get("mp.tokens.us")).toBe("");
   });
 });
+/* eslint-enable vitest/prefer-expect-resolves */
 
-describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
-  it("uses ONLY the injected StorageLike — no global touch", async () => {
+describe("LocalStorageCredentialStore", () => {
+  it("uses ONLY the injected StorageLike — no global touch", () => {
     const { storage, map } = fakeStorage();
     const store = new LocalStorageCredentialStore(storage);
-    await store.set("mp.tokens.us", "injected");
+    store.set("mp.tokens.us", "injected");
     expect(map.get("mp.tokens.us")).toBe("injected");
-    expect(await store.get("mp.tokens.us")).toBe("injected");
-    await store.delete("mp.tokens.us");
+    expect(store.get("mp.tokens.us")).toBe("injected");
+    store.delete("mp.tokens.us");
     expect(map.has("mp.tokens.us")).toBe(false);
   });
 
@@ -125,9 +126,8 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
     }
   });
 
-  it("security warning EXISTS in the adapter JSDoc and covers XSS / origin scope / persistence (R9.3 REQUIREMENT — §2.6 source-text grep)", () => {
-    // R9.3: "documented localStorage adapter with security warning".
-    // §2.1: the warning must state that localStorage is origin-scoped,
+  it("the adapter JSDoc carries a security warning covering XSS, origin scope and persistence", () => {
+    // The warning must state that localStorage is origin-scoped,
     // XSS-readable, survives logout unless deleted, that bearer tokens
     // are readable by any script on the origin, and that the in-memory
     // default is the recommended posture (re-login on reload).
@@ -140,8 +140,8 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
     expect(source).toMatch(/re-?login/i);
   });
 
-  it("FB-9 (pair-B): the warning names ALL persisted payload families and the bulk-clear helper", () => {
-    // b9-reviewB-threat.md F6: the store also persists the PKCE
+  it("the warning names every persisted payload family and the bulk-clear helper", () => {
+    // The store also persists the PKCE
     // verifier + CSRF state (pending login) and the DCR registration —
     // the warning must say so, and the logout instruction must point
     // at a supported enumeration (CREDENTIAL_KEYS.all).
@@ -152,25 +152,27 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
     expect(source).toMatch(/CREDENTIAL_KEYS\.all/);
   });
 
-  it("FB-9 (pair-B): CREDENTIAL_KEYS.all(region) enumerates every key family for a region", () => {
-    expect(CREDENTIAL_KEYS.all("us")).toEqual([
+  it("CREDENTIAL_KEYS.all(region) enumerates every key family for a region", () => {
+    expect(CREDENTIAL_KEYS.all("us")).toStrictEqual([
       "mp.tokens.us",
       "mp.oauth_client.us",
       "mp.pending_login.us",
     ]);
-    expect(CREDENTIAL_KEYS.all("eu")).toEqual([
+    expect(CREDENTIAL_KEYS.all("eu")).toStrictEqual([
       CREDENTIAL_KEYS.tokens("eu"),
       CREDENTIAL_KEYS.clientInfo("eu"),
       CREDENTIAL_KEYS.pendingLogin("eu"),
     ]);
   });
 
-  it("FB-11 (pair-B): backend failures re-throw as coded OAUTH_CONFIG_ERROR (never a bare DOMException)", async () => {
-    // b9-reviewB-e2e.md F5: Safari-private/quota failures escaped as
-    // uncoded DOMExceptions, inconsistent with R5 and with the
-    // constructor's own OAUTH_CONFIG_ERROR posture.
-    const quotaError = new Error("quota exceeded");
-    quotaError.name = "QuotaExceededError";
+  it("backend failures re-throw as coded OAUTH_CONFIG_ERROR, never a bare DOMException", () => {
+    // Safari-private/quota failures must not escape as uncoded
+    // DOMExceptions, inconsistent with the constructor's own
+    // OAUTH_CONFIG_ERROR posture.
+    class QuotaExceededError extends Error {
+      override readonly name = "QuotaExceededError";
+    }
+    const quotaError = new QuotaExceededError("quota exceeded");
     const store = new LocalStorageCredentialStore({
       getItem: (): string | null => {
         throw quotaError;

@@ -1,21 +1,20 @@
-// Dedicated async Layer-3 for B4-C6 (packet C6 §Layer-3 last row —
-// "Dedicated async Layer-3 (plan §7): delayed mock pages, abort
-// between pages, abort during backoff sleep").
-//
-// These are TS-native locks (no Python source test to translate —
-// Python's synchronous iterator has no cancellation surface; R6.7
-// prescribes the AbortSignal contract these tests pin: all four
-// points, every exit normalized to `DOMException(..., 'AbortError')`).
+// TS-only async behaviour of `paginateAll`: laziness across real await
+// points (page N+1 is not requested before page N's items are consumed),
+// abort between pages and during the backoff sleep (every exit normalised
+// to `DOMException("AbortError")`), and early `return()`. No Python source
+// suite: the synchronous Python iterator has no cancellation surface.
 import { describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
-import { paginateAll } from "../../src/client/pagination.js";
 import { toNativeJson } from "../../src/client/json-value.js";
+import { paginateAll } from "../../src/client/pagination.js";
 import {
+  type CannedResponse,
   createMockClient,
+  drain,
   makeSession,
   staticTokenResolver,
-  type CannedResponse,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** One canned page body with the given ids and cursor. */
 function page(ids: number[], nextCursor: string | null): CannedResponse {
@@ -29,17 +28,17 @@ function page(ids: number[], nextCursor: string | null): CannedResponse {
   };
 }
 
-/** Whether a rejection is the normalized R6.7 AbortError. */
+/** Whether a rejection is the normalized AbortError. */
 function isAbortError(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === "AbortError";
 }
 
-describe("PaginationAsyncBehavior", () => {
+describe("paginateAll async behaviour", () => {
   it("delayed mock pages: laziness across real await points", async () => {
     // Each response resolves on a macrotask boundary; the walk must
     // still deliver pages strictly in cursor order, one request per
     // page, with no page fetched before the previous page's items were
-    // consumed (R6.1 laziness).
+    // consumed (laziness).
     const requestsAtYield: number[] = [];
     let requestCount = 0;
     const delayedFetch = (async (
@@ -50,13 +49,15 @@ describe("PaginationAsyncBehavior", () => {
       requestCount += 1;
       await new Promise((resolve) => setTimeout(resolve, 1));
       const cursor = new URL(request.url).searchParams.get("cursor");
-      const body =
-        cursor === null
-          ? page([1], "c2")
-          : cursor === "c2"
-            ? page([2], "c3")
-            : page([3], null);
-      return new Response(JSON.stringify(body.json), {
+      let body: ReturnType<typeof page>;
+      if (cursor === null) {
+        body = page([1], "c2");
+      } else if (cursor === "c2") {
+        body = page([2], "c3");
+      } else {
+        body = page([3], null);
+      }
+      return Response.json(body.json, {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -71,9 +72,9 @@ describe("PaginationAsyncBehavior", () => {
       items.push(toNativeJson(item));
       requestsAtYield.push(requestCount);
     }
-    expect(items).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+    expect(items).toStrictEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
     // Page N+1 is not requested until page N's item was yielded.
-    expect(requestsAtYield).toEqual([1, 2, 3]);
+    expect(requestsAtYield).toStrictEqual([1, 2, 3]);
   });
 
   it("abort between pages rejects with a normalized AbortError", async () => {
@@ -86,15 +87,15 @@ describe("PaginationAsyncBehavior", () => {
       signal: controller.signal,
     });
     const first = await walk.next();
-    expect(toNativeJson(first.value ?? null)).toEqual({ id: 1 });
-    // Abort while parked between pages (R6.7 point 1) — the next pull
+    expect(toNativeJson(first.value ?? null)).toStrictEqual({ id: 1 });
+    // Abort while parked between pages — the next pull
     // must reject BEFORE issuing another request.
     controller.abort();
     let raised: unknown = null;
     try {
       await walk.next();
-    } catch (cause) {
-      raised = cause;
+    } catch (error) {
+      raised = error;
     }
     expect(isAbortError(raised)).toBe(true);
     expect(transport.captures).toHaveLength(1);
@@ -125,19 +126,17 @@ describe("PaginationAsyncBehavior", () => {
     });
     let raised: unknown = null;
     try {
-      for await (const item of paginateAll(
-        abortingClient,
-        "/projects/12345/items",
-        { signal: controller.signal },
-      )) {
-        void item;
-      }
-    } catch (cause) {
-      raised = cause;
+      await drain(
+        paginateAll(abortingClient, "/projects/12345/items", {
+          signal: controller.signal,
+        }),
+      );
+    } catch (error) {
+      raised = error;
     }
     expect(isAbortError(raised)).toBe(true);
     // Exactly one 429 request, one sleep entered — the abort landed in
-    // the backoff wait (R6.7 point 3), not after another attempt.
+    // the backoff wait, not after another attempt.
     expect(sleepEntered).toBe(1);
     expect(transport.captures).toHaveLength(1);
   });

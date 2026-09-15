@@ -1,51 +1,105 @@
-# CI for mixpanel-headless-ts (D11).
+# Repo gate for mixpanel-headless-ts.
 #
-# Committed while the repo is local-only (no remote in Phase 1, per D16);
-# it runs on push once a remote exists. Until then the same commands run
-# locally via `npm run check`, which is the actual Phase-1 gate.
+# `npm run check` (package.json; documented in CONTRIBUTING.md, "The gate") is
+# the source of truth for what the gate runs; this workflow only adds what
+# cannot live in an npm script: a Node matrix, the lockfile-freshness check,
+# and the conformance-report and coverage artifacts.
+#
+# Supply-chain rules for this file: SHA-pin every action (Dependabot bumps the
+# SHA and the trailing `# vX.Y.Z` comment together), least-privilege token,
+# and no secrets — the gate never talks to Mixpanel.
 name: ci
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Superseded pushes to a PR cancel the running gate; pushes to main all run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Quiet npm in CI: no funding banner, no audit report.
+  npm_config_fund: "false"
+  npm_config_audit: "false"
 
 jobs:
   check:
+    name: check (node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both supported release lines. `engines` is `^22.22.2 || >=24.15` with
+        # `engine-strict=true` (.npmrc); setup-node resolves `22` to the latest
+        # 22.x (22.23.2 at the time of writing), which satisfies the lower
+        # bound. `.node-version` (22) is the local default and is not read here.
+        node: [22, 24]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      # typecheck (tsc --noEmit per package), eslint, prettier --check,
-      # vitest run, core browser-bundle smoke.
-      - run: npm run check
+          persist-credentials: false
 
-  conformance:
-    # Guarded on corpus availability (D11): the corpus snapshot lands in
-    # TS-4 (scripts/sync-corpus.sh -> conformance-runner/corpus/); the runner
-    # itself lands in TS-5. Steps below skip until both exist.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Detect corpus snapshot
-        id: corpus
-        run: |
-          if [ -f conformance-runner/corpus/manifest.json ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No corpus snapshot at conformance-runner/corpus/ - skipping."
-          fi
-      - uses: actions/setup-node@v7
-        if: steps.corpus.outputs.present == 'true'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
-        if: steps.corpus.outputs.present == 'true'
-      - name: Conformance runner
-        if: steps.corpus.outputs.present == 'true'
-        run: npm run conformance -- --report json
+
+      - name: Install (lockfile-exact)
+        id: install
+        run: npm ci
+
+      # A clean `npm ci` must not rewrite the lockfile; if it does, the
+      # committed package-lock.json is stale or was hand-edited.
+      - name: Lockfile freshness
+        run: git diff --exit-code package-lock.json
+
+      # The gate, in `check` order: build + typecheck (tsc -b), publint/attw
+      # on each package tarball, knip, eslint, prettier, the full vitest run
+      # with coverage thresholds (which already replays the whole conformance
+      # corpus via conformance-runner/test/corpus.test.ts and packs and
+      # installs the three tarballs), and the browser-purity smoke.
+      - name: Gate
+        run: npm run check
+
+      # Coverage from the gate's vitest run (vitest.config.ts writes lcov and
+      # json-summary to coverage/). Uploaded even when the gate failed so a
+      # threshold miss can be inspected; absent when an earlier gate step
+      # stopped the run before vitest, hence `ignore`.
+      - name: Upload coverage
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-node${{ matrix.node }}
+          path: |
+            coverage/lcov.info
+            coverage/coverage-summary.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # The corpus already ran inside `npm run check`; this second run exists
+      # only to produce the machine-readable verdict report as an artifact. The
+      # CLI writes the JSON to stdout (summary to stderr), so it is redirected
+      # here. Runs even when the gate failed so the report is available for
+      # triage, but not when install failed or the job was cancelled.
+      - name: Conformance report
+        id: report
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          mkdir -p conformance-runner/dist
+          npm run --silent conformance -- --report json > conformance-runner/dist/report.json
+
+      - name: Upload conformance report
+        if: ${{ !cancelled() && steps.report.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: conformance-report-node${{ matrix.node }}
+          path: conformance-runner/dist/report.json
+          if-no-files-found: error
+          retention-days: 14

@@ -1,11 +1,11 @@
 // GENERATED FROM conformance-runner/corpus/contract/error-codes.json @ 0dde50608a6af026e94cdb75bacbcebe5ce105db — DO NOT EDIT
-// Regenerate with: node scripts/gen-error-codes.mjs
+// Regenerate with: npm run generate:error-codes
 //
-// Mirror of the Python-side error-code contract artifact (phase2-design C3):
+// Mirror of the Python-side error-code contract artifact:
 // exception class parent edges, per-class default codes, and the coded-guard
 // registry (`exceptions.CODED_GUARD_REGISTRY` / `CODED_GUARD_TWIN_CODES`).
-// The C8(c) registry-equality test diffs this module against the artifact
-// AND against the live classes in errors.ts.
+// The registry-equality test diffs this module against the artifact
+// and against the live classes in errors.ts.
 
 /** Python-side commit SHA the source artifact was generated from. */
 export const ERROR_CODES_GENERATED_FROM =
@@ -13,7 +13,7 @@ export const ERROR_CODES_GENERATED_FROM =
 
 /**
  * Exception class name → parent class name (`null` for the hierarchy
- * root `MixpanelHeadlessError`). ReadonlyMap per R4.8.
+ * root `MixpanelHeadlessError`).
  */
 export const EXCEPTION_CLASS_PARENTS: ReadonlyMap<string, string | null> =
   new Map([
@@ -53,7 +53,7 @@ export const EXCEPTION_CLASS_PARENTS: ReadonlyMap<string, string | null> =
     ["WorkspaceScopeError", "MixpanelHeadlessError"],
   ]);
 
-/** Exception class name → default machine code. ReadonlyMap per R4.8. */
+/** Exception class name → default machine code. */
 export const DEFAULT_ERROR_CODES: ReadonlyMap<string, string> = new Map([
   ["APIError", "API_ERROR"],
   ["AccountExistsError", "ACCOUNT_EXISTS"],
@@ -92,7 +92,7 @@ export const DEFAULT_ERROR_CODES: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
- * Every full error code minted by the E2 uncoded-raise coding pass —
+ * Every full error code the coded-guard pass mints —
  * mirror of Python `exceptions.CODED_GUARD_REGISTRY` (frozenset).
  */
 export const CODED_GUARD_REGISTRY: ReadonlySet<string> = new Set([

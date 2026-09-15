@@ -1,34 +1,33 @@
 /**
- * TS wire-stub client for the D13 wire-path gate vectors (task TS-6).
+ * TS wire-stub client for the authored `wirestub.*` vectors.
  *
- * Mirror of the Python `conformance/record/pycompat_ref.py`
- * `WireStubClient`: a deliberately trivial "client" whose methods issue
- * exactly the HTTP traffic their arguments describe against the injected
- * fetch (the R2.4 replay seam). The authored `wirestub.*` vectors replay
- * through it to prove the wire replay pipeline — sequence + keyed
- * unordered serving, `headers_contain` patterns, `params_absent`,
- * `body_stream` chunk reassembly, and transport-error surfacing — before
- * any real module is ported. It is a test double for the pipeline, NOT a
- * port of any real module.
+ * A deliberately trivial "client" whose methods issue exactly the HTTP
+ * traffic their arguments describe against the injected fetch. The
+ * `wirestub.*` vectors replay through it to prove the wire replay pipeline
+ * itself — sequence and keyed unordered serving, `headers_contain`
+ * patterns, `params_absent`, `body_stream` chunk reassembly, and
+ * transport-error surfacing — independently of any real module. It is a
+ * test double for the pipeline, not a port of library code.
  *
- * Transport failures: native fetch rejects with `TypeError("fetch
- * failed")` carrying a coded `cause` (see `transport-errors.ts`). Like any
- * real fetch adapter under R2.10, the stub classifies that rejection
- * ITSELF, into a {@link WireStubTransportError} named after the httpx
- * class the Python side raised — which is what the vectors'
- * `expect.error.class` records.
+ * Transport failures: native fetch rejects with a `"fetch failed"`
+ * `TypeError` carrying a coded `cause` (see `transport-errors.ts`). Like
+ * any real fetch adapter, the stub classifies that rejection itself, into
+ * a {@link WireStubTransportError} named after the httpx class the Python
+ * side raised — which is what the vectors' `expect.error.class` records.
+ *
+ * @see conformance.record.pycompat_ref.WireStubClient
  */
 
+import type { ExpectErrorConvertible } from "./internal/guards.js";
 import type { JsonValue } from "./json-value.js";
-import type { ExpectErrorConvertible } from "./runner.js";
 
 /**
- * Fetch-rejection `cause.code` → httpx transport class name.
+ * Fetch-rejection `cause.code` to httpx transport class name.
  *
  * Inverse of the representative entries in `transport-errors.ts`'s
  * committed table. The inverse is not injective (several httpx timeout
- * classes share `UND_ERR_CONNECT_TIMEOUT`), so each code maps to ONE
- * representative class; the D13 gate vectors only exercise
+ * classes share `UND_ERR_CONNECT_TIMEOUT`), so each code maps to one
+ * representative class; the authored vectors only exercise
  * `ConnectError`.
  */
 const CAUSE_CODE_TO_HTTPX_CLASS: Readonly<Record<string, string>> = {
@@ -45,12 +44,9 @@ const CAUSE_CODE_TO_HTTPX_CLASS: Readonly<Record<string, string>> = {
  *
  * Carries the httpx exception class name the equivalent Python failure
  * raises, so the runner can diff it against `expect.error` structurally
- * (R5.2/R5.4 — class name, never message text).
+ * (class name, never message text).
  */
-export class WireStubTransportError
-  extends Error
-  implements ExpectErrorConvertible
-{
+class WireStubTransportError extends Error implements ExpectErrorConvertible {
   /** The httpx transport exception class name (e.g. `ConnectError`). */
   readonly httpxClass: string;
 
@@ -78,10 +74,9 @@ export class WireStubTransportError
 }
 
 /**
- * Classify a fetch rejection the way a real adapter would (R2.10).
+ * Classify a fetch rejection the way a real adapter would.
  *
  * @param cause - The value the injected fetch rejected with.
- * @returns Never — always throws.
  * @throws WireStubTransportError - When the rejection is a native-style
  *   `TypeError` whose `cause.code` is in the committed mapping.
  * @throws unknown - The original value, unchanged, for everything else
@@ -94,7 +89,7 @@ function classifyRejection(cause: unknown): never {
       typeof inner === "object" &&
       inner !== null &&
       "code" in inner &&
-      typeof (inner as { code: unknown }).code === "string"
+      typeof inner.code === "string"
     ) {
       const mapped =
         CAUSE_CODE_TO_HTTPX_CLASS[(inner as { code: string }).code];
@@ -125,7 +120,7 @@ export interface WireStubRequestOptions {
 }
 
 /**
- * Mirror wire-stub client for the D13 wire-path gate vectors.
+ * Mirror wire-stub client for the authored `wirestub.*` vectors.
  *
  * Every public method issues the HTTP traffic its arguments describe,
  * verbatim, through the injected fetch.
@@ -138,7 +133,7 @@ export interface WireStubRequestOptions {
  * ```
  */
 export class WireStubClient {
-  /** The injected fetch implementation (the R2.4 replay seam). */
+  /** The injected fetch implementation (the replay seam). */
   private readonly fetchImpl: typeof fetch;
 
   /** Base URL prepended to request paths. */
@@ -147,9 +142,9 @@ export class WireStubClient {
   /**
    * Bind the stub to an injected fetch.
    *
-   * @param options - `fetch` (the replay seam — `VectorFetch` in the
-   *   runner) and an optional `baseUrl` (defaults to the recorded
-   *   `https://wirestub.invalid`).
+   * @param options - Construction options: `fetch` is the replay seam
+   *   (`VectorFetch` in the runner); `baseUrl` is prepended to request
+   *   paths and defaults to the recorded `https://wirestub.invalid`.
    */
   constructor(options: { fetch: typeof fetch; baseUrl?: string }) {
     this.fetchImpl = options.fetch;
@@ -164,7 +159,7 @@ export class WireStubClient {
    * @param options - Optional params/headers/JSON body.
    * @returns The status code and parsed body.
    * @throws WireStubTransportError - Classified native fetch rejections
-   *   (the D13 `transport_error` gate slice).
+   *   (the `transport_error` vectors).
    */
   async request(
     method: string,
@@ -185,13 +180,13 @@ export class WireStubClient {
     }
     let response: Response;
     try {
-      response = await this.fetchImpl(url.toString(), {
+      response = await this.fetchImpl(url.href, {
         method,
         headers,
-        ...(body !== undefined ? { body } : {}),
+        ...(body === undefined ? {} : { body }),
       });
-    } catch (cause) {
-      classifyRejection(cause);
+    } catch (error) {
+      classifyRejection(error);
     }
     const contentType = response.headers.get("content-type") ?? "";
     const parsed: unknown = contentType.toLowerCase().includes("json")
@@ -204,8 +199,7 @@ export class WireStubClient {
    * Issue several requests in the given order (multi-interaction gate).
    *
    * Within an `unordered_group` vector the issue order may differ from
-   * the recorded order — keyed serving (design D2/D7) is exactly what
-   * this exercises.
+   * the recorded order — keyed serving is exactly what this exercises.
    *
    * @param requests - One {@link request} argument set per call, in issue
    *   order.
@@ -215,11 +209,11 @@ export class WireStubClient {
    *   request.
    */
   async requestSequence(
-    requests: readonly {
+    requests: ReadonlyArray<{
       readonly method: string;
       readonly path: string;
       readonly options?: WireStubRequestOptions;
-    }[],
+    }>,
   ): Promise<WireStubResult[]> {
     const results: WireStubResult[] = [];
     for (const entry of requests) {
@@ -232,13 +226,14 @@ export class WireStubClient {
    * Stream a response and return its raw chunks (chunk-reassembly gate).
    *
    * Reads the response body chunk-by-chunk so the recorded `body_stream`
-   * boundaries reach the caller verbatim (design D2/D12); each chunk is
-   * decoded as UTF-8 independently, mirroring the Python stub's
-   * per-chunk `bytes.decode("utf-8")`.
+   * boundaries reach the caller verbatim; each chunk is decoded as UTF-8
+   * independently, mirroring the Python stub's per-chunk
+   * `bytes.decode("utf-8")`.
    *
    * @param method - HTTP method.
    * @param path - Request path relative to the base URL.
-   * @param options - Optional extra request headers.
+   * @param options - Request options; `headers` are extra request headers
+   *   set verbatim.
    * @returns The response's chunks decoded as UTF-8, in arrival order.
    * @throws WireStubTransportError - Classified native fetch rejections.
    * @throws TypeError - When a chunk is not valid standalone UTF-8 (gate
@@ -252,12 +247,12 @@ export class WireStubClient {
     const url = new URL(this.baseUrl + path);
     let response: Response;
     try {
-      response = await this.fetchImpl(url.toString(), {
+      response = await this.fetchImpl(url.href, {
         method,
         headers: new Headers(options.headers ?? {}),
       });
-    } catch (cause) {
-      classifyRejection(cause);
+    } catch (error) {
+      classifyRejection(error);
     }
     if (response.body === null) {
       return [];

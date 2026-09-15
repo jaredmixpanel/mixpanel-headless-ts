@@ -1,37 +1,11 @@
-// B6-W5 Layer-3 translation (packet `b6-packets.md` §7) of the WHOLE
-// of `tests/unit/test_workspace_alerts.py` (447 lines, 2 classes):
-// `TestWorkspaceAlertCRUD` (:126) and `TestWorkspaceAlertOperations`
-// (:278).
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:68-85)
-// becomes `makeWorkspace(handler)` — the client is built over the
-// OAuth session (`_make_oauth_credentials`, :52) while the facade
-// carries the service-account `_TEST_SESSION` (:37-45), exactly as
-// Python does. `temp_dir` has no TS analog and is dropped.
-//
-// `test_alert` returns an OPAQUE dict in Python (`workspace.py:7119`
-// returns `client.test_alert(body)` verbatim — no model validation),
-// so the TS twin returns the native-valued record with no model
-// construction (the `list_erf_experiments` precedent, W4).
-//
-// ADDITIVE section (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-to-client delegation contracts — argument spelling for the
-// two option-bag members (`list_alerts` :6870, `get_alert_history`
-// :7075) and the `model_dump(exclude_none=True)` bodies (`:6911`,
-// `:6970`, `:7118`, `:7180`) — that the wire suite cannot observe.
+// Workspace alert members (list/create/get/update/delete/bulk-delete, count,
+// history, testAlert, screenshot URL, bookmark validation) over the injected
+// fetch seam. Mirrors tests/unit/test_workspace_alerts.py (both classes);
+// testAlert returns the raw record because Python returns the client dict as-is.
+// Additive: facade-to-client delegation contracts the wire suite cannot observe.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../client/client-test-helpers.js";
-import type { MixpanelClient } from "../../src/client/client.js";
+
 import {
   AlertCount,
   AlertHistoryResponse,
@@ -55,42 +29,14 @@ import {
   updateAlert as updateAlertMember,
   validateAlertsForBookmark as validateAlertsForBookmarkMember,
 } from "../../src/workspace-members/annotations-webhooks-alerts.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:52-58`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :37-45). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
+import { ok } from "../../test-support/client-test-helpers.js";
+import {
+  makeFacadeWorkspace,
+  stubClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :68-85).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
-
-/**
- * A minimal alert dict matching the API shape (`_alert_json`, :93-114).
+ * A minimal alert dict matching the API shape (`_alert_json`).
  *
  * @param id - Alert ID.
  * @param name - Alert name.
@@ -110,45 +56,12 @@ function alertJson(id = 1, name = "Test Alert"): Record<string, unknown> {
   };
 }
 
-/**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
+// --- Workspace alert CRUD ---
 
-/**
- * A client stub whose single method returns `value` (the additive
- * delegation probes).
- *
- * @param method - The client method name to stub.
- * @param value - The value the stub resolves to.
- * @param calls - Optional log receiving each argument list.
- * @returns The stub cast to the client type.
- */
-function stubClient(
-  method: string,
-  value: unknown,
-  calls: unknown[][] = [],
-): MixpanelClient {
-  return {
-    [method]: (...args: unknown[]): Promise<unknown> => {
-      calls.push(args);
-      return Promise.resolve(value);
-    },
-  } as unknown as MixpanelClient;
-}
-
-// =============================================================================
-// TestWorkspaceAlertCRUD (:126)
-// =============================================================================
-
-describe("TestWorkspaceAlertCRUD", () => {
-  it("list_alerts() returns list of CustomAlert objects", async () => {
-    const { ws } = makeWorkspace(() =>
+describe("Workspace alert CRUD", () => {
+  // python: TestWorkspaceAlertCRUD
+  it("listAlerts() returns list of CustomAlert objects", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([alertJson(1, "Alert A"), alertJson(2, "Alert B")]),
     );
     const alerts = await ws.listAlerts();
@@ -160,21 +73,21 @@ describe("TestWorkspaceAlertCRUD", () => {
     expect(alerts[1]?.id).toBe(2);
   });
 
-  it("list_alerts() returns empty list when no alerts exist", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listAlerts()).toEqual([]);
+  it("listAlerts() returns empty list when no alerts exist", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
+    await expect(ws.listAlerts()).resolves.toStrictEqual([]);
   });
 
   it("list_alerts(bookmark_id=42) passes param to API", async () => {
-    const { ws, transport } = makeWorkspace(() => ok([alertJson()]));
+    const { ws, transport } = makeFacadeWorkspace(() => ok([alertJson()]));
     const alerts = await ws.listAlerts({ bookmark_id: 42 });
 
     expect(alerts).toHaveLength(1);
     expect(transport.captures[0]?.url).toContain("bookmark_id=42");
   });
 
-  it("create_alert() returns the created CustomAlert", async () => {
-    const { ws } = makeWorkspace(() => ok(alertJson(99, "New Alert")));
+  it("createAlert() returns the created CustomAlert", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok(alertJson(99, "New Alert")));
     const params = new CreateAlertParams({
       bookmark_id: 123,
       name: "New Alert",
@@ -190,8 +103,8 @@ describe("TestWorkspaceAlertCRUD", () => {
     expect(alert.name).toBe("New Alert");
   });
 
-  it("get_alert() returns a single CustomAlert by ID", async () => {
-    const { ws } = makeWorkspace(() => ok(alertJson(42, "My Alert")));
+  it("getAlert() returns a single CustomAlert by ID", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok(alertJson(42, "My Alert")));
     const alert = await ws.getAlert(42);
 
     expect(alert).toBeInstanceOf(CustomAlert);
@@ -199,8 +112,8 @@ describe("TestWorkspaceAlertCRUD", () => {
     expect(alert.name).toBe("My Alert");
   });
 
-  it("update_alert() returns the updated CustomAlert", async () => {
-    const { ws } = makeWorkspace(() => ok(alertJson(42, "Renamed")));
+  it("updateAlert() returns the updated CustomAlert", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok(alertJson(42, "Renamed")));
     const alert = await ws.updateAlert(
       42,
       new UpdateAlertParams({ name: "Renamed" }),
@@ -210,24 +123,23 @@ describe("TestWorkspaceAlertCRUD", () => {
     expect(alert.name).toBe("Renamed");
   });
 
-  it("delete_alert() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+  it("deleteAlert() resolves to undefined on success", async () => {
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteAlert(42)).resolves.toBeUndefined();
   });
 
-  it("bulk_delete_alerts() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+  it("bulkDeleteAlerts() resolves to undefined on success", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(ws.bulkDeleteAlerts([1, 2, 3])).resolves.toBeUndefined();
   });
 });
 
-// =============================================================================
-// TestWorkspaceAlertOperations (:278)
-// =============================================================================
+// --- Workspace alert operations ---
 
-describe("TestWorkspaceAlertOperations", () => {
-  it("get_alert_count() returns AlertCount", async () => {
-    const { ws } = makeWorkspace(() =>
+describe("Workspace alert operations", () => {
+  // python: TestWorkspaceAlertOperations
+  it("getAlertCount() returns AlertCount", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ anomaly_alerts_count: 5, alert_limit: 100, is_below_limit: true }),
     );
     const count = await ws.getAlertCount();
@@ -239,7 +151,7 @@ describe("TestWorkspaceAlertOperations", () => {
   });
 
   it("get_alert_count(alert_type='anomaly') passes param", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok({ anomaly_alerts_count: 2, alert_limit: 50, is_below_limit: true }),
     );
     await ws.getAlertCount({ alert_type: "anomaly" });
@@ -247,8 +159,8 @@ describe("TestWorkspaceAlertOperations", () => {
     expect(transport.captures[0]?.url).toContain("type=anomaly");
   });
 
-  it("get_alert_history() returns AlertHistoryResponse", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("getAlertHistory() returns AlertHistoryResponse", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ results: [{ fired: true }], pagination: { page_size: 20 } }),
     );
     const history = await ws.getAlertHistory(42);
@@ -259,18 +171,18 @@ describe("TestWorkspaceAlertOperations", () => {
     expect(history.pagination?.page_size).toBe(20);
   });
 
-  it("get_alert_history() handles empty history", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("getAlertHistory() handles empty history", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ results: [], pagination: { page_size: 20 } }),
     );
     const history = await ws.getAlertHistory(42);
 
     expect(history).toBeInstanceOf(AlertHistoryResponse);
-    expect(history.results).toEqual([]);
+    expect(history.results).toStrictEqual([]);
   });
 
-  it("test_alert() returns opaque dict", async () => {
-    const { ws } = makeWorkspace(() => ok({ status: "sent" }));
+  it("testAlert() returns a plain record, not a model", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ status: "sent" }));
     const params = new CreateAlertParams({
       bookmark_id: 123,
       name: "Test",
@@ -286,8 +198,8 @@ describe("TestWorkspaceAlertOperations", () => {
     expect(result["status"]).toBe("sent");
   });
 
-  it("get_alert_screenshot_url() returns AlertScreenshotResponse", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("getAlertScreenshotUrl() returns AlertScreenshotResponse", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ signed_url: "https://storage.googleapis.com/abc.png" }),
     );
     const resp = await ws.getAlertScreenshotUrl("screenshots/abc.png");
@@ -296,8 +208,8 @@ describe("TestWorkspaceAlertOperations", () => {
     expect(resp.signed_url).toBe("https://storage.googleapis.com/abc.png");
   });
 
-  it("validate_alerts_for_bookmark() returns ValidateAlertsForBookmarkResponse", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("validateAlertsForBookmark() returns ValidateAlertsForBookmarkResponse", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         alert_validations: [{ alert_id: 1, alert_name: "X", valid: true }],
         invalid_count: 0,
@@ -316,9 +228,7 @@ describe("TestWorkspaceAlertOperations", () => {
   });
 });
 
-// =============================================================================
-// ADDITIVE — delegation contracts (packet §0.2 / B5 Caution #13).
-// =============================================================================
+// --- Additive: delegation contracts the wire suite cannot observe ---
 
 describe("ADDITIVE: alert member delegation contracts", () => {
   it("listAlerts forwards bookmark_id/skip_user_filter, defaulting to null", async () => {
@@ -326,7 +236,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
     const client = stubClient("listAlerts", [], calls);
 
     await listAlertsMember(client);
-    expect(calls[0]?.[0]).toEqual({
+    expect(calls[0]?.[0]).toStrictEqual({
       bookmark_id: null,
       skip_user_filter: null,
     });
@@ -337,7 +247,10 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       bookmark_id: 42,
       skip_user_filter: false,
     });
-    expect(calls[1]?.[0]).toEqual({ bookmark_id: 42, skip_user_filter: false });
+    expect(calls[1]?.[0]).toStrictEqual({
+      bookmark_id: 42,
+      skip_user_filter: false,
+    });
   });
 
   it("getAlertCount forwards alert_type, defaulting to null", async () => {
@@ -349,10 +262,10 @@ describe("ADDITIVE: alert member delegation contracts", () => {
     );
 
     await getAlertCountMember(client);
-    expect(calls[0]?.[0]).toEqual({ alert_type: null });
+    expect(calls[0]?.[0]).toStrictEqual({ alert_type: null });
 
     await getAlertCountMember(client, { alert_type: "anomaly" });
-    expect(calls[1]?.[0]).toEqual({ alert_type: "anomaly" });
+    expect(calls[1]?.[0]).toStrictEqual({ alert_type: "anomaly" });
   });
 
   it("getAlertHistory forwards (alert_id, {page_size, next_cursor, previous_cursor})", async () => {
@@ -361,7 +274,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
 
     await getAlertHistoryMember(client, 42);
     expect(calls[0]?.[0]).toBe(42);
-    expect(calls[0]?.[1]).toEqual({
+    expect(calls[0]?.[1]).toStrictEqual({
       page_size: null,
       next_cursor: null,
       previous_cursor: null,
@@ -372,7 +285,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       next_cursor: "n",
       previous_cursor: "p",
     });
-    expect(calls[1]?.[1]).toEqual({
+    expect(calls[1]?.[1]).toStrictEqual({
       page_size: 20,
       next_cursor: "n",
       previous_cursor: "p",
@@ -380,9 +293,9 @@ describe("ADDITIVE: alert member delegation contracts", () => {
   });
 
   it("createAlert / updateAlert send the exclude_none dump", async () => {
-    const createCalls: unknown[][] = [];
+    const alertCreateCalls: unknown[][] = [];
     await createAlertMember(
-      stubClient("createAlert", alertJson(), createCalls),
+      stubClient("createAlert", alertJson(), alertCreateCalls),
       new CreateAlertParams({
         bookmark_id: 1,
         name: "A",
@@ -392,8 +305,8 @@ describe("ADDITIVE: alert member delegation contracts", () => {
         subscriptions: [],
       }),
     );
-    // `notification_windows` is None → ABSENT, not null (R3.5).
-    expect(createCalls[0]?.[0]).toEqual({
+    // `notification_windows` is None → ABSENT, not null.
+    expect(alertCreateCalls[0]?.[0]).toStrictEqual({
       bookmark_id: 1,
       name: "A",
       condition: {},
@@ -409,7 +322,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       new UpdateAlertParams({ name: "R" }),
     );
     expect(updateCalls[0]?.[0]).toBe(42);
-    expect(updateCalls[0]?.[1]).toEqual({ name: "R" });
+    expect(updateCalls[0]?.[1]).toStrictEqual({ name: "R" });
   });
 
   it("testAlert returns the client payload verbatim — no model construction", async () => {
@@ -427,8 +340,8 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       }),
     );
 
-    expect(result).toEqual({ status: "sent", extra: 1 });
-    expect(calls[0]?.[0]).toEqual({
+    expect(result).toStrictEqual({ status: "sent", extra: 1 });
+    expect(calls[0]?.[0]).toStrictEqual({
       bookmark_id: 1,
       name: "A",
       condition: {},
@@ -438,7 +351,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
     });
   });
 
-  it("validateAlertsForBookmark sends the exclude_none dump (`workspace.py:7180`)", async () => {
+  it("validateAlertsForBookmark sends the exclude_none dump", async () => {
     const calls: unknown[][] = [];
     const client = stubClient(
       "validateAlertsForBookmark",
@@ -454,7 +367,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       }),
     );
 
-    expect(calls[0]?.[0]).toEqual({
+    expect(calls[0]?.[0]).toStrictEqual({
       alert_ids: [1],
       bookmark_type: "insights",
       bookmark_params: { event: "Signup" },
@@ -462,9 +375,9 @@ describe("ADDITIVE: alert member delegation contracts", () => {
   });
 
   it("getAlert / deleteAlert / bulkDeleteAlerts / getAlertScreenshotUrl forward positionally", async () => {
-    const getCalls: unknown[][] = [];
-    await getAlertMember(stubClient("getAlert", alertJson(), getCalls), 7);
-    expect(getCalls[0]?.[0]).toBe(7);
+    const alertGetCalls: unknown[][] = [];
+    await getAlertMember(stubClient("getAlert", alertJson(), alertGetCalls), 7);
+    expect(alertGetCalls[0]?.[0]).toBe(7);
 
     const delCalls: unknown[][] = [];
     await deleteAlertMember(stubClient("deleteAlert", undefined, delCalls), 9);
@@ -475,7 +388,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       stubClient("bulkDeleteAlerts", undefined, bulkCalls),
       [1, 2, 3],
     );
-    expect(bulkCalls[0]?.[0]).toEqual([1, 2, 3]);
+    expect(bulkCalls[0]?.[0]).toStrictEqual([1, 2, 3]);
 
     const shotCalls: unknown[][] = [];
     await getAlertScreenshotUrlMember(

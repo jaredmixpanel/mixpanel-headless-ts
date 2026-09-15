@@ -1,42 +1,37 @@
 /**
- * `MeService` — TS port of `_internal/me.py:609-915` (Phase-3 packet
- * B6-W1 §3.3, the completion of the three-way `me.py` split).
+ * `/me` orchestration: a two-level cache (in-memory arm plus an injected
+ * {@link MeCacheStore}) in front of the client's raw `/me` call, the
+ * project and workspace lookups over the cached response, and the
+ * cache-only {@link MeService.resolveWorkspace} arm the client's workspace
+ * auto-resolution reads through `setWorkspaceResolver`. The response
+ * models live in `client/me.ts`; the on-disk cache store belongs to
+ * `@mixpanel-headless/node`, so this package stays filesystem-free.
  *
- * The other two thirds are already live and MUST NOT be re-derived
- * here (R10.8): the models plus `WorkspaceView` / `selectWorkspaceId`
- * landed at B4-C1 in `client/me.ts`, and the ON-DISK `MeCache`
- * (`me.py:413-607`) belongs to B8-N2 in `packages/node`. This module
- * takes the cache as an injected {@link MeCacheStore} and ships an
- * in-memory default so `packages/core` stays filesystem-free.
- *
- * The service is what makes the facade's `/me` trio work AND what the
- * client's workspace auto-resolution reads through
- * `setWorkspaceResolver` (`client.ts:1114`; Python `api_client.py:352`,
- * wired at `workspace.py:787`) — {@link MeService.resolveWorkspace} is
- * the cheap, cache-only arm of that contract.
+ * @see mixpanel_headless._internal.me.MeService
  */
 
+import type { AccountType } from "../auth/account.js";
+import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import {
+  type MeProjectInfo,
   MeResponse,
+  type MeWorkspaceInfo,
   selectWorkspaceId,
   workspaceViewFromMeWorkspace,
-  type MeProjectInfo,
-  type MeWorkspaceInfo,
 } from "../client/me.js";
-import { toNativeJson, type JsonValue } from "../client/json-value.js";
 import { compareCodepoints } from "../compat/codepoint.js";
 import { pythonInt } from "../compat/python-int.js";
-import type { AccountType } from "../auth/account.js";
 import { AuthenticationError, ConfigError, QueryError } from "../errors.js";
 
 /**
- * The cache seam behind {@link MeService} — the `MeCache` surface
- * (`me.py:470` `get`, `:546` `put`, `:597` `invalidate`) reduced to the
- * three operations the service calls, plus the account name the 401 /
- * 403 messages embed (`me.py:723`, read there as `cache._account_name`).
+ * Cache seam behind {@link MeService}: Python's `MeCache` reduced to the
+ * three operations the service calls (`get`, `put`, `invalidate`) plus
+ * the account name the 401 / 403 messages embed.
  *
- * Every method may return a promise so B8-N2's on-disk twin can do
+ * @remarks
+ * Every method may return a promise so the on-disk store can do
  * asynchronous I/O without changing this contract.
+ * @see mixpanel_headless._internal.me.MeCache
  */
 export interface MeCacheStore {
   /** Account this store is scoped to (`MeCache(account_name=…)`). */
@@ -47,7 +42,7 @@ export interface MeCacheStore {
    *
    * @returns The cached response, or `null` on a miss/expiry.
    */
-  get(): MeResponse | null | Promise<MeResponse | null>;
+  get: () => MeResponse | null | Promise<MeResponse | null>;
 
   /**
    * Store a response.
@@ -55,14 +50,14 @@ export interface MeCacheStore {
    * @param response - The response to cache.
    * @returns Nothing (a promise for asynchronous stores).
    */
-  put(response: MeResponse): void | Promise<void>;
+  put: (response: MeResponse) => void | Promise<void>;
 
   /**
    * Drop the cached response.
    *
    * @returns Nothing (a promise for asynchronous stores).
    */
-  invalidate(): void | Promise<void>;
+  invalidate: () => void | Promise<void>;
 }
 
 /**
@@ -73,43 +68,51 @@ export interface MeClient {
    * Fetch the raw `/me` payload.
    *
    * @returns The unwrapped `results` mapping.
-   * @throws AuthenticationError - 401.
-   * @throws QueryError - Any other non-2xx.
+   * @throws {@link AuthenticationError} - A 401 response.
+   * @throws {@link QueryError} - Any other non-2xx response.
    */
-  me(): Promise<Record<string, JsonValue>>;
+  me: () => Promise<Record<string, JsonValue>>;
 }
 
 /** Options bag of the {@link MeService} constructor (Python kw-only). */
 export interface MeServiceOptions {
   /**
-   * Account-type discriminator picking the 403 → `ConfigError` wording
-   * (`me.py:735-757`): `"service_account"` gets the 043 catalog E-10
-   * text naming the `user_details` scope; anything else (including
-   * `null`) gets the generic 042 line.
+   * Account-type discriminator picking the 403 → `ConfigError` wording:
+   * `"service_account"` gets the message naming the missing
+   * `user_details` scope; anything else (including `null`) gets the
+   * generic "lacks /me permission" line.
+   *
+   * @defaultValue `null`
    */
   readonly accountType?: AccountType | null | undefined;
 }
 
 /** Options bag of {@link MeService.fetch} (Python kw-only). */
 export interface MeFetchOptions {
-  /** Bypass both caches and call the API. Default `false`. */
+  /**
+   * Bypass both caches and call the API.
+   *
+   * @defaultValue `false`
+   */
   readonly force_refresh?: boolean | undefined;
 }
 
 /** Options bag of {@link MeService.listWorkspaces}. */
 export interface MeListWorkspacesOptions {
-  /** Only return workspaces of this project; absent → all. */
+  /**
+   * Only return workspaces of this project; absent → all.
+   *
+   * @defaultValue `null`
+   */
   readonly project_id?: string | null | undefined;
 }
 
 /**
- * Build the in-memory {@link MeCacheStore} default (`packages/core`
- * owns no filesystem; B8-N2 supplies the on-disk twin in
- * `packages/node`).
+ * Build the in-memory {@link MeCacheStore} default (`core` owns no
+ * filesystem; `@mixpanel-headless/node` supplies the on-disk twin).
  *
  * @param accountName - Account the cache is scoped to.
  * @returns A process-local store.
- *
  * @example
  * ```typescript
  * const cache = inMemoryMeCache("personal");
@@ -131,15 +134,19 @@ export function inMemoryMeCache(accountName: string): MeCacheStore {
 }
 
 /**
- * Orchestration service for `/me` calls with caching — port of
- * `me.py:609-915`.
+ * Serve `/me` lookups through a two-level cache: the in-memory arm
+ * first, then the injected {@link MeCacheStore}, then the network.
  *
+ * @remarks
+ * A fetched response is written to both cache levels; {@link peek} and
+ * {@link resolveWorkspace} read the caches only and never call the API.
  * @example
  * ```typescript
  * const svc = new MeService(client, inMemoryMeCache("personal"), "us");
  * const me = await svc.fetch();
  * const projects = await svc.listProjects();
  * ```
+ * @see mixpanel_headless._internal.me.MeService
  */
 export class MeService {
   /** The client slice used for the uncached call. */
@@ -148,7 +155,7 @@ export class MeService {
   /** The injected cache store. */
   readonly #cache: MeCacheStore;
 
-  /** Data residency region (`me.py:656`; carried, not branched on). */
+  /** Data residency region (carried, not branched on). */
   readonly #region: string;
 
   /** Account-type discriminator for the 403 wording. */
@@ -161,8 +168,8 @@ export class MeService {
    * Create the service.
    *
    * @param client - The client exposing `me()`.
-   * @param cache - The cache store (in-memory by default; on-disk in
-   *   `packages/node` from B8-N2).
+   * @param cache - The cache store ({@link inMemoryMeCache}, or the
+   *   on-disk store `@mixpanel-headless/node` supplies).
    * @param region - Data residency region (`us` / `eu` / `in`).
    * @param options - Optional account-type discriminator.
    */
@@ -178,22 +185,26 @@ export class MeService {
     this.#accountType = options.accountType ?? null;
   }
 
-  /** The region this service was constructed for. */
+  /**
+   * Return the data-residency region this service was constructed for.
+   *
+   * @returns The region code (`us` / `eu` / `in`).
+   */
   get region(): string {
     return this.#region;
   }
 
   /**
-   * The bound cache's account name — the Python tests'
-   * `svc._cache._account_name` read (`test_workspace_use.py:325`).
+   * Return the account name the bound cache store is scoped to.
+   *
+   * @returns The store's `accountName`.
    */
   get cacheAccountName(): string {
     return this.#cache.accountName;
   }
 
   /**
-   * Return the cached `/me` response without any network call
-   * (`peek`, `me.py:661-687`).
+   * Return the cached `/me` response without any network call.
    *
    * Checks the in-memory arm first, then the store. Returns `null`
    * when both miss — it never calls the API, which is what preserves
@@ -201,6 +212,7 @@ export class MeService {
    * `Workspace.get_business_context_chain()`.
    *
    * @returns The cached response, or `null`.
+   * @see mixpanel_headless._internal.me.MeService.peek
    */
   async peek(): Promise<MeResponse | null> {
     if (this.#cachedResponse !== null) {
@@ -214,14 +226,14 @@ export class MeService {
   }
 
   /**
-   * Fetch the `/me` response, using the caches when available
-   * (`fetch`, `me.py:689-765`).
+   * Fetch the `/me` response, using the caches when available.
    *
    * @param options - `force_refresh` bypasses both caches.
    * @returns The response (cached or freshly fetched).
-   * @throws ConfigError - 401 (credentials invalid) or 403 (no `/me`
-   *   permission); the 403 wording depends on the account type.
-   * @throws QueryError - Any other API error, unchanged.
+   * @throws {@link ConfigError} - A 401 (credentials invalid) or 403 (no
+   *   `/me` permission); the 403 wording depends on the account type.
+   * @throws {@link QueryError} - Any other API error, unchanged.
+   * @see mixpanel_headless._internal.me.MeService.fetch
    */
   async fetch(options: MeFetchOptions = {}): Promise<MeResponse> {
     const forceRefresh = options.force_refresh ?? false;
@@ -243,21 +255,20 @@ export class MeService {
     let raw: Record<string, JsonValue>;
     try {
       raw = await this.#client.me();
-    } catch (exc) {
-      if (exc instanceof AuthenticationError) {
+    } catch (error) {
+      if (error instanceof AuthenticationError) {
         throw new ConfigError(
           `Credentials for account '${accountName}' are invalid (401). ` +
             `Run \`mp account test ${accountName}\` to confirm; if it's an ` +
             `oauth_browser account, run \`mp account login ${accountName}\`.`,
           { status_code: 401, account_name: accountName },
-          { cause: exc },
+          { cause: error },
         );
       }
-      if (exc instanceof QueryError && exc.statusCode === 403) {
+      if (error instanceof QueryError && error.statusCode === 403) {
         const message =
           this.#accountType === "service_account"
-            ? // Error catalog E-10 — wording locked by
-              // `tests/unit/test_me.py` and the CLI snapshot tests.
+            ? // Wording mirrors Python's message verbatim.
               `Service account '${accountName}' is missing the ` +
               `\`user_details\` scope.\n\n` +
               `Re-mint the SA in Mixpanel Settings → Service ` +
@@ -270,32 +281,32 @@ export class MeService {
         throw new ConfigError(
           message,
           { status_code: 403, account_name: accountName },
-          { cause: exc },
+          { cause: error },
         );
       }
-      throw exc;
+      throw error;
     }
 
-    // The wire tree carries lossless numbers; Python validates the
-    // PLAIN `json.loads` output (`me.py:762`), so normalize first —
-    // the same `toNativeJson(...)` step every B4 model site performs
-    // (`client.ts:879`).
-    const response = MeResponse.fromDict(toNativeJson(raw as JsonValue));
+    // The wire tree carries lossless numbers; Python validates the plain
+    // `json.loads` output, so normalize first — the same `toNativeJson`
+    // step every model-construction site performs.
+    const response = MeResponse.fromDict(toNativeJson(raw));
     await this.#cache.put(response);
     this.#cachedResponse = response;
     return response;
   }
 
   /**
-   * List accessible projects from the cached `/me` response
-   * (`list_projects`, `me.py:767-786`).
+   * List accessible projects from the cached `/me` response.
    *
    * @returns `[project_id, MeProjectInfo]` pairs sorted by name.
-   * @throws ConfigError - `fetch()` failures.
+   * @throws {@link ConfigError} - Propagated from `fetch()` (the 401 / 403
+   *   mapping).
+   * @see mixpanel_headless._internal.me.MeService.list_projects
    */
   async listProjects(): Promise<Array<[string, MeProjectInfo]>> {
     const me = await this.fetch();
-    const items: Array<[string, MeProjectInfo]> = [...me.projects.entries()];
+    const items: Array<[string, MeProjectInfo]> = [...me.projects];
     items.sort((a, b) =>
       compareCodepoints(a[1].name.toLowerCase(), b[1].name.toLowerCase()),
     );
@@ -303,12 +314,13 @@ export class MeService {
   }
 
   /**
-   * Find one project by ID in the cached `/me` response
-   * (`find_project`, `me.py:788-808`).
+   * Find one project by ID in the cached `/me` response.
    *
    * @param projectId - The project ID to look up.
    * @returns The info, or `null` when absent.
-   * @throws ConfigError - `fetch()` failures.
+   * @throws {@link ConfigError} - Propagated from `fetch()` (the 401 / 403
+   *   mapping).
+   * @see mixpanel_headless._internal.me.MeService.find_project
    */
   async findProject(projectId: string): Promise<MeProjectInfo | null> {
     const me = await this.fetch();
@@ -316,13 +328,13 @@ export class MeService {
   }
 
   /**
-   * List workspaces, optionally filtered by project
-   * (`list_workspaces`, `me.py:810-845`).
+   * List workspaces, optionally filtered by project.
    *
    * @param options - Optional `project_id` filter.
    * @returns Workspaces sorted by name.
-   * @throws ConfigError - `fetch()` failures, or a non-numeric
-   *   `project_id`.
+   * @throws {@link ConfigError} - Propagated from `fetch()` (the 401 / 403
+   *   mapping), or a non-numeric `project_id`.
+   * @see mixpanel_headless._internal.me.MeService.list_workspaces
    */
   async listWorkspaces(
     options: MeListWorkspacesOptions = {},
@@ -350,12 +362,13 @@ export class MeService {
   }
 
   /**
-   * Find a project's default workspace (`find_default_workspace`,
-   * `me.py:847-867`).
+   * Find a project's default workspace.
    *
    * @param projectId - The project ID.
    * @returns The default workspace, or `null` when none is flagged.
-   * @throws ConfigError - `fetch()` failures.
+   * @throws {@link ConfigError} - Propagated from `fetch()` (the 401 / 403
+   *   mapping).
+   * @see mixpanel_headless._internal.me.MeService.find_default_workspace
    */
   async findDefaultWorkspace(
     projectId: string,
@@ -370,8 +383,7 @@ export class MeService {
   }
 
   /**
-   * Resolve a project's best workspace id from the WARM cache only
-   * (`resolve_workspace`, `me.py:869-915`) — the
+   * Resolve a project's best workspace id from the warm cache only — the
    * `setWorkspaceResolver` contract.
    *
    * Never triggers a network call and never writes the cache: a cold
@@ -380,6 +392,7 @@ export class MeService {
    *
    * @param projectId - The project ID (numeric string).
    * @returns The chosen workspace id, or `null`.
+   * @see mixpanel_headless._internal.me.MeService.resolve_workspace
    */
   async resolveWorkspace(projectId: string): Promise<number | null> {
     const me = await this.peek();
@@ -394,8 +407,8 @@ export class MeService {
     }
     // Insertion-order values (the Python `me.workspaces.values()`
     // iteration): `selectWorkspaceId`'s "first non-hidden" / "first"
-    // tie-breaks follow `/me` source order via the ordered Map
-    // (B8-MAPFIX, `user-ratifications.md:14-22`).
+    // tie-breaks follow `/me` source order because `workspaces` is an
+    // insertion-ordered Map, not a plain object.
     const views = [...me.workspaces.values()]
       .filter((ws) => ws.project_id === pidInt)
       .map((ws) => workspaceViewFromMeWorkspace(ws));

@@ -1,36 +1,36 @@
-// Behavioral unit tests for the entity-model base (phase2-design C5,
-// packet P2-7): the Pydantic-boundary semantics every one of the 119
-// entity classes inherits — defaults-on-absent (R4.12), null vs
-// absent (R3.9/R4.10), extra policies, validation-alias acceptance
-// (R3.4 explicit ports), lax coercion, nested reconstruction — plus
-// the five hand-ported Python validators.
+// EntityModel base semantics every entity class inherits: defaults only on
+// absent keys, null vs absent, extra policies, validation-alias acceptance,
+// lax coercion, nested reconstruction, model_dump identity passthrough and
+// the hand-ported Python field validators. TS-only unit tests (no Python
+// twin); the Pydantic behaviours they pin were measured against pydantic v2.
 import { describe, expect, it } from "vitest";
+
 import { ResponseValidationError } from "../../../src/errors.js";
 import {
   AccountTestResult,
   Target,
 } from "../../../src/types/entities/accounts.js";
+import { CreateAnnotationParams } from "../../../src/types/entities/annotations.js";
 import {
   BUSINESS_CONTEXT_MAX_CHARS,
   BusinessContext,
 } from "../../../src/types/entities/business-context.js";
+import { CursorPagination } from "../../../src/types/entities/common.js";
+import { Dashboard } from "../../../src/types/entities/dashboards.js";
 import {
   CreateCustomEventParams,
   CreateCustomPropertyParams,
   CustomProperty,
 } from "../../../src/types/entities/data-governance.js";
-import { CreateAnnotationParams } from "../../../src/types/entities/annotations.js";
-import { Dashboard } from "../../../src/types/entities/dashboards.js";
-import { CursorPagination } from "../../../src/types/entities/common.js";
+import {
+  BulkEventUpdate,
+  EventDefinition,
+} from "../../../src/types/entities/lexicon.js";
 import {
   BulkCreateSchemasParams,
   EventDeletionRequest,
   SchemaEntry,
 } from "../../../src/types/entities/schemas.js";
-import {
-  BulkEventUpdate,
-  EventDefinition,
-} from "../../../src/types/entities/lexicon.js";
 
 describe("EntityModel construction semantics", () => {
   it("fires defaults ONLY on absent keys; explicit null stays null", () => {
@@ -41,7 +41,7 @@ describe("EntityModel construction semantics", () => {
     expect(explicit.description).toBeNull();
   });
 
-  it("treats undefined as ABSENT (R4.10)", () => {
+  it("treats undefined as ABSENT", () => {
     const dashboard = new Dashboard({
       id: 1,
       title: "t",
@@ -93,6 +93,22 @@ describe("EntityModel construction semantics", () => {
     expect(Object.keys(context.toJSON())).not.toContain("novel_server_key");
   });
 
+  it("keeps a JSON-derived __proto__ key as an own extra (no re-parenting)", () => {
+    // JSON.parse yields an OWN "__proto__" key, exactly like a Python
+    // dict; copying it with a plain `record[key] = value` would hit the
+    // inherited accessor and silently re-parent the extras bag instead.
+    const raw: unknown = JSON.parse(
+      '{"level":"project","content":"hi","__proto__":{"polluted":true}}',
+    );
+    const context = BusinessContext.fromDict(raw);
+    expect(Object.hasOwn(context.__extras, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(context.__extras)).toBe(Object.prototype);
+    expect(Object.hasOwn(context.modelDump(), "__proto__")).toBe(true);
+    expect(
+      (context.modelDump() as { polluted?: unknown }).polluted,
+    ).toBeUndefined();
+  });
+
   it("extra='ignore' (Pydantic default) drops unknown keys silently", () => {
     const pagination = CursorPagination.fromDict({
       page_size: 10,
@@ -100,8 +116,8 @@ describe("EntityModel construction semantics", () => {
       previous_cursor: null,
       dropped_key: true,
     });
-    expect(pagination.__extras).toEqual({});
-    expect(Object.keys(pagination.toJSON())).toEqual([
+    expect(pagination.__extras).toStrictEqual({});
+    expect(Object.keys(pagination.toJSON())).toStrictEqual([
       "page_size",
       "next_cursor",
       "previous_cursor",
@@ -168,11 +184,10 @@ describe("EntityModel construction semantics", () => {
   });
 });
 
-describe("model_dump identity passthrough (B6-BIND fidelity fix, B6-ARB Finding E lock)", () => {
+describe("model_dump identity passthrough", () => {
   // Pydantic v2 `model_dump` keeps arbitrary (non-dict, non-list,
-  // non-model) objects inside `dict[str, Any]` fields BY IDENTITY —
-  // measured live 2026-08-16 (`out['d']['k'] is c`, with and without
-  // `exclude_none`; disclosed in `B6-BIND-notes.md`). The pre-fix
+  // non-model) objects inside `dict[str, Any]` fields BY IDENTITY
+  // (`out['d']['k'] is c`, with and without `exclude_none`). The pre-fix
   // clone-anything walk decomposed a `Uint8Array` into index keys.
 
   /** An arbitrary consumer class (the pydantic probe's `C()`). */
@@ -261,7 +276,7 @@ describe("hand-ported Python validators", () => {
       ...base,
       behavior: { a: 1 },
     });
-    expect(valid.behavior).toEqual({ a: 1 });
+    expect(valid.behavior).toStrictEqual({ a: 1 });
   });
 
   it("CreateCustomEventParams: alternatives are non-empty, non-blank, unique", () => {
@@ -281,7 +296,7 @@ describe("hand-ported Python validators", () => {
       name: "e",
       alternatives: ["a", "b"],
     });
-    expect(valid.alternatives).toEqual(["a", "b"]);
+    expect(valid.alternatives).toStrictEqual(["a", "b"]);
   });
 
   it("EventDeletionRequest: filters=[] coerces to null; non-empty wraps", () => {
@@ -301,7 +316,7 @@ describe("hand-ported Python validators", () => {
       ...base,
       filters: [{ a: 1 }],
     });
-    expect(wrapped.filters).toEqual({ items: [{ a: 1 }] });
+    expect(wrapped.filters).toStrictEqual({ items: [{ a: 1 }] });
   });
 
   it("BusinessContext: computed fields appear in toJSON() and count codepoints", () => {
@@ -312,7 +327,7 @@ describe("hand-ported Python validators", () => {
     const json = context.toJSON();
     expect(json["is_empty"]).toBe(false);
     expect(json["character_count"]).toBe(1); // len('𝒳') == 1 in Python
-    expect(Object.keys(json)).toEqual([
+    expect(Object.keys(json)).toStrictEqual([
       "level",
       "content",
       "organization_id",
@@ -323,7 +338,7 @@ describe("hand-ported Python validators", () => {
     expect(BUSINESS_CONTEXT_MAX_CHARS).toBe(50_000);
   });
 
-  it("CreateAnnotationParams: description max_length is codepoint-counted (R11.6)", () => {
+  it("CreateAnnotationParams: description max_length is codepoint-counted", () => {
     const astral = "\u{1D4B3}".repeat(512); // 512 codepoints, 1024 UTF-16 units
     const params = CreateAnnotationParams.fromDict({
       date: "2026-01-01 00:00:00",

@@ -1,0 +1,24 @@
+// Type-level tests (`test/**/*.test-d.ts`), checked by vitest's typecheck
+// step (vitest.config.ts, project `browser`). Includes `src/` directly and
+// maps the bare core specifiers onto core's `src/` (the tsconfig twin of
+// scripts/lib/workspace-aliases.mjs) so the assertions never see a stale
+// `dist/`. `tsc -b` also covers these files via tsconfig.test.json.
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "esnext.disposable"
+    ],
+    "types": [],
+    "paths": {
+      "@mixpanel-headless/core": ["../core/src/index.ts"],
+      "@mixpanel-headless/core/internal": ["../core/src/internal.ts"]
+    }
+  },
+  "include": ["src", "test/**/*.test-d.ts"]
+}

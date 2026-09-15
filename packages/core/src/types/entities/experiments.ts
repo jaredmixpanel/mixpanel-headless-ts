@@ -1,24 +1,26 @@
 /**
  * Experiment family + experiment CRUD params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
+import type { ExperimentStatus } from "../enums.js";
 import {
+  type EntityFieldSpecs,
   EntityModel,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
-import { ExperimentStatus } from "../enums.js";
 
 /**
  * Constructor input for {@link ExperimentCreator} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ExperimentCreatorInit {
   /** Creator's user ID. */
@@ -32,18 +34,23 @@ export interface ExperimentCreatorInit {
 /**
  * Creator metadata for an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentCreator` (types.py:3081;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const experimentCreator = ExperimentCreator.fromDict({ id: 42 });
+ * experimentCreator.id; // 42
+ * ```
+ * @see mixpanel_headless.types.ExperimentCreator
  */
-export class ExperimentCreator extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ExperimentCreator extends EntityModel<ExperimentCreatorInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ExperimentCreator";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ExperimentCreatorInit> = [
     { name: "id", kind: "int", nullable: true },
     { name: "first_name", kind: "str", nullable: true },
     { name: "last_name", kind: "str", nullable: true },
@@ -60,14 +67,11 @@ export class ExperimentCreator extends EntityModel {
    * Construct a validated ExperimentCreator (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ExperimentCreatorInit) {
-    super(
-      ExperimentCreator,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ExperimentCreator, fields);
   }
 
   /**
@@ -76,18 +80,16 @@ export class ExperimentCreator extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ExperimentCreator {
-    return new ExperimentCreator(
-      prepareInit(ExperimentCreator, raw) as unknown as ExperimentCreatorInit,
-    );
+    return new ExperimentCreator(prepareInit(ExperimentCreator, raw));
   }
 }
 
 /**
  * Constructor input for {@link Experiment} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ExperimentInit {
   /** Unique identifier (UUID). */
@@ -102,16 +104,10 @@ export interface ExperimentInit {
   readonly status?: ExperimentStatus | null | undefined;
   /** Variant configuration (list from API, may also be dict). */
   readonly variants?:
-    | ReadonlyArray<unknown>
-    | Readonly<Record<string, unknown>>
-    | null
-    | undefined;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null | undefined;
   /** Success metrics (list from API, may also be dict). */
   readonly metrics?:
-    | ReadonlyArray<unknown>
-    | Readonly<Record<string, unknown>>
-    | null
-    | undefined;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null | undefined;
   /** Experiment settings. */
   readonly settings?: Readonly<Record<string, unknown>> | null | undefined;
   /** Cached exposure data. */
@@ -137,7 +133,7 @@ export interface ExperimentInit {
   /** Date experiment was pinned. */
   readonly pinned_date?: string | null | undefined;
   /** Tags for organization. */
-  readonly tags?: ReadonlyArray<string> | null | undefined;
+  readonly tags?: readonly string[] | null | undefined;
   /** Permission: can current user edit. */
   readonly can_edit?: boolean | null | undefined;
   /** Last modifier's user ID. */
@@ -151,18 +147,27 @@ export interface ExperimentInit {
 /**
  * A Mixpanel A/B experiment as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Experiment` (types.py:3473;
- * model_config: frozen=True, extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const experiment = Experiment.fromDict({
+ *   id: "f1a2b3c4",
+ *   name: "New checkout",
+ *   description: "Weekly overview",
+ * });
+ * experiment.id; // "f1a2b3c4"
+ * ```
+ * @see mixpanel_headless.types.Experiment
  */
-export class Experiment extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class Experiment extends EntityModel<ExperimentInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "Experiment";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ExperimentInit> = [
     { name: "id", required: true, kind: "str" },
     { name: "name", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -204,10 +209,10 @@ export class Experiment extends EntityModel {
   declare readonly status: ExperimentStatus | null;
   /** Variant configuration (list from API, may also be dict). */
   declare readonly variants:
-    ReadonlyArray<unknown> | Readonly<Record<string, unknown>> | null;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null;
   /** Success metrics (list from API, may also be dict). */
   declare readonly metrics:
-    ReadonlyArray<unknown> | Readonly<Record<string, unknown>> | null;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null;
   /** Experiment settings. */
   declare readonly settings: Readonly<Record<string, unknown>> | null;
   /** Cached exposure data. */
@@ -231,7 +236,7 @@ export class Experiment extends EntityModel {
   /** Date experiment was pinned. */
   declare readonly pinned_date: string | null;
   /** Tags for organization. */
-  declare readonly tags: ReadonlyArray<string> | null;
+  declare readonly tags: readonly string[] | null;
   /** Permission: can current user edit. */
   declare readonly can_edit: boolean | null;
   /** Last modifier's user ID. */
@@ -245,11 +250,11 @@ export class Experiment extends EntityModel {
    * Construct a validated Experiment (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ExperimentInit) {
-    super(Experiment, fields as unknown as Readonly<Record<string, unknown>>);
+    super(Experiment, fields);
   }
 
   /**
@@ -258,18 +263,16 @@ export class Experiment extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): Experiment {
-    return new Experiment(
-      prepareInit(Experiment, raw) as unknown as ExperimentInit,
-    );
+    return new Experiment(prepareInit(Experiment, raw));
   }
 }
 
 /**
  * Constructor input for {@link CreateExperimentParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateExperimentParamsInit {
   /** Experiment name (required). */
@@ -289,18 +292,26 @@ export interface CreateExperimentParamsInit {
 /**
  * Parameters for creating a new experiment.
  *
- * Mirror of Python `mixpanel_headless.types.CreateExperimentParams` (types.py:3584;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateExperimentParams({
+ *   name: "New checkout",
+ *   description: "Weekly overview",
+ * });
+ * params.name; // "New checkout"
+ * ```
+ * @see mixpanel_headless.types.CreateExperimentParams
  */
-export class CreateExperimentParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class CreateExperimentParams extends EntityModel<CreateExperimentParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "CreateExperimentParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<CreateExperimentParamsInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
     { name: "hypothesis", kind: "str", nullable: true },
@@ -326,14 +337,11 @@ export class CreateExperimentParams extends EntityModel {
    * Construct a validated CreateExperimentParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateExperimentParamsInit) {
-    super(
-      CreateExperimentParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(CreateExperimentParams, fields);
   }
 
   /**
@@ -342,21 +350,16 @@ export class CreateExperimentParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateExperimentParams {
-    return new CreateExperimentParams(
-      prepareInit(
-        CreateExperimentParams,
-        raw,
-      ) as unknown as CreateExperimentParamsInit,
-    );
+    return new CreateExperimentParams(prepareInit(CreateExperimentParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link UpdateExperimentParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateExperimentParamsInit {
   /** Updated name. */
@@ -367,16 +370,10 @@ export interface UpdateExperimentParamsInit {
   readonly hypothesis?: string | null | undefined;
   /** Updated variant config (list or dict). */
   readonly variants?:
-    | ReadonlyArray<unknown>
-    | Readonly<Record<string, unknown>>
-    | null
-    | undefined;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null | undefined;
   /** Updated metrics (list or dict). */
   readonly metrics?:
-    | ReadonlyArray<unknown>
-    | Readonly<Record<string, unknown>>
-    | null
-    | undefined;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null | undefined;
   /** Updated settings. */
   readonly settings?: Readonly<Record<string, unknown>> | null | undefined;
   /** Updated start date. */
@@ -384,7 +381,7 @@ export interface UpdateExperimentParamsInit {
   /** Updated end date. */
   readonly end_date?: string | null | undefined;
   /** Updated tags. */
-  readonly tags?: ReadonlyArray<string> | null | undefined;
+  readonly tags?: readonly string[] | null | undefined;
   /** Updated exposures cache. */
   readonly exposures_cache?:
     Readonly<Record<string, unknown>> | null | undefined;
@@ -399,18 +396,23 @@ export interface UpdateExperimentParamsInit {
 /**
  * Parameters for updating an existing experiment (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateExperimentParams` (types.py:3622;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateExperimentParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateExperimentParams
  */
-export class UpdateExperimentParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class UpdateExperimentParams extends EntityModel<UpdateExperimentParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "UpdateExperimentParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<UpdateExperimentParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "description", kind: "str", nullable: true },
     { name: "hypothesis", kind: "str", nullable: true },
@@ -438,10 +440,10 @@ export class UpdateExperimentParams extends EntityModel {
   declare readonly hypothesis: string | null;
   /** Updated variant config (list or dict). */
   declare readonly variants:
-    ReadonlyArray<unknown> | Readonly<Record<string, unknown>> | null;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null;
   /** Updated metrics (list or dict). */
   declare readonly metrics:
-    ReadonlyArray<unknown> | Readonly<Record<string, unknown>> | null;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null;
   /** Updated settings. */
   declare readonly settings: Readonly<Record<string, unknown>> | null;
   /** Updated start date. */
@@ -449,7 +451,7 @@ export class UpdateExperimentParams extends EntityModel {
   /** Updated end date. */
   declare readonly end_date: string | null;
   /** Updated tags. */
-  declare readonly tags: ReadonlyArray<string> | null;
+  declare readonly tags: readonly string[] | null;
   /** Updated exposures cache. */
   declare readonly exposures_cache: Readonly<Record<string, unknown>> | null;
   /** Updated results cache. */
@@ -463,14 +465,11 @@ export class UpdateExperimentParams extends EntityModel {
    * Construct a validated UpdateExperimentParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateExperimentParamsInit) {
-    super(
-      UpdateExperimentParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(UpdateExperimentParams, fields);
   }
 
   /**
@@ -479,21 +478,16 @@ export class UpdateExperimentParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateExperimentParams {
-    return new UpdateExperimentParams(
-      prepareInit(
-        UpdateExperimentParams,
-        raw,
-      ) as unknown as UpdateExperimentParamsInit,
-    );
+    return new UpdateExperimentParams(prepareInit(UpdateExperimentParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link ExperimentConcludeParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ExperimentConcludeParamsInit {
   /** Override end date (ISO 8601). */
@@ -503,18 +497,23 @@ export interface ExperimentConcludeParamsInit {
 /**
  * Parameters for concluding an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentConcludeParams` (types.py:3690;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new ExperimentConcludeParams({ end_date: "example" });
+ * params.end_date; // "example"
+ * ```
+ * @see mixpanel_headless.types.ExperimentConcludeParams
  */
-export class ExperimentConcludeParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ExperimentConcludeParams extends EntityModel<ExperimentConcludeParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ExperimentConcludeParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ExperimentConcludeParamsInit> = [
     { name: "end_date", kind: "str", nullable: true },
   ];
 
@@ -525,14 +524,11 @@ export class ExperimentConcludeParams extends EntityModel {
    * Construct a validated ExperimentConcludeParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ExperimentConcludeParamsInit) {
-    super(
-      ExperimentConcludeParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ExperimentConcludeParams, fields);
   }
 
   /**
@@ -541,21 +537,18 @@ export class ExperimentConcludeParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ExperimentConcludeParams {
     return new ExperimentConcludeParams(
-      prepareInit(
-        ExperimentConcludeParams,
-        raw,
-      ) as unknown as ExperimentConcludeParamsInit,
+      prepareInit(ExperimentConcludeParams, raw),
     );
   }
 }
 
 /**
  * Constructor input for {@link ExperimentDecideParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ExperimentDecideParamsInit {
   /** Whether the experiment succeeded (required). */
@@ -569,18 +562,26 @@ export interface ExperimentDecideParamsInit {
 /**
  * Parameters for recording an experiment decision.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentDecideParams` (types.py:3706;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new ExperimentDecideParams({
+ *   success: true,
+ *   variant: "treatment",
+ * });
+ * params.success; // true
+ * ```
+ * @see mixpanel_headless.types.ExperimentDecideParams
  */
-export class ExperimentDecideParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class ExperimentDecideParams extends EntityModel<ExperimentDecideParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "ExperimentDecideParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<ExperimentDecideParamsInit> = [
     { name: "success", required: true, kind: "bool" },
     { name: "variant", kind: "str", nullable: true },
     { name: "message", kind: "str", nullable: true },
@@ -597,14 +598,11 @@ export class ExperimentDecideParams extends EntityModel {
    * Construct a validated ExperimentDecideParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ExperimentDecideParamsInit) {
-    super(
-      ExperimentDecideParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(ExperimentDecideParams, fields);
   }
 
   /**
@@ -613,21 +611,16 @@ export class ExperimentDecideParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ExperimentDecideParams {
-    return new ExperimentDecideParams(
-      prepareInit(
-        ExperimentDecideParams,
-        raw,
-      ) as unknown as ExperimentDecideParamsInit,
-    );
+    return new ExperimentDecideParams(prepareInit(ExperimentDecideParams, raw));
   }
 }
 
 /**
  * Constructor input for {@link DuplicateExperimentParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DuplicateExperimentParamsInit {
   /** Name for the duplicated experiment (required). */
@@ -637,20 +630,26 @@ export interface DuplicateExperimentParamsInit {
 /**
  * Parameters for duplicating an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.DuplicateExperimentParams` (types.py:3730;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new DuplicateExperimentParams({
+ *   name: "New checkout (copy)",
+ * });
+ * params.name; // "New checkout (copy)"
+ * ```
+ * @see mixpanel_headless.types.DuplicateExperimentParams
  */
-export class DuplicateExperimentParams extends EntityModel {
-  /** @internal The Python model name (and `$type` tag where recorded). */
+export class DuplicateExperimentParams extends EntityModel<DuplicateExperimentParamsInit> {
+  /** The Python model name (and `$type` tag where recorded). */
   static readonly modelName = "DuplicateExperimentParams";
 
-  /** @internal Pydantic `model_config.extra` mirror. */
+  /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** @internal Declared fields in Python `model_fields` order. */
-  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "name", required: true, kind: "str" },
-  ];
+  /** Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: EntityFieldSpecs<DuplicateExperimentParamsInit> =
+    [{ name: "name", required: true, kind: "str" }];
 
   /** Name for the duplicated experiment (required). */
   declare readonly name: string;
@@ -659,14 +658,11 @@ export class DuplicateExperimentParams extends EntityModel {
    * Construct a validated DuplicateExperimentParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DuplicateExperimentParamsInit) {
-    super(
-      DuplicateExperimentParams,
-      fields as unknown as Readonly<Record<string, unknown>>,
-    );
+    super(DuplicateExperimentParams, fields);
   }
 
   /**
@@ -675,14 +671,11 @@ export class DuplicateExperimentParams extends EntityModel {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): DuplicateExperimentParams {
     return new DuplicateExperimentParams(
-      prepareInit(
-        DuplicateExperimentParams,
-        raw,
-      ) as unknown as DuplicateExperimentParamsInit,
+      prepareInit(DuplicateExperimentParams, raw),
     );
   }
 }

@@ -1,27 +1,28 @@
-// Browser-bundle smoke test (R9.1 / D11; two-entry promotion B9-R1,
-// b9-packets.md §2.5).
+#!/usr/bin/env node
+// Browser-bundle smoke test, wired into `npm run check`.
 //
-// Part 1 — purity. Bundles @mixpanel-headless/core AND
-// @mixpanel-headless/browser for the browser platform with esbuild — one
-// build call, two entries; the build fails if EITHER entry pulls a Node
+// Part 1 — purity. Bundles `@mixpanel-headless/core` and
+// `@mixpanel-headless/browser` for the browser platform with esbuild — one
+// build call, two entries; the build fails if either entry pulls a Node
 // built-in (node:*, fs, path, os) or undici anywhere in its module graph,
-// backstopping the ESLint boundary. packages/browser is a REAL browser
-// build target from B9 on.
+// backstopping the ESLint boundary. packages/browser is a real browser
+// build target, not a type-only surface, so it is bundled for real here.
 //
-// Part 2 — the shipped bundle (heads spec 04 §3). Runs the real recipe
-// (scripts/build-browser-bundle.mjs) in memory and asserts that the IIFE
-// installs a `MixpanelHeadless` global carrying the surface the consumer's
-// artifact lane depends on. Catching a rename here — rather than in a
-// vendored copy three repos downstream — is the point.
-//
-// Wired into `npm run check`.
+// Part 2 — the shipped bundle (heads spec 04 §3 in the mixpanel-desktop-app
+// repository). Runs the real recipe (scripts/build-browser-bundle.mjs) in
+// memory and asserts that the IIFE installs a `MixpanelHeadless` global
+// carrying the surface the consumer's artifact lane depends on. Catching a
+// rename here — rather than in a vendored copy three repos downstream — is
+// the point.
 import { build } from "esbuild";
+
 import {
+  buildBrowserBundles,
   GLOBAL_NAME,
   IIFE_FILE,
-  buildBrowserBundles,
   iifeGlobalKeys,
 } from "./build-browser-bundle.mjs";
+import { esbuildAliases } from "./lib/workspace-aliases.mjs";
 
 const entryPoints = [
   "packages/core/src/index.ts",
@@ -31,13 +32,12 @@ const entryPoints = [
 /**
  * The surface heads spec 04 §3.3 requires the vendored bundle to expose.
  *
- * `pythonJsonDumpsCanonical` was optional-and-reported here while spec 02's
- * canonicalizer was still landing; it is on the browser barrel now, and a
- * page cannot compute a QueryRef hash without it, so it is required.
- * `inferBookmarkType` is the other half of that pair (the report type a
- * params object describes) and is listed for the same reason — this smoke
- * runs standalone as `npm run smoke:browser`, so it must go red on its own
- * if either re-export disappears rather than leaning on the vitest suite.
+ * `pythonJsonDumpsCanonical` is required because a page cannot compute a
+ * QueryRef hash without it; `inferBookmarkType` is the other half of that
+ * pair (the report type a params object describes) and is listed for the
+ * same reason. This smoke runs standalone as `npm run smoke:browser`, so it
+ * must go red on its own if either re-export disappears rather than leaning
+ * on the vitest suite.
  */
 const REQUIRED_EXPORTS = [
   "InMemoryCredentialStore",
@@ -57,11 +57,13 @@ const fail = (message, err) => {
   process.exit(1);
 };
 
-// ── Part 1: purity of both entry points ────────────────────────────────
+// --- Part 1: purity of both entry points ---
 try {
   const result = await build({
     entryPoints,
     bundle: true,
+    // Source, not dist: the purity proof must cover the code under test.
+    alias: esbuildAliases(),
     platform: "browser",
     format: "esm",
     write: false,
@@ -74,31 +76,34 @@ try {
   console.log(
     `browser-bundle smoke OK: ${entryPoints.join(" + ")} bundled for browser (${bytes} bytes)`,
   );
-} catch (err) {
+} catch (error) {
   fail(
     "browser-bundle smoke FAILED: core/browser do not bundle for the browser platform.",
-    err,
+    error,
   );
 }
 
-// ── Part 2: the shipped IIFE + ESM recipe ──────────────────────────────
+// --- Part 2: the shipped IIFE + ESM recipe ---
 let bundles;
 try {
   // `allowDirty` because the gate runs on working trees; provenance is the
   // committed build's problem, not the smoke's. `write: false` keeps the
   // gate from touching dist/.
   bundles = await buildBrowserBundles({ allowDirty: true, write: false });
-} catch (err) {
-  fail("browser-bundle smoke FAILED: the vendoring recipe did not build.", err);
+} catch (error) {
+  fail(
+    "browser-bundle smoke FAILED: the vendoring recipe did not build.",
+    error,
+  );
 }
 
 let exported;
 try {
   exported = iifeGlobalKeys(bundles.iifeText);
-} catch (err) {
+} catch (error) {
   fail(
     `browser-bundle smoke FAILED: ${IIFE_FILE} did not install the \`${GLOBAL_NAME}\` global.`,
-    err,
+    error,
   );
 }
 

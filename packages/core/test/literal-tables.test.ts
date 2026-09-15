@@ -1,10 +1,12 @@
-// Colocated runtime backstop for fast-check property list item #7
-// (phase2-design C9): enum/alias membership tables contain no
-// duplicates and match the declared cardinalities. The compile-time
-// half (union⇄tuple drift) is enforced in literals.ts by the
-// `satisfies` clauses + `LiteralAliasCoverageProof`; the cross-language
-// value lock is the C8(d) artifact test in conformance-runner/test.
+// Runtime backstop for the enum/alias membership tables: no duplicates and
+// the declared cardinalities. Union⇄tuple drift is impossible by
+// construction (each union in literals.ts derives from its tuple); the
+// cross-language value lock is the artifact test in conformance-runner.
+// TS-only; no Python twin.
+
 import { describe, expect, it } from "vitest";
+
+import { BOOKMARK_ENUM_TABLES } from "../src/bookmarks/enums.js";
 import {
   ACCOUNT_TYPE_VALUES,
   AlertFrequencyPreset,
@@ -13,9 +15,8 @@ import {
   LITERAL_ALIAS_VALUES,
   TIME_UNIT_VALUES,
 } from "../src/types/index.js";
-import { BOOKMARK_ENUM_TABLES } from "../src/bookmarks/index.js";
 
-describe("literal-alias and enum tables (C9 #7 runtime backstop)", () => {
+describe("literal-alias and enum tables (runtime backstop)", () => {
   it("registers exactly 38 aliases, 8 enums, and 34 bookmark tables", () => {
     expect(LITERAL_ALIAS_VALUES.size).toBe(38);
     expect(ENUM_TABLES.size).toBe(8);
@@ -39,15 +40,15 @@ describe("literal-alias and enum tables (C9 #7 runtime backstop)", () => {
   });
 
   it("spot-checks the documented representative values", () => {
-    expect(TIME_UNIT_VALUES).toEqual(["day", "week", "month"]);
-    expect(ACCOUNT_TYPE_VALUES).toEqual([
+    expect(TIME_UNIT_VALUES).toStrictEqual(["day", "week", "month"]);
+    expect(ACCOUNT_TYPE_VALUES).toStrictEqual([
       "service_account",
       "oauth_browser",
       "oauth_token",
     ]);
     // String enum: referenced by member NAME, compared by VALUE.
     expect(FeatureFlagStatus.ENABLED).toBe("enabled");
-    // IntEnum port preserves numeric values (R4.3).
+    // IntEnum port preserves numeric values.
     expect(AlertFrequencyPreset.HOURLY).toBe(3600);
     expect(AlertFrequencyPreset.DAILY).toBe(86400);
     expect(AlertFrequencyPreset.WEEKLY).toBe(604800);

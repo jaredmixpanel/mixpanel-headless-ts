@@ -1,19 +1,18 @@
-// Layer-3 translation — tests/unit/test_api_client_pbt.py::
-// TestActivityFeedDateRange (:673-705) → fast-check (Phase-3 packet
-// B4-C2; the C1 header exclusion in client-pbt.test.ts pointed here).
-//
-// Strategy shape: Hypothesis `st.dates(2000-01-01 .. 2100-12-31)
-// .map(isoformat)` → an integer day-offset domain mapped through the
-// same civil-date arithmetic the implementation uses; `st.none() | ...`
-// → fc.option.
+// Property test for `buildActivityFeedDateRange`: every (from, to) pair
+// selects the right arm (between / since / relative_after / 30-day between).
+// Mirrors TestActivityFeedDateRange from tests/unit/test_api_client_pbt.py
+// (fast-check for Hypothesis): `st.dates(2000..2100).map(isoformat)` becomes
+// an integer day-offset domain mapped through the implementation's civil-date math.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { buildActivityFeedDateRange } from "../../src/services/queries/query-host.js";
+
 import {
   civilFromDays,
   daysFromCivil,
   formatYmd,
 } from "../../src/services/queries/py-dates.js";
+import { buildActivityFeedDateRange } from "../../src/services/queries/query-host.js";
 
 /** Day numbers of 2000-01-01 and 2100-12-31 since the epoch. */
 const MIN_DAY = daysFromCivil({ year: 2000, month: 1, day: 1 });
@@ -27,36 +26,43 @@ const feedDates = fc
 /** `optional_feed_dates` — None | feed_dates. */
 const optionalFeedDates = fc.option(feedDates, { nil: null });
 
-describe("TestActivityFeedDateRange", () => {
-  it("test_returns_known_type_and_correct_arm", () => {
+/**
+ * The arm `buildActivityFeedDateRange` must select for the given bounds
+ * (the Python test's four branches, expressed as data).
+ *
+ * @param fromDate - Optional lower bound.
+ * @param toDate - Optional upper bound.
+ * @returns The expected date-range object.
+ */
+function expectedDateRange(
+  fromDate: string | null,
+  toDate: string | null,
+): Record<string, unknown> {
+  if (fromDate !== null && toDate !== null) {
+    return { type: "between", from: fromDate, to: toDate };
+  }
+  if (fromDate !== null) {
+    return { type: "since", from: fromDate };
+  }
+  if (toDate === null) {
+    return { type: "relative_after", window: { unit: "day", value: 30 } };
+  }
+  // `end - start == timedelta(days=30)` via the same civil math.
+  const start = formatYmd(civilFromDays(daysFromCivil(civilOf(toDate)) - 30));
+  return { type: "between", from: start, to: toDate };
+}
+
+describe("Activity feed date range", () => {
+  // python: TestActivityFeedDateRange
+  it("returns known type and correct arm", () => {
+    // python: test_returns_known_type_and_correct_arm
     fc.assert(
       fc.property(optionalFeedDates, optionalFeedDates, (fromDate, toDate) => {
         const result = buildActivityFeedDateRange(fromDate, toDate);
         expect(["between", "since", "relative_after"]).toContain(
           result["type"],
         );
-        if (fromDate !== null && toDate !== null) {
-          expect(result).toEqual({
-            type: "between",
-            from: fromDate,
-            to: toDate,
-          });
-        } else if (fromDate !== null) {
-          expect(result).toEqual({ type: "since", from: fromDate });
-        } else if (toDate !== null) {
-          expect(result["type"]).toBe("between");
-          expect(result["to"]).toBe(toDate);
-          // `end - start == timedelta(days=30)` via the same civil math.
-          const start = result["from"] as string;
-          const startDays = daysFromCivil(civilOf(start));
-          const endDays = daysFromCivil(civilOf(toDate));
-          expect(endDays - startDays).toBe(30);
-        } else {
-          expect(result).toEqual({
-            type: "relative_after",
-            window: { unit: "day", value: 30 },
-          });
-        }
+        expect(result).toStrictEqual(expectedDateRange(fromDate, toDate));
       }),
       { numRuns: 200 },
     );
@@ -65,7 +71,7 @@ describe("TestActivityFeedDateRange", () => {
 
 /** Parse a known-good ISO date back to a civil date. */
 function civilOf(iso: string): { year: number; month: number; day: number } {
-  const [y, m, d] = iso.split("-");
+  const [y, m, d] = iso.split("-", 3);
   return {
     year: Number(y),
     month: Number(m),

@@ -1,22 +1,19 @@
-// Layer-3 translation of `tests/unit/test_login_region_check.py` (196
-// lines, 4 tests) — B7-A1 packet §3.4 (`b7-packets.md`).
-//
-// Mechanism substitutions (header-cited per R10.2):
-// - `_stub_pkce_flow` (OAuthFlow.login monkeypatch) becomes the
-//   injected `effects.oauthFlow.login` stub;
-// - `_stub_me_with_eu_project` becomes `meFetch(payload)`;
-// - the "no tokens.json on disk" atomic-publish assertion re-expresses
-//   over the injected token store (`tokenStore.written`).
+// Region-mismatch guard on `accounts.login` for oauth_browser accounts,
+// mirroring `tests/unit/test_login_region_check.py`. The PKCE-flow and
+// `/me` monkeypatches become the injected `effects.oauthFlow.login` stub
+// and `meFetch(payload)`; the "no tokens.json on disk" assertion reads the
+// injected token store (`tokenStore.written`) instead.
 
 import { describe, expect, it } from "vitest";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { OAuthTokens } from "../../src/auth/token.js";
 import { ConfigError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
 import {
   makeEffects,
-  meFetch,
   type MakeEffectsOptions,
+  meFetch,
 } from "./fake-auth-effects.js";
 
 /** The `_stub_pkce_flow` twin. */
@@ -48,7 +45,8 @@ const EU_PROJECT_ME = {
   },
 };
 
-describe("TestLoginRegionMismatch (test_login_region_check.py:84)", () => {
+describe("Login region mismatch", () => {
+  // python: TestLoginRegionMismatch
   it("us auth picking an eu project raises the E-2 ConfigError", async () => {
     const bundle = makeEffects({
       oauthFlow: stubbedFlow(),
@@ -60,8 +58,8 @@ describe("TestLoginRegionMismatch (test_login_region_check.py:84)", () => {
     let caught: unknown = null;
     try {
       await accounts.login("personal");
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     const message = (caught as ConfigError).message;
