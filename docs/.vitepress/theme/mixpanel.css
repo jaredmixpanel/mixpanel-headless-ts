@@ -30,7 +30,12 @@
 
 /* --- Light mode: Mixpanel blue ------------------------------------------ */
 
-:root {
+/* `html:root` / `html.dark` rather than `:root` / `.dark`: this file is
+   bundled before VitePress's own palette (the theme entry imports it first),
+   and the default theme declares the same custom properties on `:root` and
+   `.dark`. Equal specificity would let the later, default declaration win;
+   the extra type selector makes the brand values win regardless of order. */
+html:root {
   --vp-c-brand-1: var(--mp-blue);
   --vp-c-brand-2: var(--mp-blue-dark);
   --vp-c-brand-3: var(--mp-blue);
@@ -85,7 +90,7 @@
 
 /* --- Dark mode: brand purple on #242133 --------------------------------- */
 
-.dark {
+html.dark {
   --vp-c-brand-1: var(--mp-purple-light);
   --vp-c-brand-2: var(--mp-purple);
   --vp-c-brand-3: var(--mp-purple);
