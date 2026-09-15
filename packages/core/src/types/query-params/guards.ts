@@ -8,11 +8,18 @@
  * and vectors record one `{class, code}` per input), with one comment
  * per registry code.
  *
+ * The raw-cohort dict helpers (`deepCopy`, `sanitizeRawCohort`) live
+ * here rather than in `cohort.ts` because `filter.ts` needs
+ * `sanitizeRawCohort` for inline cohort filters while `cohort.ts`
+ * needs `Filter` for its `instanceof` checks — this module is the
+ * shared leaf below both.
+ *
  * @internal Not part of the public package surface — consumed by
- * `filter.ts` / `metric.ts` (and, in P2-5b, `cohort.ts`).
+ * `filter.ts` / `metric.ts` / `cohort.ts`.
  */
 
 import { pythonStrip } from "../../compat/index.js";
+import { isPythonDict, setOwn } from "../../compat/python-dict.js";
 import { ParamValidationError } from "../../errors.js";
 
 /**
@@ -211,4 +218,76 @@ export function isRealCalendarDate(dateStr: string): boolean {
  */
 export function matchesDateFormat(dateStr: string): boolean {
   return DATE_RE.test(dateStr);
+}
+
+/**
+ * Deep-copy a decoded JSON-ish subtree — the TS twin of the
+ * `copy.deepcopy` calls in Python's `CohortDefinition.to_dict` /
+ * `_sanitize_raw_cohort`.
+ *
+ * Plain objects and arrays are copied recursively; primitives, `bigint`,
+ * and immutable class instances (e.g. lossless number wrappers riding in
+ * decoded payloads) pass through by reference.
+ *
+ * @param value - The subtree to copy.
+ * @returns A structurally independent copy.
+ * @internal
+ */
+export function deepCopy<T>(value: T): T {
+  if (Array.isArray(value)) {
+    const items: readonly unknown[] = value;
+    return items.map((item) => deepCopy(item)) as unknown as T;
+  }
+  if (isPythonDict(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      setOwn(out, key, deepCopy(item));
+    }
+    return out as T;
+  }
+  return value;
+}
+
+/**
+ * Remove null `selector` keys from behavioral event_selector entries —
+ * port of the module-private `types._sanitize_raw_cohort` (exported
+ * `@internal` for its conformance vectors).
+ *
+ * The Mixpanel API calls `postorder_traverse` on nested `selector`
+ * fields within `event_selector` blocks; a `None` root causes a crash.
+ * This function deep-copies the raw cohort dict and removes any
+ * `selector: null` entries from behavioral event_selectors.
+ *
+ * Python-parity note: the Python body runs `del es["selector"]` whenever
+ * `es.get("selector") is None`, which would raise `KeyError` on an
+ * absent key — but every constructible `CohortDefinition.to_dict()`
+ * output always carries the key, so the reachable behavior is exactly
+ * "delete when present and null" (mirrored here; a JS `delete` on an
+ * absent key is a silent no-op).
+ *
+ * @param raw - Output of `CohortDefinition.toDict()`.
+ * @returns Sanitized deep copy safe for API submission.
+ * @remarks Not part of the public package surface — exported from this
+ * module for the conformance binding and translated tests only.
+ */
+export function sanitizeRawCohort(
+  raw: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const result = deepCopy(raw) as Record<string, unknown>;
+  const behaviors = result["behaviors"];
+  if (isPythonDict(behaviors)) {
+    for (const bval of Object.values(behaviors)) {
+      if (!isPythonDict(bval)) {
+        continue;
+      }
+      const count = bval["count"];
+      if (isPythonDict(count)) {
+        const es = count["event_selector"];
+        if (isPythonDict(es) && es["selector"] === null) {
+          delete es["selector"];
+        }
+      }
+    }
+  }
+  return result;
 }
