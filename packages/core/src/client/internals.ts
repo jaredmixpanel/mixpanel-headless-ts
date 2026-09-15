@@ -148,6 +148,26 @@ export interface ResponseContext {
 }
 
 /**
+ * Fix the leading argument of a module-level method implementation.
+ *
+ * The client factories keep their methods as plain functions whose first
+ * parameter is the shared client core (or the assembled client context)
+ * and re-attach them to the method bag they return with
+ * `{ listDashboards: bindFirst(core, listDashboards) }` — no closure per
+ * method, so nothing can be captured by accident.
+ *
+ * @param first - The value bound as `method`'s first argument.
+ * @param method - A function taking that value first.
+ * @returns `method` with its first parameter fixed.
+ */
+export function bindFirst<First, Args extends unknown[], Result>(
+  first: First,
+  method: (first: First, ...args: Args) => Result,
+): (...args: Args) => Result {
+  return (...args: Args): Result => method(first, ...args);
+}
+
+/**
  * Whether a parsed JSON value is a plain record (Python `dict`).
  *
  * `JsonNumber` instances are objects but NOT dicts — they are the
