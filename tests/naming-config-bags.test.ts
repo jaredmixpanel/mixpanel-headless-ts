@@ -5,7 +5,7 @@
 // Python method's keyword arguments 1:1 keep snake_case. ESLint enforces
 // camelCase for declared properties outside the snake_case contract scopes in
 // eslint.config.js, but those scopes are granted by *file*, and several files
-// hold both kinds of bag (`workspace.ts`, `accounts-ops.ts`, `region-probe.ts`,
+// hold both kinds of bag (`workspace-members/options.ts`, `accounts-ops.ts`, `region-probe.ts`,
 // `errors.ts`). This test states the per-interface rule directly:
 //
 //   1. every listed config bag exists where listed, is exported, and has only
@@ -31,7 +31,7 @@ type Bag = readonly [module: string, name: string];
 
 /** Constructor / factory / transport configuration: camelCase members. */
 const CONFIG_BAGS: readonly Bag[] = [
-  ["packages/core/src/workspace.ts", "WorkspaceOptions"],
+  ["packages/core/src/workspace-members/options.ts", "WorkspaceOptions"],
   ["packages/core/src/client/client.ts", "MixpanelClientOptions"],
   ["packages/core/src/client/core.ts", "ClientRequestOptions"],
   ["packages/core/src/client/core.ts", "ClientAppRequestOptions"],
@@ -92,13 +92,31 @@ const CONFIG_BAGS: readonly Bag[] = [
  * TypeScript-only seams such as `signal` / `onBatch` allowed in camelCase).
  */
 const QUERY_BAGS: readonly Bag[] = [
-  ["packages/core/src/workspace.ts", "WorkspaceQueryOptions"],
-  ["packages/core/src/workspace.ts", "WorkspaceFunnelQueryOptions"],
-  ["packages/core/src/workspace.ts", "WorkspaceRetentionQueryOptions"],
-  ["packages/core/src/workspace.ts", "WorkspaceFlowQueryOptions"],
-  ["packages/core/src/workspace.ts", "WorkspaceUserQueryOptions"],
-  ["packages/core/src/workspace.ts", "WorkspaceFetchReplayOptions"],
-  ["packages/core/src/workspace.ts", "WorkspaceStreamReplayOptions"],
+  ["packages/core/src/workspace-members/options.ts", "WorkspaceQueryOptions"],
+  [
+    "packages/core/src/workspace-members/options.ts",
+    "WorkspaceFunnelQueryOptions",
+  ],
+  [
+    "packages/core/src/workspace-members/options.ts",
+    "WorkspaceRetentionQueryOptions",
+  ],
+  [
+    "packages/core/src/workspace-members/options.ts",
+    "WorkspaceFlowQueryOptions",
+  ],
+  [
+    "packages/core/src/workspace-members/options.ts",
+    "WorkspaceUserQueryOptions",
+  ],
+  [
+    "packages/core/src/workspace-members/options.ts",
+    "WorkspaceFetchReplayOptions",
+  ],
+  [
+    "packages/core/src/workspace-members/options.ts",
+    "WorkspaceStreamReplayOptions",
+  ],
   ["packages/core/src/services/discovery.ts", "ListEventsOptions"],
   ["packages/core/src/services/queries/streaming.ts", "ExportProfilesOptions"],
   ["packages/core/src/accounts/login-unified.ts", "LoginUnifiedOptions"],
