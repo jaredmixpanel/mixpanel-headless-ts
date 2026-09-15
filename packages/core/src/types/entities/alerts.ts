@@ -471,7 +471,7 @@ export class CreateAlertParams extends EntityModel {
       required: true,
       kind: "str",
       // Python: Field(max_length=50) — codepoint-counted (R11.6).
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value === "string" && codepointLength(value) > 50) {
           modelFail(path, "max_length 50");
         }
@@ -1008,7 +1008,7 @@ export class ValidateAlertsForBookmarkParams extends EntityModel {
     {
       name: "alert_ids",
       required: true,
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value === "string" && codepointLength(value) < 1)
           modelFail(path, "min_length 1");
         if (Array.isArray(value) && value.length === 0)

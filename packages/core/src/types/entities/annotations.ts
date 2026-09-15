@@ -284,7 +284,7 @@ export class CreateAnnotationParams extends EntityModel {
       required: true,
       kind: "str",
       // Python: Field(max_length=512) — codepoint-counted (R11.6).
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value === "string" && codepointLength(value) > 512) {
           modelFail(path, "max_length 512");
         }
@@ -366,7 +366,7 @@ export class UpdateAnnotationParams extends EntityModel {
       kind: "str",
       nullable: true,
       // Python: Field(default=None, max_length=512) — codepoint-counted.
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value === "string" && codepointLength(value) > 512) {
           modelFail(path, "max_length 512");
         }

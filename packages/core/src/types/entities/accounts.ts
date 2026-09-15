@@ -278,7 +278,7 @@ export class Target extends EntityModel {
       required: true,
       kind: "str",
       // Python: Annotated[ProjectId, Field(min_length=1, pattern=r"^\d+$")]
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value !== "string" || !/^\d+$/.test(value)) {
           modelFail(path, "project must be a digits-only string");
         }
@@ -289,7 +289,7 @@ export class Target extends EntityModel {
       kind: "int",
       nullable: true,
       // Python: Annotated[WorkspaceId, Field(gt=0)] | None
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value === "number" && !(value > 0)) {
           modelFail(path, "workspace must be > 0");
         }
