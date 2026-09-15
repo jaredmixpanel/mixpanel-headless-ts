@@ -14,7 +14,11 @@
  */
 
 import type { ClientCore } from "../../client/core.js";
-import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
+import {
+  bindFirst,
+  isPlainRecord,
+  jsonValuePythonStr,
+} from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { pythonInt, pythonJsonDumps } from "../../compat/index.js";
 import { ValueError } from "../../compat/python-builtins.js";
@@ -714,6 +718,597 @@ export interface QueryHostClientDeps {
    */
   resolveWorkspaceId: () => Promise<number>;
 }
+async function getEvents(
+  core: ClientCore,
+  options: GetEventsOptions = {},
+): Promise<string[]> {
+  const limit = options.limit ?? EVENTS_NAMES_MAX_LIMIT;
+  const fromDate = options.from_date;
+  const toDate = options.to_date;
+  const url = core.buildUrl("query", "/events/names");
+  // Capture today once so the initial to_date and the retry's
+  // from_date can't diverge across midnight (`api_client.py:2399`).
+  const today = civilFromInstantUtc(core.now());
+  const resolvedFrom = fromDate ?? EVENTS_NAMES_WIDE_FROM_DATE;
+  const resolvedTo = toDate ?? formatYmd(today);
+  const params: Record<string, unknown> = {
+    type: "general",
+    limit,
+    from_date: resolvedFrom,
+    to_date: resolvedTo,
+  };
+  let response: JsonValue;
+  try {
+    response = await core.requestQueryHost("GET", url, {
+      params,
+      signal: options.signal,
+    });
+  } catch (error) {
+    if (!(error instanceof QueryError)) {
+      throw error;
+    }
+    const match = DATE_GATE_PATTERN.exec(error.message);
+    if (
+      match === null ||
+      (fromDate !== undefined && fromDate !== null) ||
+      error.statusCode !== 403
+    ) {
+      throw error;
+    }
+    const allowedDays = pythonInt(match[1] as string);
+    const retryFrom = addDays(today, -allowedDays);
+    if (retryFrom === null) {
+      // Python would raise OverflowError from the date subtraction —
+      // out of reach for real gate values; propagate the original.
+      throw error;
+    }
+    params["from_date"] = formatYmd(retryFrom);
+    response = await core.requestQueryHost("GET", url, {
+      params,
+      signal: options.signal,
+    });
+  }
+  if (Array.isArray(response)) {
+    return response.map((e) => jsonValuePythonStr(e));
+  }
+  return [];
+}
+
+async function activityFeed(
+  core: ClientCore,
+  client: QueryHostClientDeps,
+  distinctIds: readonly string[],
+  options: ActivityFeedOptions = {},
+): Promise<JsonValue> {
+  const includeEvents = options.include_events;
+  const excludeEvents = options.exclude_events;
+  if (truthyList(includeEvents) && truthyList(excludeEvents)) {
+    throw new QueryError(
+      "include_events and exclude_events are mutually exclusive",
+      {
+        requestParams: {
+          include_events: includeEvents,
+          exclude_events: excludeEvents,
+        },
+      },
+    );
+  }
+  if (isSet(options.search_properties) && !isSet(options.search)) {
+    throw new QueryError("search_properties requires a search string", {
+      requestParams: {
+        search_properties: options.search_properties,
+      },
+    });
+  }
+  const url = core.buildUrl("query", "/stream/bookmark");
+  const body: Record<string, unknown> = {
+    project_id: core.projectId(),
+    workspace_id: await client.resolveWorkspaceId(),
+    bookmark: {
+      dateRange: buildActivityFeedDateRange(options.from_date, options.to_date),
+      entries: [],
+    },
+    distinct_ids: distinctIds,
+    mode: "raw",
+  };
+  if (isSet(options.limit)) {
+    body["limit"] = options.limit;
+  }
+  if (truthyList(includeEvents)) {
+    body["include_events"] = includeEvents;
+  }
+  if (truthyList(excludeEvents)) {
+    body["exclude_events"] = excludeEvents;
+  }
+  if (isSet(options.sentinel_event)) {
+    body["sentinel_event"] = options.sentinel_event;
+  }
+  if (isSet(options.paging_window)) {
+    body["paging_window"] = options.paging_window;
+  }
+  if (isSet(options.search)) {
+    body["search"] = options.search;
+  }
+  if (isSet(options.search_properties)) {
+    body["search_properties"] = options.search_properties;
+  }
+  if (options.use_custom_events === true) {
+    body["use_custom_events"] = options.use_custom_events;
+  }
+  return core.requestQueryHost("POST", url, {
+    data: body,
+    injectProjectId: false,
+    signal: options.signal,
+  });
+}
+
+async function querySavedReport(
+  core: ClientCore,
+  bookmarkId: number,
+  options: QuerySavedReportOptions = {},
+): Promise<JsonValue> {
+  const bookmarkType = options.bookmark_type ?? "insights";
+  // Python's if/elif chain ends in an insights `else`; start from that
+  // shape so an out-of-contract bookmark type (JS callers bypassing the
+  // literal union) lands there too.
+  let url = core.buildUrl("query", "/insights");
+  let params: Record<string, unknown> = { bookmark_id: bookmarkId };
+  switch (bookmarkType) {
+    case "funnels": {
+      url = core.buildUrl("query", "/funnels");
+      let fromDate = options.from_date ?? null;
+      let toDate = options.to_date ?? null;
+      if (fromDate === null && toDate === null) {
+        const now = civilFromInstantUtc(core.now());
+        toDate = formatYmd(now);
+        const monthAgo = addDays(now, -30);
+        fromDate = formatYmd(monthAgo ?? now);
+      } else if (fromDate === null && toDate !== null) {
+        const parsedTo = parseYmd(toDate);
+        if (parsedTo === null) {
+          // Python: `datetime.strptime` raises a BARE ValueError that
+          // propagates uncaught (`api_client.py:2960`) — port the same
+          // class, CPython's message shape (out of contract, R5.4).
+          throw new ValueError(
+            `time data '${toDate}' does not match format '%Y-%m-%d'`,
+          );
+        }
+        const derived = addDays(parsedTo, -30);
+        fromDate = formatYmd(derived ?? parsedTo);
+      } else if (toDate === null && fromDate !== null) {
+        const parsedFrom = parseYmd(fromDate);
+        if (parsedFrom === null) {
+          throw new ValueError(
+            `time data '${fromDate}' does not match format '%Y-%m-%d'`,
+          );
+        }
+        const computedTo = addDays(parsedFrom, 30) ?? parsedFrom;
+        const now = core.now();
+        const nowCivil = civilFromInstantUtc(now);
+        // Python: `min(computed_to, datetime.now())` — midnight of the
+        // derived date vs the live instant; the CALENDAR comparison is
+        // what survives strftime, so compare civil dates.
+        toDate = earlierYmd(formatYmd(computedTo), formatYmd(nowCivil));
+      }
+      params = {
+        funnel_id: bookmarkId,
+        from_date: fromDate,
+        to_date: toDate,
+      };
+
+      break;
+    }
+    case "retention": {
+      url = core.buildUrl("query", "/retention");
+      params = { bookmark_id: bookmarkId };
+
+      break;
+    }
+    case "flows": {
+      url = core.buildUrl("query", "/arb_funnels");
+      params = { bookmark_id: bookmarkId, query_type: "flows_sankey" };
+
+      break;
+    }
+    case "insights": {
+      break;
+    }
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function getEventProperties(
+  core: ClientCore,
+  event: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const url = core.buildUrl("query", "/events/properties/top");
+  const response = await core.requestQueryHost("GET", url, {
+    params: { event },
+    signal,
+  });
+  if (isPlainRecord(response)) {
+    return Object.keys(response);
+  }
+  return [];
+}
+
+async function getPropertyValues(
+  core: ClientCore,
+  propertyName: string,
+  options: GetPropertyValuesOptions = {},
+): Promise<string[]> {
+  const url = core.buildUrl("query", "/events/properties/values");
+  const params: Record<string, unknown> = {
+    name: propertyName,
+    limit: options.limit ?? 255,
+  };
+  if (truthyStr(options.event)) {
+    params["event"] = options.event;
+  }
+  const response = await core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+  if (Array.isArray(response)) {
+    return response.map((v) => jsonValuePythonStr(v));
+  }
+  return [];
+}
+
+async function listFunnels(
+  core: ClientCore,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const url = core.buildUrl("query", "/funnels/list");
+  const response = await core.requestQueryHost("GET", url, { signal });
+  return Array.isArray(response) ? response : [];
+}
+
+async function listCohorts(
+  core: ClientCore,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  // POST for a read is unusual but per API spec (`api_client.py:2510`).
+  const url = core.buildUrl("query", "/cohorts/list");
+  const response = await core.requestQueryHost("POST", url, { signal });
+  return Array.isArray(response) ? response : [];
+}
+
+async function getTopEvents(
+  core: ClientCore,
+  options: GetTopEventsOptions = {},
+): Promise<JsonValue> {
+  const type = options.type ?? "general";
+  const url = core.buildUrl("query", "/events/top");
+  const params: Record<string, unknown> = { type };
+  if (isSet(options.limit)) {
+    params["limit"] = options.limit;
+  }
+  const response = await core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+  if (isPlainRecord(response)) {
+    return response;
+  }
+  return { events: [], type };
+}
+
+async function eventCounts(
+  core: ClientCore,
+  events: readonly string[],
+  fromDate: string,
+  toDate: string,
+  options: EventCountsOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/events");
+  const params: Record<string, unknown> = {
+    event: pythonJsonDumps(events),
+    type: options.type ?? "general",
+    unit: options.unit ?? "day",
+    from_date: fromDate,
+    to_date: toDate,
+  };
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function propertyCounts(
+  core: ClientCore,
+  event: string,
+  propertyName: string,
+  fromDate: string,
+  toDate: string,
+  options: PropertyCountsOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/events/properties");
+  const params: Record<string, unknown> = {
+    event,
+    name: propertyName,
+    type: options.type ?? "general",
+    unit: options.unit ?? "day",
+    from_date: fromDate,
+    to_date: toDate,
+  };
+  if (isSet(options.values)) {
+    params["values"] = pythonJsonDumps(options.values);
+  }
+  if (isSet(options.limit)) {
+    params["limit"] = options.limit;
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function segmentation(
+  core: ClientCore,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  options: SegmentationOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/segmentation");
+  const params: Record<string, unknown> = {
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    unit: options.unit ?? "day",
+    type: options.type ?? "general",
+  };
+  if (truthyStr(options.on)) {
+    params["on"] = options.on;
+  }
+  if (truthyStr(options.where)) {
+    params["where"] = options.where;
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function funnel(
+  core: ClientCore,
+  funnelId: number,
+  fromDate: string,
+  toDate: string,
+  options: FunnelOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/funnels");
+  const params: Record<string, unknown> = {
+    funnel_id: funnelId,
+    from_date: fromDate,
+    to_date: toDate,
+  };
+  if (truthyStr(options.unit)) {
+    params["unit"] = options.unit;
+  }
+  if (truthyStr(options.on)) {
+    params["on"] = options.on;
+  }
+  if (truthyStr(options.where)) {
+    params["where"] = options.where;
+  }
+  if (isSet(options.length)) {
+    params["length"] = options.length;
+  }
+  if (truthyStr(options.length_unit)) {
+    params["length_unit"] = options.length_unit;
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function retention(
+  core: ClientCore,
+  bornEvent: string,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  options: RetentionOptions = {},
+): Promise<JsonValue> {
+  const interval = options.interval ?? 1;
+  const url = core.buildUrl("query", "/retention");
+  const params: Record<string, unknown> = {
+    born_event: bornEvent,
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    retention_type: options.retention_type ?? "birth",
+    interval_count: options.interval_count ?? 8,
+  };
+  // The API rejects `unit` and `interval` together
+  // (`api_client.py:2783-2788`).
+  if (interval === 1) {
+    params["unit"] = options.unit ?? "day";
+  } else {
+    params["interval"] = interval;
+  }
+  if (truthyStr(options.born_where)) {
+    params["born_where"] = options.born_where;
+  }
+  if (truthyStr(options.where)) {
+    params["where"] = options.where;
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function listBookmarks(
+  core: ClientCore,
+  bookmarkType?: string | null,
+  signal?: AbortSignal,
+): Promise<JsonValue> {
+  const url = core.buildUrl("app", `/projects/${core.projectId()}/bookmarks`);
+  const params: Record<string, unknown> = { v: "2" };
+  if (isSet(bookmarkType)) {
+    params["type"] = bookmarkType;
+  }
+  return core.requestQueryHost("GET", url, { params, signal });
+}
+
+async function insightsQuery(
+  core: ClientCore,
+  body: Record<string, unknown>,
+  options: InlineQueryOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/insights");
+  return core.requestQueryHost("POST", url, {
+    params: explicitWorkspaceParams(options.workspace_id),
+    data: body,
+    injectProjectId: false,
+    injectWorkspaceId: options.inject_workspace_id ?? true,
+    signal: options.signal,
+  });
+}
+
+async function querySavedFlows(
+  core: ClientCore,
+  bookmarkId: number,
+  signal?: AbortSignal,
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/arb_funnels");
+  return core.requestQueryHost("GET", url, {
+    params: { bookmark_id: bookmarkId, query_type: "flows_sankey" },
+    signal,
+  });
+}
+
+async function arbFunnelsQuery(
+  core: ClientCore,
+  body: Record<string, unknown>,
+  options: InlineQueryOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/arb_funnels");
+  return core.requestQueryHost("POST", url, {
+    params: explicitWorkspaceParams(options.workspace_id),
+    data: body,
+    injectProjectId: false,
+    injectWorkspaceId: options.inject_workspace_id ?? true,
+    signal: options.signal,
+  });
+}
+
+async function frequency(
+  core: ClientCore,
+  fromDate: string,
+  toDate: string,
+  unit: string,
+  addictionUnit: string,
+  options: FrequencyOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/retention/addiction");
+  const params: Record<string, unknown> = {
+    from_date: fromDate,
+    to_date: toDate,
+    unit,
+    addiction_unit: addictionUnit,
+  };
+  if (truthyStr(options.event)) {
+    params["event"] = options.event;
+  }
+  if (truthyStr(options.where)) {
+    params["where"] = options.where;
+  }
+  if (truthyStr(options.on)) {
+    params["on"] = options.on;
+  }
+  if (isSet(options.limit)) {
+    params["limit"] = options.limit;
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function segmentationNumeric(
+  core: ClientCore,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  on: string,
+  options: SegmentationNumericOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/segmentation/numeric");
+  const params: Record<string, unknown> = {
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    on,
+    unit: options.unit ?? "day",
+    type: options.type ?? "general",
+  };
+  if (truthyStr(options.where)) {
+    params["where"] = options.where;
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function segmentationSum(
+  core: ClientCore,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  on: string,
+  options: SegmentationNumericOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/segmentation/sum");
+  const params: Record<string, unknown> = {
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    on,
+    unit: options.unit ?? "day",
+  };
+  if (truthyStr(options.where)) {
+    params["where"] = options.where;
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
+
+async function segmentationAverage(
+  core: ClientCore,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  on: string,
+  options: SegmentationNumericOptions = {},
+): Promise<JsonValue> {
+  const url = core.buildUrl("query", "/segmentation/average");
+  const params: Record<string, unknown> = {
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    on,
+    unit: options.unit ?? "day",
+  };
+  if (truthyStr(options.where)) {
+    params["where"] = options.where;
+  }
+  return core.requestQueryHost("GET", url, {
+    params,
+    signal: options.signal,
+  });
+}
 
 /**
  * Build the C2 query-host methods over the C1 core seam (R2.9 factory
@@ -728,583 +1323,29 @@ export function createQueryHostMethods(
   core: ClientCore,
   client: QueryHostClientDeps,
 ): QueryHostMethods {
-  const getEvents = async (
-    options: GetEventsOptions = {},
-  ): Promise<string[]> => {
-    const limit = options.limit ?? EVENTS_NAMES_MAX_LIMIT;
-    const fromDate = options.from_date;
-    const toDate = options.to_date;
-    const url = core.buildUrl("query", "/events/names");
-    // Capture today once so the initial to_date and the retry's
-    // from_date can't diverge across midnight (`api_client.py:2399`).
-    const today = civilFromInstantUtc(core.now());
-    const resolvedFrom = fromDate ?? EVENTS_NAMES_WIDE_FROM_DATE;
-    const resolvedTo = toDate ?? formatYmd(today);
-    const params: Record<string, unknown> = {
-      type: "general",
-      limit,
-      from_date: resolvedFrom,
-      to_date: resolvedTo,
-    };
-    let response: JsonValue;
-    try {
-      response = await core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    } catch (error) {
-      if (!(error instanceof QueryError)) {
-        throw error;
-      }
-      const match = DATE_GATE_PATTERN.exec(error.message);
-      if (
-        match === null ||
-        (fromDate !== undefined && fromDate !== null) ||
-        error.statusCode !== 403
-      ) {
-        throw error;
-      }
-      const allowedDays = pythonInt(match[1] as string);
-      const retryFrom = addDays(today, -allowedDays);
-      if (retryFrom === null) {
-        // Python would raise OverflowError from the date subtraction —
-        // out of reach for real gate values; propagate the original.
-        throw error;
-      }
-      params["from_date"] = formatYmd(retryFrom);
-      response = await core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    }
-    if (Array.isArray(response)) {
-      return response.map((e) => jsonValuePythonStr(e));
-    }
-    return [];
-  };
-
-  const activityFeed = async (
-    distinctIds: readonly string[],
-    options: ActivityFeedOptions = {},
-  ): Promise<JsonValue> => {
-    const includeEvents = options.include_events;
-    const excludeEvents = options.exclude_events;
-    if (truthyList(includeEvents) && truthyList(excludeEvents)) {
-      throw new QueryError(
-        "include_events and exclude_events are mutually exclusive",
-        {
-          requestParams: {
-            include_events: includeEvents,
-            exclude_events: excludeEvents,
-          },
-        },
-      );
-    }
-    if (isSet(options.search_properties) && !isSet(options.search)) {
-      throw new QueryError("search_properties requires a search string", {
-        requestParams: {
-          search_properties: options.search_properties,
-        },
-      });
-    }
-    const url = core.buildUrl("query", "/stream/bookmark");
-    const body: Record<string, unknown> = {
-      project_id: core.projectId(),
-      workspace_id: await client.resolveWorkspaceId(),
-      bookmark: {
-        dateRange: buildActivityFeedDateRange(
-          options.from_date,
-          options.to_date,
-        ),
-        entries: [],
-      },
-      distinct_ids: distinctIds,
-      mode: "raw",
-    };
-    if (isSet(options.limit)) {
-      body["limit"] = options.limit;
-    }
-    if (truthyList(includeEvents)) {
-      body["include_events"] = includeEvents;
-    }
-    if (truthyList(excludeEvents)) {
-      body["exclude_events"] = excludeEvents;
-    }
-    if (isSet(options.sentinel_event)) {
-      body["sentinel_event"] = options.sentinel_event;
-    }
-    if (isSet(options.paging_window)) {
-      body["paging_window"] = options.paging_window;
-    }
-    if (isSet(options.search)) {
-      body["search"] = options.search;
-    }
-    if (isSet(options.search_properties)) {
-      body["search_properties"] = options.search_properties;
-    }
-    if (options.use_custom_events === true) {
-      body["use_custom_events"] = options.use_custom_events;
-    }
-    return core.requestQueryHost("POST", url, {
-      data: body,
-      injectProjectId: false,
-      signal: options.signal,
-    });
-  };
-
-  const querySavedReport = async (
-    bookmarkId: number,
-    options: QuerySavedReportOptions = {},
-  ): Promise<JsonValue> => {
-    const bookmarkType = options.bookmark_type ?? "insights";
-    // Python's if/elif chain ends in an insights `else`; start from that
-    // shape so an out-of-contract bookmark type (JS callers bypassing the
-    // literal union) lands there too.
-    let url = core.buildUrl("query", "/insights");
-    let params: Record<string, unknown> = { bookmark_id: bookmarkId };
-    switch (bookmarkType) {
-      case "funnels": {
-        url = core.buildUrl("query", "/funnels");
-        let fromDate = options.from_date ?? null;
-        let toDate = options.to_date ?? null;
-        if (fromDate === null && toDate === null) {
-          const now = civilFromInstantUtc(core.now());
-          toDate = formatYmd(now);
-          const monthAgo = addDays(now, -30);
-          fromDate = formatYmd(monthAgo ?? now);
-        } else if (fromDate === null && toDate !== null) {
-          const parsedTo = parseYmd(toDate);
-          if (parsedTo === null) {
-            // Python: `datetime.strptime` raises a BARE ValueError that
-            // propagates uncaught (`api_client.py:2960`) — port the same
-            // class, CPython's message shape (out of contract, R5.4).
-            throw new ValueError(
-              `time data '${toDate}' does not match format '%Y-%m-%d'`,
-            );
-          }
-          const derived = addDays(parsedTo, -30);
-          fromDate = formatYmd(derived ?? parsedTo);
-        } else if (toDate === null && fromDate !== null) {
-          const parsedFrom = parseYmd(fromDate);
-          if (parsedFrom === null) {
-            throw new ValueError(
-              `time data '${fromDate}' does not match format '%Y-%m-%d'`,
-            );
-          }
-          const computedTo = addDays(parsedFrom, 30) ?? parsedFrom;
-          const now = core.now();
-          const nowCivil = civilFromInstantUtc(now);
-          // Python: `min(computed_to, datetime.now())` — midnight of the
-          // derived date vs the live instant; the CALENDAR comparison is
-          // what survives strftime, so compare civil dates.
-          toDate = earlierYmd(formatYmd(computedTo), formatYmd(nowCivil));
-        }
-        params = {
-          funnel_id: bookmarkId,
-          from_date: fromDate,
-          to_date: toDate,
-        };
-
-        break;
-      }
-      case "retention": {
-        url = core.buildUrl("query", "/retention");
-        params = { bookmark_id: bookmarkId };
-
-        break;
-      }
-      case "flows": {
-        url = core.buildUrl("query", "/arb_funnels");
-        params = { bookmark_id: bookmarkId, query_type: "flows_sankey" };
-
-        break;
-      }
-      case "insights": {
-        break;
-      }
-    }
-    return core.requestQueryHost("GET", url, {
-      params,
-      signal: options.signal,
-    });
-  };
-
   return {
-    getEvents,
-
-    getEventProperties: async (
-      event: string,
-      signal?: AbortSignal,
-    ): Promise<string[]> => {
-      const url = core.buildUrl("query", "/events/properties/top");
-      const response = await core.requestQueryHost("GET", url, {
-        params: { event },
-        signal,
-      });
-      if (isPlainRecord(response)) {
-        return Object.keys(response);
-      }
-      return [];
-    },
-
-    getPropertyValues: async (
-      propertyName: string,
-      options: GetPropertyValuesOptions = {},
-    ): Promise<string[]> => {
-      const url = core.buildUrl("query", "/events/properties/values");
-      const params: Record<string, unknown> = {
-        name: propertyName,
-        limit: options.limit ?? 255,
-      };
-      if (truthyStr(options.event)) {
-        params["event"] = options.event;
-      }
-      const response = await core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-      if (Array.isArray(response)) {
-        return response.map((v) => jsonValuePythonStr(v));
-      }
-      return [];
-    },
-
-    listFunnels: async (signal?: AbortSignal): Promise<JsonValue[]> => {
-      const url = core.buildUrl("query", "/funnels/list");
-      const response = await core.requestQueryHost("GET", url, { signal });
-      return Array.isArray(response) ? response : [];
-    },
-
-    listCohorts: async (signal?: AbortSignal): Promise<JsonValue[]> => {
-      // POST for a read is unusual but per API spec (`api_client.py:2510`).
-      const url = core.buildUrl("query", "/cohorts/list");
-      const response = await core.requestQueryHost("POST", url, { signal });
-      return Array.isArray(response) ? response : [];
-    },
-
-    getTopEvents: async (
-      options: GetTopEventsOptions = {},
-    ): Promise<JsonValue> => {
-      const type = options.type ?? "general";
-      const url = core.buildUrl("query", "/events/top");
-      const params: Record<string, unknown> = { type };
-      if (isSet(options.limit)) {
-        params["limit"] = options.limit;
-      }
-      const response = await core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-      if (isPlainRecord(response)) {
-        return response;
-      }
-      return { events: [], type };
-    },
-
-    eventCounts: async (
-      events: readonly string[],
-      fromDate: string,
-      toDate: string,
-      options: EventCountsOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/events");
-      const params: Record<string, unknown> = {
-        event: pythonJsonDumps(events),
-        type: options.type ?? "general",
-        unit: options.unit ?? "day",
-        from_date: fromDate,
-        to_date: toDate,
-      };
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
-
-    propertyCounts: async (
-      event: string,
-      propertyName: string,
-      fromDate: string,
-      toDate: string,
-      options: PropertyCountsOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/events/properties");
-      const params: Record<string, unknown> = {
-        event,
-        name: propertyName,
-        type: options.type ?? "general",
-        unit: options.unit ?? "day",
-        from_date: fromDate,
-        to_date: toDate,
-      };
-      if (isSet(options.values)) {
-        params["values"] = pythonJsonDumps(options.values);
-      }
-      if (isSet(options.limit)) {
-        params["limit"] = options.limit;
-      }
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
-
-    segmentation: async (
-      event: string,
-      fromDate: string,
-      toDate: string,
-      options: SegmentationOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/segmentation");
-      const params: Record<string, unknown> = {
-        event,
-        from_date: fromDate,
-        to_date: toDate,
-        unit: options.unit ?? "day",
-        type: options.type ?? "general",
-      };
-      if (truthyStr(options.on)) {
-        params["on"] = options.on;
-      }
-      if (truthyStr(options.where)) {
-        params["where"] = options.where;
-      }
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
-
-    funnel: async (
-      funnelId: number,
-      fromDate: string,
-      toDate: string,
-      options: FunnelOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/funnels");
-      const params: Record<string, unknown> = {
-        funnel_id: funnelId,
-        from_date: fromDate,
-        to_date: toDate,
-      };
-      if (truthyStr(options.unit)) {
-        params["unit"] = options.unit;
-      }
-      if (truthyStr(options.on)) {
-        params["on"] = options.on;
-      }
-      if (truthyStr(options.where)) {
-        params["where"] = options.where;
-      }
-      if (isSet(options.length)) {
-        params["length"] = options.length;
-      }
-      if (truthyStr(options.length_unit)) {
-        params["length_unit"] = options.length_unit;
-      }
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
-
-    retention: async (
-      bornEvent: string,
-      event: string,
-      fromDate: string,
-      toDate: string,
-      options: RetentionOptions = {},
-    ): Promise<JsonValue> => {
-      const interval = options.interval ?? 1;
-      const url = core.buildUrl("query", "/retention");
-      const params: Record<string, unknown> = {
-        born_event: bornEvent,
-        event,
-        from_date: fromDate,
-        to_date: toDate,
-        retention_type: options.retention_type ?? "birth",
-        interval_count: options.interval_count ?? 8,
-      };
-      // The API rejects `unit` and `interval` together
-      // (`api_client.py:2783-2788`).
-      if (interval === 1) {
-        params["unit"] = options.unit ?? "day";
-      } else {
-        params["interval"] = interval;
-      }
-      if (truthyStr(options.born_where)) {
-        params["born_where"] = options.born_where;
-      }
-      if (truthyStr(options.where)) {
-        params["where"] = options.where;
-      }
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
-
-    activityFeed,
-    querySavedReport,
-
-    listBookmarks: async (
-      bookmarkType?: string | null,
-      signal?: AbortSignal,
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl(
-        "app",
-        `/projects/${core.projectId()}/bookmarks`,
-      );
-      const params: Record<string, unknown> = { v: "2" };
-      if (isSet(bookmarkType)) {
-        params["type"] = bookmarkType;
-      }
-      return core.requestQueryHost("GET", url, { params, signal });
-    },
-
-    insightsQuery: async (
-      body: Record<string, unknown>,
-      options: InlineQueryOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/insights");
-      return core.requestQueryHost("POST", url, {
-        params: explicitWorkspaceParams(options.workspace_id),
-        data: body,
-        injectProjectId: false,
-        injectWorkspaceId: options.inject_workspace_id ?? true,
-        signal: options.signal,
-      });
-    },
-
-    querySavedFlows: async (
-      bookmarkId: number,
-      signal?: AbortSignal,
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/arb_funnels");
-      return core.requestQueryHost("GET", url, {
-        params: { bookmark_id: bookmarkId, query_type: "flows_sankey" },
-        signal,
-      });
-    },
-
-    arbFunnelsQuery: async (
-      body: Record<string, unknown>,
-      options: InlineQueryOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/arb_funnels");
-      return core.requestQueryHost("POST", url, {
-        params: explicitWorkspaceParams(options.workspace_id),
-        data: body,
-        injectProjectId: false,
-        injectWorkspaceId: options.inject_workspace_id ?? true,
-        signal: options.signal,
-      });
-    },
-
-    frequency: async (
-      fromDate: string,
-      toDate: string,
-      unit: string,
-      addictionUnit: string,
-      options: FrequencyOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/retention/addiction");
-      const params: Record<string, unknown> = {
-        from_date: fromDate,
-        to_date: toDate,
-        unit,
-        addiction_unit: addictionUnit,
-      };
-      if (truthyStr(options.event)) {
-        params["event"] = options.event;
-      }
-      if (truthyStr(options.where)) {
-        params["where"] = options.where;
-      }
-      if (truthyStr(options.on)) {
-        params["on"] = options.on;
-      }
-      if (isSet(options.limit)) {
-        params["limit"] = options.limit;
-      }
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
-
-    segmentationNumeric: async (
-      event: string,
-      fromDate: string,
-      toDate: string,
-      on: string,
-      options: SegmentationNumericOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/segmentation/numeric");
-      const params: Record<string, unknown> = {
-        event,
-        from_date: fromDate,
-        to_date: toDate,
-        on,
-        unit: options.unit ?? "day",
-        type: options.type ?? "general",
-      };
-      if (truthyStr(options.where)) {
-        params["where"] = options.where;
-      }
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
-
-    segmentationSum: async (
-      event: string,
-      fromDate: string,
-      toDate: string,
-      on: string,
-      options: SegmentationNumericOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/segmentation/sum");
-      const params: Record<string, unknown> = {
-        event,
-        from_date: fromDate,
-        to_date: toDate,
-        on,
-        unit: options.unit ?? "day",
-      };
-      if (truthyStr(options.where)) {
-        params["where"] = options.where;
-      }
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
-
-    segmentationAverage: async (
-      event: string,
-      fromDate: string,
-      toDate: string,
-      on: string,
-      options: SegmentationNumericOptions = {},
-    ): Promise<JsonValue> => {
-      const url = core.buildUrl("query", "/segmentation/average");
-      const params: Record<string, unknown> = {
-        event,
-        from_date: fromDate,
-        to_date: toDate,
-        on,
-        unit: options.unit ?? "day",
-      };
-      if (truthyStr(options.where)) {
-        params["where"] = options.where;
-      }
-      return core.requestQueryHost("GET", url, {
-        params,
-        signal: options.signal,
-      });
-    },
+    getEvents: bindFirst(core, getEvents),
+    getEventProperties: bindFirst(core, getEventProperties),
+    getPropertyValues: bindFirst(core, getPropertyValues),
+    listFunnels: bindFirst(core, listFunnels),
+    listCohorts: bindFirst(core, listCohorts),
+    getTopEvents: bindFirst(core, getTopEvents),
+    eventCounts: bindFirst(core, eventCounts),
+    propertyCounts: bindFirst(core, propertyCounts),
+    segmentation: bindFirst(core, segmentation),
+    funnel: bindFirst(core, funnel),
+    retention: bindFirst(core, retention),
+    activityFeed: (distinctIds, options) =>
+      activityFeed(core, client, distinctIds, options),
+    querySavedReport: bindFirst(core, querySavedReport),
+    listBookmarks: bindFirst(core, listBookmarks),
+    insightsQuery: bindFirst(core, insightsQuery),
+    querySavedFlows: bindFirst(core, querySavedFlows),
+    arbFunnelsQuery: bindFirst(core, arbFunnelsQuery),
+    frequency: bindFirst(core, frequency),
+    segmentationNumeric: bindFirst(core, segmentationNumeric),
+    segmentationSum: bindFirst(core, segmentationSum),
+    segmentationAverage: bindFirst(core, segmentationAverage),
   };
 }
 
