@@ -132,20 +132,25 @@ export default defineConfig({
       transformerTwoslash({
         twoslashOptions: {
           compilerOptions: {
-            // Snippets are consumer code: modern Node, strict, DOM libs so
-            // browser examples compile in the same environment, and
-            // NodeNext resolution so the packages' `exports` maps are
-            // honoured. Top-level `await` needs an ES module, which the
-            // repo root's `"type": "module"` makes the virtual file.
+            // Snippets are consumer code: modern Node, the repo's strict
+            // flags, DOM libs so browser examples compile in the same
+            // environment, and NodeNext resolution so the packages' `exports`
+            // maps are honoured. Top-level `await` needs an ES module, which
+            // the repo root's `"type": "module"` makes the virtual file.
+            // `noUnusedLocals` / `noUnusedParameters` stay off on purpose:
+            // examples assign a const purely to show its hover type.
             module: ts.ModuleKind.NodeNext,
             moduleResolution: ts.ModuleResolutionKind.NodeNext,
             target: ts.ScriptTarget.ES2022,
             strict: true,
+            exactOptionalPropertyTypes: true,
+            noUncheckedIndexedAccess: true,
             lib: [
               "lib.es2023.d.ts",
               "lib.dom.d.ts",
               "lib.dom.iterable.d.ts",
               "lib.dom.asynciterable.d.ts",
+              "lib.esnext.disposable.d.ts",
             ],
             types: ["node"],
             skipLibCheck: true,
@@ -154,7 +159,7 @@ export default defineConfig({
       }) as unknown as CodeTransformer,
     ],
     config(md) {
-      md.use(tabsMarkdownPlugin as unknown);
+      md.use(tabsMarkdownPlugin as unknown as MarkdownPlugin);
     },
   },
 
