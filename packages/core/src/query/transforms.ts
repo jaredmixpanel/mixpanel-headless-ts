@@ -1,43 +1,19 @@
 /**
- * Transform functions for Mixpanel data — whole-file TS twin of
- * `src/mixpanel_headless/_internal/transforms.py` (130 LOC; Python
- * revision: `ts-port/phase2-contract-support` HEAD). Batch B3, shard K3
- * (`docs/history/phase3/design/b3-packets.md` §"Packet K3").
+ * Normalize raw Mixpanel API responses — export-API events and
+ * engage-API profiles — for the streaming and `query_user` result
+ * paths. Not exported from the package barrel.
  *
- * Shared normalization of raw Mixpanel API responses (export-API events,
- * engage-API profiles) for downstream processing.
+ * Contract notes a reader must not "clean up": `event_time` is
+ * Python-isoformat text, not a `Date` (the result models keep datetimes
+ * as iso text, and {@link fromTimestampUtcIso} is pure arithmetic —
+ * `new Date()` truncates to milliseconds and reads the local zone);
+ * microsecond rounding is CPython's half-even, not `Math.round`'s
+ * half-up; the `$insert_id` generator is injectable so streaming vectors
+ * replay deterministically; and every `dict.get`/`dict.pop` default goes
+ * through `Object.hasOwn`, never `in`. Python's debug logging on the
+ * uuid-fill branch has no twin — only the value behaviour is contract.
  *
- * **Contract notes a reader must not "clean up":**
- *
- * - **`event_time` is Python-isoformat TEXT, not a `Date`** (packet
- *   design decision, binding). Python returns a `datetime`; the rig
- *   serializes it as `{"$type":"datetime","iso": value.isoformat()}` and
- *   Phase-2 result models already keep datetimes as iso text
- *   (`types/entities/model-base.ts:20`). {@link fromTimestampUtcIso} is
- *   a PURE arithmetic UTC formatter — never `new Date()` (watchlist #5;
- *   JS `Date` truncates to milliseconds while CPython keeps
- *   microseconds, and the local-timezone read would be nondeterministic).
- * - **µs rounding is CPython's round-HALF-EVEN**, matching
- *   `datetime._fromtimestamp`'s `us = round(frac * 1e6)`. `Math.round`
- *   is half-UP and rounds `-0.5` toward `+0`; the probe transcript in
- *   `docs/history/phase3/notes/B3-K3-notes.md` pins the divergent cases
- *   (`1.5e-6 → 2µs`, `2.5e-6 → 2µs`, `5e-7 → 0µs`).
- * - **The `uuid` seam is injectable** ({@link TransformEventOptions});
- *   the library default is `crypto.randomUUID()` and the conformance
- *   binding passes `context.shims.uuid` (counter-seeded twin of
- *   `conformance/record/clock.py:30`). B4-C2 threads it from the client
- *   options so streaming vectors replay deterministically.
- * - **Watchlist #7** — every `dict.get`/`dict.pop` default goes through
- *   `Object.hasOwn`, never `in` (which also sees prototype keys), and
- *   dict discrimination uses `isPythonDict` (watchlist #13).
- * - **Logging is out of contract** (Caution 15): Python's
- *   `_logger.debug` on the uuid-fill branch has no TS twin; the VALUE
- *   behavior around it is contract.
- *
- * Python keeps this module `_internal`; the TS twin is likewise NOT
- * exported from the package barrel. Importers: `stream_events` /
- * `stream_profiles` and the `query_user` result paths.
- *
+ * @see mixpanel_headless._internal.transforms
  * @internal
  */
 
@@ -61,20 +37,17 @@ export type TransformedRecord = Record<string, unknown>;
 /** Injectable seams for {@link transformEvent}. */
 export interface TransformEventOptions {
   /**
-   * `$insert_id` generator used when the event carries none
-   * (`transforms.py` — `str(uuid.uuid4())`).
+   * `$insert_id` generator used when the event carries none (Python's
+   * `str(uuid.uuid4())`).
    *
-   * Defaults to `crypto.randomUUID()`.
+   * @defaultValue `crypto.randomUUID()`
    */
   readonly uuid?: () => string;
 }
 
 /**
- * Reserved keys that {@link transformEvent} extracts from properties
- * (`transforms.py`).
- *
- * Standard Mixpanel fields promoted to top-level keys during
- * normalization. Exported for parity; consumers land at B4.
+ * Reserved keys that {@link transformEvent} promotes from `properties`
+ * to top-level fields.
  */
 export const RESERVED_EVENT_KEYS: ReadonlySet<string> = new Set([
   "distinct_id",
@@ -82,24 +55,19 @@ export const RESERVED_EVENT_KEYS: ReadonlySet<string> = new Set([
   "$insert_id",
 ]);
 
-/**
- * Reserved keys that {@link transformProfile} extracts from properties
- * (`transforms.py`).
- */
+/** Reserved keys that {@link transformProfile} promotes from `$properties`. */
 export const RESERVED_PROFILE_KEYS: ReadonlySet<string> = new Set([
   "$last_seen",
 ]);
 
-// =============================================================================
-// Python-semantics helpers
-// =============================================================================
+// --- Python-semantics helpers ---
 
 /**
  * Python `dict.pop(key, default)` over a mutable plain-object dict.
  *
  * @param target - The dict being mutated.
  * @param key - Key to remove.
- * @param fallback - Value returned when the key is ABSENT.
+ * @param fallback - Value returned when the key is absent.
  * @returns The removed value or the fallback.
  */
 function dictPop(
@@ -118,31 +86,25 @@ function dictPop(
 /**
  * Key spelling used when a `dict(pairs)` pair carries a non-string key.
  *
- * TODO(port): a JS object cannot hold Python's int/float/bool/None keys
- * with their types, so the JSON spelling (what any downstream encoder
- * emits for the Python twin — `json.dumps({True: 1})` is
- * `{"true": 1}`) is used. Only reachable through the pathological
- * `dict(iterable-of-pairs)` branch below, which no Mixpanel response
- * can produce; recorded in the B3-K3 notes §domain notes.
+ * @remarks
+ * A JS object cannot hold Python's int/float/bool/None keys with their
+ * types, so the JSON spelling — what any downstream encoder emits for
+ * the Python dict — is used. Only reachable through the
+ * `dict(iterable-of-pairs)` branch of {@link pythonDictCopy}, which no
+ * Mixpanel response can produce.
  *
- * Spelling table (B3 arbiter fix F3, `b3-review-resolution.md`
- * 2026-08-15 — the pre-fix `String()` rendered a carrier of `18.0` as
- * `"18"` where `json.dumps({18.0: 1})` spells `"18.0"`):
- *
- * - Python `float` (PyFloat carrier, or a fractional plain number from
- *   direct TS calls) → `pythonFloatStr` = CPython `float.__repr__`,
- *   which is exactly json.dumps' float-key spelling (`"18.0"`,
- *   `"1e+16"`, `"-0.0"`).
- * - Python `int` (integral plain number / bigint) → `String()` =
- *   digit run, identical to json.dumps' int-key spelling.
- * - `true`/`false`/`null` → `"true"`/`"false"`/`"null"`, identical to
- *   json.dumps (`pythonStr` would WRONGLY give `"True"` here — the
- *   policy is the JSON spelling, not `str()`).
- *
+ * - Python `float` (PyFloat carrier, or a fractional plain number) →
+ *   CPython `float.__repr__`, exactly `json.dumps`' float-key spelling
+ *   (`"18.0"`, `"1e+16"`, `"-0.0"`); `String()` would spell `18.0` as
+ *   `"18"`.
+ * - Python `int` (integral plain number / bigint) → digit run.
+ * - `true`/`false`/`null` → `"true"`/`"false"`/`"null"` — the JSON
+ *   spelling, not `str()`'s `"True"`.
  * @param key - The pair's first element (already hashability-checked).
  * @returns The object-key spelling.
  */
 function dictKeyText(key: unknown): string {
+  // Divergence: non-string dict keys are stored under their JSON spelling; Python keeps the typed key.
   if (typeof key === "string") {
     return key;
   }
@@ -162,13 +124,12 @@ function dictKeyText(key: unknown): string {
 }
 
 /**
- * Python `dict(value)` — the shallow properties copy at
- * `transforms.py:60,123`.
+ * Python `dict(value)` — the shallow `properties` copy.
  *
- * A non-dict `properties` value is IN-annotation (`dict[str, Any]`
- * interior — ratified Discrepancy #8), so CPython's behavior is
- * contract and is reproduced branch for branch (probe transcript in
- * the B3-K3 notes §5):
+ * @remarks
+ * A non-dict `properties` value is in-annotation (the interior of a
+ * `dict[str, Any]`), so CPython's behaviour is contract and is
+ * reproduced branch for branch:
  *
  * | input | CPython |
  * |---|---|
@@ -178,12 +139,12 @@ function dictKeyText(key: unknown): string {
  * | `[1, 2]` | `TypeError` (element not iterable) |
  * | `[["a", "b"]]` / `["ab"]`-shaped pairs | `{"a": "b"}` |
  * | `[[["x"], 2]]` | `TypeError` (unhashable key) |
- *
  * @param value - The value being copied.
  * @returns A shallow copy of the dict (or the built pair mapping).
- * @throws TypeError - Non-iterable value, non-iterable element, or an
- *   unhashable key.
- * @throws ValueError - An element that is not a 2-element sequence.
+ * @throws {@link TypeError} - Non-iterable value, non-iterable element,
+ *   or an unhashable key.
+ * @throws {@link ValueError} - An element that is not a 2-element
+ *   sequence.
  */
 function pythonDictCopy(value: unknown): Record<string, unknown> {
   if (isPythonDict(value)) {
@@ -207,8 +168,8 @@ function pythonDictCopy(value: unknown): Record<string, unknown> {
           `${String(pair.length)}; 2 is required`,
       );
     }
-    // CPython hashes the key before storing it (R10.7 raise emulation —
-    // the shared guard from validation-shared.ts, never re-derived).
+    // CPython hashes the key before storing it, so an unhashable key
+    // raises `TypeError` here too.
     requireHashable(pair[0]);
     out[dictKeyText(pair[0])] = pair[1];
   }
@@ -216,7 +177,7 @@ function pythonDictCopy(value: unknown): Record<string, unknown> {
 }
 
 /**
- * CPython's `round(x)` for floats: nearest integer, ties to EVEN.
+ * CPython's `round(x)` for floats: nearest integer, ties to even.
  *
  * @param x - Value to round.
  * @returns The rounded integer (`-0` is possible and harmless — it
@@ -262,24 +223,24 @@ function civilFromDays(days: number): [number, number, number] {
 }
 
 /**
- * `datetime.fromtimestamp(t, tz=timezone.utc).isoformat()` as pure
- * arithmetic (`transforms.py`).
+ * Render `datetime.fromtimestamp(t, tz=timezone.utc).isoformat()` as
+ * pure arithmetic.
  *
+ * @remarks
  * Mirrors CPython's `datetime._fromtimestamp`: split with `modf`, round
- * the fractional part to microseconds (half-even), carry the ±1 second,
- * then convert. The rendering is CPython's `isoformat()`:
- * `YYYY-MM-DDTHH:MM:SS+00:00`, gaining `.ffffff` only when the
- * microsecond field is non-zero, with the offset spelled `+00:00`
- * (never `Z`).
- *
+ * the fractional part to microseconds (half-even: `1.5e-6 → 2µs`,
+ * `2.5e-6 → 2µs`, `5e-7 → 0µs`), carry the ±1 second, then convert. The
+ * rendering is CPython's `isoformat()`: `YYYY-MM-DDTHH:MM:SS+00:00`,
+ * gaining `.ffffff` only when the microsecond field is non-zero, with
+ * the offset spelled `+00:00` (never `Z`).
  * @param t - Unix timestamp in seconds (int or float).
  * @returns The CPython isoformat text.
- * @throws ValueError - For `NaN` (CPython: "Invalid value NaN") and for
- *   timestamps whose year falls outside 1..9999.
- * @throws OverflowError - For infinities and magnitudes at or beyond
- *   the platform `time_t` range.
+ * @throws {@link ValueError} - For `NaN` (CPython: "Invalid value NaN")
+ *   and for timestamps whose year falls outside 1..9999.
+ * @throws {@link OverflowError} - For infinities and magnitudes at or
+ *   beyond the platform `time_t` range.
  * @example
- * ```typescript
+ * ```ts
  * fromTimestampUtcIso(0); // "1970-01-01T00:00:00+00:00"
  * fromTimestampUtcIso(1.5); // "1970-01-01T00:00:01.500000+00:00"
  * ```
@@ -308,18 +269,7 @@ export function fromTimestampUtcIso(t: number): string {
   // OverflowError; everything inside it that still leaves `datetime`'s
   // 1..9999 year range is a ValueError.
   //
-  // TODO(port): CPython additionally raises `OSError` (errno 84) where
-  // the platform `gmtime` fails before the year check. Measured on this
-  // platform (macOS, CPython 3.14.6 — arbiter bisect 2026-08-15,
-  // playbook Discrepancy #11): OSError for ALL t >=
-  // 67,768,036,191,676,800 (~6.78e16, the gmtime tm_year > INT_MAX
-  // overflow) and t <= -67,768,040,609,740,801, up to the 2^63
-  // OverflowError bound — i.e. MOST of the span above datetime.max, not
-  // a narrow band. The boundary is PLATFORM-dependent. The TS twin
-  // reports ValueError across that whole span (every affected input
-  // raises on both sides — class-only divergence); the range is a
-  // documented fuzz-domain exclusion (B3-K3 notes §domain notes; the
-  // packet explicitly authorises excluding "|t| beyond datetime.max").
+  // Divergence: CPython raises a platform-dependent `OSError` (errno 84, gmtime overflow) across most of the span beyond `datetime.max`; the port raises `ValueError` there. Both sides always raise.
   if (Math.abs(secs) >= 9223372036854775808) {
     throw new OverflowError("timestamp out of range for platform time_t");
   }
@@ -345,21 +295,22 @@ export function fromTimestampUtcIso(t: number): string {
  * Coerce a `time` property to the number `datetime.fromtimestamp`
  * accepts.
  *
+ * @remarks
  * Python accepts `int` and `float` — and `bool`, since `bool` is a
- * subclass of `int` (Caution 11: `fromtimestamp(True)` is one second
- * past the epoch). Everything else raises `TypeError: argument must be
- * int or float, not X`. The rig's PyFloat carrier is unwrapped here
- * (the sanctioned numeric-consumption unwrap point — b3-packets.md
- * §Binding-shapes "PyFloat discipline").
- *
- * Exported (B5-S2, R10.8) because `_transform_activity_feed`
- * (`live_query.py:1602`) calls `datetime.fromtimestamp` on the same
- * `properties["time"]` value and must coerce identically — the second
- * consumer imports this helper rather than re-deriving it.
- *
+ * subclass of `int` (`fromtimestamp(True)` is one second past the
+ * epoch). Everything else raises
+ * `TypeError: argument must be int or float, not X`. The rig's PyFloat
+ * carrier is unwrapped here. Exported because the activity-feed
+ * transform calls `datetime.fromtimestamp` on the same
+ * `properties["time"]` value and must coerce identically.
  * @param value - The raw `time` property value.
  * @returns The timestamp as a JS number.
- * @throws TypeError - When Python would reject the type.
+ * @throws {@link TypeError} - When Python would reject the type.
+ * @example
+ * ```ts
+ * timestampNumber(1704067200); // 1704067200
+ * timestampNumber(true); // 1
+ * ```
  */
 export function timestampNumber(value: unknown): number {
   if (typeof value === "number") {
@@ -376,30 +327,30 @@ export function timestampNumber(value: unknown): number {
   );
 }
 
-// =============================================================================
-// Public API
-// =============================================================================
+// --- Public API ---
 
 /**
- * Transform an API event to normalized format (`transforms.py`).
+ * Transform an export-API event to the normalized record shape.
  *
+ * @remarks
  * Extracts the standard Mixpanel fields (`distinct_id`, `time`,
  * `$insert_id`) from the properties dict and promotes them to top-level
  * fields. `time` is converted from a Unix timestamp to CPython
  * isoformat text, and a UUID is generated when `$insert_id` is missing
  * or `null`.
- *
  * @param event - Raw event from the Mixpanel Export API with `event`
  *   and `properties` keys.
  * @param options - Optional seams; see {@link TransformEventOptions}.
  * @returns Transformed event dict with `event_name`, `event_time`,
  *   `distinct_id`, `insert_id` and `properties` keys.
- * @throws TypeError - When `properties` is present but not a dict, or
- *   `time` is neither int nor float.
- * @throws ValueError - When `time` is `NaN` or out of `datetime` range.
- * @throws OverflowError - When `time` is infinite or beyond `time_t`.
+ * @throws {@link TypeError} - When `properties` is present but not a
+ *   dict, or `time` is neither int nor float.
+ * @throws {@link ValueError} - When `time` is `NaN` or out of `datetime`
+ *   range.
+ * @throws {@link OverflowError} - When `time` is infinite or beyond
+ *   `time_t`.
  * @example
- * ```typescript
+ * ```ts
  * transformEvent({
  *   event: "Sign Up",
  *   properties: { distinct_id: "user123", time: 1704067200, plan: "premium" },
@@ -412,6 +363,7 @@ export function timestampNumber(value: unknown): number {
  * //   properties: { plan: "premium" },
  * // }
  * ```
+ * @see mixpanel_headless._internal.transforms.transform_event
  */
 export function transformEvent(
   event: Readonly<Record<string, unknown>>,
@@ -454,20 +406,20 @@ function defaultUuid(): string {
 }
 
 /**
- * Transform an API profile to normalized format
- * (`transforms.py`).
+ * Transform an engage-API profile to the normalized record shape.
  *
+ * @remarks
  * Extracts the standard Mixpanel fields (`$distinct_id`, `$last_seen`)
  * from the profile and promotes them to top-level fields. Pure — no
  * seams.
- *
  * @param profile - Raw profile from the Mixpanel Engage API with
  *   `$distinct_id` and `$properties` keys.
  * @returns Transformed profile dict with `distinct_id`, `last_seen` and
  *   `properties` keys.
- * @throws TypeError - When `$properties` is present but not a dict.
+ * @throws {@link TypeError} - When `$properties` is present but not a
+ *   dict.
  * @example
- * ```typescript
+ * ```ts
  * transformProfile({
  *   $distinct_id: "user123",
  *   $properties: { $last_seen: "2024-01-15T10:30:00", plan: "premium" },
@@ -475,6 +427,7 @@ function defaultUuid(): string {
  * // { distinct_id: "user123", last_seen: "2024-01-15T10:30:00",
  * //   properties: { plan: "premium" } }
  * ```
+ * @see mixpanel_headless._internal.transforms.transform_profile
  */
 export function transformProfile(
   profile: Readonly<Record<string, unknown>>,

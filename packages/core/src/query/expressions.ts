@@ -1,32 +1,19 @@
 /**
- * Expression normalization utilities for Mixpanel filter expressions —
- * whole-file TS twin of
- * `src/mixpanel_headless/_internal/expressions.py` (52 LOC; Python
- * revision: `ts-port/phase2-contract-support` HEAD). Batch B3, shard K3
- * (`docs/history/phase3/design/b3-packets.md` §"Packet K3").
+ * Normalize segmentation property expressions for the live-query
+ * segmentation family. Not exported from the package barrel.
  *
- * **Watchlist #2 — escaping is char-for-char contract.** The escape
- * order is backslash FIRST, then double quote (`expressions.py`);
- * reversing it double-escapes the backslash. Python `str.replace`
- * replaces ALL occurrences, so both passes use `replaceAll` — a
- * `String.prototype.replace` with a string pattern would rewrite only
- * the first hit and is a review finding. The rig compares the returned
- * string VERBATIM (`selector_str`-style codec; no canonicalizer
- * rescue).
+ * Escaping is a character-for-character contract: backslashes are
+ * escaped before double quotes (the reverse order double-escapes the
+ * backslash), and every occurrence is replaced, as Python's
+ * `str.replace` does. The rig compares the returned string verbatim.
  *
- * Python keeps this module `_internal`; the TS twin is likewise NOT
- * exported from the package barrel. Its only importer is
- * `services/live_query.py`'s segmentation family.
- *
+ * @see mixpanel_headless._internal.expressions
  * @internal
  */
 
 /**
- * Accessor patterns that indicate a full filter expression
- * (`expressions.py`).
- *
- * These are the three accessor types supported by Mixpanel's filter
- * expression syntax. `readonly [...]` mirrors the Python tuple.
+ * Accessor prefixes that mark a string as a full filter expression —
+ * the three accessor types of Mixpanel's filter-expression syntax.
  */
 const FILTER_EXPR_ACCESSORS: readonly string[] = [
   'properties["',
@@ -48,11 +35,12 @@ const FILTER_EXPR_ACCESSORS: readonly string[] = [
  *   `properties["…"]` with `\` and `"` escaped; existing expressions
  *   are returned as-is.
  * @example
- * ```typescript
+ * ```ts
  * normalizeOnExpression("Source"); // 'properties["Source"]'
  * normalizeOnExpression('properties["Source"]'); // unchanged
  * normalizeOnExpression('my"property'); // 'properties["my\\"property"]'
  * ```
+ * @see mixpanel_headless._internal.expressions.normalize_on_expression
  */
 export function normalizeOnExpression(on: string): string {
   // Python: `any(accessor in on for accessor in _FILTER_EXPR_ACCESSORS)`
@@ -60,9 +48,8 @@ export function normalizeOnExpression(on: string): string {
   if (FILTER_EXPR_ACCESSORS.some((accessor) => on.includes(accessor))) {
     return on;
   }
-  // Escape backslashes first, then double quotes, to produce valid
-  // syntax. Order matters: escaping quotes first would double-escape
-  // the backslash (`expressions.py`).
+  // Backslashes first, then double quotes: the other order would
+  // double-escape the backslash.
   const escaped = on.replaceAll("\\", "\\\\").replaceAll('"', String.raw`\"`);
   return `properties["${escaped}"]`;
 }

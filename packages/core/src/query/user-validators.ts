@@ -1,31 +1,18 @@
 /**
- * Validation rules for `query_user()` arguments and parameters.
+ * Validate `query_user()` arguments (rules U0–U30, before engage param
+ * construction) and the built engage params dict (rules UP1–UP4). Both
+ * validators return `ValidationError[]`; callers decide whether to
+ * raise. There is deliberately no U9 — Python enforces it at the call
+ * site and no `U9` literal exists in its source.
  *
- * Source: `src/mixpanel_headless/_internal/query/user_validators.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD, 580 LOC —
- * whole file).
- *
- * Two validation functions following the two-layer pattern:
- *
- * - {@link validateUserArgs}: validates Python-level arguments before
- *   engage param construction (Layer 1, rules U0-U30). There is
- *   deliberately **no U9** — the Python docstring records it as
- *   "enforced at call site" and no `U9` literal exists in source.
- * - {@link validateUserParams}: validates the engage params dict after
- *   construction (Layer 2, rules UP1-UP4).
- *
- * Both return `ValidationError[]`; callers decide whether to raise
- * `BookmarkValidationError`. Emission order is contract
- * (b2-packets.md Cautions §11): every `errors.push` sits at its Python
+ * Emission order is contract: every `errors.push` sits at its Python
  * source position, including the interleaving of U29 between U25 and
- * U11 and of U26-U28 between U17 and U18.
+ * U11 and of U26–U28 between U17 and U18. Python's `.strip()` sites use
+ * `pythonStrip`, never `String.trim()`, and JSON parsing goes through
+ * `parseLossless` with `pythonConstants` because `json.loads` accepts
+ * `NaN`/`Infinity`/`-Infinity`.
  *
- * R11.7: `pythonStrip` (never `String.trim()`) at the three Python
- * `.strip()` sites (`user_validators.py:186, :237, :273`); JSON parsing
- * goes through the core `parseLossless` with `pythonConstants`
- * (`json.loads` accepts `NaN`/`Infinity`/`-Infinity` — B0 arbiter F1),
- * never bare `JSON.parse`.
- *
+ * @see mixpanel_headless._internal.query.user_validators
  * @internal
  */
 
@@ -57,9 +44,7 @@ import {
   type PushError,
 } from "./validation-shared.js";
 
-// =============================================================================
-// Module tables (user_validators.py)
-// =============================================================================
+// --- Module tables ---
 
 /**
  * Escape a codepoint for inclusion in a RegExp character class.
@@ -74,22 +59,21 @@ function classEscape(cp: number): string {
 }
 
 /**
- * RegExp character-class body for Python's `\s` in a **str** pattern.
+ * RegExp character-class body for Python's `\s` in a `str` pattern.
  *
- * R11.7 / Caution §4: JS `\s` is NOT Python `\s` (JS has U+FEFF and
- * lacks U+001C-U+001F). Python's str-pattern `\s` is exactly the
- * `str.isspace()` set — verified empirically over the full codepoint
- * range against CPython 3.14.6 (B2-M3 probe, notes file) — which is
- * the pinned {@link PYTHON_STR_WHITESPACE} table.
+ * JS `\s` is not Python `\s` (JS has U+FEFF and lacks U+001C–U+001F).
+ * Python's str-pattern `\s` is exactly the `str.isspace()` set —
+ * verified over the full codepoint range against CPython 3.14.6 — which
+ * is the pinned {@link PYTHON_STR_WHITESPACE} table.
  */
 const PY_SPACE_CLASS = [...PYTHON_STR_WHITESPACE]
   .map((cp) => classEscape(cp))
   .join("");
 
 /**
- * RegExp character-class body for Python's `\d` in a **str** pattern:
+ * RegExp character-class body for Python's `\d` in a `str` pattern:
  * the Unicode decimal-digit (category Nd) set from the pinned CPython
- * table, NOT the ASCII-only JS `\d`.
+ * table, not the ASCII-only JS `\d`.
  */
 const PY_DIGIT_CLASS = DECIMAL_DIGIT_RUNS.map(([start, , length]) =>
   length === 1
@@ -102,7 +86,7 @@ const PY_DIGIT_CLASS = DECIMAL_DIGIT_RUNS.map(([start, , length]) =>
  *
  * The Python pattern is
  * `^(count\(\)|extremes\(properties\[".+"\]\)|percentile\(properties\[".+"\],\s*[\d.]+\)|numeric_summary\(properties\[".+"\]\))$`
- * compiled with **str** semantics. Three spellings must be translated
+ * compiled with `str` semantics. Three spellings must be translated
  * rather than copied:
  *
  * - `.` matches any codepoint except `\n`. JS `.` additionally excludes
@@ -110,7 +94,7 @@ const PY_DIGIT_CLASS = DECIMAL_DIGIT_RUNS.map(([start, , length]) =>
  * - `\s` → {@link PY_SPACE_CLASS} (pinned CPython table).
  * - `\d` → {@link PY_DIGIT_CLASS} (pinned CPython Nd table).
  *
- * Python's `$` also matches immediately before ONE trailing `\n`;
+ * Python's `$` also matches immediately before one trailing `\n`;
  * that half is handled by {@link matchesActionRe}, not by the pattern
  * (JS `$` without `m` is strict end-of-input).
  *
@@ -129,15 +113,13 @@ const ACTION_RE = new RegExp(
  * @returns True when the Python regex would match.
  */
 function matchesActionRe(action: string): boolean {
-  // Python `$` matches at the end OR just before a single trailing
-  // newline; `count()\n` matches, `count()\n\n` does not (probed).
+  // Python `$` matches at the end or just before a single trailing
+  // newline; `count()\n` matches, `count()\n\n` does not.
   const core = action.endsWith("\n") ? action.slice(0, -1) : action;
   return ACTION_RE.test(core);
 }
 
-// =============================================================================
-// Calendar comparison for rule U8 (the `date.today()` seam is `dateTodayIso`)
-// =============================================================================
+// --- Calendar comparison for rule U8 (the `date.today()` seam is `dateTodayIso`) ---
 
 /**
  * Compare two canonical `YYYY-MM-DD` strings as calendar dates
@@ -177,26 +159,23 @@ function isoParts(iso: string): [number, number, number] {
   ];
 }
 
-// =============================================================================
-// _normalize_filters (user_validators.py)
-// =============================================================================
+// --- Filter normalization ---
 
 /**
  * Normalize the `where` argument into a flat list of Filter objects.
  *
- * Port of `_normalize_filters` (`user_validators.py:37-55`). String
- * expressions and `None` return an empty list since they contain no
- * Filter objects to inspect. Anything else is spread — Python's
- * `list(where)`, which raises `TypeError` for a non-iterable exactly
- * as the JS spread does.
- *
- * The return type is `unknown[]`, not `Filter[]`: Python's `list(where)`
- * performs no element type-check, and rule U0 exists precisely to
- * report the non-Filter members (R4.9 — the validator IS the type
- * police).
- *
+ * @remarks
+ * String expressions and `None` return an empty list since they contain
+ * no Filter objects to inspect. Anything else is spread — Python's
+ * `list(where)`, which raises `TypeError` for a non-iterable exactly as
+ * the JS spread does. The return type is `unknown[]`, not `Filter[]`:
+ * Python's `list(where)` performs no element type-check, and rule U0
+ * exists precisely to report the non-Filter members.
  * @param where - Raw where argument from the caller.
  * @returns List of candidate filter items (possibly empty).
+ * @throws {@link TypeError} - When `where` is neither a Filter, a string,
+ *   `null` nor iterable.
+ * @see mixpanel_headless._internal.query.user_validators._normalize_filters
  */
 function normalizeFilters(
   where: Filter | readonly unknown[] | string | null,
@@ -210,9 +189,7 @@ function normalizeFilters(
   return [...where];
 }
 
-// =============================================================================
-// validate_user_args (user_validators.py)
-// =============================================================================
+// --- validate_user_args ---
 
 /** Options bag for {@link validateUserArgs} (Python is all-kwonly). */
 export interface ValidateUserArgsOptions {
@@ -226,11 +203,14 @@ export interface ValidateUserArgsOptions {
   readonly sort_by?: string | null;
   /**
    * Sort direction. Accepted and ignored — Python marks the parameter
-   * `# noqa: ARG001` (`user_validators.py`); rule UP1 checks the
-   * built params dict instead.
+   * `# noqa: ARG001`; rule UP1 checks the built params dict instead.
    */
   readonly sort_order?: "ascending" | "descending";
-  /** Maximum profiles to return; `null` means fetch all (Python default `1`). */
+  /**
+   * Maximum profiles to return; `null` means fetch all.
+   *
+   * @defaultValue `1`
+   */
   readonly limit?: number | null;
   /** Full-text search term. */
   readonly search?: string | null;
@@ -240,14 +220,22 @@ export interface ValidateUserArgsOptions {
   readonly distinct_ids?: readonly string[] | null;
   /**
    * Group profile query. Accepted and ignored — Python marks the
-   * parameter `# noqa: ARG001` (`user_validators.py`).
+   * parameter `# noqa: ARG001`.
    */
   readonly group_id?: string | null;
   /** Point-in-time query date (`YYYY-MM-DD`) or timestamp. */
   readonly as_of?: string | number | null;
-  /** Output mode (Python default `"aggregate"`). */
+  /**
+   * Output mode.
+   *
+   * @defaultValue `"aggregate"`
+   */
   readonly mode?: "profiles" | "aggregate";
-  /** Aggregation function (Python default `"count"`). */
+  /**
+   * Aggregation function.
+   *
+   * @defaultValue `"count"`
+   */
   readonly aggregate?: "count" | "extremes" | "percentile" | "numeric_summary";
   /** Property to aggregate on. */
   readonly aggregate_property?: string | null;
@@ -255,27 +243,39 @@ export interface ValidateUserArgsOptions {
   readonly percentile?: number | null;
   /** Cohort IDs for segmented aggregation. */
   readonly segment_by?: readonly number[] | null;
-  /** Enable concurrent fetching (Python default `false`). */
+  /**
+   * Enable concurrent fetching.
+   *
+   * @defaultValue `false`
+   */
   readonly parallel?: boolean;
-  /** Max concurrent workers (Python default `5`). */
+  /**
+   * Max concurrent workers.
+   *
+   * @defaultValue `5`
+   */
   readonly workers?: number;
-  /** Include non-members in cohort queries (Python default `false`). */
+  /**
+   * Include non-members in cohort queries.
+   *
+   * @defaultValue `false`
+   */
   readonly include_all_users?: boolean;
   /**
    * Clock seam for rule U8 — returns today's date as `YYYY-MM-DD`.
    *
-   * Python reads `date.today()` inline; the library defaults to the
-   * real local clock. The conformance binding injects the frozen
-   * record-epoch date through `context.shims` so vector replay and
-   * differential fuzz see the clock the recorder saw
-   * (b2-packets.md §V2 trap 2b).
+   * Python reads `date.today()` inline. The conformance binding injects
+   * the frozen record-epoch date so vector replay and differential fuzz
+   * see the clock the recorder saw.
+   *
+   * @defaultValue the local clock (`dateTodayIso`)
    */
   readonly today?: () => string;
 }
 
 /**
  * U0: every `where` item must be a `Filter`; returns the survivors —
- * every later `where[i]` path indexes THIS list, exactly as Python's
+ * every later `where[i]` path indexes this list, exactly as Python's
  * re-enumeration of the rebound `filters` does.
  *
  * @param push - The validator's error sink.
@@ -662,18 +662,17 @@ function checkProfilesOnlyArgs(push: PushError, args: ProfilesOnlyArgs): void {
  *
  * Python catches `(ValueError, TypeError, RuntimeError)`, so the TS
  * catch names all three arms plus the dual-inheriting
- * `ParamValidationError`: `ValueError` /
- * `RuntimeError` are the `compat/python-builtins.ts` twins and
- * `TypeError` is native. Everything else propagates exactly as Python
- * lets `KeyError` / `AttributeError` / `RecursionError` propagate.
- *
- * The catch is deliberately this wide: the library `toDict()` path
- * can only raise `ParamValidationError | TypeError`, but the Python
- * integration suite patches `to_dict` to raise `RuntimeError` and
- * `ValueError` and pins U24 for both.
+ * `ParamValidationError`: `ValueError` / `RuntimeError` are the
+ * `compat/python-builtins.ts` twins and `TypeError` is native. The
+ * catch is deliberately this wide: the library `toDict()` path can only
+ * raise `ParamValidationError | TypeError`, but the Python integration
+ * suite patches `to_dict` to raise `RuntimeError` and `ValueError` and
+ * pins U24 for both.
  *
  * @param push - The validator's error sink.
  * @param cohort - The inline cohort definition.
+ * @throws Anything else `toDict()` raises, rethrown exactly as Python
+ *   lets `KeyError` / `AttributeError` / `RecursionError` propagate.
  */
 function checkCohortDefinition(
   push: PushError,
@@ -741,14 +740,13 @@ interface ResolvedUserArgs {
 /**
  * Apply the Python keyword defaults.
  *
- * The seven parameters with NON-`None` Python defaults (`limit`,
+ * The seven parameters with non-`None` Python defaults (`limit`,
  * `mode`, `aggregate`, `parallel`, `workers`, `include_all_users`,
  * `today`) distinguish absent from `null`: `null` must reach the
  * comparisons verbatim, exactly as Python would see an explicit `None`
  * (e.g. `aggregate=None` makes `aggregate != "count"` true → U14, which
  * a `?? "count"` collapse would silently suppress). Every other field
- * takes the `?? null` form because its Python default IS `None`
- * (R4.10/R4.11).
+ * takes the `?? null` form because its Python default is `None`.
  *
  * @param options - The caller's argument bag.
  * @returns The defaulted arguments.
@@ -779,25 +777,28 @@ function resolveUserArgs(options: ValidateUserArgsOptions): ResolvedUserArgs {
 /**
  * Validate `query_user()` arguments before engage param construction.
  *
- * Implements rules U0-U30 (U9 is enforced at the call site and has no
+ * @remarks
+ * Implements rules U0–U30 (U9 is enforced at the call site and has no
  * code here). Returns all errors found in a single pass, enabling
  * callers to fix multiple issues at once.
- *
  * @param options - Argument bag; every field is optional and takes the
  *   Python default when absent. Absent and `null` are equivalent
  *   wherever the Python default is `None` — the one exception is
  *   `limit`, whose Python default is `1` while `None` means "fetch
- *   all", so an explicit `null` is NOT the same as omitting it.
+ *   all", so an explicit `null` is not the same as omitting it.
  * @returns List of `ValidationError` objects; an empty list means all
  *   arguments are valid.
+ * @throws {@link TypeError} - When `where` is neither a Filter, a string,
+ *   `null` nor iterable (Python's `list(where)`).
  * @example
- * ```typescript
+ * ```ts
  * const errors = validateUserArgs({
  *   distinct_id: "user1",
  *   distinct_ids: ["user2"],
  * });
  * // [ValidationError { path: "distinct_id", code: "U1", … }]
  * ```
+ * @see mixpanel_headless._internal.query.user_validators.validate_user_args
  */
 export function validateUserArgs(
   options: ValidateUserArgsOptions = {},
@@ -907,13 +908,11 @@ export function validateUserArgs(
   return errors;
 }
 
-// =============================================================================
-// validate_user_params (user_validators.py)
-// =============================================================================
+// --- validate_user_params ---
 
 /**
  * Render an arbitrary value the way a Python `!r` conversion would
- * (display-only, R5.4 — never contract).
+ * (display-only — message text is never contract).
  *
  * @param value - The value to repr.
  * @returns A Python-flavoured repr string.
@@ -934,23 +933,25 @@ function pythonReprLoose(value: unknown): string {
 }
 
 /**
- * Validate engage params dict after construction.
+ * Validate the engage params dict after construction.
  *
- * Implements rules UP1-UP4. Checks the generated params dict for
- * structural correctness.
- *
- * Watchlist #7: every `"key" in params` test is `Object.hasOwn`, never
- * the JS `in` operator (`"toString" in obj` is true in JS, false in
- * Python).
- *
+ * @remarks
+ * Implements rules UP1–UP4, checking the generated params dict for
+ * structural correctness. Every `"key" in params` test is
+ * `Object.hasOwn`, never the JS `in` operator (`"toString" in obj` is
+ * true in JS, false in Python).
  * @param params - Engage API params dict to validate.
  * @returns List of `ValidationError` objects; an empty list means all
  *   params are valid.
+ * @throws Parser errors other than malformed JSON — a `RangeError` from
+ *   a pathologically nested string propagates like Python's
+ *   `RecursionError`.
  * @example
- * ```typescript
+ * ```ts
  * const errors = validateUserParams({ sort_order: "invalid" });
  * // [ValidationError { path: "sort_order", code: "UP1", … }]
  * ```
+ * @see mixpanel_headless._internal.query.user_validators.validate_user_params
  */
 export function validateUserParams(
   params: Readonly<Record<string, unknown>>,
@@ -978,11 +979,11 @@ export function validateUserParams(
     let fbc: unknown = params["filter_by_cohort"];
     if (typeof fbc === "string") {
       try {
-        // GATE-R5 / B0 arbiter F1: `json.loads` accepts NaN/Infinity.
+        // `json.loads` accepts NaN/Infinity.
         fbc = parseLossless(fbc, { pythonConstants: true });
       } catch (error) {
-        // B0 arbiter F3: only the JSONDecodeError analog is caught; a
-        // parser RangeError propagates like Python's RecursionError.
+        // Only the JSONDecodeError analog is caught; a parser
+        // RangeError propagates like Python's RecursionError.
         if (!(error instanceof LosslessJsonError)) {
           throw error;
         }
