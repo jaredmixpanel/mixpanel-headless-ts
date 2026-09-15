@@ -57,7 +57,7 @@ export interface DeleteSchemasOptions {
  * @param fallback - The Python default.
  * @returns The member (even when `null` — `.get`'s default applies
  *   only to absent keys), or the fallback.
- * @throws TypeError - Non-record body (the AttributeError analog).
+ * @throws {@link TypeError} - Non-record body (the AttributeError analog).
  */
 function resultDictGet(
   result: JsonValue,
@@ -78,14 +78,17 @@ function resultDictGet(
 /** Schema methods mixed into `MixpanelClient`. */
 export interface SchemaMethods {
   /**
-   * List all Lexicon schemas (`get_schemas` — GET
-   * `/projects/{pid}/schemas[/{entity_type}]` on the App host
-   * via the `_request` twin, `inject_project_id=False`).
+   * List all Lexicon schemas. Sends GET `/projects/{pid}/schemas[/{entity_type}]`
+   * on the App host via the `_request` twin, `inject_project_id=False`.
    *
    * @param options - Optional `entity_type` path segment + signal.
    * @returns `result.get("results", [])` verbatim.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the `executeWithRetry` contract.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schemas
    */
   getSchemas: (options?: GetSchemasOptions) => Promise<JsonValue>;
 
@@ -98,7 +101,7 @@ export interface SchemaMethods {
    * @param name - Entity name.
    * @param signal - Optional cancellation signal.
    * @returns The normalized schema record.
-   * @throws QueryError - Schema not found (404 → QueryError mapping).
+   * @throws {@link QueryError} - Schema not found (404 → QueryError mapping).
    */
   getSchema: (
     entityType: string,
@@ -107,27 +110,27 @@ export interface SchemaMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * List schema-registry entries (`list_schema_registry` — GET
-   * `schemas[/{quoted entity_type}]`).
+   * List schema-registry entries. Sends GET `schemas[/{quoted entity_type}]`.
    *
    * @param options - Optional `entity_type` filter + signal.
    * @returns The entry list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_schema_registry
    */
   listSchemaRegistry: (
     options?: ListSchemaRegistryOptions,
   ) => Promise<JsonValue[]>;
 
   /**
-   * Create one schema (`create_schema` — POST
-   * `schemas/{et}/{en}` with quoted segments).
+   * Create one schema. Sends POST `schemas/{et}/{en}` with quoted segments.
    *
    * @param entityType - Entity type.
    * @param entityName - Entity name.
    * @param schemaJson - JSON Schema Draft 7 definition (the body).
    * @param signal - Optional cancellation signal.
    * @returns The created schema dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_schema
    */
   createSchema: (
     entityType: string,
@@ -137,13 +140,13 @@ export interface SchemaMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Bulk-create schemas (`create_schemas_bulk` — POST
-   * `schemas`).
+   * Bulk-create schemas. Sends POST `schemas`.
    *
    * @param body - Bulk creation payload.
    * @param signal - Optional cancellation signal.
    * @returns Dict with `added`/`deleted` counts.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_schemas_bulk
    */
   createSchemasBulk: (
     body: Record<string, unknown>,
@@ -151,15 +154,15 @@ export interface SchemaMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update one schema (`update_schema` — PATCH
-   * `schemas/{et}/{en}`, merge semantics).
+   * Update one schema. Sends PATCH `schemas/{et}/{en}`, merge semantics.
    *
    * @param entityType - Entity type.
    * @param entityName - Entity name.
    * @param schemaJson - Partial JSON Schema to merge.
    * @param signal - Optional cancellation signal.
    * @returns The updated schema dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_schema
    */
   updateSchema: (
     entityType: string,
@@ -169,13 +172,13 @@ export interface SchemaMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Bulk-update schemas (`update_schemas_bulk` — PATCH
-   * `schemas`).
+   * Bulk-update schemas. Sends PATCH `schemas`.
    *
    * @param body - Bulk update payload.
    * @param signal - Optional cancellation signal.
    * @returns Per-entry result list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_schemas_bulk
    */
   updateSchemasBulk: (
     body: Record<string, unknown>,
@@ -183,14 +186,13 @@ export interface SchemaMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Delete schemas by type and/or name (`delete_schemas` — DELETE
-   * `schemas[/{et}[/{en}]]`).
+   * Delete schemas by type and/or name. Sends DELETE `schemas[/{et}[/{en}]]`.
    *
    * @param options - Optional `entity_type`/`entity_name` + signal.
    * @returns Dict with the `deleteCount` field.
-   * @throws MixpanelHeadlessError - `entity_name` without
-   *   `entity_type` (guard raised before any request), or a non-dict
-   *   response.
+   * @throws {@link MixpanelHeadlessError} - `entity_name` without `entity_type`
+   *   (guard raised before any request), or a non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_schemas
    */
   deleteSchemas: (
     options?: DeleteSchemasOptions,
@@ -202,10 +204,22 @@ export interface SchemaMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const schemas = createSchemaMethods(core);
+ * const one = await schemas.getSchema("event", "Purchase");
+ * // { entityType: "event", name: "Purchase", schemaJson: { ... } }
+ * ```
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createSchemaMethods(core: ClientCore): SchemaMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

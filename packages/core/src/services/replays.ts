@@ -46,7 +46,8 @@ const DEFAULT_RETENTION_DAYS = 30;
 
 /**
  * Lookback for {@link ReplaysService.eventsFor} when the caller doesn't
- * pass an explicit window (`_EVENTS_DEFAULT_LOOKBACK_DAYS`). 90 = the maximum replay retention window.
+ * pass an explicit window (`_EVENTS_DEFAULT_LOOKBACK_DAYS`): 90 days, the
+ * maximum replay retention window.
  */
 const EVENTS_DEFAULT_LOOKBACK_DAYS = 90;
 
@@ -62,16 +63,17 @@ const EVENTS_DEFAULT_LOOKBACK_DAYS = 90;
 const CDN_TIMEOUT_SECONDS = 30;
 
 /**
- * Heuristic: does this look like an rrweb web-recording event?
- * (`_looks_like_rrweb`).
+ * Report whether a CDN-file element looks like an rrweb web-recording
+ * event.
  *
- * rrweb event shape always includes at minimum `type` (int
- * discriminator), `data` (dict), and `timestamp` (int ms). Mobile
- * session replays use a different recording format that lacks these
- * keys; absence is treated as "not rrweb".
- *
+ * @remarks
+ * An rrweb event always carries at least `type` (int discriminator),
+ * `data` (dict) and `timestamp` (int ms). Mobile session replays use a
+ * different recording format that lacks these keys; absence is treated
+ * as "not rrweb".
  * @param event - A single deserialized CDN-file element.
  * @returns `true` when the event carries the three required keys.
+ * @see mixpanel_headless._internal.services.replays._looks_like_rrweb
  */
 function looksLikeRrweb(event: unknown): boolean {
   if (!isPythonDict(event)) {
@@ -87,18 +89,26 @@ function looksLikeRrweb(event: unknown): boolean {
 }
 
 /**
- * Build the canonical `ReplayNotFoundError` for an absent replay
- * (`replay_not_found_error`).
+ * Build the canonical `ReplayNotFoundError` for an absent replay.
  *
+ * @remarks
  * Two call sites surface the same "no replay on the CDN" condition —
  * the walker's first-file 404, and `Workspace.fetchReplay` when the
  * walk yields zero events. Sharing one constructor keeps their message
  * and `details` shape from drifting.
- *
  * @param replayId - The replay that could not be found.
- * @param options - `retentionDays` (the window searched) and
- *   `cdnUrlPrefix` (the signed prefix that was walked).
+ * @param options - The `retentionDays` window searched and the
+ *   `cdnUrlPrefix` that was walked.
  * @returns The error with status 404 and structured details.
+ * @example
+ * ```typescript
+ * const error = replayNotFoundError("1a2b3c", {
+ *   retentionDays: 30,
+ *   cdnUrlPrefix: "https://cdn.example/replays/1a2b3c/",
+ * });
+ * // error.statusCode === 404; error.details.retention_days === 30
+ * ```
+ * @see mixpanel_headless._internal.services.replays.replay_not_found_error
  */
 export function replayNotFoundError(
   replayId: string,
@@ -151,13 +161,22 @@ export interface ReplaysServiceOptions {
   /** Optional logger; never receives `query_string` at any level. */
   readonly logger?: ReplaysLogger | undefined;
   /**
-   * Injected fetch for CDN GETs — the `_async_transport` twin. Defaults
-   * to the client's own fetch seam.
+   * Injected fetch for CDN GETs — the `_async_transport` twin.
+   *
+   * @defaultValue the client's own fetch seam
    */
   readonly fetchImpl?: typeof fetch | undefined;
-  /** `warnings.warn` sink for the missing-retention path. */
+  /**
+   * `warnings.warn` sink for the missing-retention path.
+   *
+   * @defaultValue a no-op (warnings are dropped)
+   */
   readonly warn?: WarningSink | undefined;
-  /** Clock seam backing Python's `time.time()`; unix seconds as a float. */
+  /**
+   * Clock seam backing Python's `time.time()`; unix seconds as a float.
+   *
+   * @defaultValue `() => Date.now() / 1000`
+   */
   readonly now?: (() => number) | undefined;
 }
 
@@ -165,11 +184,24 @@ export interface ReplaysServiceOptions {
 export interface WalkCdnOptions {
   /** 1, 7, 30, or 90 — the CDN file-name suffix (`NNNN-{days}.json`). */
   readonly retentionDays: number;
-  /** Hard upper bound on the walk (default 500). */
+  /**
+   * Hard upper bound on the number of CDN files walked.
+   *
+   * @defaultValue `500`
+   */
   readonly maxFiles?: number | undefined;
-  /** Parallel batch size (default 50). */
+  /**
+   * Parallel batch size (files fetched per round).
+   *
+   * @defaultValue `50`
+   */
   readonly concurrency?: number | undefined;
-  /** Re-sign once on 403 (default `true`); raise otherwise. */
+  /**
+   * Re-sign once when a batch hits a 403; `false` raises
+   * `SignedURLExpiredError` immediately.
+   *
+   * @defaultValue `true`
+   */
   readonly reSignOnExpiry?: boolean | undefined;
 }
 
@@ -183,7 +215,11 @@ export interface DiscoverOptions {
   readonly fromDate?: string | null | undefined;
   /** ISO date (`YYYY-MM-DD`) upper bound. */
   readonly toDate?: string | null | undefined;
-  /** Maximum summaries to return (default 100). */
+  /**
+   * Maximum summaries to return.
+   *
+   * @defaultValue `100`
+   */
   readonly limit?: number | undefined;
 }
 
@@ -201,10 +237,24 @@ export interface EventsForOptions {
 type FetchOutcome = readonly [number, readonly Dict[] | null];
 
 /**
- * Orchestrator for the session-replay pipeline. Sits between
- * `Workspace` and the wire client; owns the async CDN walker that pulls
- * raw rrweb bytes.
+ * Run the session-replay pipeline between `Workspace` and the wire
+ * client: discover replays through an Insights query, sign them, and
+ * walk the signed CDN files in parallel batches for raw rrweb events.
  *
+ * @example
+ * ```typescript
+ * const replays = new ReplaysService(client, {
+ *   queryFn: (events, options) => workspace.query(events, options),
+ * });
+ * const summaries = await replays.discover({ distinctId: "user-42" });
+ * for (const signed of await replays.sign([summaries[0].replay_id])) {
+ *   for await (const event of replays.walkCdnAsync(signed, {
+ *     retentionDays: summaries[0].retention_days,
+ *   })) {
+ *     // one raw rrweb event dict per iteration
+ *   }
+ * }
+ * ```
  * @see mixpanel_headless._internal.services.replays.ReplaysService
  */
 export class ReplaysService {
@@ -236,11 +286,11 @@ export class ReplaysService {
   readonly #now: () => number;
 
   /**
-   * Initialize the service.
+   * Initialize the service; see {@link ReplaysServiceOptions} for each
+   * injected seam.
    *
    * @param apiClient - Authenticated Mixpanel client.
-   * @param options - The DI bag (`queryFn` / `logger` / `fetchImpl` /
-   *   `warn` / `now`).
+   * @param options - The injection bag.
    */
   constructor(apiClient: MixpanelClient, options: ReplaysServiceOptions = {}) {
     this.api = apiClient;
@@ -258,19 +308,21 @@ export class ReplaysService {
   // --- Sign ---
 
   /**
-   * Sign one or more replay IDs for CDN access (`sign`).
+   * Sign one or more replay IDs for CDN access.
    *
+   * @remarks
    * Captures `signed_at` before issuing the request so callers' expiry
    * arithmetic is conservative. Delegates raw signing to the client's
    * `signReplays`, which handles the 403 → `SessionReplayAccessError`
    * mapping.
-   *
    * @param replayIds - Replay IDs to sign, in any order.
-   * @param env - `"prod"` (default) or `"dev"`.
+   * @param env - `"prod"` or `"dev"`; defaults to `"prod"`.
    * @returns `SignedReplay`s in input order. `query_string` is a
    *   bearer credential — never log it.
-   * @throws SessionReplayAccessError - Sensitive-data 403.
-   * @throws QueryError | ServerError - Other 4xx / 5xx.
+   * @throws {@link SessionReplayAccessError} - Sensitive-data 403.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService.sign
    */
   async sign(
     replayIds: readonly string[],
@@ -293,18 +345,22 @@ export class ReplaysService {
   // --- Fetch / walk ---
 
   /**
-   * Buffered parallel fetch of all CDN files for a replay
-   * (`fetch_files`).
+   * Fetch every CDN file of a replay in parallel batches and return the
+   * concatenated events.
    *
    * @param signed - Signed CDN access handle from {@link sign}.
-   * @param options - Retention / bounds / concurrency / re-sign policy.
-   * @returns The concatenated rrweb event stream in
-   *   `(file-number, in-file timestamp)` order.
-   * @throws ReplayNotFoundError - First CDN file was 404.
-   * @throws SignedURLExpiredError - Re-sign retry also 403'd, or
+   * @param options - Retention suffix, bounds, concurrency and re-sign
+   *   policy.
+   * @returns The rrweb event stream ordered by file number, then by
+   *   in-file `timestamp`.
+   * @throws {@link ReplayNotFoundError} - First CDN file was 404.
+   * @throws {@link SignedURLExpiredError} - Re-sign retry also 403'd, or
    *   `reSignOnExpiry` was `false`.
-   * @throws UnsupportedReplayFormatError - First event isn't rrweb.
-   * @throws MixpanelHeadlessError - Network errors during CDN fetch.
+   * @throws {@link UnsupportedReplayFormatError} - First event isn't
+   *   rrweb.
+   * @throws {@link MixpanelHeadlessError} - Network errors during the
+   *   CDN fetch.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService.fetch_files
    */
   async fetchFiles(
     signed: SignedReplay,
@@ -318,10 +374,10 @@ export class ReplaysService {
   }
 
   /**
-   * Streaming parallel walk of CDN files; yields rrweb events lazily
-   * (`walk_cdn_async`).
+   * Walk the CDN files of a replay in parallel batches, yielding rrweb
+   * events lazily.
    *
-   * Algorithm:
+   * @remarks
    * 1. Fetch files `[N, N+concurrency)` in parallel.
    * 2. If any 403 hits and `reSignOnExpiry`, re-sign once and retry the
    *    whole batch; otherwise raise `SignedURLExpiredError`.
@@ -330,15 +386,18 @@ export class ReplaysService {
    *    cleanly (end-of-replay sentinel).
    * 4. Within each surviving file, yield events sorted by `timestamp`.
    * 5. Continue until termination, exhaustion, or `maxFiles`.
-   *
    * @param signed - Signed CDN access handle.
-   * @param options - Retention / bounds / concurrency / re-sign policy.
-   * @yields Raw rrweb event dicts in
-   *   `(file-number, then in-file timestamp)` order.
-   * @throws ReplayNotFoundError - First CDN file 404.
-   * @throws SignedURLExpiredError - Expiry retry exhausted or disabled.
-   * @throws UnsupportedReplayFormatError - First event isn't rrweb.
-   * @throws MixpanelHeadlessError - Underlying CDN HTTP error.
+   * @param options - Retention suffix, bounds, concurrency and re-sign
+   *   policy.
+   * @yields Raw rrweb event dicts ordered by file number, then by
+   *   in-file `timestamp`.
+   * @throws {@link ReplayNotFoundError} - First CDN file 404.
+   * @throws {@link SignedURLExpiredError} - Expiry retry exhausted or
+   *   disabled.
+   * @throws {@link UnsupportedReplayFormatError} - First event isn't
+   *   rrweb.
+   * @throws {@link MixpanelHeadlessError} - Underlying CDN HTTP error.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService.walk_cdn_async
    */
   // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   async *walkCdnAsync(
@@ -457,18 +516,18 @@ export class ReplaysService {
   }
 
   /**
-   * Issue parallel CDN GETs for a batch of file numbers
-   * (`_fetch_batch`).
+   * Issue parallel CDN GETs for a batch of file numbers.
    *
+   * @remarks
    * The promise array is built eagerly in file-number order, so every
    * request fires synchronously before the first await — the
    * `asyncio.gather` task-order twin, which is what lets the conformance
    * rig serve positional fetch responses deterministically.
-   *
    * @param signed - The active signed handle (may be re-signed).
    * @param fileNums - File numbers to fetch, in order.
    * @param retentionDays - Retention suffix.
    * @returns `(status, eventsOrNull)` outcomes in `fileNums` order.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService._fetch_batch
    */
   async #fetchBatch(
     signed: SignedReplay,
@@ -480,9 +539,7 @@ export class ReplaysService {
   }
 
   /**
-   * Fetch a single CDN file (`_fetch_one`).
-   *
-   * URL pattern:
+   * Fetch a single CDN file:
    * `{signed.url}{file_num:04d}-{retention_days}.json?{query_string}`.
    *
    * @param signed - Signed access handle providing url + credential.
@@ -490,10 +547,11 @@ export class ReplaysService {
    * @param retentionDays - Retention suffix.
    * @returns `(status, events)` — the decoded list for 200s, `null` for
    *   404 and 403.
-   * @throws MixpanelHeadlessError - `CDN_FETCH_ERROR` on transport
-   *   failure (credential scrubbed from the message),
+   * @throws {@link MixpanelHeadlessError} - `CDN_FETCH_ERROR` on
+   *   transport failure (credential scrubbed from the message),
    *   `CDN_INVALID_RESPONSE` on a non-JSON 200 body,
    *   `CDN_UNEXPECTED_STATUS` otherwise.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService._fetch_one
    */
   async #fetchOne(
     signed: SignedReplay,
@@ -591,14 +649,14 @@ export class ReplaysService {
   }
 
   /**
-   * Construct a canonical `SignedURLExpiredError` for `signed`
-   * (`_build_expired_error`).
+   * Construct the canonical `SignedURLExpiredError` for a signed handle.
    *
    * @param signed - The signed handle whose URL expired — always the
    *   original handle, even after a re-sign, so `signed_at` /
    *   `expired_at` describe the URL that actually expired.
    * @returns The error with the catalog message and the
    *   `replay_id` / `signed_at` / `expired_at` details.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService._build_expired_error
    */
   buildExpiredError(signed: SignedReplay): SignedURLExpiredError {
     return new SignedURLExpiredError(
@@ -619,21 +677,22 @@ export class ReplaysService {
   // --- Discovery + events ---
 
   /**
-   * Discover replays for a user or hydrate explicit IDs (`discover`).
+   * Discover replays for a user or hydrate explicit IDs.
    *
+   * @remarks
    * Issues exactly one Insights query against `$mp_session_record`
    * grouped on `$mp_replay_id` and `$mp_replay_retention_period`, then
    * collapses the result into `ReplaySummary` rows. A warning fires for
    * any replay missing `$mp_replay_retention_period` — those default to
    * 30 days.
-   *
-   * @param options - Selector (`distinctId` XOR `replayIds`), the
-   *   optional window, and the `limit`.
+   * @param options - The selector (`distinctId` or `replayIds`, not
+   *   both), the optional date window and the `limit`.
    * @returns `ReplaySummary` rows, possibly empty.
-   * @throws MixpanelHeadlessError - Code `REPLAYS_QUERY_FN_REQUIRED`
+   * @throws {@link MixpanelHeadlessError} - `REPLAYS_QUERY_FN_REQUIRED`
    *   when the service was constructed without a `queryFn`. Divergence:
    *   Python raises a bare `RuntimeError`; the code is the port's
    *   discriminator.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService.discover
    */
   async discover(options: DiscoverOptions = {}): Promise<ReplaySummary[]> {
     if (this.queryFn === null) {
@@ -691,17 +750,17 @@ export class ReplaysService {
   }
 
   /**
-   * Collapse a min-time Insights `series` into `ReplaySummary` rows
-   * (`_parse_summaries`).
+   * Collapse a min-time Insights `series` into `ReplaySummary` rows.
    *
+   * @remarks
    * Walks the raw nested dict the Insights API returns rather than the
    * lossy `.df` projection: the series nests in group order with an
    * `$overall` rollup key at every level.
-   *
    * @param series - The `result.series` value.
-   * @param options - `projectId` to stamp, the `distinctId` to attach,
-   *   and the hard `limit`.
+   * @param options - The `projectId` to stamp, the `distinctId` to
+   *   attach and the hard `limit`.
    * @returns Up to `limit` rows. Empty when the query produced none.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService._parse_summaries
    */
   parseSummaries(
     series: unknown,
@@ -760,17 +819,17 @@ export class ReplaysService {
   }
 
   /**
-   * Pull `(retentionDays, minTime)` from a replay's retention subtree
-   * (`_extract_retention_and_time`).
+   * Pull `(retentionDays, minTime)` from a replay's retention subtree.
    *
+   * @remarks
    * Returns the first standard retention window in `{1, 7, 30, 90}`
    * with its min-time leaf. When none is present, defaults to 30 days,
    * warns, and recovers the min-time from any available branch (a
    * non-standard key if one exists, else the `$overall` rollup).
-   *
    * @param retentionNode - The replay's retention-level dict.
    * @param replayId - The replay id, used in the warning message.
    * @returns The `(retention_days, min_time_value)` pair.
+   * @see mixpanel_headless._internal.services.replays.ReplaysService._extract_retention_and_time
    */
   #extractRetentionAndTime(
     retentionNode: Dict,
@@ -806,20 +865,21 @@ export class ReplaysService {
   }
 
   /**
-   * Mixpanel events for a list of replays in one round-trip
-   * (`events_for`).
+   * Fetch the Mixpanel events of a list of replays in one round-trip.
    *
+   * @remarks
    * Queries the `$all_events` wildcard grouped on `$time` /
-   * `$event_name` / `$mp_replay_id` (+ any caller-supplied
+   * `$event_name` / `$mp_replay_id` (plus any caller-supplied
    * `eventProperties`), filters on `$mp_replay_id IN replayIds`, and
    * excludes the `$mp_session_record` event itself.
-   *
    * @param replayIds - Replays to look up events for. May be empty.
-   * @param options - Extra group keys and the optional window.
+   * @param options - Extra group keys and the optional date window.
    * @returns `replay_id` → time-sorted `ReplayEvent` list. Replays with
    *   no events are omitted.
-   * @throws MixpanelHeadlessError - Code `REPLAYS_QUERY_FN_REQUIRED`
-   *   when the service was constructed without a `queryFn`.
+   * @throws {@link MixpanelHeadlessError} - `REPLAYS_QUERY_FN_REQUIRED`
+   *   when the service was constructed without a `queryFn` (Python
+   *   raises a bare `RuntimeError`).
+   * @see mixpanel_headless._internal.services.replays.ReplaysService.events_for
    */
   // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   async eventsFor(
@@ -914,11 +974,11 @@ export class ReplaysService {
 // --- Series helpers ---
 
 /**
- * Return the first dict-valued metric node of an Insights `series`
- * (`_first_metric_node`).
+ * Return the first dict-valued metric node of an Insights `series`.
  *
  * @param series - The `result.series` value (expected `dict`).
  * @returns The replay-level dict, or `null`.
+ * @see mixpanel_headless._internal.services.replays.ReplaysService._first_metric_node
  */
 function firstMetricNode(series: unknown): Dict | null {
   if (!isPythonDict(series)) {
@@ -933,12 +993,12 @@ function firstMetricNode(series: unknown): Dict | null {
 }
 
 /**
- * Extract the scalar from a series leaf — `{"all": v}` → `v`
- * (`_leaf_value`).
+ * Extract the scalar from a series leaf — `{"all": v}` → `v`.
  *
  * @param leaf - A series leaf node, normally `{"all": value}`.
  * @returns The `"all"` value for dict leaves; the leaf itself
  *   otherwise.
+ * @see mixpanel_headless._internal.services.replays.ReplaysService._leaf_value
  */
 function leafValue(leaf: unknown): unknown {
   if (isPythonDict(leaf)) {
@@ -948,12 +1008,12 @@ function leafValue(leaf: unknown): unknown {
 }
 
 /**
- * Flatten a nested Insights `series` into one row dict per leaf
- * (`_flatten_series`).
+ * Flatten a nested Insights `series` into one row dict per leaf.
  *
  * @param series - The `result.series` nested dict.
  * @param groupBy - Group-by property names in request order.
  * @returns One row per non-rollup leaf. Empty for a non-dict series.
+ * @see mixpanel_headless._internal.services.replays.ReplaysService._flatten_series
  */
 function flattenSeries(
   series: unknown,
@@ -972,14 +1032,14 @@ function flattenSeries(
 }
 
 /**
- * Recursively collect leaf rows from a nested series node
- * (`_walk_series`).
+ * Collect leaf rows from a nested series node, recursively.
  *
  * @param node - The current sub-dict.
  * @param groupBy - Group-by property names (the nesting order).
  * @param depth - How many group levels have been consumed.
  * @param acc - Group key/value pairs accumulated down this branch.
  * @param rows - Output accumulator, appended in place.
+ * @see mixpanel_headless._internal.services.replays.ReplaysService._walk_series
  */
 function walkSeries(
   node: Dict,
@@ -1004,8 +1064,9 @@ function walkSeries(
 }
 
 /**
- * Coerce a Mixpanel `$time` value to unix milliseconds (`_to_unix_ms`).
+ * Coerce a Mixpanel `$time` value to unix milliseconds.
  *
+ * @remarks
  * Mixpanel's `$time` comes back as an ISO-8601 string, a pandas
  * Timestamp, or a unix seconds/ms int depending on the response shape.
  * Returns `0` when the value can't be parsed — callers treat that as
@@ -1016,9 +1077,9 @@ function walkSeries(
  * port accepts ISO-8601 and unix seconds/ms only and returns `0` for
  * anything else. The reachable domain is the Insights `$time` group
  * key, always a second-precision ISO-8601 string.
- *
  * @param value - Raw cell from the result series.
  * @returns Unix milliseconds, or `0` when uninterpretable.
+ * @see mixpanel_headless._internal.services.replays.ReplaysService._to_unix_ms
  */
 function toUnixMs(value: unknown): number {
   if (value === null || value === undefined) {
@@ -1043,10 +1104,11 @@ function toUnixMs(value: unknown): number {
 }
 
 /**
- * Coerce a Mixpanel `$time` value to unix seconds (`_to_unix_seconds`).
+ * Coerce a Mixpanel `$time` value to unix seconds.
  *
  * @param value - Raw cell from the result series.
  * @returns Unix seconds, or `0` when uninterpretable.
+ * @see mixpanel_headless._internal.services.replays.ReplaysService._to_unix_seconds
  */
 function toUnixSeconds(value: unknown): number {
   const ms = toUnixMs(value);
@@ -1060,10 +1122,10 @@ function toUnixSeconds(value: unknown): number {
  * is epoch nanoseconds with no zone applied), an explicit offset is
  * honoured.
  *
+ * @remarks
  * `Date.parse` is not a drop-in: per ES2016 it reads a date-time form
  * without an offset as local time, which would shift every naive
  * Insights key by the host's zone.
- *
  * @param text - The candidate timestamp string.
  * @returns Epoch milliseconds, or `null` when the text isn't ISO-8601.
  */

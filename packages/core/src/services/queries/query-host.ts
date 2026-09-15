@@ -50,13 +50,14 @@ const DATE_GATE_PATTERN = new RegExp(
 );
 
 /**
- * Parse a `YYYY-MM-DD` activity-feed date, raising QueryError on bad
- * input — `_parse_feed_date`.
+ * Parse a `YYYY-MM-DD` activity-feed date, raising on bad input.
  *
  * @param value - The date string to parse.
  * @param field - The parameter name for the message.
  * @returns The parsed civil date.
- * @throws QueryError - When the value is not a valid `%Y-%m-%d` date.
+ * @throws {@link QueryError} - When the value is not a valid `%Y-%m-%d`
+ *   date.
+ * @see mixpanel_headless._internal.api_client._parse_feed_date
  */
 function parseFeedDate(value: string, field: string): CivilDate {
   const parsed = parseYmd(value);
@@ -69,25 +70,27 @@ function parseFeedDate(value: string, field: string): CivilDate {
 }
 
 /**
- * Build a stream/bookmark `dateRange` object from optional date strings
- * — `_build_activity_feed_date_range`.
+ * Build a stream/bookmark `dateRange` object from optional date strings.
  *
+ * @remarks
  * Both dates are validated up front so a malformed value fails the same
  * way regardless of which arm it lands in.
- *
  * @param fromDate - Optional inclusive start date (`YYYY-MM-DD`).
  * @param toDate - Optional inclusive end date (`YYYY-MM-DD`).
  * @returns A `between` range when both dates are given, a `since` range
  *   for a lone `fromDate`, a 30-day `between` window ending at a lone
  *   `toDate`, and a relative last-30-days window when neither is given.
- * @throws QueryError - When either supplied date is invalid, or when
- *   `toDate` is too early to compute a 30-day window (the Python
+ * @throws {@link QueryError} - When either supplied date is invalid, or
+ *   when `toDate` is too early to compute a 30-day window (the Python
  *   `OverflowError` arm).
  * @example
  * ```typescript
  * buildActivityFeedDateRange("2026-05-01", "2026-06-01");
  * // { type: "between", from: "2026-05-01", to: "2026-06-01" }
+ * buildActivityFeedDateRange(null, null);
+ * // { type: "relative_after", window: { unit: "day", value: 30 } }
  * ```
+ * @see mixpanel_headless._internal.api_client._build_activity_feed_date_range
  */
 export function buildActivityFeedDateRange(
   fromDate: string | null | undefined,
@@ -122,11 +125,23 @@ export function buildActivityFeedDateRange(
 
 /** Options bag of {@link QueryHostMethods.getEvents}. */
 export interface GetEventsOptions {
-  /** Maximum events to return (server-capped at 5000). */
+  /**
+   * Maximum events to return; the server caps it at 5000.
+   *
+   * @defaultValue `5000`
+   */
   readonly limit?: number | undefined;
-  /** `YYYY-MM-DD` lower bound (default `2000-01-01`). */
+  /**
+   * `YYYY-MM-DD` lower bound.
+   *
+   * @defaultValue `"2000-01-01"`
+   */
   readonly from_date?: string | null | undefined;
-  /** `YYYY-MM-DD` upper bound (default today). */
+  /**
+   * `YYYY-MM-DD` upper bound.
+   *
+   * @defaultValue today, read from the injected clock in UTC
+   */
   readonly to_date?: string | null | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -136,7 +151,11 @@ export interface GetEventsOptions {
 export interface GetPropertyValuesOptions {
   /** Optional event name to scope the property. */
   readonly event?: string | null | undefined;
-  /** Maximum number of values to return (default 255). */
+  /**
+   * Maximum number of values to return.
+   *
+   * @defaultValue `255`
+   */
   readonly limit?: number | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -144,7 +163,11 @@ export interface GetPropertyValuesOptions {
 
 /** Options bag of {@link QueryHostMethods.getTopEvents}. */
 export interface GetTopEventsOptions {
-  /** Counting method — "general", "unique", or "average". */
+  /**
+   * Counting method: `"general"`, `"unique"` or `"average"`.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: string | undefined;
   /** Maximum events to return. */
   readonly limit?: number | null | undefined;
@@ -154,9 +177,17 @@ export interface GetTopEventsOptions {
 
 /** Options bag of {@link QueryHostMethods.eventCounts}. */
 export interface EventCountsOptions {
-  /** Counting method. */
+  /**
+   * Counting method.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: string | undefined;
-  /** Time unit. */
+  /**
+   * Time unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: string | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -164,9 +195,17 @@ export interface EventCountsOptions {
 
 /** Options bag of {@link QueryHostMethods.propertyCounts}. */
 export interface PropertyCountsOptions {
-  /** Counting method. */
+  /**
+   * Counting method.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: string | undefined;
-  /** Time unit. */
+  /**
+   * Time unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: string | undefined;
   /** Specific property values to include. */
   readonly values?: readonly string[] | null | undefined;
@@ -180,9 +219,17 @@ export interface PropertyCountsOptions {
 export interface SegmentationOptions {
   /** Property to segment by. */
   readonly on?: string | null | undefined;
-  /** Time unit. */
+  /**
+   * Time unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: string | undefined;
-  /** Aggregation type. */
+  /**
+   * Aggregation type.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: string | undefined;
   /** Filter expression. */
   readonly where?: string | null | undefined;
@@ -208,17 +255,35 @@ export interface FunnelOptions {
 
 /** Options bag of {@link QueryHostMethods.retention}. */
 export interface RetentionOptions {
-  /** Retention type (birth, compounded). */
+  /**
+   * Retention type: `"birth"` or `"compounded"`.
+   *
+   * @defaultValue `"birth"`
+   */
   readonly retention_type?: string | undefined;
   /** Filter for the born event. */
   readonly born_where?: string | null | undefined;
   /** Filter for the return event. */
   readonly where?: string | null | undefined;
-  /** Retention interval size. */
+  /**
+   * Retention interval size; any value other than 1 is sent instead of
+   * `unit`.
+   *
+   * @defaultValue `1`
+   */
   readonly interval?: number | undefined;
-  /** Number of intervals to track. */
+  /**
+   * Number of intervals to track.
+   *
+   * @defaultValue `8`
+   */
   readonly interval_count?: number | undefined;
-  /** Interval unit (day, week, month). */
+  /**
+   * Interval unit: `"day"`, `"week"` or `"month"`; sent only when
+   * `interval` is 1.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: string | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -263,9 +328,11 @@ export interface InlineQueryOptions {
    */
   readonly workspace_id?: number | null | undefined;
   /**
-   * When `true` (default) and `workspace_id` is `null`, the pinned
-   * session workspace, if any, is sent. `false` sends no pin, so the
-   * query runs project-wide unless `workspace_id` is set.
+   * When `true` and `workspace_id` is `null`, the pinned session
+   * workspace, if any, is sent. `false` sends no pin, so the query runs
+   * project-wide unless `workspace_id` is set.
+   *
+   * @defaultValue `true`
    */
   readonly inject_workspace_id?: boolean | undefined;
   /** Optional cancellation signal. */
@@ -273,14 +340,14 @@ export interface InlineQueryOptions {
 }
 
 /**
- * Build the query params that carry an explicit data view, or `null`
- * (`_explicit_workspace_params`). `requestQueryHost` injects the pinned
- * workspace with `setdefault` semantics, so a `workspace_id` placed here
- * wins over the pin; `null` leaves the params empty and the pin rule
- * unchanged.
+ * Build the query params that carry an explicit data view, or `null`.
+ * `requestQueryHost` injects the pinned workspace with `setdefault`
+ * semantics, so a `workspace_id` placed here wins over the pin; `null`
+ * leaves the params empty and the pin rule unchanged.
  *
  * @param workspaceId - The data view to run under, or `null`.
  * @returns `{workspace_id}` or `null`.
+ * @see mixpanel_headless._internal.api_client._explicit_workspace_params
  */
 function explicitWorkspaceParams(
   workspaceId: number | null | undefined,
@@ -293,7 +360,11 @@ function explicitWorkspaceParams(
 
 /** Options bag of {@link QueryHostMethods.querySavedReport}. */
 export interface QuerySavedReportOptions {
-  /** Bookmark type routing the query. */
+  /**
+   * Bookmark type routing the query.
+   *
+   * @defaultValue `"insights"`
+   */
   readonly bookmark_type?:
     "insights" | "funnels" | "retention" | "flows" | undefined;
   /** Start date (`YYYY-MM-DD`). */
@@ -320,38 +391,56 @@ export interface FrequencyOptions {
 
 /** Options bag of the numeric segmentation family. */
 export interface SegmentationNumericOptions {
-  /** Time aggregation unit. */
+  /**
+   * Time aggregation unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: string | undefined;
   /** Filter expression. */
   readonly where?: string | null | undefined;
-  /** Counting method (numeric bucketing only). */
+  /**
+   * Counting method; read by `segmentationNumeric` only.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: string | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The query-host method surface (mixed into `MixpanelClient`). */
+/** Query-host methods mixed into `MixpanelClient`. */
 export interface QueryHostMethods {
   /**
-   * List event names in the project (`MixpanelAPIClient.get_events`) with widest-window defaults and the
+   * List event names in the project, with widest-window defaults and the
    * one-shot 403 "Date range exceeds N days" retry.
    *
-   * @param options - Optional limit/date overrides.
+   * @param options - Optional `limit` and `from_date` / `to_date`
+   *   overrides.
    * @returns Event name strings (`str(e)` casts preserved).
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Non-gate 403s and other 4xx errors.
-   * @throws RateLimitError | ServerError | MixpanelHeadlessError - Per
-   *   the shared retry core.
+   * @throws {@link QueryError} - Non-gate 403s and other 4xx errors.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_events
    */
   getEvents: (options?: GetEventsOptions) => Promise<string[]>;
 
   /**
-   * List properties for a specific event (`MixpanelAPIClient.get_event_properties`).
+   * List the property names of an event.
    *
    * @param event - Event name.
    * @param signal - Optional cancellation signal.
    * @returns Property name strings (dict keys of the response).
-   * @throws AuthenticationError | QueryError - Per the retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_event_properties
    */
   getEventProperties: (
     event: string,
@@ -359,12 +448,18 @@ export interface QueryHostMethods {
   ) => Promise<string[]>;
 
   /**
-   * List sample values for a property (`MixpanelAPIClient.get_property_values`).
+   * List sample values of a property.
    *
    * @param propertyName - Property name.
-   * @param options - Optional event scope and limit.
+   * @param options - Optional `event` scope and `limit`.
    * @returns Property value strings (`str(v)` casts preserved).
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_property_values
    */
   getPropertyValues: (
     propertyName: string,
@@ -372,42 +467,65 @@ export interface QueryHostMethods {
   ) => Promise<string[]>;
 
   /**
-   * List saved funnels (`MixpanelAPIClient.list_funnels`).
+   * List the project's saved funnels.
    *
    * @param signal - Optional cancellation signal.
    * @returns Funnel dicts, or `[]` for a non-list response.
-   * @throws AuthenticationError | RateLimitError - Per the retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_funnels
    */
   listFunnels: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * List saved cohorts via POST (`MixpanelAPIClient.list_cohorts`).
+   * List the project's saved cohorts (a POST, per the API spec).
    *
    * @param signal - Optional cancellation signal.
    * @returns Cohort dicts, or `[]` for a non-list response.
-   * @throws AuthenticationError | RateLimitError - Per the retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_cohorts
    */
   listCohorts: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Today's top events (`MixpanelAPIClient.get_top_events`).
+   * Return today's top events.
    *
-   * @param options - Counting type and limit.
+   * @param options - Counting `type` and `limit`.
    * @returns The response dict, or `{events: [], type}` for a non-dict.
-   * @throws AuthenticationError | RateLimitError - Per the retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_top_events
    */
   getTopEvents: (options?: GetTopEventsOptions) => Promise<JsonValue>;
 
   /**
-   * Aggregate counts for multiple events (`MixpanelAPIClient.event_counts`).
+   * Count occurrences of several events per time unit.
    *
    * @param events - Event names (JSON-encoded on the wire).
-   * @param fromDate - Start date.
-   * @param toDate - End date.
-   * @param options - Counting type and unit.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
+   * @param options - Counting `type` and time `unit`.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.event_counts
    */
   eventCounts: (
     events: readonly string[],
@@ -417,16 +535,22 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Aggregate counts by property values (`MixpanelAPIClient.property_counts`).
+   * Count an event's occurrences by property value.
    *
    * @param event - Event name.
    * @param propertyName - Property to segment by.
-   * @param fromDate - Start date.
-   * @param toDate - End date.
-   * @param options - Type/unit/values/limit.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
+   * @param options - Counting `type`, time `unit`, the `values` to
+   *   include and `limit`.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.property_counts
    */
   propertyCounts: (
     event: string,
@@ -437,15 +561,21 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Run a segmentation query (`MixpanelAPIClient.segmentation`).
+   * Run a segmentation query.
    *
    * @param event - Event name to segment.
-   * @param fromDate - Start date.
-   * @param toDate - End date.
-   * @param options - on/unit/type/where.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
+   * @param options - The `on` property, time `unit`, aggregation `type`
+   *   and `where` filter.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.segmentation
    */
   segmentation: (
     event: string,
@@ -455,15 +585,21 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Run a funnel query (`MixpanelAPIClient.funnel`).
+   * Run a saved funnel query.
    *
    * @param funnelId - Funnel identifier.
-   * @param fromDate - Start date.
-   * @param toDate - End date.
-   * @param options - unit/on/where/length/length_unit.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
+   * @param options - Grouping `unit`, the `on` property, `where` filter
+   *   and the conversion window (`length`, `length_unit`).
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.funnel
    */
   funnel: (
     funnelId: number,
@@ -473,19 +609,25 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Run a retention query (`MixpanelAPIClient.retention`).
-   * `unit` and `interval` are mutually exclusive on the wire: `interval`
-   * is sent only when != 1, otherwise `unit`.
+   * Run a retention query.
    *
+   * @remarks
+   * `unit` and `interval` are mutually exclusive on the wire: `interval`
+   * is sent only when it differs from 1, otherwise `unit`.
    * @param bornEvent - Cohort-defining event.
    * @param event - Return event.
-   * @param fromDate - Start date.
-   * @param toDate - End date.
-   * @param options - retention_type/born_where/where/interval/
-   *   interval_count/unit.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
+   * @param options - `retention_type`, the `born_where` / `where`
+   *   filters, `interval`, `interval_count` and `unit`.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.retention
    */
   retention: (
     bornEvent: string,
@@ -496,15 +638,22 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Query the activity feed via stream/bookmark (`MixpanelAPIClient.activity_feed`). Resolves the workspace id (pin or
-   * auto-discovery) into the request body.
+   * Query the activity feed via stream/bookmark, resolving the workspace
+   * id (pin or auto-discovery) into the request body.
    *
    * @param distinctIds - User identifiers to query.
-   * @param options - Dates/limit/include/exclude/search/pagination.
+   * @param options - The date window, `limit`, include/exclude event
+   *   lists, search, the `sentinel_event` cursor and `paging_window`.
    * @returns The raw response.
-   * @throws QueryError - include/exclude conflict, search_properties
-   *   without search, malformed dates, or API rejections.
-   * @throws AuthenticationError | RateLimitError - Per the retry core.
+   * @throws {@link QueryError} - Include/exclude conflict,
+   *   `search_properties` without `search`, malformed dates, or API
+   *   rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.activity_feed
    */
   activityFeed: (
     distinctIds: readonly string[],
@@ -512,13 +661,20 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Query a saved report by bookmark type (`MixpanelAPIClient.query_saved_report`).
+   * Query a saved report by bookmark type.
    *
    * @param bookmarkId - Saved report identifier.
-   * @param options - bookmark_type and the funnel date window.
+   * @param options - `bookmark_type` and the funnel date window.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link ValueError} - A funnel date that is not `%Y-%m-%d`
+   *   (Python's bare `strptime` error).
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.query_saved_report
    */
   querySavedReport: (
     bookmarkId: number,
@@ -526,15 +682,19 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * List saved reports (`MixpanelAPIClient.list_bookmarks`, the legacy
-   * query-side listing; the App-API twin is
-   * `BookmarkMethods.listBookmarksV2`).
+   * List saved reports through the legacy query-side listing (the
+   * App-API twin is `BookmarkMethods.listBookmarksV2`).
    *
    * @param bookmarkType - Optional report-type filter.
    * @param signal - Optional cancellation signal.
    * @returns The raw response (`results` array inside).
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_bookmarks
    */
   listBookmarks: (
     bookmarkType?: string | null,
@@ -542,14 +702,20 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Execute an inline insights query via POST (`MixpanelAPIClient.insights_query`). The body carries `project_id` itself —
-   * no query-param injection.
+   * Execute an inline insights query via POST; the body carries
+   * `project_id` itself, so no query-param injection happens.
    *
-   * @param body - Request body (bookmark params + project_id).
-   * @param options - Data view, pin opt-out and cancellation signal.
+   * @param body - Request body (bookmark params plus `project_id`).
+   * @param options - Data view (`workspace_id`), the pin opt-out and the
+   *   cancellation signal.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.insights_query
    */
   insightsQuery: (
     body: Record<string, unknown>,
@@ -557,13 +723,18 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Query a saved flows report (`MixpanelAPIClient.query_saved_flows`).
+   * Query a saved flows report.
    *
    * @param bookmarkId - Saved flows report identifier.
    * @param signal - Optional cancellation signal.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.query_saved_flows
    */
   querySavedFlows: (
     bookmarkId: number,
@@ -571,15 +742,20 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Execute an inline flow/funnel query
-   * (`MixpanelAPIClient.arb_funnels_query`, the request path of
-   * `LiveQueryService.queryFlow`; not corpus-locked).
+   * Execute an inline flow/funnel query — the request path of
+   * `LiveQueryService.queryFlow`; not corpus-locked.
    *
-   * @param body - Request body (bookmark + project_id + query_type).
-   * @param options - Data view, pin opt-out and cancellation signal.
+   * @param body - Request body (bookmark, `project_id`, `query_type`).
+   * @param options - Data view (`workspace_id`), the pin opt-out and the
+   *   cancellation signal.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.arb_funnels_query
    */
   arbFunnelsQuery: (
     body: Record<string, unknown>,
@@ -587,16 +763,21 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Event frequency distribution (`MixpanelAPIClient.frequency`).
+   * Return the event frequency (addiction) distribution.
    *
-   * @param fromDate - Start date.
-   * @param toDate - End date.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
    * @param unit - Overall time period.
    * @param addictionUnit - Measurement granularity.
-   * @param options - event/where/on/limit.
+   * @param options - `event`, `where`, the `on` property and `limit`.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.frequency
    */
   frequency: (
     fromDate: string,
@@ -607,16 +788,21 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Events bucketed by numeric property ranges (`MixpanelAPIClient.segmentation_numeric`).
+   * Bucket an event's occurrences by numeric property ranges.
    *
    * @param event - Event name.
-   * @param fromDate - Start date.
-   * @param toDate - End date.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
    * @param on - Numeric property expression.
-   * @param options - unit/where/type.
+   * @param options - Time `unit`, `where` filter and counting `type`.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.segmentation_numeric
    */
   segmentationNumeric: (
     event: string,
@@ -627,16 +813,21 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Sum of numeric property values (`MixpanelAPIClient.segmentation_sum`).
+   * Sum a numeric property's values per time unit.
    *
    * @param event - Event name.
-   * @param fromDate - Start date.
-   * @param toDate - End date.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
    * @param on - Numeric property expression.
-   * @param options - unit/where.
+   * @param options - Time `unit` and `where` filter.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.segmentation_sum
    */
   segmentationSum: (
     event: string,
@@ -647,16 +838,21 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Average of numeric property values (`MixpanelAPIClient.segmentation_average`).
+   * Average a numeric property's values per time unit.
    *
    * @param event - Event name.
-   * @param fromDate - Start date.
-   * @param toDate - End date.
+   * @param fromDate - Start date (`YYYY-MM-DD`).
+   * @param toDate - End date (`YYYY-MM-DD`).
    * @param on - Numeric property expression.
-   * @param options - unit/where.
+   * @param options - Time `unit` and `where` filter.
    * @returns The raw response.
-   * @throws AuthenticationError | QueryError | RateLimitError - Per the
-   *   retry core.
+   * @throws {@link QueryError} - Other 4xx rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.segmentation_average
    */
   segmentationAverage: (
     event: string,
@@ -1285,6 +1481,16 @@ async function segmentationAverage(
  * @param core - The shared client internals seam.
  * @param client - The client-method slice (workspace resolution).
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const query = createQueryHostMethods(core, {
+ *   resolveWorkspaceId: () => client.resolveWorkspaceId(),
+ * });
+ * const names = await query.getEvents({ limit: 100 });
+ * const raw = await query.segmentation("Signup", "2026-05-01", "2026-05-31", {
+ *   unit: "week",
+ * });
+ * ```
  */
 export function createQueryHostMethods(
   core: ClientCore,
@@ -1317,8 +1523,9 @@ export function createQueryHostMethods(
 }
 
 /**
- * The earlier of two `YYYY-MM-DD` dates — lexicographic order is calendar
- * order for that shape, so this is a string comparison, never `Math.min`.
+ * Return the earlier of two `YYYY-MM-DD` dates — lexicographic order is
+ * calendar order for that shape, so this is a string comparison, never
+ * `Math.min`.
  *
  * @param a - One ISO calendar date.
  * @param b - Another ISO calendar date.

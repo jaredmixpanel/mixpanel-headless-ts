@@ -59,25 +59,28 @@ export interface GetAlertHistoryOptions {
 /** Alert methods mixed into `MixpanelClient`. */
 export interface AlertMethods {
   /**
-   * List custom alerts (`list_alerts` —
-   * GET `alerts/custom/`).
+   * List custom alerts. Sends GET `alerts/custom/`.
    *
    * @param options - bookmark_id/skip_user_filter filters + signal.
    * @returns The alert list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_alerts
    */
   listAlerts: (options?: ListAlertsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create a custom alert (`create_alert` — POST
-   * `alerts/custom/`).
+   * Create a custom alert. Sends POST `alerts/custom/`.
    *
    * @param body - Alert creation parameters.
    * @param signal - Optional cancellation signal.
    * @returns The created alert dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_alert
    */
   createAlert: (
     body: Record<string, unknown>,
@@ -85,12 +88,13 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a custom alert by ID (`get_alert`).
+   * Get a custom alert by ID.
    *
    * @param alertId - Alert ID (integer).
    * @param signal - Optional cancellation signal.
    * @returns The alert dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert
    */
   getAlert: (
     alertId: number,
@@ -98,13 +102,14 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a custom alert (`update_alert` — PATCH).
+   * Update a custom alert. Sends a PATCH.
    *
    * @param alertId - Alert ID (integer).
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated alert dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_alert
    */
   updateAlert: (
     alertId: number,
@@ -113,21 +118,23 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a custom alert (`delete_alert`).
+   * Delete a custom alert.
    *
    * @param alertId - Alert ID (integer).
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_alert
    */
   deleteAlert: (alertId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete custom alerts (`bulk_delete_alerts` —
-   * POST `alerts/custom/bulk-delete/` with `{alert_ids}`).
+   * Bulk-delete custom alerts. Sends POST `alerts/custom/bulk-delete/` with
+   * `{alert_ids}`.
    *
    * @param ids - Alert IDs to delete.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_delete_alerts
    */
   bulkDeleteAlerts: (
     ids: readonly number[],
@@ -135,26 +142,26 @@ export interface AlertMethods {
   ) => Promise<void>;
 
   /**
-   * Get alert count and limits (`get_alert_count` — GET
-   * `alerts/custom/alert-count/`).
+   * Get alert count and limits. Sends GET `alerts/custom/alert-count/`.
    *
    * @param options - alert_type filter + signal.
    * @returns The count dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert_count
    */
   getAlertCount: (
     options?: GetAlertCountOptions,
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get alert trigger history (`get_alert_history` —
-   * GET `alerts/custom/{id}/history/` with `_raw=True`, then the
-   * source's exact `{results, pagination}` re-shape ladder).
+   * Get alert trigger history. Sends GET `alerts/custom/{id}/history/` with
+   * `_raw=True`, then the source's exact `{results, pagination}` re-shape ladder.
    *
    * @param alertId - Alert ID (integer).
    * @param options - page_size/cursor params + signal.
    * @returns A dict with `results` list and `pagination` metadata.
-   * @throws MixpanelHeadlessError - Missing/malformed `results` shape.
+   * @throws {@link MixpanelHeadlessError} - Missing/malformed `results` shape.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert_history
    */
   getAlertHistory: (
     alertId: number,
@@ -162,13 +169,13 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Send a test alert notification (`test_alert` — POST
-   * `alerts/custom/test/`).
+   * Send a test alert notification. Sends POST `alerts/custom/test/`.
    *
    * @param body - Alert parameters for the test.
    * @param signal - Optional cancellation signal.
    * @returns The test result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.test_alert
    */
   testAlert: (
     body: Record<string, unknown>,
@@ -176,13 +183,14 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a signed screenshot URL (`get_alert_screenshot_url` — GET
-   * `alerts/custom/screenshot/` with the always-present `gcs_key` param).
+   * Get a signed screenshot URL. Sends GET `alerts/custom/screenshot/` with the
+   * always-present `gcs_key` param.
    *
    * @param gcsKey - GCS object key for the screenshot.
    * @param signal - Optional cancellation signal.
    * @returns The dict with `signed_url`.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert_screenshot_url
    */
   getAlertScreenshotUrl: (
     gcsKey: string,
@@ -190,14 +198,14 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Validate alerts against a bookmark
-   * (`validate_alerts_for_bookmark` — POST
-   * `alerts/custom/validate-alerts-for-bookmark/`).
+   * Validate alerts against a bookmark. Sends POST
+   * `alerts/custom/validate-alerts-for-bookmark/`.
    *
    * @param body - Validation parameters.
    * @param signal - Optional cancellation signal.
    * @returns The validation result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.validate_alerts_for_bookmark
    */
   validateAlertsForBookmark: (
     body: Record<string, unknown>,
@@ -210,10 +218,22 @@ export interface AlertMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const alerts = createAlertMethods(core);
+ * const open = await alerts.listAlerts({ skip_user_filter: true });
+ * // [{ id: 42, name: "Signups dropped", ... }, ...]
+ * ```
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createAlertMethods(core: ClientCore): AlertMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

@@ -41,13 +41,18 @@ const YMD_PATTERN = /^(\p{Nd}{1,4})-(\p{Nd}{1,2})-(\p{Nd}{1,2})$/u;
 const MONTH_DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 /**
- * Parse a `%Y-%m-%d` date exactly as `datetime.strptime` accepts it
- * (`"2026-5-1"` parses; `"2026/05/01"`, trailing text, month 13, day 32
- * and year 0 do not).
+ * Parse a `%Y-%m-%d` date exactly as `datetime.strptime` accepts it:
+ * `"2026-5-1"` parses; `"2026/05/01"`, trailing text, month 13, day 32
+ * and year 0 do not.
  *
  * @param value - The candidate date string.
- * @returns The civil date, or `null` when CPython would raise
+ * @returns The civil date, or `null` where CPython would raise
  *   `ValueError` (callers map that to their own error classes).
+ * @example
+ * ```typescript
+ * parseYmd("2026-5-1"); // { year: 2026, month: 5, day: 1 }
+ * parseYmd("2026/05/01"); // null
+ * ```
  */
 export function parseYmd(value: string): CivilDate | null {
   const match = YMD_PATTERN.exec(value);
@@ -69,10 +74,15 @@ export function parseYmd(value: string): CivilDate | null {
 }
 
 /**
- * Days since 1970-01-01 for a civil date (Hinnant `days_from_civil`).
+ * Count the whole days from 1970-01-01 to a civil date (Hinnant's
+ * `days_from_civil`).
  *
  * @param date - The civil date.
  * @returns Whole days since the Unix epoch (negative before 1970).
+ * @example
+ * ```typescript
+ * daysFromCivil({ year: 2026, month: 1, day: 1 }); // 20454
+ * ```
  */
 export function daysFromCivil(date: CivilDate): number {
   const y = date.year - (date.month <= 2 ? 1 : 0);
@@ -85,11 +95,15 @@ export function daysFromCivil(date: CivilDate): number {
 }
 
 /**
- * Civil date from a day count since 1970-01-01 (Hinnant
+ * Convert a day count since 1970-01-01 to a civil date (Hinnant's
  * `civil_from_days`).
  *
  * @param days - Whole days since the Unix epoch (may be negative).
  * @returns The civil date.
+ * @example
+ * ```typescript
+ * civilFromDays(20454); // { year: 2026, month: 1, day: 1 }
+ * ```
  */
 export function civilFromDays(days: number): CivilDate {
   const z = days + 719468;
@@ -116,6 +130,10 @@ export function civilFromDays(days: number): CivilDate {
  *
  * @param date - The civil date.
  * @returns The ISO text.
+ * @example
+ * ```typescript
+ * formatYmd({ year: 2026, month: 5, day: 1 }); // "2026-05-01"
+ * ```
  */
 export function formatYmd(date: CivilDate): string {
   const y = String(date.year).padStart(4, "0");
@@ -125,12 +143,17 @@ export function formatYmd(date: CivilDate): string {
 }
 
 /**
- * The calendar date of an instant, read in UTC (see the divergence note
- * in the module header) — the `date.today()` / `datetime.now().strftime`
- * seam.
+ * Read the calendar date of an instant in UTC — the `date.today()` /
+ * `datetime.now().strftime` seam (see the divergence note in the module
+ * header).
  *
  * @param now - The injected clock's current instant.
  * @returns The civil date.
+ * @example
+ * ```typescript
+ * civilFromInstantUtc(new Date("2026-05-01T23:30:00-07:00"));
+ * // { year: 2026, month: 5, day: 2 } — UTC, not the host's calendar
+ * ```
  */
 export function civilFromInstantUtc(now: Date): CivilDate {
   return {
@@ -141,12 +164,19 @@ export function civilFromInstantUtc(now: Date): CivilDate {
 }
 
 /**
- * `civil + timedelta(days=delta)` with the Python range guard.
+ * Shift a civil date by whole days with Python's range guard
+ * (`civil + timedelta(days=delta)`).
  *
  * @param date - The starting date.
  * @param delta - Whole days to add (may be negative).
  * @returns The shifted date, or `null` where CPython raises
  *   `OverflowError` (result outside years 1..9999).
+ * @example
+ * ```typescript
+ * addDays({ year: 2026, month: 3, day: 1 }, -1);
+ * // { year: 2026, month: 2, day: 28 }
+ * addDays({ year: 9999, month: 12, day: 31 }, 1); // null
+ * ```
  */
 export function addDays(date: CivilDate, delta: number): CivilDate | null {
   const shifted = civilFromDays(daysFromCivil(date) + delta);

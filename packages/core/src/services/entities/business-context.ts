@@ -24,26 +24,27 @@ export interface BusinessContextScopeOptions {
 /** Business-context methods mixed into `MixpanelClient`. */
 export interface BusinessContextMethods {
   /**
-   * Fetch business context (`get_business_context` — GET
-   * `/projects/{pid}/business-context` or
-   * `/organizations/{org}/business-context`).
+   * Fetch business context. Sends GET `/projects/{pid}/business-context` or
+   * `/organizations/{org}/business-context`.
    *
    * @param options - Optional `organization_id` scope + signal.
    * @returns `{content: "<markdown>"}` (empty string when unset).
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_business_context
    */
   getBusinessContext: (
     options?: BusinessContextScopeOptions,
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Replace business context (`set_business_context` —
-   * PUT with `{content}`; full replace, empty string clears).
+   * Replace business context. Sends PUT with `{content}`; full replace, empty
+   * string clears.
    *
    * @param content - New markdown content.
    * @param options - Optional `organization_id` scope + signal.
    * @returns `{content: "<saved markdown>"}` echoed by the server.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.set_business_context
    */
   setBusinessContext: (
     content: string,
@@ -51,12 +52,13 @@ export interface BusinessContextMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Fetch org + project context together (`get_business_context_chain` — GET
-   * `/projects/{pid}/business-context/chain`).
+   * Fetch org + project context together. Sends GET
+   * `/projects/{pid}/business-context/chain`.
    *
    * @param signal - Optional cancellation signal.
    * @returns `{org_context, project_context}`.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_business_context_chain
    */
   getBusinessContextChain: (
     signal?: AbortSignal,
@@ -68,11 +70,24 @@ export interface BusinessContextMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const context = createBusinessContextMethods(core);
+ * await context.setBusinessContext("# Acme\nB2B SaaS, EMEA-first.");
+ * // { content: "# Acme\nB2B SaaS, EMEA-first." }
+ * ```
  */
 export function createBusinessContextMethods(
   core: ClientCore,
 ): BusinessContextMethods {
-  /** The org-vs-project path selector. */
+  /**
+   * Select the organization-level or the project-level business-context
+   * path.
+   *
+   * @param organizationId - Organization id for org scope; `null` /
+   *   `undefined` selects the session project.
+   * @returns The `/organizations/{org}/…` or `/projects/{pid}/…` path.
+   */
   const scopePath = (organizationId: number | null | undefined): string =>
     organizationId !== undefined && organizationId !== null
       ? `/organizations/${organizationId}/business-context`

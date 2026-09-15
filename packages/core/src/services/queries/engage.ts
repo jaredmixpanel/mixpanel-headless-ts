@@ -20,7 +20,11 @@ import { isSet, pythonTypeNameOf, truthyList, truthyStr } from "../shared.js";
 export interface EngageStatsOptions {
   /** Filter expression (sent as `selector`). */
   readonly where?: string | null | undefined;
-  /** Aggregation expression (default `"count()"`). */
+  /**
+   * Aggregation expression.
+   *
+   * @defaultValue `"count()"`
+   */
   readonly action?: string | undefined;
   /** Pre-encoded JSON cohort filter string. */
   readonly filter_by_cohort?: string | null | undefined;
@@ -31,7 +35,12 @@ export interface EngageStatsOptions {
   readonly group_id?: string | null | undefined;
   /** Unix timestamp for point-in-time query. */
   readonly as_of_timestamp?: number | null | undefined;
-  /** Include non-members in cohort results. */
+  /**
+   * Include non-members in cohort results; sent only alongside
+   * `filter_by_cohort`.
+   *
+   * @defaultValue `false`
+   */
   readonly include_all_users?: boolean | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -54,7 +63,12 @@ export interface ExportProfilesPageOptions {
     ReadonlyArray<Record<string, unknown>> | null | undefined;
   /** Unix timestamp for point-in-time query. */
   readonly as_of_timestamp?: number | null | undefined;
-  /** Include non-members in cohort results. */
+  /**
+   * Include non-members in cohort results; sent only when a cohort
+   * filter is set.
+   *
+   * @defaultValue `false`
+   */
   readonly include_all_users?: boolean | undefined;
   /** Sort expression in selector format. */
   readonly sort_key?: string | null | undefined;
@@ -74,27 +88,42 @@ export interface ExportProfilesPageOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The engage method surface (mixed into `MixpanelClient`). */
+/** Engage methods mixed into `MixpanelClient`. */
 export interface EngageMethods {
   /**
-   * Aggregate statistics from the Engage API (`MixpanelAPIClient.engage_stats`).
+   * Return aggregate statistics from the Engage API.
    *
-   * @param options - where/action/cohort/segment/group/timestamp knobs.
+   * @param options - The filter (`where`, sent as `selector`), the
+   *   aggregation `action`, cohort filter / segmentation, `group_id`,
+   *   `as_of_timestamp` and `include_all_users`.
    * @returns The raw response dict.
-   * @throws QueryError - Non-dict 200 response (`status_code: 200` with
-   *   the Python `str()` of the body), or API rejections.
-   * @throws AuthenticationError | RateLimitError - Per the retry core.
+   * @throws {@link QueryError} - Non-dict 200 response (`status_code`
+   *   200 with the Python `str()` of the body), or API rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.engage_stats
    */
   engageStats: (options?: EngageStatsOptions) => Promise<JsonValue>;
 
   /**
-   * Fetch a single page of profiles (`MixpanelAPIClient.export_profiles_page`).
+   * Fetch a single page of profiles.
    *
    * @param page - Zero-based page index.
-   * @param options - session/filter/sort/search/limit knobs.
-   * @returns The page result (profiles + pagination metadata).
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the retry core.
+   * @param options - The `session_id` from the previous page, filters
+   *   (`where`, cohort, behaviors, ids), sort, search and `limit`.
+   * @returns The page result (profiles plus pagination metadata).
+   * @throws {@link TypeError} - Non-dict 200 response (the Python
+   *   `AttributeError` analog; no recorded vector reaches it).
+   * @throws {@link QueryError} - API rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.export_profiles_page
    */
   exportProfilesPage: (
     page: number,
@@ -103,7 +132,7 @@ export interface EngageMethods {
 }
 
 /**
- * `dict.get(key, default)` over a parsed wire body.
+ * Read a key like `dict.get(key, default)` over a parsed wire body.
  *
  * @param body - The parsed record.
  * @param key - Key to read.
@@ -139,6 +168,15 @@ function toCount(value: JsonValue): number {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const engage = createEngageMethods(core);
+ * const stats = await engage.engageStats({
+ *   where: 'properties["$city"] == "Berlin"',
+ * });
+ * const page = await engage.exportProfilesPage(0, { limit: 100 });
+ * // page.has_more, page.session_id, page.profiles
+ * ```
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createEngageMethods(core: ClientCore): EngageMethods {

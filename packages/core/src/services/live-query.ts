@@ -66,127 +66,282 @@ type DayWeekMonth = "day" | "week" | "month";
 /** Construction options of {@link LiveQueryService}. */
 export interface LiveQueryServiceOptions {
   /**
-   * `warnings.warn` sink for
-   * `_extract_funnel_steps_from_series`'s unrecognized-format warning
-   * (`core` has no stderr, so the sink is injected).
+   * `warnings.warn` sink for the funnel-series transform's
+   * unrecognized-format warning (`core` has no stderr, so the sink is
+   * injected).
+   *
+   * @defaultValue A no-op sink — warnings are dropped unless a host
+   *   injects one.
    */
   readonly warn?: WarningSink | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.segmentation}. */
 export interface LiveSegmentationOptions {
-  /** Property to segment by (bare names are normalized). */
+  /**
+   * Property to segment by (bare names are normalized).
+   *
+   * @defaultValue `null`
+   */
   readonly on?: string | null | undefined;
-  /** Time unit for aggregation. Default `"day"`. */
+  /**
+   * Time unit for aggregation.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: TimeUnit | undefined;
-  /** Filter expression. */
+  /**
+   * Filter expression.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: string | null | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.funnel}. */
 export interface LiveFunnelOptions {
-  /** Time unit for grouping. */
+  /**
+   * Time unit for grouping.
+   *
+   * @defaultValue `null`
+   */
   readonly unit?: string | null | undefined;
-  /** Property to segment by. */
+  /**
+   * Property to segment by.
+   *
+   * @defaultValue `null`
+   */
   readonly on?: string | null | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.retention}. */
 export interface LiveRetentionOptions {
-  /** Filter for the born event. */
+  /**
+   * Filter for the born event.
+   *
+   * @defaultValue `null`
+   */
   readonly born_where?: string | null | undefined;
-  /** Filter for the return event. */
+  /**
+   * Filter for the return event.
+   *
+   * @defaultValue `null`
+   */
   readonly return_where?: string | null | undefined;
-  /** Retention interval size. Default `1`. */
+  /**
+   * Retention interval size.
+   *
+   * @defaultValue `1`
+   */
   readonly interval?: number | undefined;
-  /** Number of intervals to track. Default `10`. */
+  /**
+   * Number of intervals to track.
+   *
+   * @defaultValue `10`
+   */
   readonly interval_count?: number | undefined;
-  /** Interval unit. Default `"day"`. */
+  /**
+   * Interval unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: TimeUnit | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.eventCounts}. */
 export interface LiveEventCountsOptions {
-  /** Counting method. Default `"general"`. */
+  /**
+   * Counting method.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: CountingType | undefined;
-  /** Time unit. Default `"day"`. */
+  /**
+   * Time unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: DayWeekMonth | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.propertyCounts}. */
 export interface LivePropertyCountsOptions {
-  /** Counting method. Default `"general"`. */
+  /**
+   * Counting method.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: CountingType | undefined;
-  /** Time unit. Default `"day"`. */
+  /**
+   * Time unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: DayWeekMonth | undefined;
-  /** Specific property values to include. */
+  /**
+   * Specific property values to include.
+   *
+   * @defaultValue `null`
+   */
   readonly values?: readonly string[] | null | undefined;
-  /** Maximum property values to return (server default 255). */
+  /**
+   * Maximum property values to return (server default 255).
+   *
+   * @defaultValue `null`
+   */
   readonly limit?: number | null | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.activityFeed}. */
 export interface LiveActivityFeedOptions {
-  /** Start date (`YYYY-MM-DD`). */
+  /**
+   * Start date (`YYYY-MM-DD`).
+   *
+   * @defaultValue `null`
+   */
   readonly from_date?: string | null | undefined;
-  /** End date (`YYYY-MM-DD`). */
+  /**
+   * End date (`YYYY-MM-DD`).
+   *
+   * @defaultValue `null`
+   */
   readonly to_date?: string | null | undefined;
-  /** Max events to return (server ceiling 15000). */
+  /**
+   * Max events to return (server ceiling 15000).
+   *
+   * @defaultValue `null`
+   */
   readonly limit?: number | null | undefined;
-  /** Event names to include (exclusive with `exclude_events`). */
+  /**
+   * Event names to include (exclusive with `exclude_events`).
+   *
+   * @defaultValue `null`
+   */
   readonly include_events?: readonly string[] | null | undefined;
-  /** Event names to exclude (exclusive with `include_events`). */
+  /**
+   * Event names to exclude (exclusive with `include_events`).
+   *
+   * @defaultValue `null`
+   */
   readonly exclude_events?: readonly string[] | null | undefined;
-  /** Pagination cursor from a prior result. */
+  /**
+   * Pagination cursor from a prior result.
+   *
+   * @defaultValue `null`
+   */
   readonly sentinel_event?: Record<string, unknown> | null | undefined;
-  /** Days (at most 30) bounding each page's scan window. */
+  /**
+   * Days (at most 30) bounding each page's scan window.
+   *
+   * @defaultValue `null`
+   */
   readonly paging_window?: number | null | undefined;
-  /** Full-text search string. */
+  /**
+   * Full-text search string.
+   *
+   * @defaultValue `null`
+   */
   readonly search?: string | null | undefined;
-  /** Property descriptors restricting the search. */
+  /**
+   * Property descriptors restricting the search.
+   *
+   * @defaultValue `null`
+   */
   readonly search_properties?:
     ReadonlyArray<Record<string, unknown>> | null | undefined;
-  /** Label matching custom events in raw results. Default `false`. */
+  /**
+   * Label matching custom events in raw results.
+   *
+   * @defaultValue `false`
+   */
   readonly use_custom_events?: boolean | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.querySavedReport}. */
 export interface LiveQuerySavedReportOptions {
-  /** Bookmark type routing the query. Default `"insights"`. */
+  /**
+   * Bookmark type routing the query.
+   *
+   * @defaultValue `"insights"`
+   */
   readonly bookmark_type?: SavedReportBookmarkType | undefined;
-  /** Start date (`YYYY-MM-DD`). */
+  /**
+   * Start date (`YYYY-MM-DD`).
+   *
+   * @defaultValue `null`
+   */
   readonly from_date?: string | null | undefined;
-  /** End date (`YYYY-MM-DD`). */
+  /**
+   * End date (`YYYY-MM-DD`).
+   *
+   * @defaultValue `null`
+   */
   readonly to_date?: string | null | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.frequency}. */
 export interface LiveFrequencyOptions {
-  /** Overall time period. Default `"day"`. */
+  /**
+   * Overall time period.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: TimeUnit | undefined;
-  /** Measurement granularity. Default `"hour"`. */
+  /**
+   * Measurement granularity.
+   *
+   * @defaultValue `"hour"`
+   */
   readonly addiction_unit?: HourDayUnit | undefined;
-  /** Event name to filter (`null` = all events). */
+  /**
+   * Event name to filter (`null` = all events).
+   *
+   * @defaultValue `null`
+   */
   readonly event?: string | null | undefined;
-  /** Filter expression. */
+  /**
+   * Filter expression.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: string | null | undefined;
 }
 
 /** Options bag of {@link LiveQueryService.segmentationNumeric}. */
 export interface LiveSegmentationNumericOptions {
-  /** Time aggregation unit. Default `"day"`. */
+  /**
+   * Time aggregation unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: HourDayUnit | undefined;
-  /** Filter expression. */
+  /**
+   * Filter expression.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: string | null | undefined;
-  /** Counting method. Default `"general"`. */
+  /**
+   * Counting method.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: CountType | undefined;
 }
 
 /** Options bag of the sum/average numeric queries. */
 export interface LiveNumericOptions {
-  /** Time aggregation unit. Default `"day"`. */
+  /**
+   * Time aggregation unit.
+   *
+   * @defaultValue `"day"`
+   */
   readonly unit?: HourDayUnit | undefined;
-  /** Filter expression. */
+  /**
+   * Filter expression.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: string | null | undefined;
 }
 
@@ -213,7 +368,7 @@ function nativeRecord(raw: JsonValue): Readonly<Record<string, unknown>> {
  *
  * @param raw - The native response record.
  * @returns The `data.values` mapping.
- * @throws AttributeError - When the `data` member is not a dict.
+ * @throws {@link AttributeError} - When the `data` member is not a dict.
  */
 function dataValues(
   raw: Readonly<Record<string, unknown>>,
@@ -231,11 +386,17 @@ function dataValues(
  * session workspace and `inject_workspace_id: false` runs project-wide.
  */
 export interface InlineQueryScope {
-  /** Optional data view to run under. */
+  /**
+   * Optional data view to run under.
+   *
+   * @defaultValue `null`
+   */
   readonly workspace_id?: number | null | undefined;
   /**
-   * `true` (default) lets the pinned session workspace apply when
-   * `workspace_id` is `null`; `false` runs project-wide instead.
+   * Let the pinned session workspace apply when `workspace_id` is
+   * `null`; `false` runs the query project-wide instead.
+   *
+   * @defaultValue `true`
    */
   readonly inject_workspace_id?: boolean | undefined;
 }
@@ -303,7 +464,7 @@ function reprLimit(value: unknown): string {
  * @param limit - Requested segment cap, or `null` / `undefined` for
  *   {@link DEFAULT_SEGMENTATION_LIMIT}.
  * @returns The `queryLimits` dict to place in the request body.
- * @throws ValueError - `limit` is not an integer, or is outside 1 to
+ * @throws {@link ValueError} - `limit` is not an integer, or is outside 1 to
  *   {@link MAX_SEGMENTATION_LIMIT}. Raised before any HTTP call, so a bad
  *   limit never costs a request against the project's rate budget.
  * @example
@@ -344,26 +505,33 @@ export function queryLimits(limit: number | bigint | null | undefined): {
  */
 export interface InlineQueryScopeWithLimit extends InlineQueryScope {
   /**
-   * Segments to return, 1 to {@link MAX_SEGMENTATION_LIMIT}. `null` /
-   * `undefined` keeps {@link DEFAULT_SEGMENTATION_LIMIT}.
+   * Segments to return, 1 to {@link MAX_SEGMENTATION_LIMIT}.
+   *
+   * @defaultValue `null`, which keeps {@link DEFAULT_SEGMENTATION_LIMIT}
    */
   readonly limit?: number | bigint | null | undefined;
 }
 
 /**
- * Service for executing live queries against the Mixpanel Query API —
- * TS port of `live_query.LiveQueryService`.
+ * Run live queries against the Mixpanel Query API and return typed
+ * results.
  *
- * Transforms raw API responses into the typed result objects. Nothing
- * is cached: analytics data changes constantly and queries must return
- * fresh data.
- *
+ * @remarks
+ * Nothing is cached: analytics data changes constantly and every call
+ * returns fresh data. Each method forwards to the matching client wire
+ * method and hands the native response to a pure transform.
  * @example
  * ```typescript
  * const live = new LiveQueryService(client);
- * const result = await live.segmentation("Sign Up", "2024-01-01", "2024-01-31");
- * console.log(result.total);
+ * const result = await live.segmentation(
+ *   "Sign Up",
+ *   "2024-01-01",
+ *   "2024-01-31",
+ *   { unit: "week" },
+ * );
+ * result.total; // events in the window
  * ```
+ * @see mixpanel_headless._internal.services.live_query.LiveQueryService
  */
 export class LiveQueryService {
   /**
@@ -405,11 +573,12 @@ export class LiveQueryService {
    * @param event - Event name to segment.
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
-   * @param options - on / unit / where.
+   * @param options - Optional `on`, `unit` and `where`; see
+   *   {@link LiveSegmentationOptions}.
    * @returns The typed result with the calculated total.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid query parameters.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid query parameters.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.segmentation
    */
   async segmentation(
@@ -447,11 +616,11 @@ export class LiveQueryService {
    * @param funnelId - Funnel identifier.
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
-   * @param options - unit / on.
+   * @param options - Optional `unit` and `on`; see {@link LiveFunnelOptions}.
    * @returns The typed result with aggregated steps and rates.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid funnel ID or parameters.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid funnel ID or parameters.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.funnel
    */
   async funnel(
@@ -477,12 +646,12 @@ export class LiveQueryService {
    * @param returnEvent - Event that defines return.
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
-   * @param options - born_where / return_where / interval /
-   *   interval_count / unit.
+   * @param options - Optional `born_where`, `return_where`, `interval`,
+   *   `interval_count` and `unit`; see {@link LiveRetentionOptions}.
    * @returns The typed result with cohorts sorted by date.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid parameters.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid parameters.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.retention
    */
   async retention(
@@ -522,11 +691,12 @@ export class LiveQueryService {
    * @param events - Event names to query.
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
-   * @param options - type / unit.
+   * @param options - Optional `type` and `unit`; see
+   *   {@link LiveEventCountsOptions}.
    * @returns The typed result with per-event time series.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid parameters.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid parameters.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.event_counts
    */
   async eventCounts(
@@ -558,11 +728,12 @@ export class LiveQueryService {
    * @param propertyName - Property to segment by.
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
-   * @param options - type / unit / values / limit.
+   * @param options - Optional `type`, `unit`, `values` and `limit`; see
+   *   {@link LivePropertyCountsOptions}.
    * @returns The typed result with per-value time series.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid parameters.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid parameters.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.property_counts
    */
   async propertyCounts(
@@ -603,14 +774,14 @@ export class LiveQueryService {
    * Query the activity feed for specific users.
    *
    * @param distinctIds - User identifiers to query.
-   * @param options - Dates / limit / include / exclude / search /
-   *   pagination.
+   * @param options - Date window, `limit`, include / exclude lists, search
+   *   and pagination cursor; see {@link LiveActivityFeedOptions}.
    * @returns The typed result with user events and the pagination
    *   cursor.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid parameters (e.g. include AND exclude).
-   * @throws RateLimitError - Rate limit exceeded.
-   * @throws ValueError - An event without a `time` property.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid parameters (e.g. include AND exclude).
+   * @throws {@link RateLimitError} - Rate limit exceeded.
+   * @throws {@link ValueError} - An event without a `time` property.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.activity_feed
    */
   async activityFeed(
@@ -643,11 +814,12 @@ export class LiveQueryService {
    * Query a saved report by bookmark type.
    *
    * @param bookmarkId - Saved report identifier.
-   * @param options - bookmark_type / from_date / to_date.
+   * @param options - Optional `bookmark_type`, `from_date` and `to_date`;
+   *   see {@link LiveQuerySavedReportOptions}.
    * @returns The typed result with the detected report type.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid bookmark_id or report not found.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid bookmark_id or report not found.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.query_saved_report
    */
   async querySavedReport(
@@ -671,10 +843,10 @@ export class LiveQueryService {
    * @param options - `limit` (segments to return, 1 to 50000; default
    *   3000) plus the data-view scope.
    * @returns The typed result with series data and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid bookmark params or an error-as-200.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid bookmark params or an error-as-200.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.query
    */
   async query(
@@ -699,10 +871,10 @@ export class LiveQueryService {
    * @param options - `limit` (segments to return, 1 to 50000; default
    *   3000) plus the data-view scope.
    * @returns The typed result with step data and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid bookmark params or an error-as-200.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid bookmark params or an error-as-200.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.query_funnel
    */
   async queryFunnel(
@@ -727,10 +899,10 @@ export class LiveQueryService {
    * @param options - `limit` (segments to return, 1 to 50000; default
    *   3000) plus the data-view scope.
    * @returns The typed result with cohort data and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid bookmark params or an error-as-200.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid bookmark params or an error-as-200.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.query_retention
    */
   async queryRetention(
@@ -759,9 +931,9 @@ export class LiveQueryService {
    * @param mode - Flow visualization mode. Default `"sankey"`.
    * @param options - The data-view scope.
    * @returns The typed result with steps, flows and breakdowns.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid bookmark params or an error-as-200.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid bookmark params or an error-as-200.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.query_flow
    */
   async queryFlow(
@@ -795,9 +967,9 @@ export class LiveQueryService {
    *
    * @param bookmarkId - Saved flows report identifier.
    * @returns The typed result with steps, breakdowns and the rate.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid bookmark_id or report not found.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid bookmark_id or report not found.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.query_saved_flows
    */
   async querySavedFlows(bookmarkId: number): Promise<FlowsResult> {
@@ -810,11 +982,12 @@ export class LiveQueryService {
    *
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
-   * @param options - unit / addiction_unit / event / where.
+   * @param options - Optional `unit`, `addiction_unit`, `event` and
+   *   `where`; see {@link LiveFrequencyOptions}.
    * @returns The typed result with frequency arrays.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid parameters.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid parameters.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.frequency
    */
   async frequency(
@@ -849,11 +1022,12 @@ export class LiveQueryService {
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
    * @param on - Numeric property expression to bucket.
-   * @param options - unit / where / type.
+   * @param options - Optional `unit`, `where` and `type`; see
+   *   {@link LiveSegmentationNumericOptions}.
    * @returns The typed result with the bucketed time series.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid parameters or non-numeric property.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid parameters or non-numeric property.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.segmentation_numeric
    */
   async segmentationNumeric(
@@ -892,11 +1066,12 @@ export class LiveQueryService {
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
    * @param on - Numeric property expression to sum.
-   * @param options - unit / where.
+   * @param options - Optional `unit` and `where`; see
+   *   {@link LiveNumericOptions}.
    * @returns The typed result with the sum values.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid parameters or non-numeric property.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid parameters or non-numeric property.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.segmentation_sum
    */
   async segmentationSum(
@@ -933,11 +1108,12 @@ export class LiveQueryService {
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
    * @param on - Numeric property expression to average.
-   * @param options - unit / where.
+   * @param options - Optional `unit` and `where`; see
+   *   {@link LiveNumericOptions}.
    * @returns The typed result with the average values.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Invalid parameters or non-numeric property.
-   * @throws RateLimitError - Rate limit exceeded.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Invalid parameters or non-numeric property.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
    * @see mixpanel_headless._internal.services.live_query.LiveQueryService.segmentation_average
    */
   async segmentationAverage(

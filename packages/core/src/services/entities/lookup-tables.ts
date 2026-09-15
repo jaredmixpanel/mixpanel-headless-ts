@@ -60,25 +60,25 @@ export interface DownloadLookupTableOptions {
 /** Lookup-table methods mixed into `MixpanelClient`. */
 export interface LookupTableMethods {
   /**
-   * List lookup tables (`list_lookup_tables` — GET
-   * `data-definitions/lookup-tables/`).
+   * List lookup tables. Sends GET `data-definitions/lookup-tables/`.
    *
    * @param options - Optional `data_group_id` filter + signal.
    * @returns The table list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_lookup_tables
    */
   listLookupTables: (options?: ListLookupTablesOptions) => Promise<JsonValue[]>;
 
   /**
-   * Get a signed upload URL (`get_lookup_upload_url` —
-   * GET `.../upload-url/` with the `content-type` param; validates the
-   * `url`/`path`/`key` fields).
+   * Get a signed upload URL. Sends GET `.../upload-url/` with the `content-type`
+   * param; validates the `url`/`path`/`key` fields.
    *
    * @param contentType - Upload MIME type (default `"text/csv"`).
    * @param signal - Optional cancellation signal.
    * @returns Dict with `url`, `path`, and `key`.
-   * @throws MixpanelHeadlessError - Non-dict response, or a required
-   *   field missing (`MISSING_FIELD`).
+   * @throws {@link MixpanelHeadlessError} - Non-dict response, or a required field
+   *   missing (`MISSING_FIELD`).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_lookup_upload_url
    */
   getLookupUploadUrl: (
     contentType?: string,
@@ -86,17 +86,16 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * PUT CSV bytes to an external signed URL (`upload_to_signed_url` — no
-   * Mixpanel auth, no default headers, fresh transport; transport failures and
-   * non-2xx map to `UPLOAD_ERROR`).
+   * PUT CSV bytes to an external signed URL. No Mixpanel auth, no default headers,
+   * fresh transport; transport failures and non-2xx map to `UPLOAD_ERROR`.
    *
    * @param url - The signed upload URL.
    * @param csvBytes - Raw CSV content.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
-   * @throws MixpanelHeadlessError - `UPLOAD_ERROR` on transport
-   *   failure (`{url}` details) or status ≥ 300
-   *   (`{status_code, url}` details).
+   * @throws {@link MixpanelHeadlessError} - `UPLOAD_ERROR` on transport failure
+   *   (`{url}` details) or status ≥ 300 (`{status_code, url}` details).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.upload_to_signed_url
    */
   uploadToSignedUrl: (
     url: string,
@@ -105,17 +104,16 @@ export interface LookupTableMethods {
   ) => Promise<void>;
 
   /**
-   * Register a lookup table (`register_lookup_table` —
-   * direct POST with a form body and the manual `handleResponse`
-   * error route; no retry loop).
+   * Register a lookup table. Sends a direct POST with a form body through
+   * the manual `handleResponse` error route; no retry loop.
    *
    * @param formData - Form fields (name, path, key, ...).
    * @param signal - Optional cancellation signal.
    * @returns The registered table dict (after the manual
    *   `results`-unwrap).
-   * @throws MixpanelHeadlessError - Non-JSON 200 body
-   *   (`INVALID_RESPONSE`) or non-dict result; the `handleResponse`
-   *   family on non-2xx.
+   * @throws {@link MixpanelHeadlessError} - Non-JSON 200 body (`INVALID_RESPONSE`)
+   *   or non-dict result; the `handleResponse` family on non-2xx.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.register_lookup_table
    */
   registerLookupTable: (
     formData: Record<string, string>,
@@ -123,13 +121,13 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Mark an upload ready (`mark_lookup_table_ready` —
-   * delegates to {@link registerLookupTable} verbatim).
+   * Mark an upload ready. Delegates to {@link registerLookupTable} verbatim.
    *
    * @param formData - Form fields including the ready flag.
    * @param signal - Optional cancellation signal.
    * @returns The table status dict.
-   * @throws MixpanelHeadlessError - As {@link registerLookupTable}.
+   * @throws {@link MixpanelHeadlessError} - As {@link registerLookupTable}.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.mark_lookup_table_ready
    */
   markLookupTableReady: (
     formData: Record<string, string>,
@@ -137,13 +135,13 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get upload status (`get_lookup_upload_status` — GET
-   * `.../upload-status/` with the `upload-id` param).
+   * Get upload status. Sends GET `.../upload-status/` with the `upload-id` param.
    *
    * @param uploadId - Upload ID.
    * @param signal - Optional cancellation signal.
    * @returns The status dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_lookup_upload_status
    */
   getLookupUploadStatus: (
     uploadId: string,
@@ -151,15 +149,15 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update table metadata (`update_lookup_table` —
-   * PATCH with `{**body, "data-group-id": id}`).
+   * Update table metadata. Sends PATCH with `{**body, "data-group-id": id}`.
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
    *   2^53 is emitted into the JSON body as its exact digits).
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated table dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_lookup_table
    */
   updateLookupTable: (
     dataGroupId: number | bigint,
@@ -168,13 +166,13 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete lookup tables (`delete_lookup_tables` —
-   * DELETE with `{"data-group-ids": [...]}`).
+   * Delete lookup tables. Sends DELETE with `{"data-group-ids": [...]}`.
    *
    * @param dataGroupIds - Data group IDs to delete (signed int64s; a
    *   `bigint` beyond 2^53 is emitted as its exact digits).
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_lookup_tables
    */
   deleteLookupTables: (
     dataGroupIds: ReadonlyArray<number | bigint>,
@@ -182,15 +180,17 @@ export interface LookupTableMethods {
   ) => Promise<void>;
 
   /**
-   * Download table data as CSV bytes (`download_lookup_table` — direct GET,
-   * `handleResponse` on ≥ 400, raw bytes on success).
+   * Download table data as CSV bytes. Sends a direct GET; `handleResponse` on
+   * ≥ 400, raw bytes on success.
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
    *   2^53 is spelled exactly into the `data-group-id` query param).
    * @param options - Optional `file_name`/`limit` + signal.
    * @returns Raw CSV bytes.
-   * @throws AuthenticationError | QueryError | ServerError - Per the
-   *   `handleResponse` mapping on non-2xx.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.download_lookup_table
    */
   downloadLookupTable: (
     dataGroupId: number | bigint,
@@ -198,16 +198,16 @@ export interface LookupTableMethods {
   ) => Promise<Uint8Array>;
 
   /**
-   * Get a signed download URL (`get_lookup_download_url` — GET
-   * `.../download-url/`; extracts `url` or `download_url` from a dict result,
-   * passes a string result through).
+   * Get a signed download URL. Sends GET `.../download-url/`; extracts `url` or
+   * `download_url` from a dict result, passes a string result through.
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
    *   2^53 is spelled exactly into the `data-group-id` query param).
    * @param signal - Optional cancellation signal.
    * @returns The signed URL string.
-   * @throws MixpanelHeadlessError - No URL in a dict response
+   * @throws {@link MixpanelHeadlessError} - No URL in a dict response
    *   (`MISSING_URL`), or a non-dict/non-string response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_lookup_download_url
    */
   getLookupDownloadUrl: (
     dataGroupId: number | bigint,
@@ -522,6 +522,12 @@ async function getLookupDownloadUrl(
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const tables = createLookupTableMethods(core);
+ * const csv = await tables.downloadLookupTable(9007199254740993n, { limit: 100 });
+ * // Uint8Array of CSV bytes
+ * ```
  */
 export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
   return {

@@ -22,7 +22,11 @@ import {
 
 /** Options bag of {@link ExperimentMethods.listExperiments}. */
 export interface ListExperimentsOptions {
-  /** When true, include archived experiments (`include_archived`). */
+  /**
+   * Include archived experiments (`include_archived` on the wire).
+   *
+   * @defaultValue `false`
+   */
   readonly include_archived?: boolean | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -31,25 +35,28 @@ export interface ListExperimentsOptions {
 /** Experiment methods mixed into `MixpanelClient`. */
 export interface ExperimentMethods {
   /**
-   * List experiments (`list_experiments` —
-   * GET `experiments/`).
+   * List experiments. Sends GET `experiments/`.
    *
    * @param options - include_archived + signal.
    * @returns The experiment list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_experiments
    */
   listExperiments: (options?: ListExperimentsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create an experiment (`create_experiment` — POST
-   * `experiments/`).
+   * Create an experiment. Sends POST `experiments/`.
    *
    * @param body - Experiment creation payload (`name` required).
    * @param signal - Optional cancellation signal.
    * @returns The created experiment dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_experiment
    */
   createExperiment: (
     body: Record<string, unknown>,
@@ -57,13 +64,13 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get an experiment by ID (`get_experiment` — no
-   * trailing slash).
+   * Get an experiment by ID. Sends GET `experiments/{id}` (no trailing slash).
    *
    * @param experimentId - Experiment UUID.
    * @param signal - Optional cancellation signal.
    * @returns The experiment dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_experiment
    */
   getExperiment: (
     experimentId: string,
@@ -71,14 +78,14 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update an experiment (`update_experiment` — PATCH,
-   * no trailing slash).
+   * Update an experiment. Sends PATCH `experiments/{id}` (no trailing slash).
    *
    * @param experimentId - Experiment UUID.
    * @param body - Partial update payload.
    * @param signal - Optional cancellation signal.
    * @returns The updated experiment dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_experiment
    */
   updateExperiment: (
     experimentId: string,
@@ -87,11 +94,12 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete an experiment (`delete_experiment`).
+   * Delete an experiment.
    *
    * @param experimentId - Experiment UUID.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_experiment
    */
   deleteExperiment: (
     experimentId: string,
@@ -99,13 +107,13 @@ export interface ExperimentMethods {
   ) => Promise<void>;
 
   /**
-   * Launch an experiment (`launch_experiment` — PUT
-   * `experiments/{id}/launch`, no body).
+   * Launch an experiment. Sends PUT `experiments/{id}/launch`, no body.
    *
    * @param experimentId - Experiment UUID.
    * @param signal - Optional cancellation signal.
    * @returns The launched experiment dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.launch_experiment
    */
   launchExperiment: (
     experimentId: string,
@@ -113,15 +121,15 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Conclude an experiment (`conclude_experiment` — PUT
-   * `experiments/{id}/force_conclude`; always sends a JSON body,
-   * `body or {}`).
+   * Conclude an experiment. Sends PUT `experiments/{id}/force_conclude`; always
+   * sends a JSON body, `body or {}`.
    *
    * @param experimentId - Experiment UUID.
    * @param body - Optional conclude parameters (defaults to `{}`).
    * @param signal - Optional cancellation signal.
    * @returns The concluded experiment dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.conclude_experiment
    */
   concludeExperiment: (
     experimentId: string,
@@ -130,14 +138,14 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Record an experiment decision (`decide_experiment` — PATCH
-   * `experiments/{id}/decide`).
+   * Record an experiment decision. Sends PATCH `experiments/{id}/decide`.
    *
    * @param experimentId - Experiment UUID.
    * @param body - Decision payload (`success` required).
    * @param signal - Optional cancellation signal.
    * @returns The decided experiment dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.decide_experiment
    */
   decideExperiment: (
     experimentId: string,
@@ -146,12 +154,12 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Archive an experiment (`archive_experiment` — POST
-   * `experiments/{id}/archive`).
+   * Archive an experiment. Sends POST `experiments/{id}/archive`.
    *
    * @param experimentId - Experiment UUID.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.archive_experiment
    */
   archiveExperiment: (
     experimentId: string,
@@ -159,13 +167,13 @@ export interface ExperimentMethods {
   ) => Promise<void>;
 
   /**
-   * Restore an archived experiment (`restore_experiment` — DELETE
-   * `experiments/{id}/archive`).
+   * Restore an archived experiment. Sends DELETE `experiments/{id}/archive`.
    *
    * @param experimentId - Experiment UUID.
    * @param signal - Optional cancellation signal.
    * @returns The restored experiment dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.restore_experiment
    */
   restoreExperiment: (
     experimentId: string,
@@ -173,15 +181,15 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Duplicate an experiment (`duplicate_experiment` —
-   * POST `experiments/{id}/duplicate`; body sent only when truthy,
-   * `json_body=body if body else None`).
+   * Duplicate an experiment. Sends POST `experiments/{id}/duplicate`; body sent
+   * only when truthy, `json_body=body if body else None`.
    *
    * @param experimentId - Experiment UUID.
    * @param body - Optional duplication parameters.
    * @param signal - Optional cancellation signal.
    * @returns The duplicated experiment dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.duplicate_experiment
    */
   duplicateExperiment: (
     experimentId: string,
@@ -190,12 +198,12 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * List experiments in ERF format (`list_erf_experiments` — GET
-   * `experiments/erf/`).
+   * List experiments in ERF format. Sends GET `experiments/erf/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The ERF experiment list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_erf_experiments
    */
   listErfExperiments: (signal?: AbortSignal) => Promise<JsonValue[]>;
 }
@@ -205,10 +213,22 @@ export interface ExperimentMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const experiments = createExperimentMethods(core);
+ * await experiments.concludeExperiment("7a1c...", { winner: "variant_b" });
+ * // { id: "7a1c...", status: "concluded", ... }
+ * ```
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createExperimentMethods(core: ClientCore): ExperimentMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

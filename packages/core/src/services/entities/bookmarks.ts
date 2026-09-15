@@ -47,25 +47,30 @@ export interface GetBookmarkHistoryOptions {
 /** Bookmark methods mixed into `MixpanelClient`. */
 export interface BookmarkMethods {
   /**
-   * List bookmarks via the App API (`list_bookmarks_v2`). Unwraps the v2
+   * List bookmarks via the App API. Unwraps the v2
    * `{"results": {"results": [...]}}` envelope.
    *
    * @param options - Type/ids filters + signal.
    * @returns The bookmark list verbatim.
-   * @throws MixpanelHeadlessError - Neither a list nor a v2 envelope.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Neither a list nor a v2 envelope.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_bookmarks_v2
    */
   listBookmarksV2: (options?: ListBookmarksV2Options) => Promise<JsonValue[]>;
 
   /**
-   * Create a bookmark (`create_bookmark` — the body
-   * gains `"v": 2`).
+   * Create a bookmark. Sends POST `bookmarks` with `"v": 2` merged into the
+   * body.
    *
    * @param body - Creation payload.
    * @param signal - Optional cancellation signal.
    * @returns The created bookmark dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_bookmark
    */
   createBookmark: (
     body: Record<string, unknown>,
@@ -73,13 +78,13 @@ export interface BookmarkMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a bookmark by ID (`get_bookmark` — sends
-   * `v=2`).
+   * Get a bookmark by ID. Sends GET `bookmarks/{id}` with `v=2`.
    *
    * @param bookmarkId - The bookmark identifier.
    * @param signal - Optional cancellation signal.
    * @returns The bookmark dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_bookmark
    */
   getBookmark: (
     bookmarkId: number,
@@ -87,14 +92,14 @@ export interface BookmarkMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a bookmark (`update_bookmark` — PATCH; the
-   * body gains `"v": 2`).
+   * Update a bookmark. Sends PATCH; the body gains `"v": 2`.
    *
    * @param bookmarkId - The bookmark identifier.
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated bookmark dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_bookmark
    */
   updateBookmark: (
     bookmarkId: number,
@@ -103,21 +108,23 @@ export interface BookmarkMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a bookmark (`delete_bookmark`).
+   * Delete a bookmark.
    *
    * @param bookmarkId - The bookmark identifier.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_bookmark
    */
   deleteBookmark: (bookmarkId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete bookmarks (`bulk_delete_bookmarks` —
-   * POST `bookmarks/bulk-delete` with `{bookmark_ids}`).
+   * Bulk-delete bookmarks. Sends POST `bookmarks/bulk-delete` with
+   * `{bookmark_ids}`.
    *
    * @param ids - Bookmark IDs to delete.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_delete_bookmarks
    */
   bulkDeleteBookmarks: (
     ids: readonly number[],
@@ -125,12 +132,12 @@ export interface BookmarkMethods {
   ) => Promise<void>;
 
   /**
-   * Bulk-update bookmarks (`bulk_update_bookmarks` —
-   * POST `bookmarks/bulk-update` with `{bookmarks}`).
+   * Bulk-update bookmarks. Sends POST `bookmarks/bulk-update` with `{bookmarks}`.
    *
    * @param entries - Update dicts, each with `id` + fields.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_update_bookmarks
    */
   bulkUpdateBookmarks: (
     entries: ReadonlyArray<Record<string, unknown>>,
@@ -138,14 +145,14 @@ export interface BookmarkMethods {
   ) => Promise<void>;
 
   /**
-   * Dashboard IDs linked to a bookmark
-   * (`bookmark_linked_dashboard_ids` — GET
-   * `bookmarks/{id}/linked-dashboard-ids`).
+   * List the dashboard IDs linked to a bookmark. Sends GET
+   * `bookmarks/{id}/linked-dashboard-ids`.
    *
    * @param bookmarkId - The bookmark identifier.
    * @param signal - Optional cancellation signal.
    * @returns The ID list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bookmark_linked_dashboard_ids
    */
   bookmarkLinkedDashboardIds: (
     bookmarkId: number,
@@ -153,14 +160,15 @@ export interface BookmarkMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Change history for a bookmark (`get_bookmark_history` — `_raw=True`, then
-   * the source's envelope re-shape: always a dict with `results` + `pagination`
-   * keys).
+   * Get the change history of a bookmark. Sends GET `bookmarks/{id}/history`
+   * as a raw-envelope request and re-shapes the envelope to a dict with
+   * `results` and `pagination` keys.
    *
    * @param bookmarkId - The bookmark identifier.
    * @param options - Cursor/page-size + signal.
    * @returns `{results, pagination}` per the source's shaping.
-   * @throws MixpanelHeadlessError - Non-dict, non-list raw response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict, non-list raw response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_bookmark_history
    */
   getBookmarkHistory: (
     bookmarkId: number,
@@ -173,10 +181,22 @@ export interface BookmarkMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const bookmarks = createBookmarkMethods(core);
+ * const insights = await bookmarks.listBookmarksV2({ bookmark_type: "insights" });
+ * // [{ id: 1001, name: "Weekly actives", type: "insights", ... }, ...]
+ * ```
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createBookmarkMethods(core: ClientCore): BookmarkMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

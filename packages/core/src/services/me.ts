@@ -24,14 +24,13 @@ import { pythonInt } from "../compat/python-int.js";
 import { AuthenticationError, ConfigError, QueryError } from "../errors.js";
 
 /**
- * The cache seam behind {@link MeService} — Python's `MeCache` reduced to
- * the three operations the service calls (`get`, `put`, `invalidate`),
- * plus the account name the 401 / 403 messages embed (read there as
- * `cache._account_name`).
+ * Cache seam behind {@link MeService}: Python's `MeCache` reduced to the
+ * three operations the service calls (`get`, `put`, `invalidate`) plus
+ * the account name the 401 / 403 messages embed.
  *
+ * @remarks
  * Every method may return a promise so the on-disk store can do
  * asynchronous I/O without changing this contract.
- *
  * @see mixpanel_headless._internal.me.MeCache
  */
 export interface MeCacheStore {
@@ -69,8 +68,8 @@ export interface MeClient {
    * Fetch the raw `/me` payload.
    *
    * @returns The unwrapped `results` mapping.
-   * @throws AuthenticationError - 401.
-   * @throws QueryError - Any other non-2xx.
+   * @throws {@link AuthenticationError} - A 401 response.
+   * @throws {@link QueryError} - Any other non-2xx response.
    */
   me: () => Promise<Record<string, JsonValue>>;
 }
@@ -82,19 +81,29 @@ export interface MeServiceOptions {
    * `"service_account"` gets the message naming the missing
    * `user_details` scope; anything else (including `null`) gets the
    * generic "lacks /me permission" line.
+   *
+   * @defaultValue `null`
    */
   readonly accountType?: AccountType | null | undefined;
 }
 
 /** Options bag of {@link MeService.fetch} (Python kw-only). */
 export interface MeFetchOptions {
-  /** Bypass both caches and call the API. Default `false`. */
+  /**
+   * Bypass both caches and call the API.
+   *
+   * @defaultValue `false`
+   */
   readonly force_refresh?: boolean | undefined;
 }
 
 /** Options bag of {@link MeService.listWorkspaces}. */
 export interface MeListWorkspacesOptions {
-  /** Only return workspaces of this project; absent → all. */
+  /**
+   * Only return workspaces of this project; absent → all.
+   *
+   * @defaultValue `null`
+   */
   readonly project_id?: string | null | undefined;
 }
 
@@ -125,14 +134,19 @@ export function inMemoryMeCache(accountName: string): MeCacheStore {
 }
 
 /**
- * Orchestration service for `/me` calls with caching.
+ * Serve `/me` lookups through a two-level cache: the in-memory arm
+ * first, then the injected {@link MeCacheStore}, then the network.
  *
+ * @remarks
+ * A fetched response is written to both cache levels; {@link peek} and
+ * {@link resolveWorkspace} read the caches only and never call the API.
  * @example
  * ```typescript
  * const svc = new MeService(client, inMemoryMeCache("personal"), "us");
  * const me = await svc.fetch();
  * const projects = await svc.listProjects();
  * ```
+ * @see mixpanel_headless._internal.me.MeService
  */
 export class MeService {
   /** The client slice used for the uncached call. */
@@ -171,14 +185,19 @@ export class MeService {
     this.#accountType = options.accountType ?? null;
   }
 
-  /** The region this service was constructed for. */
+  /**
+   * Return the data-residency region this service was constructed for.
+   *
+   * @returns The region code (`us` / `eu` / `in`).
+   */
   get region(): string {
     return this.#region;
   }
 
   /**
-   * The bound cache's account name — the Python tests'
-   * `svc._cache._account_name` read.
+   * Return the account name the bound cache store is scoped to.
+   *
+   * @returns The store's `accountName`.
    */
   get cacheAccountName(): string {
     return this.#cache.accountName;
@@ -211,9 +230,9 @@ export class MeService {
    *
    * @param options - `force_refresh` bypasses both caches.
    * @returns The response (cached or freshly fetched).
-   * @throws ConfigError - 401 (credentials invalid) or 403 (no `/me`
-   *   permission); the 403 wording depends on the account type.
-   * @throws QueryError - Any other API error, unchanged.
+   * @throws {@link ConfigError} - A 401 (credentials invalid) or 403 (no
+   *   `/me` permission); the 403 wording depends on the account type.
+   * @throws {@link QueryError} - Any other API error, unchanged.
    * @see mixpanel_headless._internal.me.MeService.fetch
    */
   async fetch(options: MeFetchOptions = {}): Promise<MeResponse> {
@@ -281,7 +300,8 @@ export class MeService {
    * List accessible projects from the cached `/me` response.
    *
    * @returns `[project_id, MeProjectInfo]` pairs sorted by name.
-   * @throws ConfigError - `fetch()` failures.
+   * @throws {@link ConfigError} - Propagated from `fetch()` (the 401 / 403
+   *   mapping).
    * @see mixpanel_headless._internal.me.MeService.list_projects
    */
   async listProjects(): Promise<Array<[string, MeProjectInfo]>> {
@@ -298,7 +318,8 @@ export class MeService {
    *
    * @param projectId - The project ID to look up.
    * @returns The info, or `null` when absent.
-   * @throws ConfigError - `fetch()` failures.
+   * @throws {@link ConfigError} - Propagated from `fetch()` (the 401 / 403
+   *   mapping).
    * @see mixpanel_headless._internal.me.MeService.find_project
    */
   async findProject(projectId: string): Promise<MeProjectInfo | null> {
@@ -311,8 +332,8 @@ export class MeService {
    *
    * @param options - Optional `project_id` filter.
    * @returns Workspaces sorted by name.
-   * @throws ConfigError - `fetch()` failures, or a non-numeric
-   *   `project_id`.
+   * @throws {@link ConfigError} - Propagated from `fetch()` (the 401 / 403
+   *   mapping), or a non-numeric `project_id`.
    * @see mixpanel_headless._internal.me.MeService.list_workspaces
    */
   async listWorkspaces(
@@ -345,7 +366,8 @@ export class MeService {
    *
    * @param projectId - The project ID.
    * @returns The default workspace, or `null` when none is flagged.
-   * @throws ConfigError - `fetch()` failures.
+   * @throws {@link ConfigError} - Propagated from `fetch()` (the 401 / 403
+   *   mapping).
    * @see mixpanel_headless._internal.me.MeService.find_default_workspace
    */
   async findDefaultWorkspace(

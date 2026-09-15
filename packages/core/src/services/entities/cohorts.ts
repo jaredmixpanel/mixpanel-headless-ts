@@ -32,23 +32,28 @@ export interface ListCohortsAppOptions {
 /** Cohort methods mixed into `MixpanelClient`. */
 export interface CohortMethods {
   /**
-   * List cohorts via the App API (`list_cohorts_app`).
+   * List cohorts via the App API.
    *
    * @param options - data_group_id/ids filters + signal.
    * @returns The cohort list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_cohorts_app
    */
   listCohortsApp: (options?: ListCohortsAppOptions) => Promise<JsonValue[]>;
 
   /**
-   * Get a cohort by ID (`get_cohort`).
+   * Get a cohort by ID.
    *
    * @param cohortId - The cohort identifier.
    * @param signal - Optional cancellation signal.
    * @returns The cohort dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_cohort
    */
   getCohort: (
     cohortId: number,
@@ -56,12 +61,13 @@ export interface CohortMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Create a cohort (`create_cohort`).
+   * Create a cohort.
    *
    * @param body - Cohort definition payload.
    * @param signal - Optional cancellation signal.
    * @returns The created cohort dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_cohort
    */
   createCohort: (
     body: Record<string, unknown>,
@@ -75,7 +81,7 @@ export interface CohortMethods {
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated cohort dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
    */
   updateCohort: (
     cohortId: number,
@@ -84,21 +90,22 @@ export interface CohortMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a cohort (`delete_cohort`).
+   * Delete a cohort.
    *
    * @param cohortId - The cohort identifier.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_cohort
    */
   deleteCohort: (cohortId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete cohorts (`bulk_delete_cohorts` — POST
-   * `cohorts/bulk-delete` with `{cohort_ids}`).
+   * Bulk-delete cohorts. Sends POST `cohorts/bulk-delete` with `{cohort_ids}`.
    *
    * @param ids - Cohort IDs to delete.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_delete_cohorts
    */
   bulkDeleteCohorts: (
     ids: readonly number[],
@@ -106,12 +113,12 @@ export interface CohortMethods {
   ) => Promise<void>;
 
   /**
-   * Bulk-update cohorts (`bulk_update_cohorts` — POST
-   * `cohorts/bulk-update` with `{cohorts}`).
+   * Bulk-update cohorts. Sends POST `cohorts/bulk-update` with `{cohorts}`.
    *
    * @param entries - Update dicts, each with `id` + fields.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_update_cohorts
    */
   bulkUpdateCohorts: (
     entries: ReadonlyArray<Record<string, unknown>>,
@@ -124,9 +131,21 @@ export interface CohortMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const cohorts = createCohortMethods(core);
+ * const two = await cohorts.listCohortsApp({ ids: [11, 12] });
+ * // [{ id: 11, name: "Power users", ... }, { id: 12, ... }]
+ * ```
  */
 export function createCohortMethods(core: ClientCore): CohortMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

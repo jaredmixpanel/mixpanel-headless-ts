@@ -89,30 +89,37 @@ export interface ExportProfilesOptions {
   readonly behaviors?: readonly unknown[] | string | null | undefined;
   /** Unix timestamp for point-in-time query (must be in the past). */
   readonly as_of_timestamp?: number | null | undefined;
-  /** Include all users and mark cohort membership. */
+  /**
+   * Include all users and mark cohort membership; sent only alongside
+   * `cohort_id`.
+   *
+   * @defaultValue `false`
+   */
   readonly include_all_users?: boolean | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The streaming method surface (mixed into `MixpanelClient`). */
+/** Streaming methods mixed into `MixpanelClient`. */
 export interface StreamingMethods {
   /**
-   * Stream events from the Export API (`MixpanelAPIClient.export_events`) — JSONL lines parsed one at a time;
+   * Stream events from the Export API, one parsed JSONL line at a time;
    * malformed lines are skipped, never raised.
    *
-   * @param fromDate - Start date (inclusive).
-   * @param toDate - End date (inclusive).
-   * @param options - events/where/limit/onBatch/signal.
+   * @param fromDate - Start date (inclusive, `YYYY-MM-DD`).
+   * @param toDate - End date (inclusive, `YYYY-MM-DD`).
+   * @param options - Event-name filter, `where` expression, `limit`,
+   *   the `onBatch` progress callback and the cancellation `signal`.
    * @returns Async generator of parsed event values.
-   * @throws AuthenticationError - Invalid credentials (401).
-   * @throws RateLimitError - 429 after max retries (carries
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after max retries (carries
    *   `project_id` and omits `response_body`, as Python's raise does).
-   * @throws QueryError - Invalid parameters (400).
-   * @throws MixpanelHeadlessError - `HTTP_ERROR` after transport /
-   *   non-2xx-status retries are exhausted (the `raise_for_status` arm;
-   *   unlike the buffered paths, a 5xx here retries and then surfaces
-   *   as `HTTP_ERROR`, exactly like Python).
+   * @throws {@link QueryError} - Invalid parameters (400).
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` after transport
+   *   / non-2xx-status retries are exhausted (the `raise_for_status`
+   *   arm; unlike the buffered paths, a 5xx here retries and then
+   *   surfaces as `HTTP_ERROR`, exactly like Python).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.export_events
    */
   exportEvents: (
     fromDate: string,
@@ -121,18 +128,24 @@ export interface StreamingMethods {
   ) => AsyncGenerator<JsonValue, void, undefined>;
 
   /**
-   * Stream profiles from the Engage API (`MixpanelAPIClient.export_profiles`) — session-based pagination, one request
-   * per page.
+   * Stream profiles from the Engage API with session-based pagination,
+   * one request per page.
    *
-   * @param options - Filters, callbacks, and the AC*-guarded knobs.
+   * @param options - Filters (`where`, cohort, behaviors, ids,
+   *   `group_id`, `as_of_timestamp`), `output_properties`, the
+   *   `onBatch` callback and the cancellation `signal`.
    * @returns Async generator of profile values.
-   * @throws ParamValidationError - `AC2_DISTINCT_ID_CONFLICT`,
+   * @throws {@link ParamValidationError} - `AC2_DISTINCT_ID_CONFLICT`,
    *   `AC3_BEHAVIORS_COHORT_CONFLICT`,
-   *   `AC4_INCLUDE_ALL_USERS_REQUIRES_COHORT`, `AC5_BEHAVIORS_NOT_LIST`,
-   *   `AC6_AS_OF_TIMESTAMP_FUTURE` (on first iteration — generator
+   *   `AC4_INCLUDE_ALL_USERS_REQUIRES_COHORT`, `AC5_BEHAVIORS_NOT_LIST`
+   *   or `AC6_AS_OF_TIMESTAMP_FUTURE`, on first iteration (generator
    *   semantics).
-   * @throws AuthenticationError | RateLimitError | ServerError - Per
-   *   the retry core.
+   * @throws {@link TypeError} - Non-dict 200 page body (the Python
+   *   `AttributeError` analog; no recorded vector reaches it).
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link RateLimitError} - 429 after max retries.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.export_profiles
    */
   exportProfiles: (
     options?: ExportProfilesOptions,
@@ -140,11 +153,17 @@ export interface StreamingMethods {
 }
 
 /**
- * The facade streaming `limit` guard (`workspace._validate_limit`).
+ * Reject a streaming `limit` outside 1..100000; absent means no limit.
  *
  * @param limit - Maximum number of events, or absent for no limit.
- * @throws ParamValidationError - `WR2_LIMIT_TOO_SMALL` /
- *   `WR3_LIMIT_TOO_LARGE` outside 1..100000.
+ * @throws {@link ParamValidationError} - `WR2_LIMIT_TOO_SMALL` below 1,
+ *   `WR3_LIMIT_TOO_LARGE` above 100000.
+ * @example
+ * ```typescript
+ * validateLimit(500); // returns
+ * validateLimit(0); // throws ParamValidationError WR2_LIMIT_TOO_SMALL
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._validate_limit
  */
 export function validateLimit(limit: number | null | undefined): void {
   if (limit === null || limit === undefined) {
@@ -185,20 +204,22 @@ function bodyByteSource(
 }
 
 /**
- * {@link bodyByteSource} with transport-error normalization over
- * producer-side failures: a body-read error while consuming the stream
- * is an `httpx.ReadError` ⊂ `httpx.HTTPError` in Python (the
- * `_iter_jsonl_lines` walk sits inside the `except httpx.HTTPError`
- * scope), so it must surface as {@link MixpanelHttpError} for the export
- * retry loop to catch. Caller cancellation exits as a normalized
- * `AbortError` instead.
+ * Yield a fetch body's byte chunks, normalizing producer-side read
+ * failures to {@link MixpanelHttpError}.
  *
- * Consumer-side exits (`return()` from an early-terminated `for await`)
- * run the generator's return path, not this catch.
- *
+ * @remarks
+ * A body-read error while consuming the stream is an `httpx.ReadError`
+ * (a subclass of `httpx.HTTPError`) in Python, where the JSONL walk sits
+ * inside the `except httpx.HTTPError` scope, so it must surface as
+ * {@link MixpanelHttpError} for the export retry loop to catch. Caller
+ * cancellation exits as a normalized `AbortError` instead. Consumer-side
+ * exits (`return()` from an early-terminated `for await`) run the
+ * generator's return path, not this catch.
  * @param body - The platform response body.
  * @param signal - The caller's cancellation signal, if any.
- * @returns The guarded byte source.
+ * @yields The body's byte chunks, in order.
+ * @throws {@link MixpanelHttpError} - A body-read failure that is not a
+ *   cancellation.
  */
 async function* guardedByteSource(
   body: ReadableStream<Uint8Array> | null,
@@ -226,9 +247,9 @@ async function* guardedByteSource(
 }
 
 /**
- * The httpx `raise_for_status` message twin for the export stream's
- * non-2xx statuses (text reaches only `HTTP_ERROR.details.error`; no
- * recorded vector asserts it, so the shape is kept close for humans).
+ * Format the httpx `raise_for_status` message for a non-2xx export
+ * status. The text reaches only `HTTP_ERROR.details.error`; no recorded
+ * vector asserts it, so the shape is kept close for humans.
  *
  * @param status - HTTP status code.
  * @param url - The request URL.
@@ -249,11 +270,12 @@ function httpStatusText(status: number, url: string): string {
 }
 
 /**
- * Python truthiness over a parsed wire value: falsy = `null`, `false`,
- * numeric zero (native or lossless token), `""`, `[]`, `{}`.
+ * Return Python's `bool(value)` for a parsed wire value: falsy means
+ * `null`, `false`, numeric zero (native or lossless token), `""`, `[]`
+ * or `{}`.
  *
  * @param value - The parsed value.
- * @returns The Python `bool(value)`.
+ * @returns The Python truthiness.
  */
 function pyTruthyJson(value: JsonValue): boolean {
   if (value === null || value === false) {
@@ -283,11 +305,12 @@ function pyTruthyJson(value: JsonValue): boolean {
 /**
  * Iterate a parsed engage `results` value the way Python's
  * `for profile in results` does: lists yield elements, dicts yield
- * keys, strings yield code points; anything else raises TypeError.
+ * keys, strings yield code points; anything else raises.
  *
  * @param results - The parsed value (already Python-truthy).
- * @returns The iterable of yielded values.
- * @throws TypeError - Non-iterable value (Python raise emulation).
+ * @returns The values Python's loop would yield.
+ * @throws {@link TypeError} - Non-iterable value (numbers, booleans,
+ *   lossless number tokens).
  */
 function pyIterate(results: JsonValue): readonly JsonValue[] {
   if (Array.isArray(results)) {
@@ -626,6 +649,17 @@ async function* exportProfiles(
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const streaming = createStreamingMethods(core);
+ * const stream = streaming.exportEvents("2026-05-01", "2026-05-02", {
+ *   events: ["Signup"],
+ *   onBatch: (count) => console.log(`${count} events so far`),
+ * });
+ * for await (const event of stream) {
+ *   // one parsed JSONL event per iteration
+ * }
+ * ```
  */
 export function createStreamingMethods(core: ClientCore): StreamingMethods {
   return {
@@ -646,11 +680,16 @@ export interface StreamEventsOptions {
   readonly where?: string | null | undefined;
   /** Maximum number of events (1..100000). */
   readonly limit?: number | null | undefined;
-  /** Return raw Mixpanel format instead of the normalized shape. */
+  /**
+   * Return the raw Mixpanel format instead of the normalized shape.
+   *
+   * @defaultValue `false`
+   */
   readonly raw?: boolean | undefined;
   /**
-   * `$insert_id` generator seam for the normalized shape (defaults to
-   * `crypto.randomUUID` inside `transformEvent`).
+   * `$insert_id` generator seam for the normalized shape.
+   *
+   * @defaultValue `crypto.randomUUID` (inside `transformEvent`)
    */
   readonly uuid?: (() => string) | undefined;
   /** Optional cancellation signal. */
@@ -659,7 +698,11 @@ export interface StreamEventsOptions {
 
 /** Options bag of {@link streamProfiles} (`workspace.stream_profiles`). */
 export interface StreamProfilesOptions extends ExportProfilesOptions {
-  /** Return raw Mixpanel format instead of the normalized shape. */
+  /**
+   * Return the raw Mixpanel format instead of the normalized shape.
+   *
+   * @defaultValue `false`
+   */
   readonly raw?: boolean | undefined;
 }
 
@@ -679,16 +722,31 @@ export interface StreamingClient {
 
 /**
  * Stream events directly from the Mixpanel API — the standalone form of
- * `Workspace.stream_events`, a thin wrapper over `exportEvents` that
- * the facade delegates to.
+ * `Workspace.stream_events`, a thin wrapper over `exportEvents` that the
+ * facade delegates to.
  *
  * @param client - The assembled client (or its streaming slice).
- * @param options - Dates/filters/limit/raw.
- * @returns Async generator of event dicts (normalized unless `raw`).
- * @throws ParamValidationError - `WR2_LIMIT_TOO_SMALL` /
- *   `WR3_LIMIT_TOO_LARGE` (on first iteration).
- * @throws AuthenticationError | RateLimitError | QueryError - Per
- *   {@link StreamingMethods.exportEvents}.
+ * @param options - The date window, event/`where` filters, `limit`,
+ *   `raw` and the `$insert_id` seam.
+ * @yields Event dicts, normalized unless `raw` is `true`.
+ * @throws {@link ParamValidationError} - `WR2_LIMIT_TOO_SMALL` /
+ *   `WR3_LIMIT_TOO_LARGE`, on first iteration.
+ * @throws {@link AuthenticationError} - Invalid credentials.
+ * @throws {@link RateLimitError} - 429 after max retries.
+ * @throws {@link QueryError} - Invalid parameters (400).
+ * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` after retries.
+ * @example
+ * ```typescript
+ * const events: unknown[] = [];
+ * for await (const event of streamEvents(client, {
+ *   from_date: "2026-05-01",
+ *   to_date: "2026-05-02",
+ *   limit: 100,
+ * })) {
+ *   events.push(event);
+ * }
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.stream_events
  */
 export async function* streamEvents(
   client: StreamingClient,
@@ -720,11 +778,22 @@ export async function* streamEvents(
  * `exportProfiles` that the facade delegates to.
  *
  * @param client - The assembled client (or its streaming slice).
- * @param options - Filters plus `raw`.
- * @returns Async generator of profile dicts (normalized unless `raw`).
- * @throws ParamValidationError - The AC* guards (on first iteration).
- * @throws AuthenticationError | RateLimitError - Per
- *   {@link StreamingMethods.exportProfiles}.
+ * @param options - The `exportProfiles` filters plus `raw`.
+ * @yields Profile dicts, normalized unless `raw` is `true`.
+ * @throws {@link ParamValidationError} - The `AC*` guards, on first
+ *   iteration.
+ * @throws {@link AuthenticationError} - Invalid credentials.
+ * @throws {@link RateLimitError} - 429 after max retries.
+ * @example
+ * ```typescript
+ * for await (const profile of streamProfiles(client, {
+ *   where: 'properties["$country_code"] == "DE"',
+ *   output_properties: ["$email"],
+ * })) {
+ *   // one normalized profile per iteration
+ * }
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.stream_profiles
  */
 export async function* streamProfiles(
   client: StreamingClient,

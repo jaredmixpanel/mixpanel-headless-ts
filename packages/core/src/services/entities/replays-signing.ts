@@ -19,19 +19,19 @@ export type ReplayEnv = "prod" | "dev";
 /** Replay-signing methods mixed into `MixpanelClient`. */
 export interface ReplaysSigningMethods {
   /**
-   * Bulk-sign replay IDs for CDN access (`sign_replays` — POST
+   * Bulk-sign replay IDs for CDN access. Sends POST
    * `/projects/{pid}/replays/sign/bulk` with
-   * `{replays: [{replay_id, replay_env}, ...]}`; returns the server's
-   * `results` array verbatim — `ReplaysService` shapes it into
-   * `SignedReplay`).
+   * `{replays: [{replay_id, replay_env}, ...]}`; returns the server's `results`
+   * array verbatim — `ReplaysService` shapes it into `SignedReplay`.
    *
    * @param replayIds - Replay IDs to sign.
    * @param env - `"prod"` (default) or `"dev"`, applied uniformly.
    * @param signal - Optional cancellation signal.
    * @returns `{replay_id, url, query_string}` dicts in input order.
-   * @throws SessionReplayAccessError - The sensitive-data 403 (mapped
-   *   by `handleResponse`).
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link SessionReplayAccessError} - The sensitive-data 403 (mapped by
+   *   `handleResponse`).
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.sign_replays
    */
   signReplays: (
     replayIds: readonly string[],
@@ -45,6 +45,12 @@ export interface ReplaysSigningMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const signing = createReplaysSigningMethods(core);
+ * const signed = await signing.signReplays(["r-1", "r-2"], "prod");
+ * // [{ replay_id: "r-1", url: "https://...", query_string: "..." }, ...]
+ * ```
  */
 export function createReplaysSigningMethods(
   core: ClientCore,

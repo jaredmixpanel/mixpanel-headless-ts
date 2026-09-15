@@ -25,25 +25,25 @@ export interface GetSchemaEnforcementOptions {
 /** Schema-enforcement methods mixed into `MixpanelClient`. */
 export interface SchemaEnforcementMethods {
   /**
-   * Get enforcement configuration (`get_schema_enforcement` — GET
-   * `data-definitions/schema/`).
+   * Get enforcement configuration. Sends GET `data-definitions/schema/`.
    *
    * @param options - Optional `fields` filter + signal.
    * @returns The enforcement config dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schema_enforcement
    */
   getSchemaEnforcement: (
     options?: GetSchemaEnforcementOptions,
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Initialize enforcement (`init_schema_enforcement` —
-   * POST).
+   * Initialize enforcement. Sends a POST.
    *
    * @param body - Init payload.
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.init_schema_enforcement
    */
   initSchemaEnforcement: (
     body: Record<string, unknown>,
@@ -51,12 +51,13 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Partially update enforcement (`update_schema_enforcement` — PATCH).
+   * Partially update enforcement. Sends a PATCH.
    *
    * @param body - Partial update payload.
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_schema_enforcement
    */
   updateSchemaEnforcement: (
     body: Record<string, unknown>,
@@ -64,12 +65,13 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Fully replace enforcement (`replace_schema_enforcement` — PUT).
+   * Fully replace enforcement. Sends a PUT.
    *
    * @param body - Complete replacement payload.
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.replace_schema_enforcement
    */
   replaceSchemaEnforcement: (
     body: Record<string, unknown>,
@@ -77,12 +79,12 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete enforcement configuration (`delete_schema_enforcement` — DELETE, no
-   * arguments, dict return).
+   * Delete enforcement configuration. Sends DELETE, no arguments, dict return.
    *
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_schema_enforcement
    */
   deleteSchemaEnforcement: (
     signal?: AbortSignal,
@@ -94,11 +96,23 @@ export interface SchemaEnforcementMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const enforcement = createSchemaEnforcementMethods(core);
+ * await enforcement.getSchemaEnforcement({ fields: "ruleEvent,state" });
+ * // { ruleEvent: "...", state: "enabled" }
+ * ```
  */
 export function createSchemaEnforcementMethods(
   core: ClientCore,
 ): SchemaEnforcementMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

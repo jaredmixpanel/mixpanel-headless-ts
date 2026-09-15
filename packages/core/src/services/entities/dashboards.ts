@@ -32,7 +32,11 @@ export interface ListDashboardsOptions {
 
 /** Options bag of {@link DashboardMethods.listBlueprintTemplates}. */
 export interface ListBlueprintTemplatesOptions {
-  /** Include report details in each template (Python default False). */
+  /**
+   * Include report details in each template.
+   *
+   * @defaultValue `false`
+   */
   readonly include_reports?: boolean | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -41,23 +45,28 @@ export interface ListBlueprintTemplatesOptions {
 /** Dashboard methods mixed into `MixpanelClient`. */
 export interface DashboardMethods {
   /**
-   * List dashboards (`list_dashboards`).
+   * List dashboards.
    *
    * @param options - Optional `ids` filter + signal.
    * @returns The dashboard list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_dashboards
    */
   listDashboards: (options?: ListDashboardsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create a dashboard (`create_dashboard`).
+   * Create a dashboard.
    *
    * @param body - Creation payload (raw dict, verbatim).
    * @param signal - Optional cancellation signal.
    * @returns The created dashboard dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_dashboard
    */
   createDashboard: (
     body: Record<string, unknown>,
@@ -65,12 +74,13 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a dashboard by ID (`get_dashboard`).
+   * Get a dashboard by ID.
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
    * @returns The dashboard dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_dashboard
    */
   getDashboard: (
     dashboardId: number,
@@ -84,7 +94,7 @@ export interface DashboardMethods {
    * @param body - Partial update payload.
    * @param signal - Optional cancellation signal.
    * @returns The updated dashboard dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
    */
   updateDashboard: (
     dashboardId: number,
@@ -93,21 +103,23 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a dashboard (`delete_dashboard`).
+   * Delete a dashboard.
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
    * @returns Nothing (the Python method discards the envelope).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_dashboard
    */
   deleteDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete dashboards (`bulk_delete_dashboards` —
-   * POST `dashboards/bulk-delete` with `{dashboard_ids}`).
+   * Bulk-delete dashboards. Sends POST `dashboards/bulk-delete` with
+   * `{dashboard_ids}`.
    *
    * @param ids - Dashboard IDs to delete.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_delete_dashboards
    */
   bulkDeleteDashboards: (
     ids: readonly number[],
@@ -115,11 +127,12 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Favorite a dashboard (`favorite_dashboard`).
+   * Favorite a dashboard.
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.favorite_dashboard
    */
   favoriteDashboard: (
     dashboardId: number,
@@ -127,11 +140,12 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Unfavorite a dashboard (`unfavorite_dashboard`).
+   * Unfavorite a dashboard.
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.unfavorite_dashboard
    */
   unfavoriteDashboard: (
     dashboardId: number,
@@ -139,33 +153,35 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Pin a dashboard (`pin_dashboard`).
+   * Pin a dashboard.
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.pin_dashboard
    */
   pinDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Unpin a dashboard (`unpin_dashboard`).
+   * Unpin a dashboard.
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.unpin_dashboard
    */
   unpinDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Remove a report from a dashboard (`remove_report_from_dashboard` — PATCH
-   * with a `delete` content action).
+   * Remove a report from a dashboard. Sends PATCH with a `delete` content action.
    *
    * @param dashboardId - The dashboard identifier.
    * @param bookmarkId - The report/bookmark to remove.
    * @param signal - Optional cancellation signal.
    * @returns The updated dashboard dict (a 204 envelope surfaces as
    *   `{status: "ok"}` — still a dict, exactly like Python).
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.remove_report_from_dashboard
    */
   removeReportFromDashboard: (
     dashboardId: number,
@@ -174,14 +190,14 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Add a report to a dashboard (`add_report_to_dashboard` — PATCH with a
-   * `create` content action).
+   * Add a report to a dashboard. Sends PATCH with a `create` content action.
    *
    * @param dashboardId - The dashboard identifier.
    * @param bookmarkId - The source bookmark to clone onto it.
    * @param signal - Optional cancellation signal.
    * @returns The updated dashboard dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.add_report_to_dashboard
    */
   addReportToDashboard: (
     dashboardId: number,
@@ -190,25 +206,27 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * List blueprint templates (`list_blueprint_templates` — GET
-   * `dashboards/blueprints-all`; a `{templates: {name: data}}` envelope
-   * flattens to a list with each `name` merged in, non-dict entries skipped).
+   * List blueprint templates. Sends GET `dashboards/blueprints-all`; a
+   * `{templates: {name: data}}` envelope flattens to a list with each `name`
+   * merged in, non-dict entries skipped.
    *
    * @param options - `include_reports` + signal.
    * @returns The template list.
-   * @throws MixpanelHeadlessError - Unrecognized response shape.
+   * @throws {@link MixpanelHeadlessError} - Unrecognized response shape.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_blueprint_templates
    */
   listBlueprintTemplates: (
     options?: ListBlueprintTemplatesOptions,
   ) => Promise<JsonValue[]>;
 
   /**
-   * Create a dashboard from a blueprint (`create_blueprint`).
+   * Create a dashboard from a blueprint.
    *
    * @param templateType - The blueprint template type identifier.
    * @param signal - Optional cancellation signal.
    * @returns The created dashboard dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_blueprint
    */
   createBlueprint: (
     templateType: string,
@@ -216,12 +234,13 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a dashboard's blueprint config (`get_blueprint_config`).
+   * Get a dashboard's blueprint config.
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
    * @returns The config dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_blueprint_config
    */
   getBlueprintConfig: (
     dashboardId: number,
@@ -229,12 +248,12 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update blueprint cohort mappings (`update_blueprint_cohorts` — PUT with
-   * `{cohorts}`).
+   * Update blueprint cohort mappings. Sends PUT with `{cohorts}`.
    *
    * @param cohorts - Cohort mapping dicts.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_blueprint_cohorts
    */
   updateBlueprintCohorts: (
     cohorts: ReadonlyArray<Record<string, unknown>>,
@@ -242,12 +261,13 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Finalize a blueprint dashboard (`finalize_blueprint`).
+   * Finalize a blueprint dashboard.
    *
    * @param body - Finalization payload.
    * @param signal - Optional cancellation signal.
    * @returns The finalized dashboard dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.finalize_blueprint
    */
   finalizeBlueprint: (
     body: Record<string, unknown>,
@@ -255,12 +275,13 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Create an RCA dashboard (`create_rca_dashboard`).
+   * Create an RCA dashboard.
    *
    * @param body - RCA creation payload.
    * @param signal - Optional cancellation signal.
    * @returns The created dashboard dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_rca_dashboard
    */
   createRcaDashboard: (
     body: Record<string, unknown>,
@@ -268,13 +289,14 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Dashboard IDs containing a bookmark (`get_bookmark_dashboard_ids` — GET
-   * `dashboards/bookmarks/{id}/dashboard-ids`).
+   * List the dashboard IDs that contain a bookmark. Sends GET
+   * `dashboards/bookmarks/{id}/dashboard-ids`.
    *
    * @param bookmarkId - The bookmark identifier.
    * @param signal - Optional cancellation signal.
    * @returns The ID list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_bookmark_dashboard_ids
    */
   getBookmarkDashboardIds: (
     bookmarkId: number,
@@ -282,12 +304,13 @@ export interface DashboardMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * ERF data for a dashboard (`get_dashboard_erf`).
+   * Get the ERF data for a dashboard.
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
    * @returns The ERF dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_dashboard_erf
    */
   getDashboardErf: (
     dashboardId: number,
@@ -295,14 +318,15 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a dashboard report link (`update_report_link` — PATCH
-   * `dashboards/{id}/report-links/{report_link_id}`).
+   * Update a dashboard report link. Sends PATCH
+   * `dashboards/{id}/report-links/{report_link_id}`.
    *
    * @param dashboardId - The dashboard identifier.
    * @param reportLinkId - The report link identifier.
    * @param body - Partial update payload.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_report_link
    */
   updateReportLink: (
     dashboardId: number,
@@ -312,14 +336,15 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Update a dashboard text card (`update_text_card` —
-   * PATCH `dashboards/{id}/text-cards/{text_card_id}`).
+   * Update a dashboard text card. Sends PATCH
+   * `dashboards/{id}/text-cards/{text_card_id}`.
    *
    * @param dashboardId - The dashboard identifier.
    * @param textCardId - The text card identifier.
    * @param body - Partial update payload.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_text_card
    */
   updateTextCard: (
     dashboardId: number,
@@ -631,6 +656,12 @@ async function updateTextCard(
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const dashboards = createDashboardMethods(core);
+ * const two = await dashboards.listDashboards({ ids: [1, 2] });
+ * // [{ id: 1, title: "KPIs", ... }, { id: 2, ... }]
+ * ```
  */
 export function createDashboardMethods(core: ClientCore): DashboardMethods {
   return {

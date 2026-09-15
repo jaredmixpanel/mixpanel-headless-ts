@@ -27,27 +27,28 @@ export interface ListDataVolumeAnomaliesOptions {
 /** Anomaly methods mixed into `MixpanelClient`. */
 export interface AnomalyMethods {
   /**
-   * List data-volume anomalies (`list_data_volume_anomalies` — GET
-   * `data-definitions/data-volume-anomalies/` with `_raw=True`;
-   * extracts `results.anomalies`).
+   * List data-volume anomalies. Sends GET
+   * `data-definitions/data-volume-anomalies/` with `_raw=True`; extracts
+   * `results.anomalies`.
    *
    * @param options - Optional `query_params` filters + signal.
    * @returns The anomaly list.
-   * @throws MixpanelHeadlessError - Missing `anomalies` key
-   *   ("missing 'anomalies' key in results") or an unexpected format.
+   * @throws {@link MixpanelHeadlessError} - Missing `anomalies` key ("missing
+   *   'anomalies' key in results") or an unexpected format.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_data_volume_anomalies
    */
   listDataVolumeAnomalies: (
     options?: ListDataVolumeAnomaliesOptions,
   ) => Promise<JsonValue[]>;
 
   /**
-   * Update one anomaly's status (`update_anomaly` —
-   * PATCH).
+   * Update one anomaly's status. Sends a PATCH.
    *
    * @param body - Update payload (id, status, anomalyClass).
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_anomaly
    */
   updateAnomaly: (
     body: Record<string, unknown>,
@@ -55,13 +56,13 @@ export interface AnomalyMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Bulk-update anomaly statuses (`bulk_update_anomalies` — PATCH
-   * `.../data-volume-anomalies/bulk/`).
+   * Bulk-update anomaly statuses. Sends PATCH `.../data-volume-anomalies/bulk/`.
    *
    * @param body - Bulk update payload.
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_update_anomalies
    */
   bulkUpdateAnomalies: (
     body: Record<string, unknown>,
@@ -74,9 +75,21 @@ export interface AnomalyMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const anomalies = createAnomalyMethods(core);
+ * const open = await anomalies.listDataVolumeAnomalies({ query_params: { status: "open" } });
+ * // [{ id: 3, event_id: 12, status: "open", ... }, ...]
+ * ```
  */
 export function createAnomalyMethods(core: ClientCore): AnomalyMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

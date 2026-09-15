@@ -20,24 +20,25 @@ import { pythonTypeNameOf } from "../shared.js";
 /** Audit methods mixed into `MixpanelClient`. */
 export interface AuditMethods {
   /**
-   * Run a full data audit (`run_audit` —
-   * GET `data-definitions/audit/` with `_raw=True`).
+   * Run a full data audit. Sends GET `data-definitions/audit/` with `_raw=True`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The raw 2-element `[violations, metadata]` array.
-   * @throws MixpanelHeadlessError - Non-list `results` member, or an
+   * @throws {@link MixpanelHeadlessError} - Non-list `results` member, or an
    *   unexpected response format.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.run_audit
    */
   runAudit: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Run an events-only audit (`run_audit_events_only` —
-   * GET `data-definitions/audit-events-only/`, same format).
+   * Run an events-only audit. Sends GET `data-definitions/audit-events-only/`,
+   * same format.
    *
    * @param signal - Optional cancellation signal.
    * @returns The raw 2-element `[violations, metadata]` array.
-   * @throws MixpanelHeadlessError - Non-list `results` member, or an
+   * @throws {@link MixpanelHeadlessError} - Non-list `results` member, or an
    *   unexpected response format.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.run_audit_events_only
    */
   runAuditEventsOnly: (signal?: AbortSignal) => Promise<JsonValue[]>;
 }
@@ -47,9 +48,21 @@ export interface AuditMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const audit = createAuditMethods(core);
+ * const [violations, metadata] = await audit.runAudit();
+ * // violations: [...], metadata: { ... }
+ * ```
  */
 export function createAuditMethods(core: ClientCore): AuditMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -61,7 +74,7 @@ export function createAuditMethods(core: ClientCore): AuditMethods {
    *
    * @param result - The raw envelope product.
    * @returns The audit array.
-   * @throws MixpanelHeadlessError - Non-list `results` member, or an
+   * @throws {@link MixpanelHeadlessError} - Non-list `results` member, or an
    *   unexpected response format.
    */
   const auditShape = (result: JsonValue): JsonValue[] => {

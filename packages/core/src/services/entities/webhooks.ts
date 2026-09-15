@@ -16,25 +16,28 @@ import { expectListResult, expectRecordResult } from "./shared.js";
 /** Webhook methods mixed into `MixpanelClient`. */
 export interface WebhookMethods {
   /**
-   * List webhooks (`list_webhooks` — GET
-   * `webhooks/`).
+   * List webhooks. Sends GET `webhooks/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The webhook list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_webhooks
    */
   listWebhooks: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create a webhook (`create_webhook` — POST
-   * `webhooks/`).
+   * Create a webhook. Sends POST `webhooks/`.
    *
    * @param body - Webhook creation parameters (name, url, ...).
    * @param signal - Optional cancellation signal.
    * @returns The mutation result dict (id + name).
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_webhook
    */
   createWebhook: (
     body: Record<string, unknown>,
@@ -42,14 +45,14 @@ export interface WebhookMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a webhook (`update_webhook` — PATCH
-   * `webhooks/{id}/`).
+   * Update a webhook. Sends PATCH `webhooks/{id}/`.
    *
    * @param webhookId - Webhook UUID string.
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The mutation result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_webhook
    */
   updateWebhook: (
     webhookId: string,
@@ -58,22 +61,23 @@ export interface WebhookMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a webhook (`delete_webhook`).
+   * Delete a webhook.
    *
    * @param webhookId - Webhook UUID string.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_webhook
    */
   deleteWebhook: (webhookId: string, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Test webhook connectivity (`test_webhook` — POST
-   * `webhooks/test/`).
+   * Test webhook connectivity. Sends POST `webhooks/test/`.
    *
    * @param body - Webhook test parameters.
    * @param signal - Optional cancellation signal.
    * @returns The test result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.test_webhook
    */
   testWebhook: (
     body: Record<string, unknown>,
@@ -86,9 +90,21 @@ export interface WebhookMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const webhooks = createWebhookMethods(core);
+ * await webhooks.testWebhook({ url: "https://example.com/hook" });
+ * // { ok: true, status_code: 200, ... }
+ * ```
  */
 export function createWebhookMethods(core: ClientCore): WebhookMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

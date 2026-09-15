@@ -72,9 +72,18 @@ export interface DiscoveryLogger {
 
 /** Construction options of {@link DiscoveryService}. */
 export interface DiscoveryServiceOptions {
-  /** `warnings.warn` sink for {@link inferSubproperties}. */
+  /**
+   * `warnings.warn` sink for {@link inferSubproperties}.
+   *
+   * @defaultValue A no-op sink — `core` has no stderr, so warnings are
+   *   dropped unless a host injects one.
+   */
   readonly warn?: WarningSink | undefined;
-  /** Debug logger for the schema-graph drop summary. */
+  /**
+   * Debug logger for the schema-graph drop summary.
+   *
+   * @defaultValue `undefined` (no debug output)
+   */
   readonly logger?: DiscoveryLogger | undefined;
 }
 
@@ -103,7 +112,7 @@ const MAX_SAMPLE_VALUES = 5;
  * @param data - The mapping.
  * @param key - The key to read.
  * @returns The member.
- * @throws KeyError - When the key is absent (the CPython twin; these
+ * @throws {@link KeyError} - When the key is absent (the CPython twin; these
  *   parsers do no validation, so a malformed API row raises exactly
  *   where Python's subscript does).
  */
@@ -123,6 +132,12 @@ function dictIndex(
  * @param data - Raw metadata dict (may carry `com.mixpanel`), or `null`.
  * @returns The metadata when `com.mixpanel` is present and truthy,
  *   `null` otherwise.
+ * @example
+ * ```typescript
+ * parseLexiconMetadata({ "com.mixpanel": { displayName: "Sign Up" } });
+ * // LexiconMetadata { display_name: "Sign Up", tags: [], hidden: false, … }
+ * parseLexiconMetadata({}); // null
+ * ```
  * @see mixpanel_headless._internal.services.discovery._parse_lexicon_metadata
  * @internal
  */
@@ -154,6 +169,11 @@ export function parseLexiconMetadata(
  *
  * @param data - Raw property dict.
  * @returns The parsed property (`type` defaults to `"string"`).
+ * @example
+ * ```typescript
+ * parseLexiconProperty({ type: "number", description: "Cart total" }).type;
+ * // "number"
+ * ```
  * @see mixpanel_headless._internal.services.discovery._parse_lexicon_property
  * @internal
  */
@@ -174,6 +194,13 @@ export function parseLexiconProperty(
  *
  * @param data - Raw `schemaJson` dict.
  * @returns The parsed definition.
+ * @example
+ * ```typescript
+ * const def = parseLexiconDefinition({
+ *   properties: { total: { type: "number" } },
+ * });
+ * def.properties["total"]?.type; // "number"
+ * ```
  * @see mixpanel_headless._internal.services.discovery._parse_lexicon_definition
  * @internal
  */
@@ -205,8 +232,16 @@ export function parseLexiconDefinition(
  *
  * @param data - Raw schema dict.
  * @returns The parsed schema.
- * @throws KeyError - Missing `entityType` / `name` / `schemaJson`
+ * @throws {@link KeyError} - Missing `entityType` / `name` / `schemaJson`
  *   (Python subscripts them directly).
+ * @example
+ * ```typescript
+ * parseLexiconSchema({
+ *   entityType: "event",
+ *   name: "Purchase",
+ *   schemaJson: { properties: {} },
+ * }).name; // "Purchase"
+ * ```
  * @see mixpanel_headless._internal.services.discovery._parse_lexicon_schema
  * @internal
  */
@@ -227,8 +262,15 @@ export function parseLexiconSchema(
  *
  * @param data - Raw bookmark dict.
  * @returns The parsed bookmark metadata.
- * @throws KeyError - Missing `id` / `name` / `type` / `project_id` /
+ * @throws {@link KeyError} - Missing `id` / `name` / `type` / `project_id` /
  *   `created` / `modified`.
+ * @example
+ * ```typescript
+ * parseBookmarkInfo({
+ *   id: 42, name: "Weekly actives", type: "insights", project_id: 1,
+ *   created: "2024-01-01T00:00:00", modified: "2024-01-02T00:00:00",
+ * }).type; // "insights"
+ * ```
  * @see mixpanel_headless._internal.services.discovery._parse_bookmark_info
  * @internal
  */
@@ -362,8 +404,14 @@ export type ScalarSubValue = string | number | boolean;
  *   Callers filter `None` out upstream.
  * @returns `[inferredType, mixedObserved]`; mixed observations report
  *   `["string", true]` so the caller can warn.
- * @throws ValueError - When `values` is empty (Python guards because
+ * @throws {@link ValueError} - When `values` is empty (Python guards because
  *   `all([])` would silently classify as `boolean`).
+ * @example
+ * ```typescript
+ * inferScalarType([1, 2.5]); // ["number", false]
+ * inferScalarType(["2024-01-01", "2024-02-01"]); // ["datetime", false]
+ * inferScalarType(["a", 1]); // ["string", true]
+ * ```
  * @see mixpanel_headless._internal.services.discovery._infer_scalar_type
  * @internal
  */
@@ -406,6 +454,13 @@ export function inferScalarType(
  * @param rawValues - Strings from the property-values endpoint.
  * @param logger - Optional debug sink for the skipped values.
  * @returns Flat list of dict rows, order preserved.
+ * @throws The original error, unchanged, when parsing fails with anything
+ *   other than a {@link LosslessJsonError} (those are skipped).
+ * @example
+ * ```typescript
+ * iterDictRows(['{"sku": 1}', '[{"sku": 2}, 3]', "not json"]);
+ * // [{ sku: 1 }, { sku: 2 }]
+ * ```
  * @see mixpanel_headless._internal.services.discovery._iter_dict_rows
  * @internal
  */
@@ -496,6 +551,15 @@ function splitWords(text: string): string[] {
  * @param warn - The `warnings.warn` sink.
  * @param logger - Optional debug sink (see {@link iterDictRows}).
  * @returns Code-point-sorted subproperty infos.
+ * @example
+ * ```typescript
+ * const infos = inferSubproperties(
+ *   ['{"sku": "A1", "qty": 2}', '{"sku": "X9", "qty": null}'],
+ *   (message) => console.warn(message),
+ * );
+ * infos.map((info) => [info.name, info.type]);
+ * // [["qty", "number"], ["sku", "string"]]
+ * ```
  * @see mixpanel_headless._internal.services.discovery._infer_subproperties
  * @internal
  */
@@ -625,51 +689,103 @@ function pySetKey(value: ScalarSubValue): string {
 
 /** Options bag of {@link DiscoveryService.listEvents}. */
 export interface ListEventsOptions {
-  /** Maximum events to return; `null`/absent defers to the client. */
+  /**
+   * Maximum events to return; `null`/absent defers to the client.
+   *
+   * @defaultValue `null`
+   */
   readonly limit?: number | null | undefined;
-  /** `YYYY-MM-DD` lower bound; `null`/absent defers to the client. */
+  /**
+   * `YYYY-MM-DD` lower bound; `null`/absent defers to the client.
+   *
+   * @defaultValue `null`
+   */
   readonly from_date?: string | null | undefined;
-  /** `YYYY-MM-DD` upper bound; `null`/absent defers to the client. */
+  /**
+   * `YYYY-MM-DD` upper bound; `null`/absent defers to the client.
+   *
+   * @defaultValue `null`
+   */
   readonly to_date?: string | null | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.listPropertyValues}. */
 export interface ListPropertyValuesOptions {
-  /** Optional event name to scope the query. */
+  /**
+   * Optional event name to scope the query.
+   *
+   * @defaultValue `null`
+   */
   readonly event?: string | null | undefined;
-  /** Maximum number of values to return (Python default 100). */
+  /**
+   * Maximum number of values to return.
+   *
+   * @defaultValue `100`
+   */
   readonly limit?: number | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.listSubproperties}. */
 export interface ListSubpropertiesOptions {
-  /** Optional event name to scope the sample. */
+  /**
+   * Optional event name to scope the sample.
+   *
+   * @defaultValue `null`
+   */
   readonly event?: string | null | undefined;
-  /** Number of raw values to sample (Python default 50). */
+  /**
+   * Number of raw values to sample.
+   *
+   * @defaultValue `50`
+   */
   readonly sample_size?: number | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.listTopEvents}. */
 export interface ListTopEventsOptions {
-  /** Counting method — `"general"`, `"unique"` or `"average"`. */
+  /**
+   * Counting method — `"general"`, `"unique"` or `"average"`.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: string | undefined;
-  /** Maximum events to return. */
+  /**
+   * Maximum events to return.
+   *
+   * @defaultValue `null`
+   */
   readonly limit?: number | null | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.listSchemas}. */
 export interface ListSchemasOptions {
-  /** Optional entity-type filter (`"event"` / `"profile"`). */
+  /**
+   * Optional entity-type filter (`"event"` / `"profile"`).
+   *
+   * @defaultValue `null`
+   */
   readonly entity_type?: string | null | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.getSchemaGraph}. */
 export interface GetSchemaGraphOptions {
-  /** Request the property-level `densityLocal`. */
+  /**
+   * Request the property-level `densityLocal`.
+   *
+   * @defaultValue `false`
+   */
   readonly include_density?: boolean | undefined;
-  /** Also gather user properties (Python default `true`). */
+  /**
+   * Also gather user properties.
+   *
+   * @defaultValue `true`
+   */
   readonly include_user_properties?: boolean | undefined;
-  /** Bypass the per-instance cache and re-fetch. */
+  /**
+   * Bypass the per-instance cache and re-fetch.
+   *
+   * @defaultValue `false`
+   */
   readonly force_refresh?: boolean | undefined;
 }
 
@@ -737,10 +853,12 @@ function cacheKey(parts: readonly CacheKeyPart[]): string {
 }
 
 /**
- * Schema discovery service for Mixpanel projects.
+ * Discover a project's events, properties, saved entities and Lexicon
+ * schemas, caching the list-shaped results per instance.
  *
- * Caching behaviour: results live in memory for the lifetime
- * of the instance, keyed by the same tuples Python uses —
+ * @remarks
+ * Results live in memory for the lifetime of the instance, keyed by the
+ * same tuples Python uses —
  * `("list_events", limit, from_date, to_date)`,
  * `("list_properties", event)`,
  * `("list_property_values", property, event, limit)`,
@@ -749,7 +867,6 @@ function cacheKey(parts: readonly CacheKeyPart[]): string {
  * `("schema_graph", include_density, include_user_properties)`.
  * `listTopEvents` is not cached (real-time data). {@link clearCache}
  * drops both maps.
- *
  * @example
  * ```typescript
  * const discovery = new DiscoveryService(client);
@@ -818,8 +935,8 @@ export class DiscoveryService {
    *
    * @param options - Optional limit / date bounds.
    * @returns Code-point-sorted event names (a fresh list per call).
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Non-gate 403s and other 4xx errors.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Non-gate 403s and other 4xx errors.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_events
    */
   async listEvents(options: ListEventsOptions = {}): Promise<string[]> {
@@ -846,9 +963,9 @@ export class DiscoveryService {
    *
    * @param event - Event name.
    * @returns Code-point-sorted property names.
-   * @throws EventNotFoundError - The wire call answered 400; the event
-   *   list is fetched and similar names are attached as suggestions.
-   * @throws QueryError - Any other query failure (re-raised unchanged).
+   * @throws {@link EventNotFoundError} - The wire call answered 400; the
+   *   event list is fetched and similar names are attached as suggestions.
+   * @throws {@link QueryError} - Any other query failure (re-raised unchanged).
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_properties
    */
   async listProperties(event: string): Promise<string[]> {
@@ -939,7 +1056,7 @@ export class DiscoveryService {
    * @param propertyName - Top-level property name (e.g. `"cart"`).
    * @param options - Optional event scope and sample size.
    * @returns Code-point-sorted subproperty infos (possibly empty).
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_subproperties
    */
   async listSubproperties(
@@ -960,7 +1077,7 @@ export class DiscoveryService {
    * @param options - Optional event scope and limit.
    * @returns The values in API order (unsorted, as in Python), a fresh
    *   list.
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_property_values
    */
   async listPropertyValues(
@@ -987,7 +1104,7 @@ export class DiscoveryService {
    * List all saved funnels.
    *
    * @returns Funnels sorted by name (code-point order), a fresh list.
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_funnels
    */
   async listFunnels(): Promise<FunnelInfo[]> {
@@ -1015,7 +1132,7 @@ export class DiscoveryService {
    * List all saved cohorts.
    *
    * @returns Cohorts sorted by name (code-point order), a fresh list.
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_cohorts
    */
   async listCohorts(): Promise<SavedCohort[]> {
@@ -1045,12 +1162,14 @@ export class DiscoveryService {
   }
 
   /**
-   * List saved reports (bookmarks). Not cached — bookmarks change often.
+   * List saved reports (bookmarks).
    *
+   * @remarks
+   * Not cached — bookmarks change often.
    * @param bookmarkType - Optional report-type filter.
    * @returns The bookmark metadata rows.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Permission denied or invalid type parameter.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Permission denied or invalid type parameter.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_bookmarks
    */
   async listBookmarks(
@@ -1071,12 +1190,13 @@ export class DiscoveryService {
   }
 
   /**
-   * Today's top events. Not cached — the data changes throughout the
-   * day.
+   * List today's top events.
    *
+   * @remarks
+   * Not cached — the data changes throughout the day.
    * @param options - Counting type and limit.
    * @returns The top events (`amount` mapped onto `count`).
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_top_events
    */
   async listTopEvents(options: ListTopEventsOptions = {}): Promise<TopEvent[]> {
@@ -1113,7 +1233,7 @@ export class DiscoveryService {
    *
    * @param options - Optional entity-type filter.
    * @returns Schemas sorted by `(entity_type, name)`, a fresh list.
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_schemas
    */
   async listSchemas(
@@ -1137,12 +1257,15 @@ export class DiscoveryService {
   }
 
   /**
-   * Get a single Lexicon schema.
+   * Return one Lexicon schema by entity type and name.
    *
+   * @remarks
+   * Cached as a one-element list so the single list-shaped cache map can
+   * hold it alongside the list results.
    * @param entityType - Entity type (`"event"` / `"profile"`).
    * @param name - Entity name.
    * @returns The schema.
-   * @throws QueryError - Schema not found.
+   * @throws {@link QueryError} - Schema not found.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.get_schema
    */
   async getSchema(entityType: string, name: string): Promise<LexiconSchema> {
@@ -1172,8 +1295,9 @@ export class DiscoveryService {
    *
    * @param options - Density / user-property / refresh switches.
    * @returns The schema graph.
-   * @throws AuthenticationError | QueryError | ServerError -
-   *   Per the wire contract.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - A 4xx from any of the bulk calls.
+   * @throws {@link ServerError} - A 5xx from any of the bulk calls.
    * @see mixpanel_headless._internal.services.discovery.DiscoveryService.get_schema_graph
    */
   async getSchemaGraph(
@@ -1264,16 +1388,22 @@ export class DiscoveryService {
 }
 
 /**
- * `datetime.now(timezone.utc).isoformat()` over the client's injected
- * clock seam.
+ * Format a clock reading the way `datetime.now(timezone.utc).isoformat()`
+ * does.
  *
+ * @remarks
  * CPython renders `+00:00` rather than `Z`, and omits the microsecond
  * group entirely when it is zero — both reproduced here. Exported
  * because the user-query engine stamps its `computed_at` from the same
  * expression.
- *
- * @param when - The clock reading.
+ * @param when - The clock reading (the client's injected `now()`).
  * @returns The ISO-8601 text.
+ * @example
+ * ```typescript
+ * isoUtc(new Date("2026-01-15T12:00:00Z")); // "2026-01-15T12:00:00+00:00"
+ * isoUtc(new Date("2026-01-15T12:00:00.250Z"));
+ * // "2026-01-15T12:00:00.250000+00:00"
+ * ```
  */
 export function isoUtc(when: Date): string {
   const iso = when.toISOString(); // YYYY-MM-DDTHH:mm:ss.sssZ

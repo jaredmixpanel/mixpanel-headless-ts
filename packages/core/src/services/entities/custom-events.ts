@@ -22,16 +22,17 @@ import { expectListResult, expectRecordResult, pyIntEquals } from "./shared.js";
 /** Custom-event methods mixed into `MixpanelClient`. */
 export interface CustomEventMethods {
   /**
-   * Create a custom event (`create_custom_event` — POST `custom_events/` with a
-   * form-encoded body; unwraps the `{custom_event: ...}` inner
-   * envelope after `appRequest`'s `results` unwrap).
+   * Create a custom event. Sends POST `custom_events/` with a form-encoded body;
+   * unwraps the `{custom_event: ...}` inner envelope after `appRequest`'s
+   * `results` unwrap.
    *
    * @param body - Form fields: `name` + JSON-encoded `alternatives`.
    * @param signal - Optional cancellation signal.
    * @returns The created custom-event dict.
-   * @throws MixpanelHeadlessError - Non-dict payload after unwrapping.
-   * @throws QueryError - Validation errors (400/422; the form body
-   *   rides in `details.request_body`).
+   * @throws {@link MixpanelHeadlessError} - Non-dict payload after unwrapping.
+   * @throws {@link QueryError} - Validation errors (400/422; the form body rides
+   *   in `details.request_body`).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_custom_event
    */
   createCustomEvent: (
     body: Record<string, string>,
@@ -39,27 +40,28 @@ export interface CustomEventMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * List custom events (`list_custom_events` — GET
-   * `data-definitions/events/` with `custom_event=true`).
+   * List custom events. Sends GET `data-definitions/events/` with
+   * `custom_event=true`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The custom-event definition list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_custom_events
    */
   listCustomEvents: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Update a custom event's lexicon entry (`update_custom_event` — PATCH
-   * `data-definitions/events/` with `{**body, customEventId}`; raises
-   * `UPDATE_TARGET_MISMATCH` when the server echoes a different
-   * `customEventId`).
+   * Update a custom event's lexicon entry. Sends PATCH `data-definitions/events/`
+   * with `{**body, customEventId}`; raises `UPDATE_TARGET_MISMATCH` when the
+   * server echoes a different `customEventId`.
    *
    * @param customEventId - Server-assigned custom-event ID (int).
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated lexicon entry dict.
-   * @throws MixpanelHeadlessError - Non-dict response, or the echoed
-   *   id differs from the requested one (`UPDATE_TARGET_MISMATCH`).
+   * @throws {@link MixpanelHeadlessError} - Non-dict response, or the echoed id
+   *   differs from the requested one (`UPDATE_TARGET_MISMATCH`).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_custom_event
    */
   updateCustomEvent: (
     customEventId: number,
@@ -68,13 +70,13 @@ export interface CustomEventMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a custom event (`delete_custom_event` —
-   * DELETE `data-definitions/events/` with `{customEventId}`; id, not
-   * name — a name-only DELETE is ambiguous upstream).
+   * Delete a custom event. Sends DELETE `data-definitions/events/` with
+   * `{customEventId}`; id, not name — a name-only DELETE is ambiguous upstream.
    *
    * @param customEventId - Server-assigned custom-event ID (int).
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_custom_event
    */
   deleteCustomEvent: (
     customEventId: number,
@@ -87,9 +89,21 @@ export interface CustomEventMethods {
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const customEvents = createCustomEventMethods(core);
+ * await customEvents.updateCustomEvent(88, { description: "Any purchase" });
+ * // { customEventId: 88, name: "Purchase", description: "Any purchase", ... }
+ * ```
  */
 export function createCustomEventMethods(core: ClientCore): CustomEventMethods {
-  /** `maybe_scoped_path` over the pin current at call time. */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
