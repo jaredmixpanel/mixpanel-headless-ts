@@ -131,6 +131,14 @@ marked `// Divergence:` at the site.
 - No inline `ConfigManager()` / bridge defaults in core: the caller passes
   `ResolverSources`; `@mixpanel-headless/node` supplies Python's defaults —
   `resolveSession` (`auth/resolver.ts`).
+- `Workspace` logging is an injected seam with a no-op default
+  (`NOOP_LOGGER`, `workspace-members/options.ts`); Python's default
+  `logging.lastResort` prints WARNING and above to stderr. So that
+  `fetch_replays`' per-replay failure isolation is never silent, the skipped
+  replays are also recorded on the result — `ReplayBundle.failures`
+  (`types/results/replays.ts`), a TS-only additive getter that `toJSON()` and
+  the conformance codec never see (Python only logs them; the precedent is the
+  parallel user query's `failed_pages` meta).
 - Replay `$time` parsing accepts ISO-8601 (and unix seconds) only; Python's
   `pd.Timestamp` also accepts free-form dates. Anything else yields `0`
   ("skip row") — `toUnixMs` (`services/replays.ts`, `TODO(port)`).

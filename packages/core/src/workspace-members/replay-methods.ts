@@ -29,6 +29,7 @@ import {
   Replay,
   ReplayBundle,
   type ReplayEvent,
+  type ReplayFetchFailure,
   type ReplaySummary,
   type SignedReplay,
 } from "../types/results/replays.js";
@@ -424,8 +425,8 @@ export async function* streamReplay(
  * @param replayIds - Replays to fetch.
  * @param options - Env / bounds / concurrency / join / retention and
  *   distinct-id maps.
- * @returns A `ReplayBundle` with `replays` in INPUT order (failed
- *   replays omitted).
+ * @returns A `ReplayBundle` with `replays` in INPUT order; the failed
+ *   replays are omitted from `replays` and listed on `failures`.
  * @throws MixpanelHeadlessError - Only when every requested replay
  *   failed; the first underlying error propagates with its type.
  * @throws ParamValidationError - More than 5 `event_properties`.
@@ -447,7 +448,9 @@ export async function fetchReplays(
   // each fetch runs with include_mixpanel_events=false here regardless
   // of the caller's flag.
   const results = new Map<number, Replay>();
-  const failures: Array<[string, Error]> = [];
+  // Completion-ordered (workers push as they fail); the bundle gets
+  // them re-sorted into input order.
+  const failures: Array<[index: number, failure: ReplayFetchFailure]> = [];
   let cursor = 0;
   const worker = async (): Promise<void> => {
     for (;;) {
@@ -477,7 +480,7 @@ export async function fetchReplays(
           `fetch_replays: skipping replay ${rid} — ` +
             `${error instanceof Error ? error.name : typeof error}: ${String(error)}`,
         );
-        failures.push([rid, toError(error)]);
+        failures.push([index, { replay_id: rid, error: toError(error) }]);
       }
     }
   };
@@ -494,7 +497,7 @@ export async function fetchReplays(
     // (`as_completed`); the port keeps INPUT order, which is the
     // deterministic reading of the same rule (recorded in
     // `B5-S3-notes.md` §2).
-    throw firstFailure[1];
+    throw firstFailure[1].error;
   }
   let ordered = [...results]
     .sort((a, b) => a[0] - b[0])
@@ -532,6 +535,11 @@ export async function fetchReplays(
     replays: ordered,
     computed_at: isoUtc(host.client.core.now()),
     project_id: host.projectId(),
+    // Divergence: Python only logs the skipped replays; the TS bundle
+    // also records them (`ReplayBundle.failures`, additive).
+    failures: [...failures]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, failure]) => failure),
   });
 }
 

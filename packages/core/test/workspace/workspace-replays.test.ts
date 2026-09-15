@@ -49,6 +49,7 @@ import {
   SignedReplay,
 } from "../../src/types/results/replays.js";
 import { checkEventPropertiesCount, Workspace } from "../../src/workspace.js";
+import type { WorkspaceLogger } from "../../src/workspace-members/options.js";
 import {
   type CannedResponse,
   type CapturedFetchRequest,
@@ -81,6 +82,7 @@ interface StubService {
 function makeWorkspace(
   options: {
     warn?: (message: string) => void;
+    logger?: WorkspaceLogger;
     handler?: (request: CapturedFetchRequest) => CannedResponse;
   } = {},
 ): Workspace {
@@ -92,6 +94,7 @@ function makeWorkspace(
     session: client.session,
     client,
     ...(options.warn === undefined ? {} : { warn: options.warn }),
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
   });
 }
 
@@ -647,7 +650,15 @@ describe("events window passthrough (TestEventsForReplaysWindow)", () => {
 
 describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () => {
   it("test_one_failure_does_not_sink_the_bundle", async () => {
-    const ws = makeWorkspace();
+    const warnings: string[] = [];
+    const ws = makeWorkspace({
+      logger: {
+        debug: () => undefined,
+        warning: (message) => {
+          warnings.push(message);
+        },
+      },
+    });
     ws.fetchReplay = (replayId: string): Promise<Replay> => {
       if (replayId === "r-bad") {
         return Promise.reject(
@@ -663,6 +674,39 @@ describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () =
     expect(new Set(bundle.replays.map((r) => r.replay_id))).toStrictEqual(
       new Set(["r-1", "r-2"]),
     );
+    // The skipped replay is surfaced on the bundle (TS-only, additive) and
+    // through the logger (Python's only signal) …
+    expect(bundle.failures).toStrictEqual([
+      { replay_id: "r-bad", error: expect.any(ReplayNotFoundError) },
+    ]);
+    expect(warnings.some((m) => m.includes("skipping replay r-bad"))).toBe(
+      true,
+    );
+    // … but never in the encoded shape, which stays Python's.
+    expect(Object.keys(bundle)).not.toContain("failures");
+    expect(Object.keys(bundle.toJSON())).not.toContain("failures");
+  });
+
+  it("failures are listed in input order and empty when nothing failed", async () => {
+    const ws = makeWorkspace();
+    ws.fetchReplay = (replayId: string): Promise<Replay> =>
+      replayId.startsWith("bad")
+        ? Promise.reject(new Error(replayId))
+        : Promise.resolve(makeReplay(replayId));
+    const bundle = await ws.fetchReplays(["bad-1", "r-1", "bad-2", "r-2"], {
+      concurrency: 1,
+    });
+    expect(bundle.failures.map((f) => f.replay_id)).toStrictEqual([
+      "bad-1",
+      "bad-2",
+    ]);
+    expect(bundle.failures.map((f) => f.error.message)).toStrictEqual([
+      "bad-1",
+      "bad-2",
+    ]);
+    expect((await ws.fetchReplays(["r-1"])).failures).toStrictEqual([]);
+    // Derived bundles do not carry the failures over.
+    expect(bundle.head(1).failures).toStrictEqual([]);
   });
 
   it("test_all_failures_raise_first_underlying_error", async () => {
