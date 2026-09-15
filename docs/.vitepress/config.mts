@@ -167,10 +167,27 @@ const apiOverview: DefaultTheme.SidebarItem = {
   link: "/api/",
 };
 
+// The reference sidebar is split per package: VitePress renders the whole
+// sidebar tree into every page's HTML (collapsed groups included), and the
+// 850-item tree cost ~450 KB per page across 800+ reference pages and every
+// prose page. Prose pages and the reference index carry package links only;
+// each package's pages carry that package's tree.
+const referenceTree = referenceSidebar();
+const packageLinks: DefaultTheme.SidebarItem[] = referenceTree.map((pkg) => ({
+  text: pkg.text ?? "",
+  ...(pkg.link === undefined ? {} : { link: pkg.link }),
+}));
 const reference: DefaultTheme.SidebarItem = {
   text: "API reference",
-  items: [apiOverview, ...referenceSidebar()],
+  items: [apiOverview, ...packageLinks],
 };
+const packageSidebars: DefaultTheme.SidebarMulti = Object.fromEntries(
+  referenceTree.flatMap((pkg) =>
+    pkg.link === undefined
+      ? []
+      : [[pkg.link, [reference, { ...pkg, collapsed: false }]]],
+  ),
+);
 
 export default defineConfig({
   title: "Mixpanel Headless for TypeScript",
@@ -283,7 +300,11 @@ export default defineConfig({
         link: "https://mixpanel.github.io/mixpanel-headless/",
       },
     ],
-    sidebar: [gettingStarted, guide, reference, architecture],
+    sidebar: {
+      ...packageSidebars,
+      "/reference/": [reference],
+      "/": [gettingStarted, guide, reference, architecture],
+    },
     outline: [2, 3],
     search: {
       provider: "local",
