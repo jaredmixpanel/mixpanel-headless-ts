@@ -96,7 +96,7 @@ describe("buildTimeSection", () => {
     const entry = result[0]!;
     expect(entry["dateRangeType"]).toBe("between");
     expect(entry["unit"]).toBe("day");
-    expect(entry["value"]).toEqual(["2025-01-01", "2025-01-31"]);
+    expect(entry["value"]).toStrictEqual(["2025-01-01", "2025-01-31"]);
     expect(Object.hasOwn(entry, "window")).toBe(false);
   });
 
@@ -112,7 +112,7 @@ describe("buildTimeSection", () => {
     const entry = result[0]!;
     expect(entry["dateRangeType"]).toBe("between");
     expect(entry["unit"]).toBe("week");
-    expect(entry["value"]).toEqual(["2025-01-01", "2025-06-15"]);
+    expect(entry["value"]).toStrictEqual(["2025-01-01", "2025-06-15"]);
   });
 
   it("relative range last n", () => {
@@ -126,7 +126,7 @@ describe("buildTimeSection", () => {
     const entry = result[0]!;
     expect(entry["dateRangeType"]).toBe("in the last");
     expect(entry["unit"]).toBe("day");
-    expect(entry["window"]).toEqual({ unit: "day", value: 30 });
+    expect(entry["window"]).toStrictEqual({ unit: "day", value: 30 });
     expect(Object.hasOwn(entry, "value")).toBe(false);
   });
 
@@ -195,7 +195,7 @@ describe("buildDateRange", () => {
   it("relative last n", () => {
     const result = buildDateRange({ from_date: null, to_date: null, last: 30 });
     expect(result["type"]).toBe("in the last");
-    expect(result["from_date"]).toEqual({ unit: "day", value: 30 });
+    expect(result["from_date"]).toStrictEqual({ unit: "day", value: 30 });
     expect(result["to_date"]).toBe("$now");
   });
 
@@ -224,7 +224,7 @@ describe("buildDateRange", () => {
 
 describe("buildFilterSection", () => {
   it("none returns empty", () => {
-    expect(buildFilterSection(null)).toEqual([]);
+    expect(buildFilterSection(null)).toStrictEqual([]);
   });
 
   it("single filter", () => {
@@ -285,7 +285,7 @@ describe("buildFilterSection", () => {
 
 describe("buildGroupSection", () => {
   it("none returns empty", () => {
-    expect(buildGroupSection(null)).toEqual([]);
+    expect(buildGroupSection(null)).toStrictEqual([]);
   });
 
   it("string group by", () => {
@@ -381,7 +381,7 @@ describe("buildFilterEntry", () => {
     expect(entry["filterType"]).toBe("string");
     expect(entry["defaultType"]).toBe("string");
     expect(entry["value"]).toBe("country");
-    expect(entry["filterValue"]).toEqual(["US"]);
+    expect(entry["filterValue"]).toStrictEqual(["US"]);
     expect(entry["filterOperator"]).toBe("equals");
     expect(Object.hasOwn(entry, "filterDateUnit")).toBe(false);
   });
@@ -461,7 +461,7 @@ describe("buildFilterEntry — new filter operators (T030)", () => {
     const entry = buildFilterEntry(Filter.notBetween("age", 18, 65));
     expect(entry["filterOperator"]).toBe("not between");
     expect(entry["filterType"]).toBe("number");
-    expect(entry["filterValue"]).toEqual([18, 65]);
+    expect(entry["filterValue"]).toStrictEqual([18, 65]);
   });
 
   it("starts with filter operator", () => {
@@ -484,7 +484,7 @@ describe("buildFilterEntry — new filter operators (T030)", () => {
     );
     expect(entry["filterOperator"]).toBe("was not between");
     expect(entry["filterType"]).toBe("datetime");
-    expect(entry["filterValue"]).toEqual(["2024-01-01", "2024-06-30"]);
+    expect(entry["filterValue"]).toStrictEqual(["2024-01-01", "2024-06-30"]);
     expect(Object.hasOwn(entry, "filterDateUnit")).toBe(false);
   });
 
@@ -547,7 +547,7 @@ describe("patchCustomPropertyFiltersForTransform", () => {
   });
 
   it("empty list", () => {
-    expect(patchCustomPropertyFiltersForTransform([])).toEqual([]);
+    expect(patchCustomPropertyFiltersForTransform([])).toStrictEqual([]);
   });
 
   it("mutates in place and returns the SAME array (caution 14)", () => {
@@ -569,7 +569,10 @@ describe("patchCustomPropertyFiltersForTransform", () => {
     ];
     patchCustomPropertyFiltersForTransform(entries);
     expect(entries[0]!["value"]).toBeNull();
-    expect(Object.keys(entries[0]!)).toEqual(["value", "customPropertyId"]);
+    expect(Object.keys(entries[0]!)).toStrictEqual([
+      "value",
+      "customPropertyId",
+    ]);
   });
 });
 
@@ -579,22 +582,24 @@ describe("patchCustomPropertyFiltersForTransform", () => {
 
 describe("buildTimeComparison", () => {
   it("relative produces correct dict", () => {
-    expect(buildTimeComparison(TimeComparison.relative("month"))).toEqual({
-      type: "relative",
-      value: "month",
-    });
+    expect(buildTimeComparison(TimeComparison.relative("month"))).toStrictEqual(
+      {
+        type: "relative",
+        value: "month",
+      },
+    );
   });
 
   it("absolute start produces correct dict", () => {
     expect(
       buildTimeComparison(TimeComparison.absoluteStart("2026-01-01")),
-    ).toEqual({ type: "absolute-start", value: "2026-01-01" });
+    ).toStrictEqual({ type: "absolute-start", value: "2026-01-01" });
   });
 
   it("absolute end produces correct dict", () => {
     expect(
       buildTimeComparison(TimeComparison.absoluteEnd("2026-12-31")),
-    ).toEqual({ type: "absolute-end", value: "2026-12-31" });
+    ).toStrictEqual({ type: "absolute-end", value: "2026-12-31" });
   });
 
   it("relative day unit", () => {
@@ -632,11 +637,11 @@ describe("buildFrequencyGroupEntry", () => {
     const behavior = result["behavior"] as Record<string, unknown>;
     expect(behavior["behaviorType"]).toBe("$frequency");
     expect(behavior["aggregationOperator"]).toBe("total");
-    expect(behavior["event"]).toEqual({
+    expect(behavior["event"]).toStrictEqual({
       label: "Purchase",
       value: "Purchase",
     });
-    expect(behavior["filters"]).toEqual([]);
+    expect(behavior["filters"]).toStrictEqual([]);
     expect(behavior["filtersOperator"]).toBe("and");
     expect(behavior["dateRange"]).toBeNull();
   });
@@ -718,7 +723,9 @@ describe("buildFrequencyGroupEntry", () => {
     const result = buildFrequencyGroupEntry(
       new FrequencyBreakdown({ event: "Purchase", label: "Buy Count" }),
     );
-    expect((result["behavior"] as Record<string, unknown>)["event"]).toEqual({
+    expect(
+      (result["behavior"] as Record<string, unknown>)["event"],
+    ).toStrictEqual({
       label: "Purchase",
       value: "Purchase",
     });
@@ -765,7 +772,7 @@ describe("buildFrequencyFilterEntry (platform-native clause)", () => {
     const result = buildFrequencyFilterEntry(
       new FrequencyFilter({ event: "Login", value: 5 }),
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       dataset: "$mixpanel",
       resourceType: "people",
       profileType: null,
@@ -823,7 +830,7 @@ describe("buildFrequencyFilterEntry (platform-native clause)", () => {
     );
     expect(
       (result["behavior"] as Record<string, unknown>)["dateRange"],
-    ).toEqual({
+    ).toStrictEqual({
       type: "in the last",
       unit: "day",
       window: { unit: "day", value: 30 },
@@ -860,7 +867,7 @@ describe("buildFrequencyFilterEntry (platform-native clause)", () => {
       new FrequencyFilter({ event: "Login", value: 5 }),
     );
     const behavior = result["behavior"] as Record<string, unknown>;
-    expect(behavior["filters"]).toEqual([]);
+    expect(behavior["filters"]).toStrictEqual([]);
     expect(Object.hasOwn(behavior, "eventFilters")).toBe(false);
   });
 
@@ -913,7 +920,7 @@ describe("buildFrequencyFilterEntry (platform-native clause)", () => {
         label: "L",
       }),
     );
-    expect(Object.keys(result)).toEqual([
+    expect(Object.keys(result)).toStrictEqual([
       "dataset",
       "resourceType",
       "profileType",
@@ -927,7 +934,9 @@ describe("buildFrequencyFilterEntry (platform-native clause)", () => {
       "propertyObjectKey",
       "value",
     ]);
-    expect(Object.keys(result["behavior"] as Record<string, unknown>)).toEqual([
+    expect(
+      Object.keys(result["behavior"] as Record<string, unknown>),
+    ).toStrictEqual([
       "aggregationOperator",
       "behaviorType",
       "dateRange",
@@ -944,7 +953,7 @@ describe("buildFrequencyFilterEntry (platform-native clause)", () => {
       new FrequencyFilter({ event: "Login", value: 5, event_filters: [] }),
     );
     const behavior = result["behavior"] as Record<string, unknown>;
-    expect(behavior["filters"]).toEqual([]);
+    expect(behavior["filters"]).toStrictEqual([]);
     expect(Object.hasOwn(behavior, "eventFilters")).toBe(false);
   });
 });
@@ -1072,7 +1081,7 @@ describe("buildGroupSection — data_group_id threading", () => {
   });
 
   it("none group returns empty", () => {
-    expect(buildGroupSection(null, { data_group_id: 5 })).toEqual([]);
+    expect(buildGroupSection(null, { data_group_id: 5 })).toStrictEqual([]);
   });
 });
 
@@ -1090,7 +1099,7 @@ describe("buildFlowPropertyFilter", () => {
     expect(child["filterOperator"]).toBe("equals");
     expect(child["filterType"]).toBe("string");
     expect(child["propertyName"]).toBe("country");
-    expect(child["filterValue"]).toEqual(["US"]);
+    expect(child["filterValue"]).toStrictEqual(["US"]);
     expect(child["resourceType"]).toBe("events");
   });
 
@@ -1171,7 +1180,7 @@ describe("Filter.listContains → buildFilterEntry", () => {
           `${String(s["value"])}|${(s["filterValue"] as string[]).join(",")}`,
       ),
     );
-    expect(subValues).toEqual(new Set(["Brand|nike", "Category|hats"]));
+    expect(subValues).toStrictEqual(new Set(["Brand|nike", "Category|hats"]));
     for (const sub of inner) {
       expect(sub["filterOperator"]).toBe("equals");
       expect(sub["filterType"]).toBe("string");
@@ -1186,7 +1195,7 @@ describe("Filter.listContains → buildFilterEntry", () => {
     const entry = buildFilterEntry(f);
     const inner = entry["listItemFilters"] as Array<Record<string, unknown>>;
     expect(inner).toHaveLength(2);
-    expect(new Set(inner.map((s) => s["filterOperator"]))).toEqual(
+    expect(new Set(inner.map((s) => s["filterOperator"]))).toStrictEqual(
       new Set(["equals", "is greater than"]),
     );
   });
@@ -1367,7 +1376,7 @@ describe("GroupBy.listItem → buildGroupSection", () => {
     expect(entry["resourceType"]).toBe("events");
     expect(entry["joinPropertyType"]).toBe("list");
     expect(entry["propertyType"]).toBe("object");
-    expect(entry["listItemGroup"]).toEqual({
+    expect(entry["listItemGroup"]).toStrictEqual({
       resourceType: "event",
       propertyName: "Brand",
       propertyDefaultType: "string",
@@ -1577,7 +1586,7 @@ describe("buildComposedProperties", () => {
     const result = buildComposedProperties({
       A: new PropertyInput({ name: "price", type: "number" }),
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       A: { value: "price", type: "number", resourceType: "event" },
     });
   });
@@ -1611,7 +1620,7 @@ describe("buildComposedProperties", () => {
     const result = buildComposedProperties({
       A: new PropertyInput({ name: "country" }),
     });
-    expect(result["A"]).toEqual({
+    expect(result["A"]).toStrictEqual({
       value: "country",
       type: "string",
       resourceType: "event",
@@ -1684,7 +1693,7 @@ describe("buildGroupSection — custom properties", () => {
     });
     const entry = buildGroupSection(g)[0]!;
     expect(entry["customPropertyId"]).toBe(42);
-    expect(entry["customBucket"]).toEqual({
+    expect(entry["customBucket"]).toStrictEqual({
       bucketSize: 100,
       min: 0,
       max: 1000,
@@ -1705,7 +1714,7 @@ describe("buildGroupSection — custom properties", () => {
     });
     const entry = buildGroupSection(g)[0]!;
     expect(Object.hasOwn(entry, "customProperty")).toBe(true);
-    expect(entry["customBucket"]).toEqual({
+    expect(entry["customBucket"]).toStrictEqual({
       bucketSize: 50,
       min: 0,
       max: 500,
@@ -1866,7 +1875,7 @@ describe("buildFilterEntry — custom properties", () => {
 describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
   it("saved cohort filter", () => {
     const f = Filter.inCohort(123, "PU");
-    expect(buildFlowCohortFilter(f)).toEqual({
+    expect(buildFlowCohortFilter(f)).toStrictEqual({
       name: "PU",
       negated: false,
       id: 123,
@@ -1875,7 +1884,7 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
 
   it("not in cohort negated", () => {
     const f = Filter.notInCohort(123, "Bots");
-    expect(buildFlowCohortFilter(f)).toEqual({
+    expect(buildFlowCohortFilter(f)).toStrictEqual({
       name: "Bots",
       negated: true,
       id: 123,
@@ -2027,7 +2036,7 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
       _property_type: "list",
       _resource_type: "events",
     });
-    expect(buildFlowCohortFilter(f)).toEqual({
+    expect(buildFlowCohortFilter(f)).toStrictEqual({
       name: "",
       negated: false,
       id: 9,
@@ -2037,7 +2046,7 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
   it("a single Filter (not a list) is wrapped — `isinstance(where, list)`", () => {
     // NOTE the asymmetry with buildFilterSection: this site tests
     // `list` ONLY (`bookmark_builders.py:683`), not `(list, tuple)`.
-    expect(buildFlowCohortFilter(Filter.inCohort(5, "X"))).toEqual({
+    expect(buildFlowCohortFilter(Filter.inCohort(5, "X"))).toStrictEqual({
       name: "X",
       negated: false,
       id: 5,
@@ -2055,7 +2064,7 @@ describe("buildGroupSection — CohortBreakdown entries (NEW)", () => {
     const entry = buildGroupSection(
       new CohortBreakdown({ cohort: 123, name: "PU" }),
     )[0]!;
-    expect(entry["value"]).toEqual(["PU", "Not In PU"]);
+    expect(entry["value"]).toStrictEqual(["PU", "Not In PU"]);
     expect(entry["resourceType"]).toBe("events");
     expect(entry["profileType"]).toBeNull();
     expect(entry["search"]).toBe("");
@@ -2065,7 +2074,7 @@ describe("buildGroupSection — CohortBreakdown entries (NEW)", () => {
     expect(entry["isHidden"]).toBe(false);
     const cohorts = entry["cohorts"] as Array<Record<string, unknown>>;
     expect(cohorts).toHaveLength(2);
-    expect(cohorts[0]).toEqual({
+    expect(cohorts[0]).toStrictEqual({
       name: "PU",
       negated: false,
       data_group_id: null,
@@ -2083,14 +2092,14 @@ describe("buildGroupSection — CohortBreakdown entries (NEW)", () => {
         include_negated: false,
       }),
     )[0]!;
-    expect(entry["value"]).toEqual(["PU"]);
+    expect(entry["value"]).toStrictEqual(["PU"]);
     expect(entry["cohorts"] as unknown[]).toHaveLength(1);
   });
 
   it("name=null collapses to '' in both the entry and the label", () => {
     // `name = cb.name or ""` — falsy-OR catches None AND "" (caution 10).
     const entry = buildGroupSection(new CohortBreakdown({ cohort: 7 }))[0]!;
-    expect(entry["value"]).toEqual(["", "Not In "]);
+    expect(entry["value"]).toStrictEqual(["", "Not In "]);
     const cohorts = entry["cohorts"] as Array<Record<string, unknown>>;
     expect(cohorts[0]!["name"]).toBe("");
   });

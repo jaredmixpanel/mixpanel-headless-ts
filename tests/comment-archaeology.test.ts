@@ -56,34 +56,41 @@ describe("banned-token table", () => {
 
 describe("findBannedTokens", () => {
   it("flags the id families and the process vocabulary", () => {
-    expect(tokensOf("// (R4.10) and TS-5 per D12, see B6-W2")).toEqual([
+    expect(tokensOf("// (R4.10) and TS-5 per D12, see B6-W2")).toStrictEqual([
       "requirement-id",
       "task-id",
       "design-id",
       "batch-id",
     ]);
-    expect(tokensOf("* per b9-packets.md §0.4 (P2-4, AIE-926)")).toEqual([
+    expect(tokensOf("* per b9-packets.md §0.4 (P2-4, AIE-926)")).toStrictEqual([
       "packets-doc",
       "packet-id",
       "linear-id",
     ]);
-    expect(tokensOf("// the shard arbiter watchlist, phase-3 packet")).toEqual([
-      "shard",
-      "arbiter",
-      "watchlist",
-      "phase",
-      "packet",
-    ]);
-    expect(tokensOf("// see workspace.py:4506-4536 and (:12)")).toEqual([
+    expect(
+      tokensOf("// the shard arbiter watchlist, phase-3 packet"),
+    ).toStrictEqual(["shard", "arbiter", "watchlist", "phase", "packet"]);
+    expect(tokensOf("// see workspace.py:4506-4536 and (:12)")).toStrictEqual([
       "py-line",
       "bare-line",
     ]);
     expect(
       tokensOf("// QA 2026-08-17, Caution #9, FB-3, SEM-F2, CRED-F1"),
-    ).toEqual(["qa-date", "caution", "fb-id", "sem-finding", "cred-finding"]);
+    ).toStrictEqual([
+      "qa-date",
+      "caution",
+      "fb-id",
+      "sem-finding",
+      "cred-finding",
+    ]);
     expect(
       tokensOf("// reviewB, review-resolution, notes.md, ledger row"),
-    ).toEqual(["reviewB", "review-resolution", "notes-doc", "ledger-row"]);
+    ).toStrictEqual([
+      "reviewB",
+      "review-resolution",
+      "notes-doc",
+      "ledger-row",
+    ]);
   });
 
   it("reports the column of each match", () => {
@@ -96,23 +103,25 @@ describe("findBannedTokens", () => {
   });
 
   it("keeps ordinary prose and code-looking text clean", () => {
-    expect(tokensOf("// Return the dashboard list sorted by name.")).toEqual(
-      [],
-    );
-    expect(tokensOf("// B2B customers; phase 3 of the rollout; D100")).toEqual(
-      [],
-    );
-    expect(tokensOf("// a1b2c3 hash, ISO-8601, RFC 7231")).toEqual([]);
+    expect(
+      tokensOf("// Return the dashboard list sorted by name."),
+    ).toStrictEqual([]);
+    expect(
+      tokensOf("// B2B customers; phase 3 of the rollout; D100"),
+    ).toStrictEqual([]);
+    expect(tokensOf("// a1b2c3 hash, ISO-8601, RFC 7231")).toStrictEqual([]);
   });
 
   it("allows the dotted Python symbol form", () => {
     expect(
       tokensOf("* @see mixpanel_headless.workspace.Workspace.list_dashboards"),
-    ).toEqual([]);
-    expect(tokensOf("// twin of tests.test_b6.B6Cases.test_x")).toEqual([]);
-    expect(tokensOf("// see `helpers.D12.build()`")).toEqual([]);
+    ).toStrictEqual([]);
+    expect(tokensOf("// twin of tests.test_b6.B6Cases.test_x")).toStrictEqual(
+      [],
+    );
+    expect(tokensOf("// see `helpers.D12.build()`")).toStrictEqual([]);
     // A line reference glued to a module path is still a hit.
-    expect(tokensOf("// mixpanel_headless/workspace.py:4506")).toEqual([
+    expect(tokensOf("// mixpanel_headless/workspace.py:4506")).toStrictEqual([
       "py-line",
     ]);
   });
@@ -121,14 +130,14 @@ describe("findBannedTokens", () => {
     const line = "// rule B19: event behaviours need a name";
     expect(
       tokensOf(line, "packages/core/src/query/validation-bookmark.ts"),
-    ).toEqual([]);
+    ).toStrictEqual([]);
     expect(
       tokensOf(
         line,
         "packages/core/test/query/validation-cohort-bookmark.test.ts",
       ),
-    ).toEqual([]);
-    expect(tokensOf(line, "packages/core/src/workspace.ts")).toEqual([
+    ).toStrictEqual([]);
+    expect(tokensOf(line, "packages/core/src/workspace.ts")).toStrictEqual([
       "batch-id",
     ]);
     // The bare label without the `rule` prefix stays a hit even there.
@@ -137,7 +146,7 @@ describe("findBannedTokens", () => {
         "// B19: event behaviours",
         "packages/core/src/query/validation-bookmark.ts",
       ),
-    ).toEqual(["batch-id"]);
+    ).toStrictEqual(["batch-id"]);
   });
 });
 
@@ -155,7 +164,7 @@ describe("extraction", () => {
       "f(); // trailing",
     ].join("\n");
     const comments = extractComments(src);
-    expect(comments.map((c) => [c.kind, c.text])).toEqual([
+    expect(comments.map((c) => [c.kind, c.text])).toStrictEqual([
       ["line", "// top"],
       ["jsdoc", "/** doc */"],
       ["block", "/* block */"],
@@ -174,7 +183,7 @@ describe("extraction", () => {
       '  other("ignored", () => {});',
       "});",
     ].join("\n");
-    expect(extractTestTitles(src).map((t) => t.text)).toEqual([
+    expect(extractTestTitles(src).map((t) => t.text)).toStrictEqual([
       "suite",
       "plain",
       "skipped",
@@ -189,7 +198,7 @@ describe("extraction", () => {
     const { hits } = scanSource(src, {
       filePath: "packages/core/test/x.test.ts",
     });
-    expect(hits.map((h) => [h.kind, h.token, h.line, h.col])).toEqual([
+    expect(hits.map((h) => [h.kind, h.token, h.line, h.col])).toStrictEqual([
       ["title", "batch-id", 2, 15],
       ["title", "requirement-id", 2, 22],
     ]);
@@ -199,7 +208,7 @@ describe("extraction", () => {
     const src =
       "#!/usr/bin/env node\n// shebang file (TS-5)\nexport const x = 1;\n";
     const { hits } = scanSource(src, { filePath: "scripts/x.mjs" });
-    expect(hits.map((h) => [h.token, h.line])).toEqual([["task-id", 2]]);
+    expect(hits.map((h) => [h.token, h.line])).toStrictEqual([["task-id", 2]]);
   });
 });
 
@@ -214,17 +223,17 @@ describe("rationale detection", () => {
 
 describe("fix rule: bare id parentheticals", () => {
   it("deletes id-only parentheticals and the adjacent space", () => {
-    expect(fixBareIdParentheticals("// Sort by name (R4.10).")).toEqual({
+    expect(fixBareIdParentheticals("// Sort by name (R4.10).")).toStrictEqual({
       line: "// Sort by name.",
       count: 1,
     });
-    expect(fixBareIdParentheticals(" * (TS-5) Placeholder.")).toEqual({
+    expect(fixBareIdParentheticals(" * (TS-5) Placeholder.")).toStrictEqual({
       line: " * Placeholder.",
       count: 1,
     });
     expect(
       fixBareIdParentheticals("// a (R3.3/R7.6) b (B4, R10.8) c (AIE-926)"),
-    ).toEqual({
+    ).toStrictEqual({
       line: "// a b c",
       count: 3,
     });
@@ -232,7 +241,7 @@ describe("fix rule: bare id parentheticals", () => {
 
   it("leaves parentheticals that say anything else", () => {
     const line = "// compose (R10.8 — never re-implement) here";
-    expect(fixBareIdParentheticals(line)).toEqual({ line, count: 0 });
+    expect(fixBareIdParentheticals(line)).toStrictEqual({ line, count: 0 });
   });
 });
 
@@ -240,11 +249,11 @@ describe("fix rule: python line references", () => {
   it("drops the range and keeps the module when no symbol is nearby", () => {
     expect(
       fixPyLineRefs(" * Mirrors the Python loop (`workspace.py:100-120`)."),
-    ).toEqual({
+    ).toStrictEqual({
       line: " * Mirrors the Python loop (`workspace.py`).",
       count: 1,
     });
-    expect(fixPyLineRefs("// see test_x.py:56")).toEqual({
+    expect(fixPyLineRefs("// see test_x.py:56")).toStrictEqual({
       line: "// see test_x.py",
       count: 1,
     });
@@ -253,29 +262,29 @@ describe("fix rule: python line references", () => {
   it("removes the whole parenthetical when a symbol name is nearby", () => {
     expect(
       fixPyLineRefs(" * `build_time_section` (`bookmark_builders.py:72-127`)."),
-    ).toEqual({ line: " * `build_time_section`.", count: 1 });
+    ).toStrictEqual({ line: " * `build_time_section`.", count: 1 });
     expect(
       fixPyLineRefs("// Workspace.list_dashboards (workspace.py:4506)"),
-    ).toEqual({
+    ).toStrictEqual({
       line: "// Workspace.list_dashboards",
       count: 1,
     });
   });
 
   it("removes bare line-only parentheticals", () => {
-    expect(fixPyLineRefs("// `TestResolverEdgeCases` (:325-393) twin")).toEqual(
-      {
-        line: "// `TestResolverEdgeCases` twin",
-        count: 1,
-      },
-    );
+    expect(
+      fixPyLineRefs("// `TestResolverEdgeCases` (:325-393) twin"),
+    ).toStrictEqual({
+      line: "// `TestResolverEdgeCases` twin",
+      count: 1,
+    });
   });
 
   it("leaves orphan line lists for humans", () => {
     const list = "// Python counterparts: types.py:9116, 9153, 7129";
-    expect(fixPyLineRefs(list)).toEqual({ line: list, count: 0 });
+    expect(fixPyLineRefs(list)).toStrictEqual({ line: list, count: 0 });
     const ticks = "// (`workspace.py:7266`, `:7325`) vs the plain path";
-    expect(fixPyLineRefs(ticks)).toEqual({ line: ticks, count: 0 });
+    expect(fixPyLineRefs(ticks)).toStrictEqual({ line: ticks, count: 0 });
   });
 });
 
@@ -285,7 +294,7 @@ describe("fix rule: ownership markers", () => {
       fixOwnershipMarker(
         "  // === B6-W2 dashboard members (W2 owns; append-only) ===",
       ),
-    ).toEqual({
+    ).toStrictEqual({
       line: "  // --- Dashboard members ---",
       changed: true,
       deleted: false,
@@ -293,7 +302,7 @@ describe("fix rule: ownership markers", () => {
   });
 
   it("deletes a marker that names nothing but ids", () => {
-    expect(fixOwnershipMarker("// === B6-W2 ===")).toEqual({
+    expect(fixOwnershipMarker("// === B6-W2 ===")).toStrictEqual({
       line: null,
       changed: true,
       deleted: true,
@@ -302,14 +311,14 @@ describe("fix rule: ownership markers", () => {
 
   it("ignores plain dividers and markers whose parenthetical says more", () => {
     const plain = "// --- Dashboards ---";
-    expect(fixOwnershipMarker(plain)).toEqual({
+    expect(fixOwnershipMarker(plain)).toStrictEqual({
       line: plain,
       changed: false,
       deleted: false,
     });
     const rich =
       "// --- B6-W7 seams (W7 owns; see `WorkspaceOptions.readFile`) ---";
-    expect(fixOwnershipMarker(rich)).toEqual({
+    expect(fixOwnershipMarker(rich)).toStrictEqual({
       line: rich,
       changed: false,
       deleted: false,
@@ -362,12 +371,12 @@ describe("rewriteSource", () => {
         "",
       ].join("\n"),
     );
-    expect(out.counts).toEqual({
+    expect(out.counts).toStrictEqual({
       "ownership-marker": 1,
       "py-line-ref": 2,
       "bare-id-parenthetical": 2,
     });
-    expect(out.changes.map((c) => c.line)).toEqual([2, 4, 5, 6, 9, 10]);
+    expect(out.changes.map((c) => c.line)).toStrictEqual([2, 4, 5, 6, 9, 10]);
   });
 
   it("deletes a comment that becomes empty and the line it stood on", () => {
@@ -375,7 +384,7 @@ describe("rewriteSource", () => {
       "const a = 1;\n// (R4.10)\nconst b = 2; // (TS-5)\n/** (D12) */\nconst c = 3;\n";
     const out = rewriteSource(src, { filePath: "packages/core/src/x.ts" });
     expect(out.text).toBe("const a = 1;\nconst b = 2;\nconst c = 3;\n");
-    expect(out.changes.map((c) => c.after)).toEqual([null, null, null]);
+    expect(out.changes.map((c) => c.after)).toStrictEqual([null, null, null]);
   });
 
   it("never touches a paragraph that carries rationale words", () => {
@@ -474,8 +483,10 @@ describe("CLI", () => {
     };
     expect(json.total).toBe(3);
     expect(json.byToken["requirement-id"]).toBe(1);
-    expect(json.byDirectory).toEqual({ "packages/core/src": 3 });
-    expect(json.files.map((f) => f.file)).toEqual(["packages/core/src/a.ts"]);
+    expect(json.byDirectory).toStrictEqual({ "packages/core/src": 3 });
+    expect(json.files.map((f) => f.file)).toStrictEqual([
+      "packages/core/src/a.ts",
+    ]);
   });
 
   it("--summary prints only counts", () => {

@@ -72,7 +72,7 @@ describe("Workspace discovery members", () => {
         from_date: "2024-01-01",
         to_date: "2024-01-31",
       }),
-    ).toEqual(["a", "b"]);
+    ).toStrictEqual(["a", "b"]);
     expect(seen["limit"]).toBe("3");
     expect(seen["from_date"]).toBe("2024-01-01");
     expect(seen["to_date"]).toBe("2024-01-31");
@@ -94,7 +94,7 @@ describe("Workspace discovery members", () => {
       status: 200,
       json: { b: 1, a: 1 },
     }));
-    expect(await ws.properties("Purchase")).toEqual(["a", "b"]);
+    expect(await ws.properties("Purchase")).toStrictEqual(["a", "b"]);
   });
 
   it("propertyValues() delegates with event + limit", async () => {
@@ -105,7 +105,7 @@ describe("Workspace discovery members", () => {
     });
     expect(
       await ws.propertyValues("country", { event: "Purchase", limit: 7 }),
-    ).toEqual(["US", "CA"]);
+    ).toStrictEqual(["US", "CA"]);
     expect(seen["event"]).toBe("Purchase");
     expect(seen["limit"]).toBe("7");
   });

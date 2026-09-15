@@ -154,12 +154,12 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
   });
 
   it("FB-9 (pair-B): CREDENTIAL_KEYS.all(region) enumerates every key family for a region", () => {
-    expect(CREDENTIAL_KEYS.all("us")).toEqual([
+    expect(CREDENTIAL_KEYS.all("us")).toStrictEqual([
       "mp.tokens.us",
       "mp.oauth_client.us",
       "mp.pending_login.us",
     ]);
-    expect(CREDENTIAL_KEYS.all("eu")).toEqual([
+    expect(CREDENTIAL_KEYS.all("eu")).toStrictEqual([
       CREDENTIAL_KEYS.tokens("eu"),
       CREDENTIAL_KEYS.clientInfo("eu"),
       CREDENTIAL_KEYS.pendingLogin("eu"),

@@ -40,7 +40,7 @@ describe("TestAppRequestUnwrapping", () => {
     const result = toNativeJson(
       await client.appRequest("GET", "/projects/12345/test"),
     );
-    expect(result).toEqual([1, 2, 3]);
+    expect(result).toStrictEqual([1, 2, 3]);
   });
 
   it("test_unwraps_results_dict", async () => {
@@ -51,7 +51,7 @@ describe("TestAppRequestUnwrapping", () => {
     const result = toNativeJson(
       await client.appRequest("GET", "/projects/12345/test"),
     );
-    expect(result).toEqual({ id: 1 });
+    expect(result).toStrictEqual({ id: 1 });
   });
 
   it("test_no_results_key_returns_full_body", async () => {
@@ -62,7 +62,7 @@ describe("TestAppRequestUnwrapping", () => {
     const result = toNativeJson(
       await client.appRequest("GET", "/projects/12345/test"),
     );
-    expect(result).toEqual({ data: "x" });
+    expect(result).toStrictEqual({ data: "x" });
   });
 
   it("test_204_returns_status_ok", async () => {
@@ -72,7 +72,7 @@ describe("TestAppRequestUnwrapping", () => {
     const result = toNativeJson(
       await client.appRequest("DELETE", "/projects/12345/test"),
     );
-    expect(result).toEqual({ status: "ok" });
+    expect(result).toStrictEqual({ status: "ok" });
   });
 });
 
@@ -83,7 +83,7 @@ describe("TestListMethodResponseHandling", () => {
       json: { status: "ok", results: [{ id: 1 }] },
     }));
     const result = toNativeJson(await client.listDashboards());
-    expect(result).toEqual([{ id: 1 }]);
+    expect(result).toStrictEqual([{ id: 1 }]);
   });
 
   it("test_list_dashboards_empty", async () => {
@@ -92,7 +92,7 @@ describe("TestListMethodResponseHandling", () => {
       json: { status: "ok", results: [] },
     }));
     const result = await client.listDashboards();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("test_list_bookmarks_v2_returns_unwrapped_list", async () => {
@@ -101,7 +101,7 @@ describe("TestListMethodResponseHandling", () => {
       json: { status: "ok", results: [{ id: 10, name: "Report" }] },
     }));
     const result = toNativeJson(await client.listBookmarksV2());
-    expect(result).toEqual([{ id: 10, name: "Report" }]);
+    expect(result).toStrictEqual([{ id: 10, name: "Report" }]);
   });
 
   it("test_list_cohorts_app_returns_unwrapped_list", async () => {
@@ -110,7 +110,7 @@ describe("TestListMethodResponseHandling", () => {
       json: { status: "ok", results: [{ id: 5, name: "Power Users" }] },
     }));
     const result = toNativeJson(await client.listCohortsApp());
-    expect(result).toEqual([{ id: 5, name: "Power Users" }]);
+    expect(result).toStrictEqual([{ id: 5, name: "Power Users" }]);
   });
 
   it("test_list_blueprint_templates_returns_unwrapped_list", async () => {
@@ -119,7 +119,7 @@ describe("TestListMethodResponseHandling", () => {
       json: { status: "ok", results: [{ template_type: "company_kpis" }] },
     }));
     const result = toNativeJson(await client.listBlueprintTemplates());
-    expect(result).toEqual([{ template_type: "company_kpis" }]);
+    expect(result).toStrictEqual([{ template_type: "company_kpis" }]);
   });
 
   it("test_list_blueprint_templates_skips_non_dict_entries", async () => {
@@ -165,7 +165,7 @@ describe("TestResponseTypeValidation", () => {
       json: { status: "ok", results: { id: 1, title: "X" } },
     }));
     const result = toNativeJson(await client.createDashboard({ title: "X" }));
-    expect(result).toEqual({ id: 1, title: "X" });
+    expect(result).toStrictEqual({ id: 1, title: "X" });
   });
 
   it("test_get_dashboard_returns_dict", async () => {
@@ -174,7 +174,7 @@ describe("TestResponseTypeValidation", () => {
       json: { status: "ok", results: { id: 42, title: "My Dash" } },
     }));
     const result = toNativeJson(await client.getDashboard(42));
-    expect(result).toEqual({ id: 42, title: "My Dash" });
+    expect(result).toStrictEqual({ id: 42, title: "My Dash" });
   });
 
   it("test_create_bookmark_returns_dict", async () => {
@@ -192,7 +192,7 @@ describe("TestResponseTypeValidation", () => {
         params: {},
       }),
     );
-    expect(result).toEqual({ id: 99, name: "DAU", type: "insights" });
+    expect(result).toStrictEqual({ id: 99, name: "DAU", type: "insights" });
   });
 
   it("test_get_cohort_returns_dict", async () => {
@@ -201,7 +201,7 @@ describe("TestResponseTypeValidation", () => {
       json: { status: "ok", results: { id: 7, name: "Churned" } },
     }));
     const result = toNativeJson(await client.getCohort(7));
-    expect(result).toEqual({ id: 7, name: "Churned" });
+    expect(result).toStrictEqual({ id: 7, name: "Churned" });
   });
 
   it("test_bookmark_linked_ids_returns_list", async () => {
@@ -210,7 +210,7 @@ describe("TestResponseTypeValidation", () => {
       json: { status: "ok", results: [1, 2] },
     }));
     const result = toNativeJson(await client.bookmarkLinkedDashboardIds(42));
-    expect(result).toEqual([1, 2]);
+    expect(result).toStrictEqual([1, 2]);
   });
 
   it("test_create_dashboard_non_dict_raises", async () => {
@@ -278,8 +278,8 @@ describe("TestDuplicateBookmarkDashboardMethods", () => {
     }));
     const resultA = toNativeJson(await client.getBookmarkDashboardIds(42));
     const resultB = toNativeJson(await client.bookmarkLinkedDashboardIds(42));
-    expect(resultA).toEqual([1, 2, 3]);
-    expect(resultB).toEqual([1, 2, 3]);
+    expect(resultA).toStrictEqual([1, 2, 3]);
+    expect(resultB).toStrictEqual([1, 2, 3]);
   });
 
   it("test_both_handle_empty_results", async () => {
@@ -289,8 +289,8 @@ describe("TestDuplicateBookmarkDashboardMethods", () => {
     }));
     const resultA = await client.getBookmarkDashboardIds(42);
     const resultB = await client.bookmarkLinkedDashboardIds(42);
-    expect(resultA).toEqual([]);
-    expect(resultB).toEqual([]);
+    expect(resultA).toStrictEqual([]);
+    expect(resultB).toStrictEqual([]);
   });
 });
 

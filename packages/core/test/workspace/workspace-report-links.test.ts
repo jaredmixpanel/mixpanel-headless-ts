@@ -386,7 +386,7 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
 
     const body = postedBody(mock);
     expect(body["type"]).toBe("insights");
-    expect(body["params"]).toEqual(params);
+    expect(body["params"]).toStrictEqual(params);
     expect(body["slug"] as string).toHaveLength(12);
     expect(link).toBeInstanceOf(ReportLink);
     expect(link.report_type).toBe("insights");
@@ -445,7 +445,7 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
     });
 
     const body = postedBody(mock);
-    expect(Object.keys(body).sort()).toEqual(["params", "slug", "type"]);
+    expect(Object.keys(body).sort()).toStrictEqual(["params", "slug", "type"]);
   });
 
   it("test_missing_created_at_is_none", async () => {
@@ -475,7 +475,7 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
 
     const body = postedBody(mock);
     expect(body["type"]).toBe("insights");
-    expect(body["params"]).toEqual(params);
+    expect(body["params"]).toStrictEqual(params);
     expect(link.report_type).toBe("insights");
   });
 
@@ -556,7 +556,7 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
     );
 
     expect(exc.code).toBe("RL4_REPORT_TYPE_CONFLICT");
-    expect(detailsOf(exc)).toEqual({
+    expect(detailsOf(exc)).toStrictEqual({
       given: "insights",
       inferred: "funnels",
       result_class: "FunnelQueryResult",
@@ -583,7 +583,7 @@ describe("TestCreateReportLinkValidation (test_workspace_report_links.py:310)", 
 
     const link = await ws.createReportLink({ bogus: 1 }, { validate: false });
 
-    expect(postedBody(mock)["params"]).toEqual({ bogus: 1 });
+    expect(postedBody(mock)["params"]).toStrictEqual({ bogus: 1 });
     expect(link.report_type).toBe("insights");
   });
 
@@ -735,12 +735,12 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
 
     const resolved = await ws.resolveReportLink(SLUG);
 
-    expect(mock.getBookmarkUrlCalls).toEqual([SLUG]);
+    expect(mock.getBookmarkUrlCalls).toStrictEqual([SLUG]);
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
     expect(resolved).toBeInstanceOf(ResolvedReport);
     expect(resolved.source).toBe("slug");
     expect(resolved.report_type).toBe("insights");
-    expect(resolved.params).toEqual(INSIGHTS_PARAMS);
+    expect(resolved.params).toStrictEqual(INSIGHTS_PARAMS);
     expect(resolved.project_id).toBe(12345);
     expect(resolved.workspace_id).toBeNull();
     expect(resolved.region).toBe("us");
@@ -812,8 +812,8 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     expect(resolved.bookmark).not.toBeNull();
     expect(resolved.bookmark?.id).toBe(123);
     expect(resolved.bookmark_id).toBe(123);
-    expect(resolved.params).toEqual(INSIGHTS_PARAMS);
-    expect(resolved.overrides).toEqual({ originDashboard: 555 });
+    expect(resolved.params).toStrictEqual(INSIGHTS_PARAMS);
+    expect(resolved.overrides).toStrictEqual({ originDashboard: 555 });
     expect(mock.getBookmarkCalls).toHaveLength(0);
   });
 
@@ -875,7 +875,7 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     );
 
     expect(resolved.slug).toBe(SLUG);
-    expect(mock.getBookmarkUrlCalls).toEqual([SLUG]);
+    expect(mock.getBookmarkUrlCalls).toStrictEqual([SLUG]);
   });
 });
 
@@ -888,11 +888,11 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
       "https://mixpanel.com/project/12345/app/insights#report/123",
     );
 
-    expect(mock.getBookmarkCalls).toEqual([123]);
+    expect(mock.getBookmarkCalls).toStrictEqual([123]);
     expect(mock.getBookmarkUrlCalls).toHaveLength(0);
     expect(resolved.source).toBe("bookmark");
     expect(resolved.report_type).toBe("funnels");
-    expect(resolved.params).toEqual({ steps: [{ event: "Login" }] });
+    expect(resolved.params).toStrictEqual({ steps: [{ event: "Login" }] });
     expect(resolved.bookmark_id).toBe(123);
     expect(resolved.bookmark).not.toBeNull();
     expect(resolved.bookmark?.bookmark_type).toBe("funnels");
@@ -927,7 +927,7 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
       "https://mixpanel.com/project/12345/app/funnels#view/123/~(a~1)",
     );
 
-    expect(resolved.params).toEqual({ steps: [{ event: "Login" }] });
+    expect(resolved.params).toStrictEqual({ steps: [{ event: "Login" }] });
     expect(
       log.warnings.some(
         (m) =>
@@ -1033,7 +1033,7 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
       "https://mixpanel.com/project/12345/app/insights#report/123",
     );
 
-    expect(resolved.params).toEqual({});
+    expect(resolved.params).toStrictEqual({});
   });
 });
 
@@ -1205,12 +1205,12 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     );
 
     expect(result).toBeInstanceOf(QueryResult);
-    expect(result.params).toEqual(INSIGHTS_PARAMS);
+    expect(result.params).toStrictEqual(INSIGHTS_PARAMS);
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual(INSIGHTS_PARAMS);
+    expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual(PROJECT_WIDE_SCOPE);
+    expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
   it("test_funnels", async () => {
@@ -1221,12 +1221,12 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     );
 
     expect(result).toBeInstanceOf(FunnelQueryResult);
-    expect(result.params).toEqual({ steps: [] });
+    expect(result.params).toStrictEqual({ steps: [] });
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual({ steps: [] });
+    expect(call.body["bookmark"]).toStrictEqual({ steps: [] });
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual(PROJECT_WIDE_SCOPE);
+    expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
   it("test_retention", async () => {
@@ -1237,12 +1237,12 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     );
 
     expect(result).toBeInstanceOf(RetentionQueryResult);
-    expect(result.params).toEqual({ r: 1 });
+    expect(result.params).toStrictEqual({ r: 1 });
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual({ r: 1 });
+    expect(call.body["bookmark"]).toStrictEqual({ r: 1 });
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual(PROJECT_WIDE_SCOPE);
+    expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
   /** `mode` → `/arb_funnels` `query_type` (`LiveQueryService.queryFlow`). */
@@ -1267,13 +1267,13 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
 
       expect(result).toBeInstanceOf(FlowQueryResult);
       expect((result as FlowQueryResult).mode).toBe(expectedMode);
-      expect(result.params).toEqual(params);
+      expect(result.params).toStrictEqual(params);
       expect(mock.arbFunnelsCalls).toHaveLength(1);
       const call = mock.arbFunnelsCalls[0]!;
-      expect(call.body["bookmark"]).toEqual(params);
+      expect(call.body["bookmark"]).toStrictEqual(params);
       expect(call.body["project_id"]).toBe(12345);
       expect(call.body["query_type"]).toBe(QUERY_TYPE_FOR_MODE[expectedMode]);
-      expect(call.scope).toEqual(PROJECT_WIDE_SCOPE);
+      expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
     },
   );
 
@@ -1288,10 +1288,10 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     expect((result as FlowQueryResult).mode).toBe("tree");
     expect(mock.arbFunnelsCalls).toHaveLength(1);
     const call = mock.arbFunnelsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual({ chartType: "paths" });
+    expect(call.body["bookmark"]).toStrictEqual({ chartType: "paths" });
     expect(call.body["project_id"]).toBe(12345);
     expect(call.body["query_type"]).toBe("flows");
-    expect(call.scope).toEqual(PROJECT_WIDE_SCOPE);
+    expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
   it("test_launch_analysis_unsupported", async () => {
@@ -1326,12 +1326,12 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     const result = await ws.queryReportLink(SLUG);
 
     expect(result).toBeInstanceOf(QueryResult);
-    expect(mock.getBookmarkUrlCalls).toEqual([SLUG]);
+    expect(mock.getBookmarkUrlCalls).toStrictEqual([SLUG]);
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual(INSIGHTS_PARAMS);
+    expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual(PROJECT_WIDE_SCOPE);
+    expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 });
 
@@ -1351,7 +1351,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     const direct = await ws.resolveReportLink(SHORT_TARGET);
     const viaShort = await ws.resolveReportLink(SHORT);
 
-    expect(mock.resolveShortLinkCalls).toEqual(["AbC123"]);
+    expect(mock.resolveShortLinkCalls).toStrictEqual(["AbC123"]);
     expect(viaShort.expanded_url).toBe(SHORT_TARGET);
     expect(viaShort.input).toBe(SHORT);
     // `dataclasses.replace(via_short, expanded_url=None, input=_SHORT_TARGET) == direct`
@@ -1359,7 +1359,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
       ...viaShort.toDict(),
       expanded_url: null,
       input: SHORT_TARGET,
-    }).toEqual(direct.toDict());
+    }).toStrictEqual(direct.toDict());
   });
 
   it("test_short_link_to_bookmark", async () => {
@@ -1465,9 +1465,9 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     // The expanded target names /view/75/, so the report runs under 75.
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual(INSIGHTS_PARAMS);
+    expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual({
+    expect(call.scope).toStrictEqual({
       workspace_id: 75,
       inject_workspace_id: false,
     });
@@ -1491,7 +1491,7 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     const url = ws.savedReportLink(123, { report_type: reportType });
 
     expect(url).toBe(`https://mixpanel.com/project/12345/app/${tail}`);
-    expect(mock.methodCalls).toEqual([]);
+    expect(mock.methodCalls).toStrictEqual([]);
   });
 
   it("test_default_type_is_insights", () => {
@@ -1578,7 +1578,7 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     ws.savedReportLink(1);
     ws.savedReportLink(2, { report_type: "flows", workspace_id: 3 });
 
-    expect(mock.methodCalls).toEqual([]);
+    expect(mock.methodCalls).toStrictEqual([]);
   });
 });
 
@@ -1792,9 +1792,9 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(result).toBeInstanceOf(QueryResult);
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual(INSIGHTS_PARAMS);
+    expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual(PROJECT_WIDE_SCOPE);
+    expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
   it("test_resolve_unpinned_then_pin_then_run_stays_project_wide", async () => {
@@ -1809,9 +1809,9 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
 
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual(INSIGHTS_PARAMS);
+    expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual(PROJECT_WIDE_SCOPE);
+    expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
   it("test_resolved_workspace_is_applied_when_session_is_unpinned", async () => {
@@ -1829,9 +1829,9 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(result).toBeInstanceOf(QueryResult);
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual(INSIGHTS_PARAMS);
+    expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual({
+    expect(call.scope).toStrictEqual({
       workspace_id: 75,
       inject_workspace_id: false,
     });
@@ -1847,9 +1847,12 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
 
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual(INSIGHTS_PARAMS);
+    expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual({ workspace_id: 9, inject_workspace_id: false });
+    expect(call.scope).toStrictEqual({
+      workspace_id: 9,
+      inject_workspace_id: false,
+    });
   });
 
   it("test_pinned_workspace_is_recorded_and_applied", async () => {
@@ -1860,9 +1863,9 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
 
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
-    expect(call.body["bookmark"]).toEqual(INSIGHTS_PARAMS);
+    expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
     expect(call.body["project_id"]).toBe(12345);
-    expect(call.scope).toEqual({
+    expect(call.scope).toStrictEqual({
       workspace_id: 75,
       inject_workspace_id: false,
     });

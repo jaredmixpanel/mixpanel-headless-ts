@@ -126,7 +126,7 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   it("(a) errors.ts exports exactly the artifact's 34 exception classes", () => {
     const exported = [...exportedClasses.keys()].sort();
     const expected = Object.keys(artifact.exception_classes).sort();
-    expect(exported).toEqual(expected);
+    expect(exported).toStrictEqual(expected);
   });
 
   it("(a) parent-edge set matches (Object.getPrototypeOf walk)", () => {
@@ -148,7 +148,7 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   });
 
   it("(b) TS CODED_GUARD_REGISTRY equals the artifact set", () => {
-    expect([...CODED_GUARD_REGISTRY].sort()).toEqual(
+    expect([...CODED_GUARD_REGISTRY].sort()).toStrictEqual(
       [...artifact.coded_guard_registry].sort(),
     );
     // The re-export through errors.ts is the same object.
@@ -156,7 +156,7 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   });
 
   it("(b) TS CODED_GUARD_TWIN_CODES equals the artifact set and is disjoint", () => {
-    expect([...CODED_GUARD_TWIN_CODES].sort()).toEqual(
+    expect([...CODED_GUARD_TWIN_CODES].sort()).toStrictEqual(
       [...artifact.coded_guard_twin_codes].sort(),
     );
     expect(errors.CODED_GUARD_TWIN_CODES).toBe(CODED_GUARD_TWIN_CODES);
@@ -166,7 +166,7 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   });
 
   it("(c) default codes match on freshly constructed instances", () => {
-    expect(Object.keys(INSTANTIATION_TABLE).sort()).toEqual(
+    expect(Object.keys(INSTANTIATION_TABLE).sort()).toStrictEqual(
       Object.keys(artifact.default_codes).sort(),
     );
     for (const [name, expectedCode] of Object.entries(artifact.default_codes)) {
@@ -180,10 +180,10 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   });
 
   it("(c) generated DEFAULT_ERROR_CODES map mirrors the artifact", () => {
-    expect(Object.fromEntries(DEFAULT_ERROR_CODES)).toEqual(
+    expect(Object.fromEntries(DEFAULT_ERROR_CODES)).toStrictEqual(
       artifact.default_codes,
     );
-    expect(Object.fromEntries(EXCEPTION_CLASS_PARENTS)).toEqual(
+    expect(Object.fromEntries(EXCEPTION_CLASS_PARENTS)).toStrictEqual(
       artifact.exception_classes,
     );
     expect(ERROR_CODES_GENERATED_FROM).toBe(artifact.generated_from);

@@ -138,9 +138,9 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     fc.assert(
       fc.property(sessions, accounts, (s, newAccount) => {
         const s2 = sessionReplace(s, { account: newAccount });
-        expect(s2.account).toEqual(newAccount);
-        expect(s2.project).toEqual(s.project);
-        expect(s2.workspace).toEqual(s.workspace);
+        expect(s2.account).toStrictEqual(newAccount);
+        expect(s2.project).toStrictEqual(s.project);
+        expect(s2.workspace).toStrictEqual(s.workspace);
       }),
     );
   });
@@ -149,9 +149,9 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     fc.assert(
       fc.property(sessions, projects, (s, newProject) => {
         const s2 = sessionReplace(s, { project: newProject });
-        expect(s2.project).toEqual(newProject);
-        expect(s2.account).toEqual(s.account);
-        expect(s2.workspace).toEqual(s.workspace);
+        expect(s2.project).toStrictEqual(newProject);
+        expect(s2.account).toStrictEqual(s.account);
+        expect(s2.workspace).toStrictEqual(s.workspace);
       }),
     );
   });
@@ -161,9 +161,9 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
       fc.property(sessions, workspaceIds, (s, wsId) => {
         const newWorkspace: WorkspaceRef = { id: wsId };
         const s2 = sessionReplace(s, { workspace: newWorkspace });
-        expect(s2.workspace).toEqual(newWorkspace);
-        expect(s2.account).toEqual(s.account);
-        expect(s2.project).toEqual(s.project);
+        expect(s2.workspace).toStrictEqual(newWorkspace);
+        expect(s2.account).toStrictEqual(s.account);
+        expect(s2.project).toStrictEqual(s.project);
       }),
     );
   });
@@ -181,7 +181,7 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
-        expect(s2.workspace).toEqual(s.workspace);
+        expect(s2.workspace).toStrictEqual(s.workspace);
       }),
     );
   });
@@ -191,7 +191,7 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
         expect(s2).not.toBe(s);
-        expect(s2).toEqual(s);
+        expect(s2).toStrictEqual(s);
       }),
     );
   });
@@ -200,10 +200,10 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
-        expect(s2.account).toEqual(s.account);
-        expect(s2.project).toEqual(s.project);
-        expect(s2.workspace).toEqual(s.workspace);
-        expect(s2.headers).toEqual(s.headers);
+        expect(s2.account).toStrictEqual(s.account);
+        expect(s2.project).toStrictEqual(s.project);
+        expect(s2.workspace).toStrictEqual(s.workspace);
+        expect(s2.headers).toStrictEqual(s.headers);
       }),
     );
   });
@@ -219,9 +219,9 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
           workspace: s.workspace,
           headers: s.headers,
         });
-        expect(rebuilt.account).toEqual(s.account);
-        expect(rebuilt.project).toEqual(s.project);
-        expect(rebuilt.workspace).toEqual(s.workspace);
+        expect(rebuilt.account).toStrictEqual(s.account);
+        expect(rebuilt.project).toStrictEqual(s.project);
+        expect(rebuilt.workspace).toStrictEqual(s.workspace);
       }),
     );
   });

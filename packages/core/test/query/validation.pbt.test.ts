@@ -284,7 +284,7 @@ describe("TestValidateTimeArgsSoundness", () => {
         expect(
           errors,
           `Unexpected errors for valid dates ${from_date} to ${to_date}`,
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 100 },
     );
@@ -298,9 +298,10 @@ describe("TestValidateTimeArgsSoundness", () => {
           to_date: null,
           last,
         });
-        expect(errors, `Unexpected errors for last=${String(last)}`).toEqual(
-          [],
-        );
+        expect(
+          errors,
+          `Unexpected errors for last=${String(last)}`,
+        ).toStrictEqual([]);
       }),
       { numRuns: 100 },
     );
@@ -335,9 +336,10 @@ describe("TestCustomPropertyRefValidation", () => {
       fc.property(fc.integer({ min: 1, max: 10_000 }), (propId) => {
         const ref = new CustomPropertyRef({ id: propId });
         const errors = _validateCustomProperty(ref, "test");
-        expect(errors, `Unexpected errors for id=${String(propId)}`).toEqual(
-          [],
-        );
+        expect(
+          errors,
+          `Unexpected errors for id=${String(propId)}`,
+        ).toStrictEqual([]);
       }),
       { numRuns: 100 },
     );
@@ -376,7 +378,7 @@ describe("TestInlineCustomPropertyValidation", () => {
           expect(
             errors,
             "Unexpected errors for valid InlineCustomProperty",
-          ).toEqual([]);
+          ).toStrictEqual([]);
         },
       ),
       { numRuns: 100 },

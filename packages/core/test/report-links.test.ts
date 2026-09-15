@@ -80,7 +80,7 @@ const PARSED_FIELDS: ReadonlyArray<keyof ParsedReportLink> = [
  */
 function expectParsedReportLink(parsed: ParsedReportLink): void {
   expect(Object.isFrozen(parsed)).toBe(true);
-  expect(Object.keys(parsed).sort()).toEqual([...PARSED_FIELDS].sort());
+  expect(Object.keys(parsed).sort()).toStrictEqual([...PARSED_FIELDS].sort());
 }
 
 /**
@@ -129,25 +129,25 @@ describe("TestConstants", () => {
   });
 
   it("test_tables", () => {
-    expect(Object.fromEntries(WEB_HOSTS)).toEqual({
+    expect(Object.fromEntries(WEB_HOSTS)).toStrictEqual({
       us: "mixpanel.com",
       eu: "eu.mixpanel.com",
       in: "in.mixpanel.com",
     });
-    expect(Object.fromEntries(SLUG_APP_FOR_TYPE)).toEqual({
+    expect(Object.fromEntries(SLUG_APP_FOR_TYPE)).toStrictEqual({
       insights: "insights",
       funnels: "insights",
       retention: "insights",
       flows: "flows",
     });
-    expect(Object.fromEntries(BOOKMARK_HASH_FOR_TYPE)).toEqual({
+    expect(Object.fromEntries(BOOKMARK_HASH_FOR_TYPE)).toStrictEqual({
       insights: "insights#report/{id}",
       funnels: "funnels#view/{id}",
       retention: "retention#report/{id}",
       flows: "flows#report/{id}",
       "launch-analysis": "impact#report/{id}",
     });
-    expect(Object.fromEntries(APP_TO_REPORT_TYPE)).toEqual({
+    expect(Object.fromEntries(APP_TO_REPORT_TYPE)).toStrictEqual({
       insights: "insights",
       funnels: "funnels",
       retention: "retention",
@@ -169,7 +169,7 @@ describe("TestWebHost", () => {
   it("test_unknown_region_raises_rl3", () => {
     const exc = catchParamError(() => webHost("jp"));
     expect(exc.code).toBe("RL3_UNKNOWN_REGION");
-    expect(exc.details).toEqual({ region: "jp" });
+    expect(exc.details).toStrictEqual({ region: "jp" });
   });
 });
 
@@ -222,7 +222,7 @@ describe("TestGenerateSlug", () => {
       return "A";
     };
     expect(generateSlug({ choice })).toBe("A".repeat(12));
-    expect(seen).toEqual(Array.from({ length: 12 }, () => SLUG_ALPHABET));
+    expect(seen).toStrictEqual(Array.from({ length: 12 }, () => SLUG_ALPHABET));
   });
 
   it("test_default_is_a_valid_slug", () => {
@@ -733,7 +733,7 @@ describe("TestBuilders", () => {
       }),
     );
     expect(exc.code).toBe("RL1_UNKNOWN_REPORT_TYPE");
-    expect(exc.details).toEqual({
+    expect(exc.details).toStrictEqual({
       report_type: "boards",
       allowed: ["flows", "funnels", "insights", "retention"],
     });
@@ -764,7 +764,7 @@ describe("TestBuilders", () => {
       }),
     );
     expect(exc.code).toBe("RL2_INVALID_SLUG");
-    expect(exc.details).toEqual({ slug: "short" });
+    expect(exc.details).toStrictEqual({ slug: "short" });
   });
 
   it.each([
@@ -783,7 +783,7 @@ describe("TestBuilders", () => {
       }),
     );
     expect(exc.code).toBe("RL6_INVALID_ID");
-    expect(exc.details).toEqual({ field, value });
+    expect(exc.details).toStrictEqual({ field, value });
   });
 
   it.each([
@@ -802,7 +802,7 @@ describe("TestBuilders", () => {
       }),
     );
     expect(exc.code).toBe("RL6_INVALID_ID");
-    expect(exc.details).toEqual({ field, value });
+    expect(exc.details).toStrictEqual({ field, value });
   });
 
   it.each(["slug", "bookmark"])(
@@ -830,13 +830,13 @@ describe("TestBuilders", () => {
 
 describe("TestTableInvariants", () => {
   it("test_slug_table_keys_match_report_link_type", () => {
-    expect(new Set(SLUG_APP_FOR_TYPE.keys())).toEqual(
+    expect(new Set(SLUG_APP_FOR_TYPE.keys())).toStrictEqual(
       new Set(REPORT_LINK_TYPE_VALUES),
     );
   });
 
   it("test_bookmark_table_keys_match_bookmark_type", () => {
-    expect(new Set(BOOKMARK_HASH_FOR_TYPE.keys())).toEqual(
+    expect(new Set(BOOKMARK_HASH_FOR_TYPE.keys())).toStrictEqual(
       new Set(BOOKMARK_TYPE_VALUES),
     );
   });

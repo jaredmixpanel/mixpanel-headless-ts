@@ -802,7 +802,7 @@ describe("TestParallelResultStructure", () => {
     });
 
     const profileIds = result.profiles.map((p) => p["distinct_id"]);
-    expect(result.distinct_ids).toEqual(profileIds);
+    expect(result.distinct_ids).toStrictEqual(profileIds);
   });
 });
 

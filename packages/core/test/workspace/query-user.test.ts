@@ -276,10 +276,9 @@ describe("TestQueryUserPropertySelection", () => {
       properties: ["$email", "plan"],
     });
 
-    expect(mock.exportPageCalls[0]!.options["output_properties"]).toEqual([
-      "$email",
-      "plan",
-    ]);
+    expect(mock.exportPageCalls[0]!.options["output_properties"]).toStrictEqual(
+      ["$email", "plan"],
+    );
   });
 
   it("properties=null sends no output_properties", async () => {
@@ -631,7 +630,7 @@ describe("TestQueryUserDataFrame", () => {
     expect(columns[0]).toBe("distinct_id");
     expect(columns[1]).toBe("last_seen");
     const remaining = columns.slice(2);
-    expect(remaining).toEqual(sortedByCodepoint(remaining));
+    expect(remaining).toStrictEqual(sortedByCodepoint(remaining));
   });
 
   it("row count matches the profile count", async () => {
@@ -694,7 +693,7 @@ describe("TestQueryUserEmptyResult", () => {
 
     const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
 
-    expect(result.distinct_ids).toEqual([]);
+    expect(result.distinct_ids).toStrictEqual([]);
   });
 });
 

@@ -158,7 +158,7 @@ describe("retry timing in the export 429 loop", () => {
       events.push(event);
     }
     expect(events).toHaveLength(1);
-    expect(sleeps).toEqual([5000]); // header path, unjittered, R2.12 ms.
+    expect(sleeps).toStrictEqual([5000]); // header path, unjittered, R2.12 ms.
   });
 
   it("normalizes an abort during the backoff sleep to AbortError", async () => {
@@ -239,7 +239,7 @@ describe("stream_events / stream_profiles facade wrappers", () => {
     expect(transformed["event_name"]).toBe("Sign Up");
     expect(transformed["distinct_id"]).toBe("u1");
     expect(transformed["insert_id"]).toBe("fixed-uuid");
-    expect(transformed["properties"]).toEqual({ plan: "pro" });
+    expect(transformed["properties"]).toStrictEqual({ plan: "pro" });
   });
 
   it("validates limit lazily with the WR2/WR3 codes", async () => {
@@ -286,6 +286,6 @@ describe("stream_events / stream_profiles facade wrappers", () => {
     expect(out).toHaveLength(1);
     expect(out[0]?.["distinct_id"]).toBe("u1");
     expect(out[0]?.["last_seen"]).toBe("2024-01-15T10:30:00");
-    expect(out[0]?.["properties"]).toEqual({ plan: "pro" });
+    expect(out[0]?.["properties"]).toStrictEqual({ plan: "pro" });
   });
 });

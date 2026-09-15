@@ -141,7 +141,7 @@ describe("beginLogin", () => {
     expect(raw).not.toBeNull();
     const pending = JSON.parse(raw as string) as Record<string, unknown>;
     // Fixed, non-numeric key set in insertion order (§7 caution 7).
-    expect(Object.keys(pending)).toEqual([
+    expect(Object.keys(pending)).toStrictEqual([
       "state",
       "verifier",
       "client_id",

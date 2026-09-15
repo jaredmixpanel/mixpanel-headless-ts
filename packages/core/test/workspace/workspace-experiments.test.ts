@@ -153,7 +153,7 @@ describe("TestWorkspaceExperimentCRUD", () => {
 
   it("list_experiments() returns empty list when no experiments exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listExperiments()).toEqual([]);
+    expect(await ws.listExperiments()).toStrictEqual([]);
   });
 
   it("list_experiments(include_archived=True) passes param to API", async () => {
@@ -342,7 +342,7 @@ describe("ADDITIVE: conclude_experiment body assembly (`workspace.py:6300`)", ()
     await concludeExperimentMember(client, "e1");
 
     expect(calls[0]?.[0]).toBe("e1");
-    expect(calls[0]?.[1]).toEqual({});
+    expect(calls[0]?.[1]).toStrictEqual({});
   });
 
   it("sends the exclude_none dump when params are supplied", async () => {
@@ -356,7 +356,7 @@ describe("ADDITIVE: conclude_experiment body assembly (`workspace.py:6300`)", ()
       params: new ExperimentConcludeParams({ end_date: "2026-04-01" }),
     });
 
-    expect(calls[0]?.[1]).toEqual({ end_date: "2026-04-01" });
+    expect(calls[0]?.[1]).toStrictEqual({ end_date: "2026-04-01" });
   });
 });
 

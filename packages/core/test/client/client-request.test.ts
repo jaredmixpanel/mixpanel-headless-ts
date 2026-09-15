@@ -76,7 +76,7 @@ describe("TestPublicRequest", () => {
       },
     );
     expect(capturedContentType.includes("application/json")).toBe(true);
-    expect(capturedBody).toEqual({
+    expect(capturedBody).toStrictEqual({
       name: "test",
       value: 123,
       query_origin: "mixpanel-headless",
@@ -139,7 +139,10 @@ describe("TestPublicRequest", () => {
       "GET",
       "https://mixpanel.com/api/app/test",
     );
-    expect(result).toEqual({ data: { events: ["A", "B"] }, status: "ok" });
+    expect(result).toStrictEqual({
+      data: { events: ["A", "B"] },
+      status: "ok",
+    });
   });
 
   it("test_request_handles_401", async () => {
@@ -181,7 +184,7 @@ describe("TestPublicRequest", () => {
       "https://mixpanel.com/api/app/test",
     );
     expect(callCount).toBe(2);
-    expect(result).toEqual({ success: true });
+    expect(result).toStrictEqual({ success: true });
   });
 
   it("test_request_raises_rate_limit_after_max_retries", async () => {
@@ -298,8 +301,8 @@ describe("TestAppRequestFormBody (B4-C1 deferral slice)", () => {
     ).toBe(true);
     // urllib.parse.parse_qs equivalence over the encoded body.
     const decoded = new URLSearchParams(request.bodyText);
-    expect(decoded.getAll("name")).toEqual(["X"]);
-    expect(decoded.getAll("alternatives")).toEqual(['[{"event": "Y"}]']);
+    expect(decoded.getAll("name")).toStrictEqual(["X"]);
+    expect(decoded.getAll("alternatives")).toStrictEqual(['[{"event": "Y"}]']);
     // Byte-exact urlencode grammar (the recorded body_text contract:
     // quote_plus escapes `[{"...` and spells space as `+`).
     expect(request.bodyText).toBe(

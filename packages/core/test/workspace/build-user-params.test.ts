@@ -214,7 +214,7 @@ describe("TestCohortRouting", () => {
       string,
       unknown
     >;
-    expect(fbc["raw_cohort"]).toEqual(expected);
+    expect(fbc["raw_cohort"]).toStrictEqual(expected);
   });
 
   it("Filter.in_cohort in the where list extracts to filter_by_cohort", async () => {
@@ -372,7 +372,7 @@ describe("TestDistinctIdHandling", () => {
       mode: "profiles",
       distinct_ids: ["user_1", "user_2", "user_3"],
     });
-    expect(decodeParam(params["distinct_ids"])).toEqual([
+    expect(decodeParam(params["distinct_ids"])).toStrictEqual([
       "user_1",
       "user_2",
       "user_3",

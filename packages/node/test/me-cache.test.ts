@@ -284,12 +284,15 @@ describe("Ordered-organizations re-hydration (packet §3.2 item 10 / §2.2 last 
       user_email: "o@example.com",
       organizations: orgs,
     });
-    expect([...response.organizations.keys()]).toEqual(["900", "100"]);
+    expect([...response.organizations.keys()]).toStrictEqual(["900", "100"]);
     const cache = new MeCache({ accountName: "personal", storageDir: dir });
     cache.put(response);
     const loaded = cache.get();
     expect(loaded).not.toBeNull();
-    expect([...(loaded?.organizations.keys() ?? [])]).toEqual(["900", "100"]);
+    expect([...(loaded?.organizations.keys() ?? [])]).toStrictEqual([
+      "900",
+      "100",
+    ]);
   });
 });
 

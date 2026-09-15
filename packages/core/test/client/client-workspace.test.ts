@@ -278,7 +278,7 @@ describe("TestResolveWorkspace", () => {
     await client.resolveWorkspace();
     const expected =
       "https://mixpanel.com/api/app/projects/12345/workspaces/public";
-    expect(capturedUrls).toEqual([expected]);
+    expect(capturedUrls).toStrictEqual([expected]);
     expect(capturedUrls[0]?.includes("/api/app/api/app")).toBe(false);
   });
 
@@ -584,7 +584,7 @@ describe("TestProjectsMetadataIndex", () => {
       status: 200,
       json: { results: { "4025120": { name: "demo" } } },
     }));
-    expect(await client.projectsMetadataIndex()).toEqual({
+    expect(await client.projectsMetadataIndex()).toStrictEqual({
       "4025120": { name: "demo" },
     });
   });

@@ -161,17 +161,17 @@ describe("TestRateLimiting", () => {
     ]);
     const result = await run(h);
     expect(h.calls).toHaveLength(2);
-    expect(result).toEqual(["event1"]);
+    expect(result).toStrictEqual(["event1"]);
   });
 
   it("test_exponential_backoff_without_retry_after", async () => {
     const h = harness([res(429), res(200, ["event1"])], { maxRetries: 2 });
     const result = await run(h);
     expect(h.calls).toHaveLength(2);
-    expect(result).toEqual(["event1"]);
+    expect(result).toStrictEqual(["event1"]);
     // Fallback path: backoff for attempt 0 = 1s (zero-jitter RNG), in ms
     // at the sleep seam (R2.12).
-    expect(h.sleepsMs).toEqual([1000]);
+    expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
   it("test_rate_limit_error_after_max_retries", async () => {
@@ -210,7 +210,7 @@ describe("TestRateLimiting", () => {
     );
     const result = await run(h, { method: "POST" });
     expect(h.calls).toHaveLength(3);
-    expect(result).toEqual({ data: "success" });
+    expect(result).toStrictEqual({ data: "success" });
   });
 });
 
@@ -247,7 +247,7 @@ describe("TestPublicRequest (B0-observable subset)", () => {
     const h = harness([
       res(200, { data: { events: ["A", "B"] }, status: "ok" }),
     ]);
-    expect(await run(h)).toEqual({
+    expect(await run(h)).toStrictEqual({
       data: { events: ["A", "B"] },
       status: "ok",
     });
@@ -272,7 +272,7 @@ describe("TestPublicRequest (B0-observable subset)", () => {
     ]);
     const result = await run(h);
     expect(h.calls).toHaveLength(2);
-    expect(result).toEqual({ success: true });
+    expect(result).toStrictEqual({ success: true });
   });
 
   it("test_request_raises_rate_limit_after_max_retries", async () => {
@@ -306,7 +306,7 @@ describe("TestErrorHandling", () => {
     expect(error).toBeInstanceOf(QueryError);
     expect((error as QueryError).statusCode).toBe(412);
     expect(String(error)).toContain("Precondition failed");
-    expect((error as QueryError).responseBody).toEqual({
+    expect((error as QueryError).responseBody).toStrictEqual({
       error: "Precondition failed",
     });
   });
@@ -347,8 +347,8 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
       [res(429, "", { "Retry-After": "-5" }), res(200, ["event1"])],
       { maxRetries: 2 },
     );
-    expect(await run(h)).toEqual(["event1"]);
-    expect(h.sleepsMs).toEqual([1000]);
+    expect(await run(h)).toStrictEqual(["event1"]);
+    expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
   it("test_huge_retry_after_is_capped", async () => {
@@ -356,8 +356,8 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
       [res(429, "", { "Retry-After": "86400" }), res(200, ["event1"])],
       { maxRetries: 2 },
     );
-    expect(await run(h)).toEqual(["event1"]);
-    expect(h.sleepsMs).toEqual([60000]);
+    expect(await run(h)).toStrictEqual(["event1"]);
+    expect(h.sleepsMs).toStrictEqual([60000]);
   });
 
   it("test_garbage_retry_after_uses_backoff", async () => {
@@ -365,8 +365,8 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
       [res(429, "", { "Retry-After": "soon" }), res(200, ["event1"])],
       { maxRetries: 2 },
     );
-    expect(await run(h)).toEqual(["event1"]);
-    expect(h.sleepsMs).toEqual([1000]);
+    expect(await run(h)).toStrictEqual(["event1"]);
+    expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
   it("test_negative_retry_after_omitted_from_error", async () => {
@@ -470,8 +470,8 @@ describe("TestErrorContextSymmetry (execute_with_retry half)", () => {
       jsonData: { name: "dash" },
     }).catch((error_: unknown) => error_)) as AuthenticationError;
     expect(error).toBeInstanceOf(AuthenticationError);
-    expect(error.requestBody).toEqual({ name: "dash" });
-    expect(error.details["request_body"]).toEqual({ name: "dash" });
+    expect(error.requestBody).toStrictEqual({ name: "dash" });
+    expect(error.details["request_body"]).toStrictEqual({ name: "dash" });
     expect(error.requestParams).not.toBeNull();
   });
 });
@@ -613,10 +613,10 @@ describe("_handle_response fallthrough tail (FF3)", () => {
 
   it("(ii) 2xx object/array bodies return as-is", async () => {
     // Numbers surface as lossless JsonNumber tokens (GATE-R5).
-    expect(await run(harness([res(200, { a: 1 })]))).toEqual({
+    expect(await run(harness([res(200, { a: 1 })]))).toStrictEqual({
       a: new JsonNumber("1"),
     });
-    expect(await run(harness([res(200, [1, 2])]))).toEqual([
+    expect(await run(harness([res(200, [1, 2])]))).toStrictEqual([
       new JsonNumber("1"),
       new JsonNumber("2"),
     ]);
@@ -624,15 +624,17 @@ describe("_handle_response fallthrough tail (FF3)", () => {
 
   it("(iii) 2xx JSON scalars are RETURNED as the result", async () => {
     // Verified against httpx: Response(200, b"42").json() → 42.
-    expect(await run(harness([res(200, "42")]))).toEqual(new JsonNumber("42"));
+    expect(await run(harness([res(200, "42")]))).toStrictEqual(
+      new JsonNumber("42"),
+    );
     expect(await run(harness([res(200, '"ok"')]))).toBe("ok");
     expect(await run(harness([res(200, "true")]))).toBe(true);
     expect(await run(harness([res(200, "null")]))).toBeNull();
     // R10.9 edge floats survive losslessly (GATE-R5 parseLossless).
-    expect(await run(harness([res(200, "18.0")]))).toEqual(
+    expect(await run(harness([res(200, "18.0")]))).toStrictEqual(
       new JsonNumber("18.0"),
     );
-    expect(await run(harness([res(200, "1.5")]))).toEqual(
+    expect(await run(harness([res(200, "1.5")]))).toStrictEqual(
       new JsonNumber("1.5"),
     );
   });
@@ -669,7 +671,7 @@ describe("_execute_with_retry transport-error wrapping (R2.10)", () => {
     expect(error.details["request_url"]).toBe(
       "https://mixpanel.com/api/query/events/names",
     );
-    expect(error.details["request_params"]).toEqual({
+    expect(error.details["request_params"]).toStrictEqual({
       query_origin: "mixpanel-headless",
     });
   });

@@ -132,7 +132,7 @@ describe("TestListBookmarks", () => {
       string,
       unknown
     >;
-    expect(result["results"]).toEqual([]);
+    expect(result["results"]).toStrictEqual([]);
   });
 
   it("test_list_bookmarks_full_metadata", async () => {
@@ -301,7 +301,7 @@ describe("TestQuerySavedReportRouting", () => {
     expect(capturedUrls[0]).toContain("/api/query/insights");
     expect(capturedUrls[0]).toContain("bookmark_id=12345");
     expect(Object.hasOwn(result, "headers")).toBe(true);
-    expect(result["headers"]).toEqual(["$metric"]);
+    expect(result["headers"]).toStrictEqual(["$metric"]);
   });
 
   it("test_query_saved_report_insights_type_routes_to_insights", async () => {

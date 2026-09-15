@@ -268,7 +268,7 @@ describe("list_replays argument validation (TestListReplaysValidation)", () => {
     const stub = installStubService(ws);
     stub.discoverResult = [];
     const result = await ws.listReplays({ replay_ids: ["r-1"] });
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(callsTo(stub, "discover")).toHaveLength(1);
   });
 
@@ -281,7 +281,7 @@ describe("list_replays argument validation (TestListReplaysValidation)", () => {
       from_date: "2026-05-20",
       to_date: "2026-05-27",
     });
-    expect(out).toEqual([]);
+    expect(out).toStrictEqual([]);
   });
 });
 
@@ -301,10 +301,10 @@ describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
       to_date: "2026-05-27",
     });
 
-    expect(result.map((s) => s.toJSON())).toEqual([summary().toJSON()]);
+    expect(result.map((s) => s.toJSON())).toStrictEqual([summary().toJSON()]);
     const calls = callsTo(stub, "discover");
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.args[0]).toEqual({
+    expect(calls[0]?.args[0]).toStrictEqual({
       distinctId: "u-42",
       replayIds: null,
       fromDate: "2026-05-20",
@@ -454,9 +454,9 @@ describe("fetch_replay signs, fetches, joins (TestFetchReplay)", () => {
     expect(callsTo(stub, "fetchFiles")).toHaveLength(1);
     expect(replay).toBeInstanceOf(Replay);
     expect(replay.replay_id).toBe("r-1");
-    expect(replay.actions).toEqual([]);
+    expect(replay.actions).toStrictEqual([]);
     expect(replay.duration_seconds).toBe(15.0);
-    expect(replay.mixpanel_events).toEqual([]);
+    expect(replay.mixpanel_events).toStrictEqual([]);
   });
 
   it("test_include_mixpanel_events_triggers_follow_up", async () => {
@@ -517,7 +517,7 @@ describe("fetch_replay signs, fetches, joins (TestFetchReplay)", () => {
 
     const discoverCalls = callsTo(stub, "discover");
     expect(discoverCalls).toHaveLength(1);
-    expect(discoverCalls[0]?.args[0]).toEqual({
+    expect(discoverCalls[0]?.args[0]).toStrictEqual({
       distinctId: null,
       replayIds: ["r-1"],
       fromDate: null,
@@ -569,7 +569,7 @@ describe("replays_for_user composition (TestReplaysForUser)", () => {
       to_date: "2026-05-27",
     });
     expect(bundle).toBeInstanceOf(ReplayBundle);
-    expect(bundle.replays).toEqual([]);
+    expect(bundle.replays).toStrictEqual([]);
     expect(callsTo(stub, "sign")).toHaveLength(0);
   });
 });
@@ -588,7 +588,7 @@ describe("sign wiring (TestSignReplaysWiring)", () => {
     expect(out.replay_id).toBe("r-1");
     const calls = callsTo(stub, "sign");
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.args).toEqual([["r-1"], "prod"]);
+    expect(calls[0]?.args).toStrictEqual([["r-1"], "prod"]);
   });
 
   it("test_sign_replays_passes_through", async () => {
@@ -596,10 +596,10 @@ describe("sign wiring (TestSignReplaysWiring)", () => {
     const stub = installStubService(ws);
     stub.signResult = [signedFixture("r-1"), signedFixture("r-2")];
     const out = await ws.signReplays(["r-1", "r-2"], { env: "dev" });
-    expect(out.map((s) => s.replay_id)).toEqual(["r-1", "r-2"]);
+    expect(out.map((s) => s.replay_id)).toStrictEqual(["r-1", "r-2"]);
     const calls = callsTo(stub, "sign");
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.args).toEqual([["r-1", "r-2"], "dev"]);
+    expect(calls[0]?.args).toStrictEqual([["r-1", "r-2"], "dev"]);
   });
 });
 
@@ -653,7 +653,7 @@ describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () =
       return makeReplay(replayId);
     };
     const bundle = await ws.fetchReplays(["r-1", "r-bad", "r-2"]);
-    expect(new Set(bundle.replays.map((r) => r.replay_id))).toEqual(
+    expect(new Set(bundle.replays.map((r) => r.replay_id))).toStrictEqual(
       new Set(["r-1", "r-2"]),
     );
   });
@@ -715,7 +715,7 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
         ["r-2", 90],
       ]),
     });
-    expect(Object.fromEntries(seen)).toEqual({ "r-1": 7, "r-2": 90 });
+    expect(Object.fromEntries(seen)).toStrictEqual({ "r-1": 7, "r-2": 90 });
   });
 
   it("test_events_joined_in_one_batched_call", async () => {
@@ -752,7 +752,7 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
 
     // Exactly one batched events query, covering both replays.
     expect(eventsCalls).toHaveLength(1);
-    expect(new Set(eventsCalls[0]?.[0] as readonly string[])).toEqual(
+    expect(new Set(eventsCalls[0]?.[0] as readonly string[])).toStrictEqual(
       new Set(["r-1", "r-2"]),
     );
     // Per-replay fetch never fired its own events query (no fan-out).
@@ -761,10 +761,10 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
     }
     // Events land on the right replay; the other stays empty.
     const byId = new Map(bundle.replays.map((r) => [r.replay_id, r]));
-    expect(byId.get("r-1")?.mixpanel_events.map((e) => e.event_name)).toEqual([
-      "Login",
-    ]);
-    expect(byId.get("r-2")?.mixpanel_events).toEqual([]);
+    expect(
+      byId.get("r-1")?.mixpanel_events.map((e) => e.event_name),
+    ).toStrictEqual(["Login"]);
+    expect(byId.get("r-2")?.mixpanel_events).toStrictEqual([]);
   });
 
   it("test_no_events_call_when_flag_off", async () => {
@@ -801,14 +801,14 @@ describe("replays_for_user threads retention (TestReplaysForUserThreadsRetention
       to_date: "2026-05-27",
     });
     const kwargs = fetchCalls[0] ?? {};
-    expect(kwargs["retention_by_id"]).toEqual(
+    expect(kwargs["retention_by_id"]).toStrictEqual(
       new Map([
         ["r-1", 7],
         ["r-2", 90],
       ]),
     );
     // Every replay is stamped with the user it was discovered for.
-    expect(kwargs["distinct_id_by_id"]).toEqual(
+    expect(kwargs["distinct_id_by_id"]).toStrictEqual(
       new Map([
         ["r-1", "u-42"],
         ["r-2", "u-42"],

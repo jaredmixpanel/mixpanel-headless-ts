@@ -100,7 +100,7 @@ describe("raw-payload retention audit (packages/core/src/types)", () => {
         }
       });
     }
-    expect(violations).toEqual([]);
+    expect(violations).toStrictEqual([]);
   });
 
   it("the rules themselves match the forbidden idioms (self-check)", () => {

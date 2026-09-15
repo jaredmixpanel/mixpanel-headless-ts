@@ -260,7 +260,7 @@ describe("TestUse", () => {
   it("test_use_workspace", async () => {
     const client = createMixpanelClient({ session: sessionTeam() });
     await client.use({ workspace: 42 });
-    expect(client.session.workspace).toEqual({ id: 42 });
+    expect(client.session.workspace).toStrictEqual({ id: 42 });
   });
 
   it("test_use_project", async () => {
@@ -454,7 +454,7 @@ describe("TestAppRequestUsesFreshAuthHeader", () => {
     await client.close();
 
     // Each app_request resolved a fresh bearer — no caching.
-    expect(capturedHeaders).toEqual([
+    expect(capturedHeaders).toStrictEqual([
       "Bearer refreshed-token-1",
       "Bearer refreshed-token-2",
     ]);
@@ -491,7 +491,7 @@ describe("TestAppRequestUsesFreshAuthHeader", () => {
     );
     await client.appRequest("GET", "/projects/3713224/dashboards");
     await client.close();
-    expect(capturedHeaders).toEqual(["Bearer ci-bearer"]);
+    expect(capturedHeaders).toStrictEqual(["Bearer ci-bearer"]);
   });
 });
 

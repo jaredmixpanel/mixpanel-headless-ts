@@ -194,7 +194,7 @@ describe("TestDefaultCodes", () => {
 
 describe("TestDetailsAndToDict", () => {
   it("test_details_default_empty", () => {
-    expect(new ReportLinkError("msg").details).toEqual({});
+    expect(new ReportLinkError("msg").details).toStrictEqual({});
   });
 
   it("test_details_carry_parsed_fields_and_hint", () => {
@@ -223,12 +223,12 @@ describe("TestDetailsAndToDict", () => {
       details: { short_code: "AbC123", host: "mixpanel.com" },
     });
     const d = exc.toDict();
-    expect(d).toEqual({
+    expect(d).toStrictEqual({
       code: "SHORT_LINK_NOT_FOUND",
       message: "gone",
       details: { short_code: "AbC123", host: "mixpanel.com" },
     });
-    expect(Object.keys(d)).toEqual(["code", "message", "details"]);
+    expect(Object.keys(d)).toStrictEqual(["code", "message", "details"]);
     expect(() => JSON.stringify(d)).not.toThrow();
   });
 
@@ -277,7 +277,7 @@ describe("TestCanonicalMessages", () => {
     );
     expect(exc.code).toBe("REPORT_LINK_NOT_MIXPANEL_HOST");
     expect(exc.details["host"]).toBe("example.com");
-    expect(Object.keys(exc.details)).toEqual(["host", "hint"]);
+    expect(Object.keys(exc.details)).toStrictEqual(["host", "hint"]);
 
     // Raise-site cross-check: the parser populates the same code/keys.
     const thrown = capture(() =>
@@ -317,7 +317,7 @@ describe("TestCanonicalMessages", () => {
       },
     );
     expect(exc.code).toBe("REPORT_LINK_SLUG_NOT_FOUND");
-    expect(exc.details).toEqual({
+    expect(exc.details).toStrictEqual({
       slug: "EBrV5bW2u9Mw",
       project_id: 3,
       region: "us",

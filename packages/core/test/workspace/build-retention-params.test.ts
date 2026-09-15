@@ -117,12 +117,12 @@ describe("TestBuildRetentionParamsDefaults", () => {
 
   it("the columnWidths object is present", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login");
-    expect(result["columnWidths"]).toEqual({ bar: {} });
+    expect(result["columnWidths"]).toStrictEqual({ bar: {} });
   });
 
   it("retentionCustomBucketSizes defaults to an empty list", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login");
-    expect(behaviorOf(result)["retentionCustomBucketSizes"]).toEqual([]);
+    expect(behaviorOf(result)["retentionCustomBucketSizes"]).toStrictEqual([]);
   });
 
   it("sections contains show, time, filter, group and formula", async () => {
@@ -164,17 +164,17 @@ describe("TestBuildRetentionParamsTimeSections", () => {
     expect(time.length).toBeGreaterThan(0);
     const entry = time[0]!;
     expect(entry["dateRangeType"]).toBe("between");
-    expect(entry["value"]).toEqual(["2025-01-01", "2025-03-31"]);
+    expect(entry["value"]).toStrictEqual(["2025-01-01", "2025-03-31"]);
   });
 
   it("sections.filter is an empty list without a where filter", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login");
-    expect(section(result, "filter")).toEqual([]);
+    expect(section(result, "filter")).toStrictEqual([]);
   });
 
   it("sections.group is an empty list without group_by", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login");
-    expect(section(result, "group")).toEqual([]);
+    expect(section(result, "group")).toStrictEqual([]);
   });
 });
 
@@ -216,8 +216,8 @@ describe("TestBuildRetentionParamsPerEventFilters", () => {
       new RetentionEvent({ event: "Login" }),
     );
     const behaviors = behaviorsOf(result);
-    expect(behaviors[0]!["filters"]).toEqual([]);
-    expect(behaviors[1]!["filters"]).toEqual([]);
+    expect(behaviors[0]!["filters"]).toStrictEqual([]);
+    expect(behaviors[1]!["filters"]).toStrictEqual([]);
   });
 });
 
@@ -250,14 +250,14 @@ describe("TestBuildRetentionParamsBucketSizes", () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login", {
       bucket_sizes: [1, 3, 7, 14, 30],
     });
-    expect(behaviorOf(result)["retentionCustomBucketSizes"]).toEqual([
+    expect(behaviorOf(result)["retentionCustomBucketSizes"]).toStrictEqual([
       1, 3, 7, 14, 30,
     ]);
   });
 
   it("null bucket_sizes produce an empty list", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login");
-    expect(behaviorOf(result)["retentionCustomBucketSizes"]).toEqual([]);
+    expect(behaviorOf(result)["retentionCustomBucketSizes"]).toStrictEqual([]);
   });
 });
 

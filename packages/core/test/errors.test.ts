@@ -48,7 +48,7 @@ describe("MixpanelHeadlessError", () => {
     const exc = new MixpanelHeadlessError("Something went wrong");
     expect(exc.message).toBe("Something went wrong");
     expect(exc.code).toBe("UNKNOWN_ERROR");
-    expect(exc.details).toEqual({});
+    expect(exc.details).toStrictEqual({});
     expect(exc.name).toBe("MixpanelHeadlessError");
     expect(exc).toBeInstanceOf(Error);
   });
@@ -56,14 +56,14 @@ describe("MixpanelHeadlessError", () => {
   it("carries code and details", () => {
     const exc = new MixpanelHeadlessError("msg", "MY_CODE", { key: "value" });
     expect(exc.code).toBe("MY_CODE");
-    expect(exc.details).toEqual({ key: "value" });
+    expect(exc.details).toStrictEqual({ key: "value" });
   });
 
   it("toDict emits exactly {code, message, details}", () => {
     const exc = new MixpanelHeadlessError("msg", "MY_CODE", { key: "value" });
     const d = exc.toDict();
-    expect(Object.keys(d)).toEqual(["code", "message", "details"]);
-    expect(d).toEqual({
+    expect(Object.keys(d)).toStrictEqual(["code", "message", "details"]);
+    expect(d).toStrictEqual({
       code: "MY_CODE",
       message: "msg",
       details: { key: "value" },
@@ -94,7 +94,7 @@ describe("coded-guard classes (E2)", () => {
       quantity: 0,
     });
     expect(exc.code).toBe("FD1_QUANTITY_NOT_POSITIVE");
-    expect(exc.toDict()).toEqual({
+    expect(exc.toDict()).toStrictEqual({
       code: "FD1_QUANTITY_NOT_POSITIVE",
       message: "bad",
       details: { quantity: 0 },
@@ -118,7 +118,7 @@ describe("coded-guard classes (E2)", () => {
       { cause: original },
     );
     expect(exc.code).toBe("RESPONSE_VALIDATION_ERROR");
-    expect(exc.details).toEqual({ model: "Dashboard" });
+    expect(exc.details).toStrictEqual({ model: "Dashboard" });
     expect(exc.cause).toBe(original);
     expect(exc).toBeInstanceOf(MixpanelHeadlessError);
     expect(exc).not.toBeInstanceOf(APIError);
@@ -139,13 +139,13 @@ describe("APIError", () => {
       requestBody: { filter: "x" },
     });
     expect(exc.statusCode).toBe(500);
-    expect(exc.responseBody).toEqual({ error: "Internal error" });
+    expect(exc.responseBody).toStrictEqual({ error: "Internal error" });
     expect(exc.requestMethod).toBe("POST");
     expect(exc.requestUrl).toBe("https://mixpanel.com/api/query/segmentation");
-    expect(exc.requestParams).toEqual({ event: "login" });
-    expect(exc.requestBody).toEqual({ filter: "x" });
+    expect(exc.requestParams).toStrictEqual({ event: "login" });
+    expect(exc.requestBody).toStrictEqual({ filter: "x" });
     expect(exc.code).toBe("API_ERROR");
-    expect(exc.details).toEqual({
+    expect(exc.details).toStrictEqual({
       status_code: 500,
       response_body: { error: "Internal error" },
       request_method: "POST",
@@ -163,7 +163,7 @@ describe("APIError", () => {
     expect(exc.requestUrl).toBeNull();
     expect(exc.requestParams).toBeNull();
     expect(exc.requestBody).toBeNull();
-    expect(Object.keys(exc.details)).toEqual(["status_code"]);
+    expect(Object.keys(exc.details)).toStrictEqual(["status_code"]);
   });
 
   it("is catchable as the base class and JSON-serializable", () => {
@@ -184,8 +184,8 @@ describe("config errors", () => {
     const exc = new AccountNotFoundError("missing", ["prod", "dev"]);
     expect(exc.code).toBe("ACCOUNT_NOT_FOUND");
     expect(exc.accountName).toBe("missing");
-    expect(exc.availableAccounts).toEqual(["prod", "dev"]);
-    expect(exc.details).toEqual({
+    expect(exc.availableAccounts).toStrictEqual(["prod", "dev"]);
+    expect(exc.details).toStrictEqual({
       account_name: "missing",
       available_accounts: ["prod", "dev"],
     });
@@ -195,16 +195,16 @@ describe("config errors", () => {
   it("AccountNotFoundError with no available accounts", () => {
     const exc = new AccountNotFoundError("missing");
     expect(exc.code).toBe("ACCOUNT_NOT_FOUND");
-    expect(exc.availableAccounts).toEqual([]);
-    expect(exc.details["available_accounts"]).toEqual([]);
+    expect(exc.availableAccounts).toStrictEqual([]);
+    expect(exc.details["available_accounts"]).toStrictEqual([]);
   });
 
   it("ProjectNotFoundError carries id + available projects", () => {
     const exc = new ProjectNotFoundError("123", ["456", "789"]);
     expect(exc.code).toBe("PROJECT_NOT_FOUND");
     expect(exc.projectId).toBe("123");
-    expect(exc.availableProjects).toEqual(["456", "789"]);
-    expect(exc.details).toEqual({
+    expect(exc.availableProjects).toStrictEqual(["456", "789"]);
+    expect(exc.details).toStrictEqual({
       project_id: "123",
       available_projects: ["456", "789"],
     });
@@ -215,7 +215,7 @@ describe("config errors", () => {
     const exc = new AccountExistsError("dupe");
     expect(exc.code).toBe("ACCOUNT_EXISTS");
     expect(exc.accountName).toBe("dupe");
-    expect(exc.details).toEqual({ account_name: "dupe" });
+    expect(exc.details).toStrictEqual({ account_name: "dupe" });
     expect(exc).toBeInstanceOf(ConfigError);
   });
 
@@ -227,7 +227,7 @@ describe("config errors", () => {
     expect(exc.code).toBe("INVALID_ARGUMENT");
     expect(exc.violation).toBe("mutually_exclusive");
     expect(exc.detectedAuthType).toBe("service_account");
-    expect(exc.details).toEqual({
+    expect(exc.details).toStrictEqual({
       violation: "mutually_exclusive",
       detected_auth_type: "service_account",
     });
@@ -239,7 +239,7 @@ describe("config errors", () => {
       violation: "no_browser_misuse",
     });
     expect(exc.detectedAuthType).toBeNull();
-    expect(Object.keys(exc.details)).toEqual(["violation"]);
+    expect(Object.keys(exc.details)).toStrictEqual(["violation"]);
   });
 
   it("InvalidArgumentError rejects an unknown violation", () => {
@@ -256,12 +256,12 @@ describe("config errors", () => {
     const exc = new AccountInUseError("team", ["ecom", "growth"]);
     expect(exc.code).toBe("ACCOUNT_IN_USE");
     expect(exc.accountName).toBe("team");
-    expect(exc.referencedBy).toEqual(["ecom", "growth"]);
-    expect(exc.details).toEqual({
+    expect(exc.referencedBy).toStrictEqual(["ecom", "growth"]);
+    expect(exc.details).toStrictEqual({
       account_name: "team",
       referenced_by: ["ecom", "growth"],
     });
-    expect(new AccountInUseError("solo").referencedBy).toEqual([]);
+    expect(new AccountInUseError("solo").referencedBy).toStrictEqual([]);
   });
 });
 
@@ -278,8 +278,8 @@ describe("API error subclasses", () => {
       requestBody: { name: "x" },
       requestMethod: "PATCH",
     });
-    expect(exc.requestBody).toEqual({ name: "x" });
-    expect(exc.details["request_body"]).toEqual({ name: "x" });
+    expect(exc.requestBody).toStrictEqual({ name: "x" });
+    expect(exc.details["request_body"]).toStrictEqual({ name: "x" });
   });
 
   it("RateLimitError with retry_after", () => {
@@ -357,8 +357,8 @@ describe("EventNotFoundError", () => {
     const exc = new EventNotFoundError("sign up", ["Sign Up", "signup"]);
     expect(exc.code).toBe("EVENT_NOT_FOUND");
     expect(exc.eventName).toBe("sign up");
-    expect(exc.similarEvents).toEqual(["Sign Up", "signup"]);
-    expect(exc.toDict().details).toEqual({
+    expect(exc.similarEvents).toStrictEqual(["Sign Up", "signup"]);
+    expect(exc.toDict().details).toStrictEqual({
       event_name: "sign up",
       similar_events: ["Sign Up", "signup"],
     });
@@ -369,8 +369,8 @@ describe("EventNotFoundError", () => {
   it("details keep the FULL similar list (message truncation is display-only)", () => {
     const seven = ["a", "b", "c", "d", "e", "f", "g"];
     const exc = new EventNotFoundError("x", seven);
-    expect(exc.similarEvents).toEqual(seven);
-    expect(exc.details["similar_events"]).toEqual(seven);
+    expect(exc.similarEvents).toStrictEqual(seven);
+    expect(exc.details["similar_events"]).toStrictEqual(seven);
   });
 });
 
@@ -382,7 +382,7 @@ describe("DateRangeTooLargeError", () => {
     expect(exc.toDate).toBe("2024-06-30");
     expect(exc.daysRequested).toBe(182);
     expect(exc.maxDays).toBe(100);
-    expect(exc.toDict().details).toEqual({
+    expect(exc.toDict().details).toStrictEqual({
       from_date: "2024-01-01",
       to_date: "2024-06-30",
       days_requested: 182,
@@ -414,19 +414,24 @@ describe("OAuth errors", () => {
     ] as const;
     const exc = new RegionProbeError("no region accepted", { attempts });
     expect(exc.code).toBe("OAUTH_REGION_PROBE_FAILED");
-    expect(exc.attempts).toEqual([
+    expect(exc.attempts).toStrictEqual([
       ["us", 401, "unauthorized"],
       ["eu", 401, "unauthorized"],
       ["in", 0, "dns failure"],
     ]);
     const d = exc.toDict();
-    expect(Object.keys(d)).toEqual(["code", "message", "details", "attempts"]);
-    expect(d.attempts).toEqual([
+    expect(Object.keys(d)).toStrictEqual([
+      "code",
+      "message",
+      "details",
+      "attempts",
+    ]);
+    expect(d.attempts).toStrictEqual([
       ["us", 401, "unauthorized"],
       ["eu", 401, "unauthorized"],
       ["in", 0, "dns failure"],
     ]);
-    expect(exc.details["attempts"]).toEqual(d.attempts);
+    expect(exc.details["attempts"]).toStrictEqual(d.attempts);
     expect(exc).toBeInstanceOf(OAuthError);
   });
 
@@ -466,7 +471,7 @@ describe("WorkspaceScopeError / BusinessContextValidationError", () => {
       max: 50000,
     });
     expect(exc.code).toBe("BUSINESS_CONTEXT_TOO_LONG");
-    expect(exc.details).toEqual({ length: 60000, max: 50000 });
+    expect(exc.details).toStrictEqual({ length: 60000, max: 50000 });
   });
 });
 
@@ -486,13 +491,13 @@ describe("ValidationError (plain class, not an exception)", () => {
 
   it("toDict always emits {path, message, code, severity} in order", () => {
     const err = new ValidationError("p", "m", "C", "warning");
-    expect(Object.keys(err.toDict())).toEqual([
+    expect(Object.keys(err.toDict())).toStrictEqual([
       "path",
       "message",
       "code",
       "severity",
     ]);
-    expect(err.toDict()).toEqual({
+    expect(err.toDict()).toStrictEqual({
       path: "p",
       message: "m",
       code: "C",
@@ -510,7 +515,7 @@ describe("ValidationError (plain class, not an exception)", () => {
       { math: "total" },
     );
     const d = err.toDict();
-    expect(Object.keys(d)).toEqual([
+    expect(Object.keys(d)).toStrictEqual([
       "path",
       "message",
       "code",
@@ -518,8 +523,8 @@ describe("ValidationError (plain class, not an exception)", () => {
       "suggestion",
       "fix",
     ]);
-    expect(d["suggestion"]).toEqual(["total"]);
-    expect(d["fix"]).toEqual({ math: "total" });
+    expect(d["suggestion"]).toStrictEqual(["total"]);
+    expect(d["fix"]).toStrictEqual({ math: "total" });
   });
 
   it("toString formats severity prefix and first suggestion", () => {
@@ -557,7 +562,7 @@ describe("BookmarkValidationError", () => {
     const exc = new BookmarkValidationError(errors);
     expect(exc.details["error_count"]).toBe(2);
     expect(exc.details["warning_count"]).toBe(1);
-    expect(exc.details["errors"]).toEqual(errors.map((e) => e.toDict()));
+    expect(exc.details["errors"]).toStrictEqual(errors.map((e) => e.toDict()));
     expect(() => JSON.stringify(exc.toDict())).not.toThrow();
   });
 });
@@ -579,7 +584,7 @@ describe("session-replay errors", () => {
       },
       responseBody: "forbidden",
     });
-    expect(exc.details).toEqual({
+    expect(exc.details).toStrictEqual({
       status_code: 403,
       response_body: "forbidden",
       project_id: 3018488,

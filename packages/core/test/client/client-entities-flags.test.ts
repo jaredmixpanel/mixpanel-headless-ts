@@ -111,7 +111,7 @@ describe("TestListFeatureFlags", () => {
       json: { status: "ok", results: [] },
     }));
     const result = await client.listFeatureFlags();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("test_uses_get_method", async () => {
@@ -142,7 +142,10 @@ describe("TestCreateFeatureFlag", () => {
       await client.createFeatureFlag({ name: "New Flag", key: "new_flag" }),
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("POST");
-    expect(captured[0]?.[1]).toEqual({ name: "New Flag", key: "new_flag" });
+    expect(captured[0]?.[1]).toStrictEqual({
+      name: "New Flag",
+      key: "new_flag",
+    });
     expect(result["id"]).toBe("new-id");
   });
 
@@ -320,7 +323,10 @@ describe("TestSetFlagTestUsers", () => {
     });
     expect(captured[0]?.[0]).toBe("PUT");
     expect(captured[0]?.[1]).toContain("/feature-flags/abc-123/test-users");
-    expect(captured[0]?.[2]["users"]).toEqual({ on: "user-1", off: "user-2" });
+    expect(captured[0]?.[2]["users"]).toStrictEqual({
+      on: "user-1",
+      off: "user-2",
+    });
   });
 });
 
@@ -341,7 +347,7 @@ describe("TestGetFlagHistory", () => {
       await client.getFlagHistory("abc-123"),
     ) as Record<string, unknown>;
     expect(capturedUrls[0]).toContain("/feature-flags/abc-123/history");
-    expect(result["events"]).toEqual([[1, "created"]]);
+    expect(result["events"]).toStrictEqual([[1, "created"]]);
     expect(result["count"]).toBe(1);
   });
 

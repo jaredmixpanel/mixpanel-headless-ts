@@ -69,8 +69,8 @@ function addSa(
 describe("TestLoadEmptyOrMissing", () => {
   it("test_load_missing_file", () => {
     const cm = freshCm();
-    expect(cm.listAccounts()).toEqual([]);
-    expect(cm.listTargets()).toEqual([]);
+    expect(cm.listAccounts()).toStrictEqual([]);
+    expect(cm.listTargets()).toStrictEqual([]);
     const active = cm.getActive();
     expect(active.account ?? null).toBeNull();
     expect(active.workspace ?? null).toBeNull();
@@ -84,8 +84,8 @@ describe("TestLoadEmptyOrMissing", () => {
       chmodSync(p, 0o600);
     }
     const cm = new ConfigManager({ configPath: p });
-    expect(cm.listAccounts()).toEqual([]);
-    expect(cm.listTargets()).toEqual([]);
+    expect(cm.listAccounts()).toStrictEqual([]);
+    expect(cm.listTargets()).toStrictEqual([]);
     expect(cm.getActive().account ?? null).toBeNull();
   });
 });
@@ -442,7 +442,10 @@ describe("TestListAccounts", () => {
     cm.addAccount("personal", { type: "oauth_browser", region: "eu" });
     const summaries = cm.listAccounts();
     expect(summaries.every((a) => a instanceof AccountSummary)).toBe(true);
-    expect(summaries.map((a) => a.name).sort()).toEqual(["personal", "team"]);
+    expect(summaries.map((a) => a.name).sort()).toStrictEqual([
+      "personal",
+      "team",
+    ]);
   });
 
   it("test_is_active_flag", () => {
@@ -461,7 +464,7 @@ describe("TestListAccounts", () => {
     cm.addTarget("ecom", { account: "x", project: "3018488" });
     cm.addTarget("ai", { account: "x", project: "3713224" });
     const summary = cm.listAccounts().find((a) => a.name === "x");
-    expect([...(summary?.referenced_by_targets ?? [])].sort()).toEqual([
+    expect([...(summary?.referenced_by_targets ?? [])].sort()).toStrictEqual([
       "ai",
       "ecom",
     ]);
@@ -472,8 +475,8 @@ describe("TestRemoveAccount", () => {
   it("test_remove_unused", () => {
     const cm = freshCm();
     addSa(cm);
-    expect(cm.removeAccount("x")).toEqual([]);
-    expect(cm.listAccounts()).toEqual([]);
+    expect(cm.removeAccount("x")).toStrictEqual([]);
+    expect(cm.listAccounts()).toStrictEqual([]);
   });
 
   it("test_remove_referenced_without_force_raises", () => {
@@ -488,7 +491,7 @@ describe("TestRemoveAccount", () => {
     addSa(cm);
     cm.addTarget("ecom", { account: "x", project: "3018488" });
     cm.addTarget("ai", { account: "x", project: "3713224" });
-    expect(cm.removeAccount("x", { force: true }).sort()).toEqual([
+    expect(cm.removeAccount("x", { force: true }).sort()).toStrictEqual([
       "ai",
       "ecom",
     ]);
@@ -572,7 +575,10 @@ describe("TestSettingsCustomHeader", () => {
     const cm = freshCm();
     cm.setCustomHeader({ name: "X-Mixpanel-Cluster", value: "internal-1" });
     const cm2 = new ConfigManager({ configPath: cm.configPath });
-    expect(cm2.getCustomHeader()).toEqual(["X-Mixpanel-Cluster", "internal-1"]);
+    expect(cm2.getCustomHeader()).toStrictEqual([
+      "X-Mixpanel-Cluster",
+      "internal-1",
+    ]);
   });
 
   it("test_get_custom_header_when_absent", () => {
@@ -617,7 +623,7 @@ describe("TestMutateTransaction", () => {
         throw new Error("boom");
       }),
     ).toThrow("boom");
-    expect(readFileSync(cm.configPath)).toEqual(original);
+    expect(readFileSync(cm.configPath)).toStrictEqual(original);
     expect(cm.getActive().account ?? null).toBeNull();
   });
 
@@ -657,7 +663,7 @@ describe("TestMutateTransaction", () => {
     expect(() =>
       cm.addAccount("fresh", { type: "oauth_browser", region: "us" }),
     ).toThrow(/\[accounts\.legacy\]/);
-    expect(readFileSync(p)).toEqual(original);
+    expect(readFileSync(p)).toStrictEqual(original);
   });
 });
 
@@ -695,7 +701,7 @@ describe("TestConfigManagerEdgeCases (test_042_edge_cases.py:459)", () => {
       chmodSync(p, 0o600);
     }
     const cm = new ConfigManager({ configPath: p });
-    expect(cm.listAccounts()).toEqual([]);
+    expect(cm.listAccounts()).toStrictEqual([]);
   });
 
   it.skipIf(!POSIX)("test_file_permissions_under_loose_umask", () => {

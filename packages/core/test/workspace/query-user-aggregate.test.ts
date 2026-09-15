@@ -98,7 +98,7 @@ describe("TestAggregateCount", () => {
       aggregate: "count",
     });
 
-    expect(result.profiles).toEqual([]);
+    expect(result.profiles).toStrictEqual([]);
   });
 
   it("aggregate_data stores the raw scalar", async () => {
@@ -170,7 +170,7 @@ describe("TestAggregateWithProperty", () => {
     });
 
     expect(typeof result.aggregate_data).toBe("object");
-    expect(result.aggregate_data).toEqual(extremesResult);
+    expect(result.aggregate_data).toStrictEqual(extremesResult);
     expect(result.value).toBeNull(); // dict results have no scalar value
     expect(mock.engageStatsCalls[0]!["action"]).toBe(
       'extremes(properties["revenue"])',
@@ -193,7 +193,7 @@ describe("TestAggregateWithProperty", () => {
       aggregate_property: "ltv",
     });
 
-    expect(result.aggregate_data).toEqual(summaryResult);
+    expect(result.aggregate_data).toStrictEqual(summaryResult);
     expect(result.value).toBeNull();
     expect(mock.engageStatsCalls[0]!["action"]).toBe(
       'numeric_summary(properties["ltv"])',
@@ -212,7 +212,7 @@ describe("TestAggregateWithProperty", () => {
       percentile: 50,
     });
 
-    expect(result.aggregate_data).toEqual(percentileResult);
+    expect(result.aggregate_data).toStrictEqual(percentileResult);
     expect(result.value).toBeNull();
     expect(mock.engageStatsCalls[0]!["action"]).toBe(
       'percentile(properties["age"], 50)',
@@ -290,7 +290,7 @@ describe("TestAggregateSegmented", () => {
     });
 
     expect(typeof result.aggregate_data).toBe("object");
-    expect(result.aggregate_data).toEqual(segmented);
+    expect(result.aggregate_data).toStrictEqual(segmented);
   });
 
   it("result.value is null for segmented results", async () => {
@@ -359,7 +359,7 @@ describe("TestAggregateSegmented", () => {
       segment_by: [123],
     });
 
-    expect(result.profiles).toEqual([]);
+    expect(result.profiles).toStrictEqual([]);
   });
 });
 
@@ -767,7 +767,7 @@ describe("TestAggregateResultMetadata", () => {
       aggregate: "count",
     });
 
-    expect(result.distinct_ids).toEqual([]);
+    expect(result.distinct_ids).toStrictEqual([]);
   });
 
   it("count total reflects the count result", async () => {

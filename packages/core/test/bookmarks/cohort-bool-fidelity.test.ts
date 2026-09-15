@@ -52,7 +52,7 @@ describe("bool <: int — buildCohortGroupEntry saved-id branch (arbiter F1)", (
     const section = buildGroupSection(
       new CohortBreakdown({ cohort: TRUE_COHORT, name: "N" }),
     );
-    expect(section).toEqual([
+    expect(section).toStrictEqual([
       {
         value: ["N", "Not In N"],
         resourceType: "events",
@@ -101,7 +101,7 @@ describe("bool <: int — buildCohortGroupEntry saved-id branch (arbiter F1)", (
         include_negated: false,
       }),
     );
-    expect(section).toEqual([
+    expect(section).toStrictEqual([
       {
         value: ["N"],
         resourceType: "events",
@@ -169,7 +169,7 @@ describe("bool <: int — Filter.inCohort saved-id branch (arbiter F1 sweep)", (
     const f = Filter.inCohort(TRUE_COHORT);
     expect(f._property).toBe("$cohorts");
     expect(f._operator).toBe("contains");
-    expect(f._value).toEqual([
+    expect(f._value).toStrictEqual([
       { cohort: { negated: false, name: "", id: true } },
     ]);
     // Entry key insertion order: negated, name, id (Python dict literal).
@@ -182,7 +182,7 @@ describe("bool <: int — Filter.inCohort saved-id branch (arbiter F1 sweep)", (
     // oracle-py: Filter.not_in_cohort(True, "VIPs")._value
     const f = Filter.notInCohort(TRUE_COHORT, "VIPs");
     expect(f._operator).toBe("does not contain");
-    expect(f._value).toEqual([
+    expect(f._value).toStrictEqual([
       { cohort: { negated: true, name: "VIPs", id: true } },
     ]);
   });

@@ -165,7 +165,7 @@ describe("browser bundle recipe", () => {
 
   it("records the real sha256 and byte count of every artifact", () => {
     const manifest = readManifest(outA);
-    expect(Object.keys(manifest.files).sort()).toEqual(
+    expect(Object.keys(manifest.files).sort()).toStrictEqual(
       [...ARTIFACT_NAMES].sort(),
     );
     for (const name of ARTIFACT_NAMES) {
@@ -195,7 +195,11 @@ describe("browser bundle recipe", () => {
     for (const name of ARTIFACT_NAMES) {
       const text = readFileSync(join(outA, name), "utf8");
       for (const needle of IMPURITY_NEEDLES) {
-        expect({ name, needle, count: text.split(needle).length - 1 }).toEqual({
+        expect({
+          name,
+          needle,
+          count: text.split(needle).length - 1,
+        }).toStrictEqual({
           name,
           needle,
           count: 0,
@@ -213,7 +217,7 @@ describe("browser bundle recipe", () => {
 
   it("lists exactly the global's keys, sorted, in manifest.exports", () => {
     const keys = globalKeysOf(readFileSync(join(outA, IIFE_NAME), "utf8"));
-    expect(readManifest(outA).exports).toEqual(keys);
+    expect(readManifest(outA).exports).toStrictEqual(keys);
   });
 
   it("carries the spec-02 identity helpers on the global and in the manifest", () => {
@@ -232,7 +236,7 @@ describe("browser bundle recipe", () => {
     for (const name of [...ARTIFACT_NAMES, MANIFEST_NAME]) {
       const a = sha256(readFileSync(join(outA, name)));
       const b = sha256(readFileSync(join(outB, name)));
-      expect({ name, sha256: b }).toEqual({ name, sha256: a });
+      expect({ name, sha256: b }).toStrictEqual({ name, sha256: a });
     }
   });
 

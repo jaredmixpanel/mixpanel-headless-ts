@@ -156,7 +156,7 @@ describe("TestMathTypeDispatch", () => {
           `Valid insights math '${math}' produced B9 error: ${JSON.stringify(
             b9Errors.map((e) => e.message),
           )}`,
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 100 },
     );
@@ -192,7 +192,7 @@ describe("TestMathTypeDispatch", () => {
           `Valid funnel math '${math}' produced B9 error: ${JSON.stringify(
             b9Errors.map((e) => e.message),
           )}`,
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 100 },
     );
@@ -210,7 +210,7 @@ describe("TestMathTypeDispatch", () => {
           `Valid retention math '${math}' produced B9 error: ${JSON.stringify(
             b9Errors.map((e) => e.message),
           )}`,
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 100 },
     );
@@ -234,7 +234,7 @@ describe("TestFilterEnumConsistency", () => {
           `Valid filter operator '${op}' produced B15 error: ${JSON.stringify(
             b15Errors.map((e) => e.message),
           )}`,
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 100 },
     );
@@ -274,7 +274,7 @@ describe("TestChartTypeConsistency", () => {
           `Valid chart type '${ct}' produced B5 error: ${JSON.stringify(
             b5Errors.map((e) => e.message),
           )}`,
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 100 },
     );

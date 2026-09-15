@@ -419,7 +419,7 @@ describe("TestValidateRetentionR7R8R9", () => {
 
   it("test_all_defaults_pass_validation", () => {
     const errors = validateRetentionArgs(validRetentionArgs());
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });
 

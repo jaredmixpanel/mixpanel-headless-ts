@@ -170,7 +170,7 @@ describe("TestWorkspaceAnnotationCRUD", () => {
 
   it("list_annotations() returns empty list when no annotations exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listAnnotations()).toEqual([]);
+    expect(await ws.listAnnotations()).toStrictEqual([]);
   });
 
   it("list_annotations() passes filter params to API", async () => {
@@ -281,7 +281,7 @@ describe("TestWorkspaceAnnotationTags", () => {
 
   it("list_annotation_tags() returns empty list when no tags exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listAnnotationTags()).toEqual([]);
+    expect(await ws.listAnnotationTags()).toStrictEqual([]);
   });
 
   it("create_annotation_tag() returns the created AnnotationTag", async () => {
@@ -308,7 +308,7 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
     const client = stubClient("listAnnotations", [], calls);
 
     await listAnnotationsMember(client);
-    expect(calls[0]?.[0]).toEqual({
+    expect(calls[0]?.[0]).toStrictEqual({
       from_date: null,
       to_date: null,
       tags: null,
@@ -319,7 +319,7 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
       to_date: "2026-03-31",
       tags: [1, 2],
     });
-    expect(calls[1]?.[0]).toEqual({
+    expect(calls[1]?.[0]).toStrictEqual({
       from_date: "2026-01-01",
       to_date: "2026-03-31",
       tags: [1, 2],
@@ -335,7 +335,10 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
     );
 
     // `tags`/`user_id` are None and MUST be absent, not null (R3.5).
-    expect(calls[0]?.[0]).toEqual({ date: "2026-03-31", description: "x" });
+    expect(calls[0]?.[0]).toStrictEqual({
+      date: "2026-03-31",
+      description: "x",
+    });
   });
 
   it("updateAnnotation forwards (annotation_id, exclude_none dump)", async () => {
@@ -348,7 +351,7 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
     );
 
     expect(calls[0]?.[0]).toBe(42);
-    expect(calls[0]?.[1]).toEqual({ description: "Updated" });
+    expect(calls[0]?.[1]).toStrictEqual({ description: "Updated" });
   });
 
   it("createAnnotationTag sends the exclude_none dump (`workspace.py:6674`)", async () => {
@@ -359,7 +362,7 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
       new CreateAnnotationTagParams({ name: "releases" }),
     );
 
-    expect(calls[0]?.[0]).toEqual({ name: "releases" });
+    expect(calls[0]?.[0]).toStrictEqual({ name: "releases" });
   });
 
   it("getAnnotation / deleteAnnotation / listAnnotationTags forward positionally", async () => {
@@ -381,6 +384,6 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
     await listAnnotationTagsMember(
       stubClient("listAnnotationTags", [], listCalls),
     );
-    expect(listCalls[0]).toEqual([]);
+    expect(listCalls[0]).toStrictEqual([]);
   });
 });

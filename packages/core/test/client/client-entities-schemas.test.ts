@@ -122,7 +122,7 @@ describe("TestListSchemaRegistry", () => {
       json: { status: "ok", results: [] },
     }));
     const result = await client.listSchemaRegistry();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 });
 
@@ -220,7 +220,7 @@ describe("TestCreateSchema", () => {
       required: ["plan"],
     };
     await client.createSchema("event", "Signup", schema);
-    expect(capturedBodies[0]).toEqual(schema);
+    expect(capturedBodies[0]).toStrictEqual(schema);
   });
 });
 
@@ -320,7 +320,7 @@ describe("TestCreateSchemasBulk", () => {
       await client.createSchemasBulk({ entries: [], truncate: true }),
     ) as Record<string, unknown>;
     expect(capturedBodies[0]?.["truncate"]).toBe(true);
-    expect(capturedBodies[0]?.["entries"]).toEqual([]);
+    expect(capturedBodies[0]?.["entries"]).toStrictEqual([]);
     expect(result["deleted"]).toBe(10);
   });
 
@@ -458,7 +458,7 @@ describe("TestUpdateSchema", () => {
     });
     const schema = { properties: { plan: { type: "string" } } };
     await client.updateSchema("event", "Signup", schema);
-    expect(capturedBodies[0]).toEqual(schema);
+    expect(capturedBodies[0]).toStrictEqual(schema);
   });
 
   it("test_uses_maybe_scoped_path", async () => {

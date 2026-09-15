@@ -30,7 +30,7 @@ describe("PythonRandom.getrandbits matches CPython", () => {
     (_i, testCase) => {
       const rng = new PythonRandom(testCase.seed);
       const got = testCase.values.map(() => rng.getrandbits(testCase.k));
-      expect(got).toEqual(testCase.values.map(BigInt));
+      expect(got).toStrictEqual(testCase.values.map(BigInt));
     },
   );
 });
@@ -47,7 +47,7 @@ describe("pythonSample matches CPython random.Random(seed).sample", () => {
         { length: testCase.n },
         (_v, i) => `r-${String(i)}`,
       );
-      expect(pythonSample(population, testCase.k, testCase.seed)).toEqual(
+      expect(pythonSample(population, testCase.k, testCase.seed)).toStrictEqual(
         testCase.result,
       );
     },

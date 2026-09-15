@@ -109,7 +109,7 @@ describe("TestListAnnotations", () => {
       json: { status: "ok", results: [] },
     }));
     const result = await client.listAnnotations();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("test_uses_get_method", async () => {

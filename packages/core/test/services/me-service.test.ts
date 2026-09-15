@@ -299,7 +299,7 @@ describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
     });
 
     expect(workspaces).toHaveLength(2);
-    expect(new Set(workspaces.map((ws) => ws.name))).toEqual(
+    expect(new Set(workspaces.map((ws) => ws.name))).toStrictEqual(
       new Set(["Default", "Staging"]),
     );
   });
@@ -318,7 +318,9 @@ describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
   it("returns empty for an unknown project", async () => {
     const { service } = makeService();
 
-    expect(await service.listWorkspaces({ project_id: "999999" })).toEqual([]);
+    expect(
+      await service.listWorkspaces({ project_id: "999999" }),
+    ).toStrictEqual([]);
   });
 
   it("a non-numeric project id raises ConfigError (me.py:833-840)", async () => {

@@ -284,7 +284,7 @@ describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
 
   it("list_dashboards returns [] on an empty results list (:286)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listDashboards()).toEqual([]);
+    expect(await ws.listDashboards()).toStrictEqual([]);
   });
 });
 
@@ -310,7 +310,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
       new BulkUpdateBookmarkEntry({ id: 1, name: "Renamed" }),
     ]);
 
-    expect(captured["body"]).toEqual({
+    expect(captured["body"]).toStrictEqual({
       bookmarks: [{ id: 1, name: "Renamed" }],
     });
   });
@@ -353,7 +353,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
 
     await ws.updateDashboard(1, new UpdateDashboardParams({ title: "New" }));
 
-    expect(captured["body"]).toEqual({ title: "New" });
+    expect(captured["body"]).toStrictEqual({ title: "New" });
   });
 
   it("list_bookmarks_v2 with no args sends no type/ids params (:365)", async () => {

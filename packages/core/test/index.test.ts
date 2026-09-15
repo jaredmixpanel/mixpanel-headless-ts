@@ -45,9 +45,9 @@ describe("@mixpanel-headless/core package skeleton", () => {
     // an empty payload is clean, a malformed `sorting` block (the same
     // fixture `crud-bookmarks-cohorts.test.ts` rejects pre-wire) is not.
     expect(typeof validateBookmarkParamsSchema).toBe("function");
-    expect(validateBookmarkParamsSchema({}, null, { partial: true })).toEqual(
-      [],
-    );
+    expect(
+      validateBookmarkParamsSchema({}, null, { partial: true }),
+    ).toStrictEqual([]);
     const malformedSorting = {
       sorting: { bar: { sortBy: "value", segmentation: "value" } },
     };

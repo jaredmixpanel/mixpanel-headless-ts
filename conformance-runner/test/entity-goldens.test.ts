@@ -245,7 +245,7 @@ describe("model-coverage accounting (P2-7 done-criterion)", () => {
 
 describe("C8(b) entity-model goldens", () => {
   it("handler table matches the artifact's entity_golden set exactly", () => {
-    expect(Object.keys(HANDLERS).sort()).toEqual(goldenModels);
+    expect(Object.keys(HANDLERS).sort()).toStrictEqual(goldenModels);
   });
 
   for (const name of goldenModels) {
@@ -304,7 +304,7 @@ describe("C8(b) entity-model goldens", () => {
               // Lax models absorb the key but must DROP it from the
               // serialized walk — an echo implementation fails here.
               const instance = handler.fromDict(mutated);
-              expect(Object.keys(handler.toJSON(instance)), id).toEqual([
+              expect(Object.keys(handler.toJSON(instance)), id).toStrictEqual([
                 ...handler.declaredKeys,
               ]);
             }
@@ -321,7 +321,7 @@ describe("C8(b) entity-model goldens", () => {
           const result = vector.expect["result"] as JsonValue;
           for (const raw of extractPayloads(result)) {
             const instance = handler.fromDict(deps.codecs.decodeValue(raw));
-            expect(Object.keys(handler.toJSON(instance)), id).toEqual([
+            expect(Object.keys(handler.toJSON(instance)), id).toStrictEqual([
               ...handler.declaredKeys,
             ]);
           }

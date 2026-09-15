@@ -168,7 +168,7 @@ describe("TestEndpointsForResolver", () => {
 
   it("test_override_ignores_region", () => {
     for (const region of REGIONS) {
-      expect(asRecord(endpointsFor(region, OVERRIDE))).toEqual(EXPECTED);
+      expect(asRecord(endpointsFor(region, OVERRIDE))).toStrictEqual(EXPECTED);
     }
   });
 
@@ -176,7 +176,7 @@ describe("TestEndpointsForResolver", () => {
     for (const suffix of ["/", "//", "///"]) {
       expect(
         asRecord(endpointsFor("us", { apiBaseUrl: `${BASE}${suffix}` })),
-      ).toEqual(EXPECTED);
+      ).toStrictEqual(EXPECTED);
     }
   });
 
@@ -208,7 +208,7 @@ describe("TestEndpointsForResolver", () => {
     endpointsFor("us", OVERRIDE);
     endpointsFor("eu", OVERRIDE);
     endpointsFor("us", { appBaseUrl: "http://app.internal:9000" });
-    expect(snapshotLive()).toEqual(before);
+    expect(snapshotLive()).toStrictEqual(before);
     expect(ENDPOINTS.get("us")?.get("query")).toBe(
       "https://mixpanel.com/api/query",
     );
@@ -295,7 +295,7 @@ describe("TestClientRequestsHitOverride", () => {
       endpointOverrides: OVERRIDE,
     });
     await client.getEvents();
-    expect(transport.captures.map((r) => urlSansQuery(r.url))).toEqual([
+    expect(transport.captures.map((r) => urlSansQuery(r.url))).toStrictEqual([
       `${BASE}/api/query/events/names`,
     ]);
   });
@@ -305,7 +305,7 @@ describe("TestClientRequestsHitOverride", () => {
       endpointOverrides: OVERRIDE,
     });
     await drain(client.exportEvents("2024-01-01", "2024-01-31"));
-    expect(transport.captures.map((r) => urlSansQuery(r.url))).toEqual([
+    expect(transport.captures.map((r) => urlSansQuery(r.url))).toStrictEqual([
       `${BASE}/api/2.0/export`,
     ]);
   });
@@ -315,7 +315,7 @@ describe("TestClientRequestsHitOverride", () => {
       endpointOverrides: OVERRIDE,
     });
     await client.engageStats();
-    expect(transport.captures.map((r) => urlSansQuery(r.url))).toEqual([
+    expect(transport.captures.map((r) => urlSansQuery(r.url))).toStrictEqual([
       `${BASE}/api/query/engage/stats`,
     ]);
   });
@@ -325,7 +325,7 @@ describe("TestClientRequestsHitOverride", () => {
       endpointOverrides: OVERRIDE,
     });
     await client.appRequest("GET", "/projects/12345/dashboards");
-    expect(transport.captures.map((r) => urlSansQuery(r.url))).toEqual([
+    expect(transport.captures.map((r) => urlSansQuery(r.url))).toStrictEqual([
       `${BASE}/api/app/projects/12345/dashboards`,
     ]);
   });
@@ -337,7 +337,7 @@ describe("TestClientRequestsHitOverride", () => {
     await client.getEvents();
     await client.appRequest("GET", "/projects/12345/dashboards");
     const urls = transport.captures.map((r) => urlSansQuery(r.url));
-    expect(urls).toEqual([
+    expect(urls).toStrictEqual([
       `${BASE}/api/query/events/names`,
       `${BASE}/api/app/projects/12345/dashboards`,
     ]);
@@ -579,14 +579,14 @@ describe("TestWorkspaceFacadeHitsOverride", () => {
 
   it("test_events", async () => {
     const { ws, urls } = envWorkspace();
-    expect(await ws.events()).toEqual(["Login"]);
-    expect(urls()).toEqual([`${BASE}/api/query/events/names`]);
+    expect(await ws.events()).toStrictEqual(["Login"]);
+    expect(urls()).toStrictEqual([`${BASE}/api/query/events/names`]);
   });
 
   it("test_query", async () => {
     const { ws, urls } = envWorkspace();
     await ws.query("Login", { last: 30 });
-    expect(urls()).toEqual([`${BASE}/api/query/insights`]);
+    expect(urls()).toStrictEqual([`${BASE}/api/query/insights`]);
   });
 
   it("test_stream_events", async () => {
@@ -595,7 +595,7 @@ describe("TestWorkspaceFacadeHitsOverride", () => {
       ws.streamEvents({ from_date: "2024-01-01", to_date: "2024-01-31" }),
     );
     expect(rows).toHaveLength(1);
-    expect(urls()).toEqual([`${BASE}/api/2.0/export`]);
+    expect(urls()).toStrictEqual([`${BASE}/api/2.0/export`]);
   });
 });
 
@@ -616,7 +616,7 @@ describe("TestUnsetIsLive", () => {
         recorder(),
       );
       await client.getEvents();
-      expect(transport.captures.map((r) => urlSansQuery(r.url))).toEqual([
+      expect(transport.captures.map((r) => urlSansQuery(r.url))).toStrictEqual([
         expected,
       ]);
     }

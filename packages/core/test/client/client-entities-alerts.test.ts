@@ -93,7 +93,7 @@ describe("TestListAlerts", () => {
       json: { status: "ok", results: [] },
     }));
     const result = await client.listAlerts();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("test_uses_get_method", async () => {
@@ -231,7 +231,7 @@ describe("TestBulkDeleteAlerts", () => {
     });
     await client.bulkDeleteAlerts([1, 2, 3]);
     expect(captured[0]?.[0]).toBe("POST");
-    expect(captured[0]?.[1]).toEqual({ alert_ids: [1, 2, 3] });
+    expect(captured[0]?.[1]).toStrictEqual({ alert_ids: [1, 2, 3] });
   });
 
   it("test_url_path", async () => {

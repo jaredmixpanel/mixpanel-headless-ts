@@ -695,7 +695,7 @@ describe("TestValidateFlowMultiError", () => {
 describe("TestValidateFlowDefaults", () => {
   it("test_all_defaults_pass_validation", () => {
     const errors = validateFlowArgs(validFlowArgs());
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });
 

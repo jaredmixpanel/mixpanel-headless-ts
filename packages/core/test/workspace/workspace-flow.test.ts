@@ -109,7 +109,7 @@ describe("TestBuildFlowParams", () => {
     });
     const dr = params["date_range"] as Record<string, unknown>;
     expect(dr["type"]).toBe("in the last");
-    expect(dr["from_date"]).toEqual({ unit: "day", value: 30 });
+    expect(dr["from_date"]).toStrictEqual({ unit: "day", value: 30 });
     expect(dr["to_date"]).toBe("$now");
   });
 
@@ -174,7 +174,7 @@ describe("TestBuildFlowParams", () => {
     expect(step["forward"]).toBe(2);
     expect(step["reverse"]).toBe(1);
     expect(step["bool_op"]).toBe("and");
-    expect(step["property_filter_params_list"]).toEqual([]);
+    expect(step["property_filter_params_list"]).toStrictEqual([]);
   });
 
   it("collapse_repeated=true shows in the output", () => {
@@ -192,7 +192,7 @@ describe("TestBuildFlowParams", () => {
       steps: [new FlowStep({ event: "Login" })],
       hidden_events: ["X"],
     });
-    expect(params["hidden_events"]).toEqual(["X"]);
+    expect(params["hidden_events"]).toStrictEqual(["X"]);
   });
 
   it("a custom conversion window shows in the output", () => {
@@ -202,7 +202,10 @@ describe("TestBuildFlowParams", () => {
       conversion_window: 14,
       conversion_window_unit: "week",
     });
-    expect(params["conversion_window"]).toEqual({ unit: "week", value: 14 });
+    expect(params["conversion_window"]).toStrictEqual({
+      unit: "week",
+      value: 14,
+    });
   });
 });
 
@@ -250,7 +253,9 @@ describe("TestBuildFlowParamsFilters", () => {
   it("a FlowStep without filters has an empty segfilter list", () => {
     const step = new FlowStep({ event: "Purchase", forward: 3, reverse: 0 });
     const params = buildFlowParams({ ...BASE_BUILD, steps: [step] });
-    expect(stepsOf(params)[0]!["property_filter_params_list"]).toEqual([]);
+    expect(stepsOf(params)[0]!["property_filter_params_list"]).toStrictEqual(
+      [],
+    );
   });
 });
 
@@ -699,19 +704,19 @@ describe("TestFlowExclusions", () => {
     const params = await makeWs().buildFlowParams("Login", {
       exclusions: ["Error Event"],
     });
-    expect(params["exclusions"]).toEqual(["Error Event"]);
+    expect(params["exclusions"]).toStrictEqual(["Error Event"]);
   });
 
   it("multiple exclusions all appear", async () => {
     const params = await makeWs().buildFlowParams("Login", {
       exclusions: ["Error", "Debug", "Test"],
     });
-    expect(params["exclusions"]).toEqual(["Error", "Debug", "Test"]);
+    expect(params["exclusions"]).toStrictEqual(["Error", "Debug", "Test"]);
   });
 
   it("no exclusions produce an empty list", async () => {
     const params = await makeWs().buildFlowParams("Login");
-    expect(params["exclusions"]).toEqual([]);
+    expect(params["exclusions"]).toStrictEqual([]);
   });
 });
 
@@ -731,7 +736,7 @@ describe("TestFlowPropertyFilters", () => {
     expect(children).toHaveLength(1);
     expect(children[0]!["filterOperator"]).toBe("equals");
     expect(children[0]!["propertyName"]).toBe("country");
-    expect(children[0]!["filterValue"]).toEqual(["US"]);
+    expect(children[0]!["filterValue"]).toStrictEqual(["US"]);
   });
 
   it("a list of property filters produces a children array", async () => {

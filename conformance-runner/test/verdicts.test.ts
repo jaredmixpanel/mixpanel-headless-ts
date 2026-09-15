@@ -38,7 +38,7 @@ describe("summarizeResults", () => {
         diff: "api unknown",
       },
     ];
-    expect(summarizeResults(results)).toEqual({
+    expect(summarizeResults(results)).toStrictEqual({
       total: 4,
       passed: 1,
       failed: 2,
@@ -55,7 +55,7 @@ describe("summarizeResults", () => {
   });
 
   it("handles an empty run", () => {
-    expect(summarizeResults([])).toEqual({
+    expect(summarizeResults([])).toStrictEqual({
       total: 0,
       passed: 0,
       failed: 0,

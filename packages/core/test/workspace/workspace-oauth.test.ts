@@ -123,7 +123,7 @@ describe("TestWorkspaceListWorkspaces (test_workspace_oauth.py:196)", () => {
     }));
     const ws = new Workspace({ session: TEST_SESSION, client });
 
-    expect(await ws.listWorkspaces()).toEqual([]);
+    expect(await ws.listWorkspaces()).toStrictEqual([]);
   });
 });
 

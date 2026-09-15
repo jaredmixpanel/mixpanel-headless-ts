@@ -52,7 +52,7 @@ describe("C8(d) bookmark-enum lock", () => {
   });
 
   it("TS tables key exactly the vector's constant names", () => {
-    expect([...BOOKMARK_ENUM_TABLES.keys()].sort()).toEqual(
+    expect([...BOOKMARK_ENUM_TABLES.keys()].sort()).toStrictEqual(
       Object.keys(vector.constants).sort(),
     );
   });
@@ -60,7 +60,9 @@ describe("C8(d) bookmark-enum lock", () => {
   it("every constant's normalized snapshot equals the vector's", () => {
     const snapshot = bookmarkEnumTablesSnapshot();
     for (const [name, expected] of Object.entries(vector.constants)) {
-      expect(snapshot[name], `constant ${name} drifted`).toEqual(expected);
+      expect(snapshot[name], `constant ${name} drifted`).toStrictEqual(
+        expected,
+      );
     }
   });
 

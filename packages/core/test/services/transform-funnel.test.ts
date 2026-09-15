@@ -109,19 +109,21 @@ describe("TestExtractFunnelStepsFromSeries", () => {
   });
 
   it("empty dict returns an empty list", () => {
-    expect(extractFunnelStepsFromSeries({}, noWarn)).toEqual([]);
+    expect(extractFunnelStepsFromSeries({}, noWarn)).toStrictEqual([]);
   });
 
   it("non-dict input (int) returns an empty list", () => {
-    expect(extractFunnelStepsFromSeries(42, noWarn)).toEqual([]);
+    expect(extractFunnelStepsFromSeries(42, noWarn)).toStrictEqual([]);
   });
 
   it("non-dict input (string) returns an empty list", () => {
-    expect(extractFunnelStepsFromSeries("not a dict", noWarn)).toEqual([]);
+    expect(extractFunnelStepsFromSeries("not a dict", noWarn)).toStrictEqual(
+      [],
+    );
   });
 
   it("non-dict input (None) returns an empty list", () => {
-    expect(extractFunnelStepsFromSeries(null, noWarn)).toEqual([]);
+    expect(extractFunnelStepsFromSeries(null, noWarn)).toStrictEqual([]);
   });
 
   it("'steps' takes precedence over '$overall'", () => {
@@ -132,7 +134,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
   });
 
   it("empty list input is returned unchanged", () => {
-    expect(extractFunnelStepsFromSeries([], noWarn)).toEqual([]);
+    expect(extractFunnelStepsFromSeries([], noWarn)).toStrictEqual([]);
   });
 
   it("dict whose 'steps' value is not a list falls through to '$overall'", () => {
@@ -140,7 +142,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
       steps: "not a list",
       $overall: [{ event: "Fallback" }],
     };
-    expect(extractFunnelStepsFromSeries(series, noWarn)).toEqual([
+    expect(extractFunnelStepsFromSeries(series, noWarn)).toStrictEqual([
       { event: "Fallback" },
     ]);
   });
@@ -153,7 +155,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     expect(sink.messages).toHaveLength(1);
     expect(sink.messages[0]).toContain("unrecognized format");
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   // -------------------------------------------------------------------
@@ -282,7 +284,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
   it("non-dict count data returns an empty list", () => {
     const series = { Funnel: { count: "not a dict" } };
-    expect(extractFunnelStepsFromSeries(series, noWarn)).toEqual([]);
+    expect(extractFunnelStepsFromSeries(series, noWarn)).toStrictEqual([]);
   });
 
   it("trends format extracts from the first date", () => {
@@ -349,7 +351,7 @@ describe("TestTransformFunnelResult", () => {
       BOOKMARK_PARAMS,
       noWarn,
     );
-    expect(result.steps_data).toEqual(SAMPLE_STEPS);
+    expect(result.steps_data).toStrictEqual(SAMPLE_STEPS);
     expect(result.steps_data).toHaveLength(2);
     expect(result.steps_data[0]!["event"]).toBe("Signup");
     expect(result.steps_data[1]!["event"]).toBe("Purchase");
@@ -361,7 +363,7 @@ describe("TestTransformFunnelResult", () => {
       BOOKMARK_PARAMS,
       noWarn,
     );
-    expect(result.series).toEqual({ steps: SAMPLE_STEPS });
+    expect(result.series).toStrictEqual({ steps: SAMPLE_STEPS });
   });
 
   it("params preserves the bookmark_params argument", () => {
@@ -370,7 +372,7 @@ describe("TestTransformFunnelResult", () => {
       BOOKMARK_PARAMS,
       noWarn,
     );
-    expect(result.params).toEqual(BOOKMARK_PARAMS);
+    expect(result.params).toStrictEqual(BOOKMARK_PARAMS);
   });
 
   it("meta is extracted from raw['meta']", () => {
@@ -379,7 +381,7 @@ describe("TestTransformFunnelResult", () => {
       BOOKMARK_PARAMS,
       noWarn,
     );
-    expect(result.meta).toEqual({ sampling_factor: 1.0 });
+    expect(result.meta).toStrictEqual({ sampling_factor: 1.0 });
   });
 
   it("response containing 'error' raises QueryError", () => {
@@ -406,7 +408,7 @@ describe("TestTransformFunnelResult", () => {
       transformFunnelResult(errorResponse, BOOKMARK_PARAMS, noWarn);
       expect.unreachable("expected QueryError");
     } catch (error) {
-      expect((error as QueryError).responseBody).toEqual(errorResponse);
+      expect((error as QueryError).responseBody).toStrictEqual(errorResponse);
     }
   });
 
@@ -417,7 +419,7 @@ describe("TestTransformFunnelResult", () => {
       transformFunnelResult(errorResponse, params, noWarn);
       expect.unreachable("expected QueryError");
     } catch (error) {
-      expect((error as QueryError).requestBody).toEqual(params);
+      expect((error as QueryError).requestBody).toStrictEqual(params);
     }
   });
 
@@ -455,7 +457,7 @@ describe("TestTransformFunnelResult", () => {
 
     const result = transformFunnelResult(raw, BOOKMARK_PARAMS, noWarn);
 
-    expect(result.meta).toEqual({});
+    expect(result.meta).toStrictEqual({});
   });
 
   it("missing computed_at defaults to an empty string", () => {
@@ -479,10 +481,10 @@ describe("TestTransformFunnelResult", () => {
     expect(result.computed_at).toBe("");
     expect(result.from_date).toBe("");
     expect(result.to_date).toBe("");
-    expect(result.steps_data).toEqual([]);
-    expect(result.series).toEqual({});
-    expect(result.params).toEqual({});
-    expect(result.meta).toEqual({});
+    expect(result.steps_data).toStrictEqual([]);
+    expect(result.series).toStrictEqual({});
+    expect(result.params).toStrictEqual({});
+    expect(result.meta).toStrictEqual({});
   });
 
   it("completely empty response raises QueryError (missing series)", () => {
@@ -502,7 +504,7 @@ describe("TestTransformFunnelResult", () => {
 
     const result = transformFunnelResult(raw, BOOKMARK_PARAMS, noWarn);
 
-    expect(result.steps_data).toEqual(steps);
+    expect(result.steps_data).toStrictEqual(steps);
   });
 
   it("series preserves the raw segmented dict, not the extracted steps", () => {
@@ -568,6 +570,6 @@ describe("R10.9: AttributeError fidelity on non-mapping members", () => {
       "2025-01-31",
       "day",
     );
-    expect(result.cohorts[0]!.retention).toEqual([1.0, 0.5]);
+    expect(result.cohorts[0]!.retention).toStrictEqual([1.0, 0.5]);
   });
 });

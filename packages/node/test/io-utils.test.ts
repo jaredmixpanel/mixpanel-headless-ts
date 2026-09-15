@@ -131,7 +131,7 @@ describe("TestAtomicWriteBytes", () => {
         atomicWriteBytes(target, utf8("x"), { mode: badMode }),
       ).toThrow(/group\/world access/);
       // The guard fires BEFORE any FS touch (caution #11).
-      expect(readdirSync(dir)).toEqual([]);
+      expect(readdirSync(dir)).toStrictEqual([]);
     },
   );
 
@@ -147,7 +147,7 @@ describe("TestAtomicWriteBytes", () => {
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     atomicWriteBytes(target, utf8("x"));
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 
   it("test_no_tmp_file_left_after_replace_failure", () => {
@@ -161,8 +161,8 @@ describe("TestAtomicWriteBytes", () => {
     expect(() => atomicWriteBytes(target, utf8("x"), { fsOps })).toThrow(
       "simulated",
     );
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
-    expect(readdirSync(dir)).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
+    expect(readdirSync(dir)).toStrictEqual([]);
   });
 
   it("test_failure_preserves_existing_file", () => {
@@ -178,7 +178,7 @@ describe("TestAtomicWriteBytes", () => {
       "simulated",
     );
     expect(readFileSync(target, "utf8")).toBe("original");
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 
   it.skipIf(!POSIX)("test_replacing_existing_resets_mode", () => {
@@ -244,7 +244,7 @@ describe("TestAtomicWriteBytes", () => {
       error = error_;
     }
     expect((error as NodeJS.ErrnoException).code).toBe("ENOENT");
-    expect(readdirSync(dir)).toEqual([]);
+    expect(readdirSync(dir)).toStrictEqual([]);
   });
 });
 
@@ -265,7 +265,7 @@ describe("TestAtomicWriteResilience", () => {
       atomicWriteBytes(target, utf8("NEW_CONTENT"), { fsOps }),
     ).toThrow("simulated SIGKILL");
     expect(readFileSync(target, "utf8")).toBe("OLD_CONTENT");
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 
   it("test_simulated_kill_during_write_preserves_old", () => {
@@ -281,7 +281,7 @@ describe("TestAtomicWriteResilience", () => {
       atomicWriteBytes(target, utf8("NEW_CONTENT"), { fsOps }),
     ).toThrow("disk full");
     expect(readFileSync(target, "utf8")).toBe("OLD_CONTENT");
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 
   it("test_concurrent_writes_use_distinct_tmp_paths", () => {
@@ -303,7 +303,7 @@ describe("TestAtomicWriteResilience", () => {
     expect(new Set(seen).size).toBe(2);
     const final = readFileSync(target, "utf8");
     expect(final === "A".repeat(1024) || final === "B".repeat(1024)).toBe(true);
-    expect(tmpGlob(dir, "config.toml")).toEqual([]);
+    expect(tmpGlob(dir, "config.toml")).toStrictEqual([]);
   });
 });
 

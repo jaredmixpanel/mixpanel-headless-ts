@@ -83,7 +83,7 @@ describe("serializeTokensPayload — tokens.json writer twin (storage.py:451-478
     const withoutRefresh = JSON.parse(
       serializeTokensPayload(makeTokens("2030-01-01T00:00:00+00:00")),
     ) as Record<string, unknown>;
-    expect(Object.keys(withoutRefresh)).toEqual([
+    expect(Object.keys(withoutRefresh)).toStrictEqual([
       "access_token",
       "expires_at",
       "scope",
@@ -145,7 +145,7 @@ describe("serializeClientInfoPayload — client_{region}.json writer twin (stora
     const record = JSON.parse(
       serializeClientInfoPayload(CLIENT_INFO),
     ) as Record<string, unknown>;
-    expect(Object.keys(record)).toEqual([
+    expect(Object.keys(record)).toStrictEqual([
       "client_id",
       "region",
       "redirect_uri",

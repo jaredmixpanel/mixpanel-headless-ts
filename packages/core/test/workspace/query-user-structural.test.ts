@@ -242,12 +242,12 @@ describe("TestDfProfilesVaryingPropertySetsUnionColumns", () => {
     const columns = result.rowColumns();
 
     // All property columns should be present
-    expect(new Set(columns)).toEqual(
+    expect(new Set(columns)).toStrictEqual(
       new Set(["distinct_id", "last_seen", "a", "b", "c"]),
     );
 
     // Column order: distinct_id, last_seen, then alphabetical
-    expect(columns).toEqual(["distinct_id", "last_seen", "a", "b", "c"]);
+    expect(columns).toStrictEqual(["distinct_id", "last_seen", "a", "b", "c"]);
 
     // Where pandas shows NaN, the TS ragged row leaves the key ABSENT
     const rows = result.toRows();

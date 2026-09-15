@@ -115,15 +115,18 @@ describe("Filter constructor (__post_init__ parity)", () => {
 
 describe("Filter scalar factories (operator/value/type mapping)", () => {
   it("equals wraps a bare string into a one-element list", () => {
-    expect(Filter.equals("country", "US")._value).toEqual(["US"]);
-    expect(Filter.equals("country", ["US", "CA"])._value).toEqual(["US", "CA"]);
+    expect(Filter.equals("country", "US")._value).toStrictEqual(["US"]);
+    expect(Filter.equals("country", ["US", "CA"])._value).toStrictEqual([
+      "US",
+      "CA",
+    ]);
     expect(Filter.equals("country", "US")._operator).toBe("equals");
   });
 
   it("notEquals maps to 'does not equal'", () => {
     const filter = Filter.notEquals("country", "US");
     expect(filter._operator).toBe("does not equal");
-    expect(filter._value).toEqual(["US"]);
+    expect(filter._value).toStrictEqual(["US"]);
   });
 
   it("numeric factories set number property type", () => {
@@ -132,7 +135,7 @@ describe("Filter scalar factories (operator/value/type mapping)", () => {
     expect(Filter.lessThan("age", 65)._operator).toBe("is less than");
     expect(Filter.atLeast("score", 80)._operator).toBe("is at least");
     expect(Filter.atMost("errors", 5)._operator).toBe("is at most");
-    expect(Filter.between("amount", 10, 100)._value).toEqual([10, 100]);
+    expect(Filter.between("amount", 10, 100)._value).toStrictEqual([10, 100]);
     expect(Filter.notBetween("age", 18, 65)._operator).toBe("not between");
   });
 
@@ -260,7 +263,7 @@ describe("Filter date factories", () => {
     // Equal endpoints are legal (strictly-greater comparison).
     expect(
       Filter.dateBetween("created", "2024-01-01", "2024-01-01")._value,
-    ).toEqual(["2024-01-01", "2024-01-01"]);
+    ).toStrictEqual(["2024-01-01", "2024-01-01"]);
   });
 });
 
@@ -303,11 +306,11 @@ describe("Filter cohort factories", () => {
     expect(filter._property).toBe("$cohorts");
     expect(filter._operator).toBe("contains");
     expect(filter._property_type).toBe("list");
-    expect(filter._value).toEqual([
+    expect(filter._value).toStrictEqual([
       { cohort: { negated: false, name: "Power Users", id: 123 } },
     ]);
     // Absent name serializes as "" (Python `name or ""`).
-    expect(Filter.notInCohort(9)._value).toEqual([
+    expect(Filter.notInCohort(9)._value).toStrictEqual([
       { cohort: { negated: true, name: "", id: 9 } },
     ]);
     expect(Filter.notInCohort(9)._operator).toBe("does not contain");
@@ -430,9 +433,9 @@ describe("Filter.listContains", () => {
     expect(filter._list_item_filters).toHaveLength(2);
     const [brand, category] = filter._list_item_filters ?? [];
     expect(brand?._property).toBe("Brand");
-    expect(brand?._value).toEqual(["nike"]);
+    expect(brand?._value).toStrictEqual(["nike"]);
     expect(brand?._resource_type).toBe("people");
-    expect(category?._value).toEqual(["hats", "shoes"]);
+    expect(category?._value).toStrictEqual(["hats", "shoes"]);
   });
 });
 
@@ -580,7 +583,7 @@ describe("Filter.inCohort with an inline CohortDefinition (P2-9 gate finding)", 
     const filter = Filter.inCohort(definition);
     expect(filter._property).toBe("$cohorts");
     expect(filter._operator).toBe("contains");
-    expect(filter._value).toEqual([
+    expect(filter._value).toStrictEqual([
       {
         cohort: {
           negated: false,
@@ -686,29 +689,33 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
   it("report row: greater_than alias equals Filter.greaterThan", () => {
     const factory = Filter.greaterThan("gold", 10);
     const positional = direct("gold", "greater_than", 10, "number");
-    expect(positional).toEqual(factory);
+    expect(positional).toStrictEqual(factory);
     expect(buildFilterEntry(positional)["filterOperator"]).toBe(
       "is greater than",
     );
-    expect(buildFilterEntry(positional)).toEqual(buildFilterEntry(factory));
+    expect(buildFilterEntry(positional)).toStrictEqual(
+      buildFilterEntry(factory),
+    );
   });
 
   it("report row: is_set alias equals Filter.isSet", () => {
     const factory = Filter.isSet("class");
     const positional = direct("class", "is_set", null);
-    expect(positional).toEqual(factory);
+    expect(positional).toStrictEqual(factory);
     expect(buildFilterEntry(positional)["filterOperator"]).toBe("is set");
-    expect(buildFilterEntry(positional)).toEqual(buildFilterEntry(factory));
+    expect(buildFilterEntry(positional)).toStrictEqual(
+      buildFilterEntry(factory),
+    );
   });
 
   it("report row: boolean equals true collapses to Filter.isTrue", () => {
     const factory = Filter.isTrue("flag");
     const positional = direct("flag", "equals", true, "boolean");
-    expect(positional).toEqual(factory);
+    expect(positional).toStrictEqual(factory);
     const entry = buildFilterEntry(positional);
     expect(entry["filterOperator"]).toBe("true");
     expect(entry["filterValue"]).toBeNull();
-    expect(entry).toEqual(buildFilterEntry(factory));
+    expect(entry).toStrictEqual(buildFilterEntry(factory));
   });
 
   // --- Boolean normalization table ---
@@ -732,8 +739,8 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
       expect(f._value).toBeNull();
       const twin =
         expected === "true" ? Filter.isTrue("flag") : Filter.isFalse("flag");
-      expect(f).toEqual(twin);
-      expect(buildFilterEntry(f)).toEqual(buildFilterEntry(twin));
+      expect(f).toStrictEqual(twin);
+      expect(buildFilterEntry(f)).toStrictEqual(buildFilterEntry(twin));
     },
   );
 
@@ -757,10 +764,10 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
   );
 
   it("boolean wire operators are accepted unchanged", () => {
-    expect(direct("flag", "true", null, "boolean")).toEqual(
+    expect(direct("flag", "true", null, "boolean")).toStrictEqual(
       Filter.isTrue("flag"),
     );
-    expect(direct("flag", "false", null, "boolean")).toEqual(
+    expect(direct("flag", "false", null, "boolean")).toStrictEqual(
       Filter.isFalse("flag"),
     );
   });
@@ -810,7 +817,7 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
   it("with no inline type declared, the Filter's own _property_type governs", () => {
     const f = direct(inline(null), "equals", ["x"], "string");
     expect(f._operator).toBe("equals");
-    expect(f._value).toEqual(["x"]);
+    expect(f._value).toStrictEqual(["x"]);
     const message = valueErrorMessage(() =>
       direct(inline(null), "contains", "tr", "boolean"),
     );
@@ -876,7 +883,7 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
     (operator, value, propertyType) => {
       const f = direct("p", operator, value, propertyType);
       expect(f._operator).toBe(operator);
-      expect(f._value).toEqual(value);
+      expect(f._value).toStrictEqual(value);
       expect(f._property_type).toBe(propertyType);
     },
   );
@@ -922,7 +929,7 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
   ] as const)("segfilter-only spelling %s normalizes to %s", (alias, wire) => {
     const f = direct("count", alias, 42, "number");
     expect(f._operator).toBe(wire);
-    expect(f).toEqual(direct("count", wire, 42, "number"));
+    expect(f).toStrictEqual(direct("count", wire, 42, "number"));
   });
 });
 

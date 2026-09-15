@@ -321,7 +321,7 @@ describe("C8(a) codec round-trip sweep", () => {
     const unknown = [...tally.keys()].filter(
       (tag) => !deps.codecs.knows(tag) && !DECODE_GAP.has(tag),
     );
-    expect(unknown).toEqual([]);
+    expect(unknown).toStrictEqual([]);
   });
 
   it("every tag-universe tag is accounted for (artifact coverage)", () => {
@@ -332,7 +332,7 @@ describe("C8(a) codec round-trip sweep", () => {
     const unaccounted = artifactTags.filter(
       (tag) => !deps.codecs.knows(tag) && !DECODE_GAP.has(tag),
     );
-    expect(unaccounted).toEqual([]);
+    expect(unaccounted).toStrictEqual([]);
   });
 
   it("every registered rich tag was exercised at least once", async () => {

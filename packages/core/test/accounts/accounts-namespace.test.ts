@@ -326,7 +326,7 @@ describe("TestList (test_accounts_namespace.py:277)", () => {
   it("no accounts → empty list", () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
-    expect(accounts.list()).toEqual([]);
+    expect(accounts.list()).toStrictEqual([]);
   });
 
   it("each entry is an AccountSummary", async () => {
@@ -408,8 +408,8 @@ describe("TestRemove (test_accounts_namespace.py:384)", () => {
 
     const orphans = accounts.remove("x");
 
-    expect(orphans).toEqual([]);
-    expect(accounts.list()).toEqual([]);
+    expect(orphans).toStrictEqual([]);
+    expect(accounts.list()).toStrictEqual([]);
   });
 
   it("without force, removing a referenced account raises", async () => {
@@ -830,7 +830,7 @@ describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
     });
 
     expect(path).toBe("/fake/bridge.json");
-    expect(exported).toEqual(["team"]);
+    expect(exported).toStrictEqual(["team"]);
   });
 
   it('exportBridge(account="") with no active account raises the no-account ConfigError', async () => {
@@ -878,7 +878,7 @@ describe("B8-ARB-A ASR-F1 custom-header export composition lock (test_bridge_exp
 
     await accounts.exportBridge({ to: "/fake/bridge.json", account: "team" });
 
-    expect(exportedHeaders).toEqual([{ "X-Mixpanel-Cluster": "cell-3" }]);
+    expect(exportedHeaders).toStrictEqual([{ "X-Mixpanel-Cluster": "cell-3" }]);
   });
 
   it("no custom header configured → the exported headers bag stays null (anti-vacuity companion)", async () => {
@@ -898,6 +898,6 @@ describe("B8-ARB-A ASR-F1 custom-header export composition lock (test_bridge_exp
 
     await accounts.exportBridge({ to: "/fake/bridge.json", account: "team" });
 
-    expect(exportedHeaders).toEqual([null]);
+    expect(exportedHeaders).toStrictEqual([null]);
   });
 });

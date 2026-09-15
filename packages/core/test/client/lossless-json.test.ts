@@ -44,7 +44,7 @@ describe("parseLossless", () => {
     const value = parseLossless(
       String.raw`[null, true, false, "a\nb\u00e9", {"k": []}]`,
     );
-    expect(value).toEqual([null, true, false, "a\nbé", { k: [] }]);
+    expect(value).toStrictEqual([null, true, false, "a\nbé", { k: [] }]);
   });
 
   it("applies last-wins semantics to duplicate keys", () => {
@@ -100,7 +100,7 @@ describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
       b: number[];
     };
     expect(value.a).toBeNaN();
-    expect(value.b).toEqual([Infinity, -Infinity]);
+    expect(value.b).toStrictEqual([Infinity, -Infinity]);
   });
 
   it("rejects every variant json.loads rejects (probed: exact case only)", () => {
@@ -151,10 +151,10 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       unknown
     >;
     // JS enumeration hoists ascending…
-    expect(Object.keys(value)).toEqual(["100", "200"]);
+    expect(Object.keys(value)).toStrictEqual(["100", "200"]);
     // …the sidecar keeps Python's source order.
-    expect(orderedKeys(value)).toEqual(["200", "100"]);
-    expect(orderedEntries(value).map(([k]) => k)).toEqual(["200", "100"]);
+    expect(orderedKeys(value)).toStrictEqual(["200", "100"]);
+    expect(orderedEntries(value).map(([k]) => k)).toStrictEqual(["200", "100"]);
   });
 
   it("mixed integer-like and plain keys keep full source order", () => {
@@ -162,7 +162,7 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       unknown
     >;
-    expect(orderedKeys(value)).toEqual(["b", "3", "a", "1"]);
+    expect(orderedKeys(value)).toStrictEqual(["b", "3", "a", "1"]);
   });
 
   it("in-order objects carry no sidecar and fall back to Object.keys", () => {
@@ -170,8 +170,8 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       unknown
     >;
-    expect(Object.getOwnPropertySymbols(value)).toEqual([]);
-    expect(orderedKeys(value)).toEqual(["100", "200", "zeta"]);
+    expect(Object.getOwnPropertySymbols(value)).toStrictEqual([]);
+    expect(orderedKeys(value)).toStrictEqual(["100", "200", "zeta"]);
   });
 
   it("duplicate keys: FIRST position wins, LAST value wins (json.loads)", () => {
@@ -181,7 +181,7 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       JsonNumber
     >;
-    expect(orderedKeys(value)).toEqual(["2", "1"]);
+    expect(orderedKeys(value)).toStrictEqual(["2", "1"]);
     expect(value["2"]?.raw).toBe("3");
     expect(value["1"]?.raw).toBe("2");
   });
@@ -191,9 +191,9 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       unknown
     >;
-    expect(Object.keys(value)).toEqual(["1", "9"]);
+    expect(Object.keys(value)).toStrictEqual(["1", "9"]);
     expect(JSON.stringify(value)).toBe('{"1":false,"9":true}');
-    expect({ ...value }).toEqual({ "1": false, "9": true });
+    expect({ ...value }).toStrictEqual({ "1": false, "9": true });
   });
 
   it("toNativeJson propagates the sidecar through conversion", () => {
@@ -204,15 +204,15 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
       string,
       Record<string, unknown>
     >;
-    expect(orderedKeys(native["outer"] as object)).toEqual(["42", "7"]);
+    expect(orderedKeys(native["outer"] as object)).toStrictEqual(["42", "7"]);
   });
 
   it("nested objects capture order independently", () => {
     const parsed = parseLossless(
       '{"a": {"5": 1, "3": 2}, "b": {"3": 1, "5": 2}}',
     ) as Record<string, Record<string, unknown>>;
-    expect(orderedKeys(parsed["a"] as object)).toEqual(["5", "3"]);
-    expect(orderedKeys(parsed["b"] as object)).toEqual(["3", "5"]);
+    expect(orderedKeys(parsed["a"] as object)).toStrictEqual(["5", "3"]);
+    expect(orderedKeys(parsed["b"] as object)).toStrictEqual(["3", "5"]);
   });
 });
 
@@ -239,7 +239,7 @@ describe("toNativeJson unsafeIntegers", () => {
     expect(native["edge"]).toBe(9007199254740991);
     expect(native["first_unsafe"]).toBe(9007199254740992n);
     expect(native["float"]).toBe(42);
-    expect(native["list"]).toEqual([1, -9007199254740993n]);
+    expect(native["list"]).toStrictEqual([1, -9007199254740993n]);
   });
 
   it("threads the option through nested containers and keeps the key-order sidecar", () => {
@@ -252,6 +252,6 @@ describe("toNativeJson unsafeIntegers", () => {
     >;
     expect(native["outer"]?.["42"]?.["id"]).toBe(-8644926364725811123n);
     expect(native["outer"]?.["7"]?.["id"]).toBe(1);
-    expect(orderedKeys(native["outer"] as object)).toEqual(["42", "7"]);
+    expect(orderedKeys(native["outer"] as object)).toStrictEqual(["42", "7"]);
   });
 });

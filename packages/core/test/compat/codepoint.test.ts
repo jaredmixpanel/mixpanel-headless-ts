@@ -81,13 +81,13 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
   it("orders by codepoint where UTF-16 unit order disagrees", () => {
     // U+FF61 (｡) < U+1F600 (😀) by codepoint; JS default sort compares
     // UTF-16 units (0xD83D < 0xFF61) and inverts the pair.
-    expect(sortedByCodepoint(["｡", "😀"])).toEqual(["｡", "😀"]);
-    expect(sortedByCodepoint(["😀", "｡"])).toEqual(["｡", "😀"]);
-    expect(["😀", "｡"].sort()).toEqual(["😀", "｡"]); // the JS contrast
+    expect(sortedByCodepoint(["｡", "😀"])).toStrictEqual(["｡", "😀"]);
+    expect(sortedByCodepoint(["😀", "｡"])).toStrictEqual(["｡", "😀"]);
+    expect(["😀", "｡"].sort()).toStrictEqual(["😀", "｡"]); // the JS contrast
   });
 
   it("sorts prefixes first (Python: 'ab' < 'abc')", () => {
-    expect(sortedByCodepoint(["abc", "ab", "a", ""])).toEqual([
+    expect(sortedByCodepoint(["abc", "ab", "a", ""])).toStrictEqual([
       "",
       "a",
       "ab",
@@ -96,7 +96,7 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
   });
 
   it("keeps duplicates and is stable", () => {
-    expect(sortedByCodepoint(["b", "a", "b", "a"])).toEqual([
+    expect(sortedByCodepoint(["b", "a", "b", "a"])).toStrictEqual([
       "a",
       "a",
       "b",
@@ -107,23 +107,23 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
   it("returns a NEW array and leaves the input untouched", () => {
     const input = ["b", "a"];
     const result = sortedByCodepoint(input);
-    expect(result).toEqual(["a", "b"]);
-    expect(input).toEqual(["b", "a"]);
+    expect(result).toStrictEqual(["a", "b"]);
+    expect(input).toStrictEqual(["b", "a"]);
     expect(result).not.toBe(input);
   });
 
   it("handles the empty list", () => {
-    expect(sortedByCodepoint([])).toEqual([]);
+    expect(sortedByCodepoint([])).toStrictEqual([]);
   });
 
   it("is a sorted permutation matching JS sort on BMP-only input (fast-check)", () => {
     fc.assert(
       fc.property(fc.array(fc.string()), (values) => {
         const result = sortedByCodepoint(values);
-        expect([...result].sort()).toEqual([...values].sort());
+        expect([...result].sort()).toStrictEqual([...values].sort());
         // BMP-only strings: codepoint order == UTF-16 order.
         if (values.every((v) => [...v].every((c) => c.length === 1))) {
-          expect(result).toEqual([...values].sort());
+          expect(result).toStrictEqual([...values].sort());
         }
       }),
     );

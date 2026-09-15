@@ -219,6 +219,6 @@ describe("pythonStrip emptiness guards (RUN.md 2026-08-15 divergence class)", ()
       name: "e",
       alternatives: [BOM],
     });
-    expect(valid.alternatives).toEqual([BOM]);
+    expect(valid.alternatives).toStrictEqual([BOM]);
   });
 });

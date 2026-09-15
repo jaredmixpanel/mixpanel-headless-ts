@@ -82,7 +82,7 @@ describe("FID-F1: transformFunnel stores raw counts, raises lazily", () => {
     );
     expect(
       result.steps.map((s) => [s.event, s.count, s.conversion_rate]),
-    ).toEqual([
+    ).toStrictEqual([
       ["A", 0, 1.0],
       ["B", null, 0.0],
     ]);
@@ -160,10 +160,12 @@ describe("FID-F1: transformFunnel stores raw counts, raises lazily", () => {
       "a",
       "b",
     );
-    expect(result.steps.map((s) => [s.count, s.conversion_rate])).toEqual([
-      [true, 1.0],
-      [true, 1.0],
-    ]);
+    expect(result.steps.map((s) => [s.count, s.conversion_rate])).toStrictEqual(
+      [
+        [true, 1.0],
+        [true, 1.0],
+      ],
+    );
   });
 
   it("list counts concatenate at + then raise at the overall list > int", () => {
@@ -195,7 +197,7 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
       "t",
       "day",
     );
-    expect(result.cohorts.map((c) => [c.size, c.retention])).toEqual([
+    expect(result.cohorts.map((c) => [c.size, c.retention])).toStrictEqual([
       ["5", []],
     ]);
   });
@@ -210,7 +212,7 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
       "t",
       "day",
     );
-    expect(result.cohorts.map((c) => [c.size, c.retention])).toEqual([
+    expect(result.cohorts.map((c) => [c.size, c.retention])).toStrictEqual([
       [null, []],
     ]);
   });
@@ -239,7 +241,7 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
       "t",
       "day",
     );
-    expect(result.cohorts.map((c) => [c.size, c.retention])).toEqual([
+    expect(result.cohorts.map((c) => [c.size, c.retention])).toStrictEqual([
       [0, [0.0]],
     ]);
   });
@@ -268,7 +270,7 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
       "t",
       "day",
     );
-    expect(result.cohorts.map((c) => [c.size, c.retention])).toEqual([
+    expect(result.cohorts.map((c) => [c.size, c.retention])).toStrictEqual([
       [true, [1.0]],
     ]);
   });
@@ -346,7 +348,7 @@ describe("FID-F2: extractStepsFromDateData Python `in` + .get semantics", () => 
   });
 
   it("a list WITHOUT the literal member falls through to []", () => {
-    expect(extractStepsFromDateData(["a"])).toEqual([]);
+    expect(extractStepsFromDateData(["a"])).toStrictEqual([]);
   });
 
   it("a list CONTAINING 'steps' passes membership then raises at .get", () => {
@@ -497,7 +499,7 @@ describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
         { F: { count: { "1. a\rb": { all: 7 } } } },
         noWarn,
       );
-      expect(steps.map((s) => s["event"])).toEqual(["a\rb"]);
+      expect(steps.map((s) => s["event"])).toStrictEqual(["a\rb"]);
     },
   );
 
@@ -508,7 +510,7 @@ describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
         { F: { count: { "1. a b": { all: 7 } } } },
         noWarn,
       );
-      expect(steps.map((s) => s["event"])).toEqual(["a b"]);
+      expect(steps.map((s) => s["event"])).toStrictEqual(["a b"]);
     },
   );
 
@@ -518,7 +520,7 @@ describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
       { F: { count: { "1. a\nb": { all: 7 } } } },
       noWarn,
     );
-    expect(steps.map((s) => s["event"])).toEqual(["1. a\nb"]);
+    expect(steps.map((s) => s["event"])).toStrictEqual(["1. a\nb"]);
   });
 });
 

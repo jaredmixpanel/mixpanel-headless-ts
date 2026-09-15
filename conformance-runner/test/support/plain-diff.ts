@@ -78,7 +78,7 @@ export function diffPlainPayload(
   if (isTagged(expected, "datetime")) {
     // The serialized walk re-tags datetimes with the preserved iso text.
     const tagged = expected as Readonly<Record<string, JsonValue>>;
-    expect(actual, path).toEqual({
+    expect(actual, path).toStrictEqual({
       $type: "datetime",
       iso: tagged["iso"] as string,
     });
@@ -99,7 +99,7 @@ export function diffPlainPayload(
   }
   expect(typeof actual === "object" && actual !== null, path).toBe(true);
   const actualRecord = actual as Readonly<Record<string, unknown>>;
-  expect(Object.keys(actualRecord).sort(), path).toEqual(
+  expect(Object.keys(actualRecord).sort(), path).toStrictEqual(
     Object.keys(expected).sort(),
   );
   for (const [key, item] of Object.entries(expected)) {

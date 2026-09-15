@@ -163,7 +163,7 @@ describe("TestWorkspaceAlertCRUD", () => {
 
   it("list_alerts() returns empty list when no alerts exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listAlerts()).toEqual([]);
+    expect(await ws.listAlerts()).toStrictEqual([]);
   });
 
   it("list_alerts(bookmark_id=42) passes param to API", async () => {
@@ -267,7 +267,7 @@ describe("TestWorkspaceAlertOperations", () => {
     const history = await ws.getAlertHistory(42);
 
     expect(history).toBeInstanceOf(AlertHistoryResponse);
-    expect(history.results).toEqual([]);
+    expect(history.results).toStrictEqual([]);
   });
 
   it("test_alert() returns opaque dict", async () => {
@@ -327,7 +327,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
     const client = stubClient("listAlerts", [], calls);
 
     await listAlertsMember(client);
-    expect(calls[0]?.[0]).toEqual({
+    expect(calls[0]?.[0]).toStrictEqual({
       bookmark_id: null,
       skip_user_filter: null,
     });
@@ -338,7 +338,10 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       bookmark_id: 42,
       skip_user_filter: false,
     });
-    expect(calls[1]?.[0]).toEqual({ bookmark_id: 42, skip_user_filter: false });
+    expect(calls[1]?.[0]).toStrictEqual({
+      bookmark_id: 42,
+      skip_user_filter: false,
+    });
   });
 
   it("getAlertCount forwards alert_type, defaulting to null", async () => {
@@ -350,10 +353,10 @@ describe("ADDITIVE: alert member delegation contracts", () => {
     );
 
     await getAlertCountMember(client);
-    expect(calls[0]?.[0]).toEqual({ alert_type: null });
+    expect(calls[0]?.[0]).toStrictEqual({ alert_type: null });
 
     await getAlertCountMember(client, { alert_type: "anomaly" });
-    expect(calls[1]?.[0]).toEqual({ alert_type: "anomaly" });
+    expect(calls[1]?.[0]).toStrictEqual({ alert_type: "anomaly" });
   });
 
   it("getAlertHistory forwards (alert_id, {page_size, next_cursor, previous_cursor})", async () => {
@@ -362,7 +365,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
 
     await getAlertHistoryMember(client, 42);
     expect(calls[0]?.[0]).toBe(42);
-    expect(calls[0]?.[1]).toEqual({
+    expect(calls[0]?.[1]).toStrictEqual({
       page_size: null,
       next_cursor: null,
       previous_cursor: null,
@@ -373,7 +376,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       next_cursor: "n",
       previous_cursor: "p",
     });
-    expect(calls[1]?.[1]).toEqual({
+    expect(calls[1]?.[1]).toStrictEqual({
       page_size: 20,
       next_cursor: "n",
       previous_cursor: "p",
@@ -394,7 +397,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       }),
     );
     // `notification_windows` is None → ABSENT, not null (R3.5).
-    expect(createCalls[0]?.[0]).toEqual({
+    expect(createCalls[0]?.[0]).toStrictEqual({
       bookmark_id: 1,
       name: "A",
       condition: {},
@@ -410,7 +413,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       new UpdateAlertParams({ name: "R" }),
     );
     expect(updateCalls[0]?.[0]).toBe(42);
-    expect(updateCalls[0]?.[1]).toEqual({ name: "R" });
+    expect(updateCalls[0]?.[1]).toStrictEqual({ name: "R" });
   });
 
   it("testAlert returns the client payload verbatim — no model construction", async () => {
@@ -428,8 +431,8 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       }),
     );
 
-    expect(result).toEqual({ status: "sent", extra: 1 });
-    expect(calls[0]?.[0]).toEqual({
+    expect(result).toStrictEqual({ status: "sent", extra: 1 });
+    expect(calls[0]?.[0]).toStrictEqual({
       bookmark_id: 1,
       name: "A",
       condition: {},
@@ -455,7 +458,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       }),
     );
 
-    expect(calls[0]?.[0]).toEqual({
+    expect(calls[0]?.[0]).toStrictEqual({
       alert_ids: [1],
       bookmark_type: "insights",
       bookmark_params: { event: "Signup" },
@@ -476,7 +479,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       stubClient("bulkDeleteAlerts", undefined, bulkCalls),
       [1, 2, 3],
     );
-    expect(bulkCalls[0]?.[0]).toEqual([1, 2, 3]);
+    expect(bulkCalls[0]?.[0]).toStrictEqual([1, 2, 3]);
 
     const shotCalls: unknown[][] = [];
     await getAlertScreenshotUrlMember(

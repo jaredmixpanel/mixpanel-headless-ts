@@ -94,14 +94,14 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
         { MP_API_BASE_URL: "http://127.0.0.1:8080/" },
         { explicit },
       );
-      expect(basesOf(urls)).toEqual(["http://127.0.0.1:8080"]);
+      expect(basesOf(urls)).toStrictEqual(["http://127.0.0.1:8080"]);
       expect(region).toBe("us");
       // A 401 walk still probes ONCE — the order is a single region.
       const failed = await runWithSpy(
         { MP_API_BASE_URL: "http://127.0.0.1:8080/" },
         { status: 401, explicit },
       );
-      expect(failed.urls).toEqual(["http://127.0.0.1:8080/api/app/me"]);
+      expect(failed.urls).toStrictEqual(["http://127.0.0.1:8080/api/app/me"]);
     });
 
     it(`test_override_uses_mp_region_when_valid [${arm}]`, async () => {
@@ -109,7 +109,7 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
         { MP_API_BASE_URL: "http://127.0.0.1:8080", MP_REGION: "eu" },
         { explicit },
       );
-      expect(basesOf(urls)).toEqual(["http://127.0.0.1:8080"]);
+      expect(basesOf(urls)).toStrictEqual(["http://127.0.0.1:8080"]);
       expect(region).toBe("eu");
     });
 
@@ -126,7 +126,7 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
         { MP_API_BASE_URL: "https://proxy.example/mp" },
         { explicit },
       );
-      expect(urls).toEqual(["https://proxy.example/mp/api/app/me"]);
+      expect(urls).toStrictEqual(["https://proxy.example/mp/api/app/me"]);
     });
 
     it(`test_app_base_alone_keeps_three_region_order [${arm}]`, async () => {
@@ -134,13 +134,13 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
         { MP_APP_BASE_URL: "http://app.internal:9000/" },
         { explicit },
       );
-      expect(basesOf(ok.urls)).toEqual(["http://app.internal:9000"]);
+      expect(basesOf(ok.urls)).toStrictEqual(["http://app.internal:9000"]);
       // Full walk on 401: three probes, all at the App override base.
       const failed = await runWithSpy(
         { MP_APP_BASE_URL: "http://app.internal:9000/" },
         { status: 401, explicit },
       );
-      expect(basesOf(failed.urls)).toEqual([
+      expect(basesOf(failed.urls)).toStrictEqual([
         "http://app.internal:9000",
         "http://app.internal:9000",
         "http://app.internal:9000",
@@ -163,9 +163,9 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
 
     it(`test_unset_keeps_live_host_and_default_order [${arm}]`, async () => {
       const ok = await runWithSpy({}, { explicit });
-      expect(basesOf(ok.urls)).toEqual(["https://mixpanel.com"]);
+      expect(basesOf(ok.urls)).toStrictEqual(["https://mixpanel.com"]);
       const failed = await runWithSpy({}, { status: 401, explicit });
-      expect(basesOf(failed.urls)).toEqual([
+      expect(basesOf(failed.urls)).toStrictEqual([
         "https://mixpanel.com",
         "https://eu.mixpanel.com",
         "https://in.mixpanel.com",
@@ -222,13 +222,13 @@ describe("_override_probe_order / _override_probe_narration / _probe_base_url (d
   it("overrideProbeOrder", () => {
     expect(
       overrideProbeOrder({ apiBaseUrl: "http://127.0.0.1:8080" }, "eu"),
-    ).toEqual(["eu"]);
-    expect(overrideProbeOrder({ apiBaseUrl: "http://x" }, undefined)).toEqual([
-      "us",
-    ]);
-    expect(overrideProbeOrder({ apiBaseUrl: "http://x" }, "mars")).toEqual([
-      "us",
-    ]);
+    ).toStrictEqual(["eu"]);
+    expect(
+      overrideProbeOrder({ apiBaseUrl: "http://x" }, undefined),
+    ).toStrictEqual(["us"]);
+    expect(
+      overrideProbeOrder({ apiBaseUrl: "http://x" }, "mars"),
+    ).toStrictEqual(["us"]);
     expect(overrideProbeOrder({ appBaseUrl: "http://x" }, "eu")).toBeNull();
     expect(overrideProbeOrder({ apiBaseUrl: "//" }, "eu")).toBeNull();
     expect(overrideProbeOrder({}, "eu")).toBeNull();

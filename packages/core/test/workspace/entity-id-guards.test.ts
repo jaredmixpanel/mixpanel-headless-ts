@@ -127,7 +127,10 @@ describe("requireEntityId", () => {
     expect(coded.message).toBe(
       `Invalid annotation_id: expected a positive integer id, received ${shown}.`,
     );
-    expect(coded.details).toEqual({ field: "annotation_id", received: shown });
+    expect(coded.details).toStrictEqual({
+      field: "annotation_id",
+      received: shown,
+    });
   });
 
   it("never echoes object contents or long strings", () => {
@@ -206,7 +209,10 @@ describe("requireInt64Id", () => {
     expect(coded.message).toBe(
       `Invalid data_group_id: expected a non-zero integer id (number or bigint), received ${shown}.`,
     );
-    expect(coded.details).toEqual({ field: "data_group_id", received: shown });
+    expect(coded.details).toStrictEqual({
+      field: "data_group_id",
+      received: shown,
+    });
   });
 
   it.each<[string, number, string]>([
@@ -236,7 +242,7 @@ describe("requireInt64Id", () => {
           `Number.MAX_SAFE_INTEGER and already rounded; pass the id as a ` +
           `bigint (e.g. -8644926364725811123n or BigInt("<digits>")).`,
       );
-      expect(coded.details).toEqual({
+      expect(coded.details).toStrictEqual({
         field: "data_group_id",
         received: shown,
       });
@@ -543,7 +549,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
       expect(coded.message).toBe(
         `Invalid ${field}: expected a positive integer id, received object (Object).`,
       );
-      expect(calls).toEqual([]);
+      expect(calls).toStrictEqual([]);
     },
   );
 
@@ -558,7 +564,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
       expect(coded.message).toBe(
         `Invalid ${field}: expected a non-zero integer id (number or bigint), received object (Object).`,
       );
-      expect(calls).toEqual([]);
+      expect(calls).toStrictEqual([]);
     },
   );
 
@@ -571,7 +577,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
       expect(coded.code).toBe("RL6_INVALID_ID");
       expect(coded.message).toContain(`Invalid ${field}:`);
       expect(coded.message).toContain("pass the id as a bigint");
-      expect(calls).toEqual([]);
+      expect(calls).toStrictEqual([]);
     },
   );
 
@@ -587,7 +593,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
     const { ws, calls } = makeWorkspace();
     const error = await caught(() => ws.deleteAnnotation(BAD_ID));
     expect((error as ParamValidationError).code).toBe("RL6_INVALID_ID");
-    expect(calls).toEqual([]);
+    expect(calls).toStrictEqual([]);
   });
 
   it("a valid id passes through to the transport unchanged", async () => {
@@ -603,7 +609,7 @@ describe("Workspace positional entity-id guards (network-free)", () => {
       const { ws, calls } = makeWorkspace();
       const error = await caught(() => ws.getDashboard(value));
       expect((error as ParamValidationError).code).toBe("RL6_INVALID_ID");
-      expect(calls).toEqual([]);
+      expect(calls).toStrictEqual([]);
     },
   );
 });

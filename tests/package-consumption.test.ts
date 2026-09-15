@@ -90,7 +90,7 @@ describe.skipIf(SKIP)(
       const installed = readdirSync(
         join(scratch, "node_modules", "@mixpanel-headless"),
       ).sort();
-      expect(installed).toEqual(["browser", "core", "node"]);
+      expect(installed).toStrictEqual(["browser", "core", "node"]);
     });
 
     it("Node: imports Workspace through @mixpanel-headless/node's exports", () => {
@@ -112,7 +112,7 @@ describe.skipIf(SKIP)(
         cwd: scratch,
         encoding: "utf8",
       });
-      expect(JSON.parse(out)).toEqual({
+      expect(JSON.parse(out)).toStrictEqual({
         workspace: "function",
         same: true,
         factory: "function",

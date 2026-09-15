@@ -240,7 +240,7 @@ describe("TestRetryStateResetRegression", () => {
       }),
     );
     expect(profiles).toHaveLength(1);
-    expect(currentAttemptCounts).toEqual([1]);
+    expect(currentAttemptCounts).toStrictEqual([1]);
   });
 
   it("test_multiple_retries_dont_accumulate_state", async () => {
@@ -299,7 +299,7 @@ describe("TestRetryAfterHardening (export slice)", () => {
     // Injected-RNG substitution for the Python `_calculate_backoff`
     // monkeypatch pin (header note): random()=0 → backoff exactly 1.0 s
     // → ONE sleep of 1000 ms, proving Retry-After "-30" was rejected.
-    expect(sleeps).toEqual([1000]);
+    expect(sleeps).toStrictEqual([1000]);
   });
 });
 

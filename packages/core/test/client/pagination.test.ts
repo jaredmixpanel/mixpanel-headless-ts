@@ -98,7 +98,7 @@ describe("TestPaginateAll", () => {
     const items = await drain(
       paginateAll(client, "/projects/12345/dashboards"),
     );
-    expect(native(items)).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+    expect(native(items)).toStrictEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
     expect(callCount).toBe(2);
   });
 
@@ -141,7 +141,7 @@ describe("TestPaginateAll", () => {
     );
     const items = await drain(paginateAll(client, "/projects/12345/items"));
     expect(items).toHaveLength(3);
-    expect(cursorsSeen).toEqual([null, "c2", "c3"]);
+    expect(cursorsSeen).toStrictEqual([null, "c2", "c3"]);
   });
 
   it("test_handles_empty_results", async () => {
@@ -159,7 +159,7 @@ describe("TestPaginateAll", () => {
     const items = await drain(
       paginateAll(client, "/projects/12345/dashboards"),
     );
-    expect(items).toEqual([]);
+    expect(items).toStrictEqual([]);
   });
 
   it("test_handles_missing_pagination_field", async () => {
@@ -173,7 +173,7 @@ describe("TestPaginateAll", () => {
     const items = await drain(
       paginateAll(client, "/projects/12345/dashboards"),
     );
-    expect(native(items)).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(native(items)).toStrictEqual([{ id: 1 }, { id: 2 }]);
   });
 
   it("test_respects_page_size_parameter", async () => {
@@ -275,7 +275,7 @@ describe("TestPaginateAll", () => {
       }),
     );
     const items = await drain(paginateAll(client, "/projects/12345/items"));
-    expect(native(items)).toEqual([{ id: 1 }]);
+    expect(native(items)).toStrictEqual([{ id: 1 }]);
   });
 });
 
@@ -366,7 +366,7 @@ describe("TestPaginateAllRobustness", () => {
     ).rejects.toThrow(RateLimitError);
     // Python: `[call.args[0] for call in mock_sleep...] == [30.0] * 3`
     // (seconds); the TS sleep seam is ms (R2.12).
-    expect(sleeps).toEqual([30_000, 30_000, 30_000]);
+    expect(sleeps).toStrictEqual([30_000, 30_000, 30_000]);
   });
 
   it("test_http_500_mid_pagination", async () => {
@@ -432,7 +432,7 @@ describe("TestPaginateAllMalformedResults", () => {
       }),
     );
     const items = await drain(paginateAll(client, "/projects/12345/items"));
-    expect(items).toEqual([]);
+    expect(items).toStrictEqual([]);
   });
 
   it("test_null_results_still_follows_next_cursor", async () => {
@@ -462,7 +462,7 @@ describe("TestPaginateAllMalformedResults", () => {
       },
     );
     const items = await drain(paginateAll(client, "/projects/12345/items"));
-    expect(native(items)).toEqual([{ id: 1 }]);
+    expect(native(items)).toStrictEqual([{ id: 1 }]);
     expect(callCount).toBe(2);
   });
 
@@ -548,8 +548,8 @@ async function runRateLimitedPagination(
 describe("TestPaginateAllRetryAfter", () => {
   it("test_valid_retry_after_is_honored", async () => {
     const { durations, raised } = await runRateLimitedPagination("30");
-    expect(durations).toEqual([30_000]);
-    expect(raised).toEqual([]);
+    expect(durations).toStrictEqual([30_000]);
+    expect(raised).toStrictEqual([]);
   });
 
   it.each([
@@ -566,8 +566,8 @@ describe("TestPaginateAllRetryAfter", () => {
     "test_hostile_retry_after_falls_back_to_backoff[%s]",
     async (_label: string, retryAfter: string) => {
       const { durations, raised } = await runRateLimitedPagination(retryAfter);
-      expect(durations).toEqual([1_000]);
-      expect(raised).toEqual([]);
+      expect(durations).toStrictEqual([1_000]);
+      expect(raised).toStrictEqual([]);
     },
   );
 
@@ -579,20 +579,20 @@ describe("TestPaginateAllRetryAfter", () => {
     "test_oversized_retry_after_is_clamped[%s]",
     async (_label: string, retryAfter: string) => {
       const { durations, raised } = await runRateLimitedPagination(retryAfter);
-      expect(durations).toEqual([PAGINATION_BACKOFF_MAX_SECONDS * 1000]);
-      expect(raised).toEqual([]);
+      expect(durations).toStrictEqual([PAGINATION_BACKOFF_MAX_SECONDS * 1000]);
+      expect(raised).toStrictEqual([]);
     },
   );
 
   it("test_missing_retry_after_uses_exponential_backoff", async () => {
     const { durations, raised } = await runRateLimitedPagination(null);
-    expect(durations).toEqual([1_000]);
-    expect(raised).toEqual([]);
+    expect(durations).toStrictEqual([1_000]);
+    expect(raised).toStrictEqual([]);
   });
 
   it("test_exhausted_retries_backoff_schedule_is_bounded", async () => {
     const { durations, raised } = await runRateLimitedPagination("inf", true);
-    expect(durations).toEqual([1_000, 2_000, 4_000]);
+    expect(durations).toStrictEqual([1_000, 2_000, 4_000]);
     expect(durations).toHaveLength(MAX_RATE_LIMIT_RETRIES);
     expect(
       durations.every(

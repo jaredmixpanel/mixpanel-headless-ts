@@ -78,7 +78,7 @@ describe("TestListDashboards", () => {
       json: { status: "ok", results: [] },
     }));
     const result = await client.listDashboards();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 });
 
@@ -96,7 +96,7 @@ describe("TestCreateDashboard", () => {
       await client.createDashboard({ title: "New" }),
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("POST");
-    expect(captured[0]?.[1]).toEqual({ title: "New" });
+    expect(captured[0]?.[1]).toStrictEqual({ title: "New" });
     expect(result["id"]).toBe(1);
   });
 });
@@ -160,7 +160,7 @@ describe("TestBulkDeleteDashboards", () => {
     await client.bulkDeleteDashboards([1, 2, 3]);
     expect(captured[0]?.[0]).toBe("POST");
     expect(captured[0]?.[1]).toContain("/dashboards/bulk-delete");
-    expect(captured[0]?.[2]).toEqual({ dashboard_ids: [1, 2, 3] });
+    expect(captured[0]?.[2]).toStrictEqual({ dashboard_ids: [1, 2, 3] });
   });
 });
 
@@ -223,7 +223,7 @@ describe("TestDashboardOrganization", () => {
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("PATCH");
     expect(captured[0]?.[1]).toContain("/dashboards/1");
-    expect(captured[0]?.[2]).toEqual({
+    expect(captured[0]?.[2]).toStrictEqual({
       content: {
         action: "delete",
         content_type: "report",
@@ -248,7 +248,7 @@ describe("TestDashboardOrganization", () => {
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("PATCH");
     expect(captured[0]?.[1]).toContain("/dashboards/1");
-    expect(captured[0]?.[2]).toEqual({
+    expect(captured[0]?.[2]).toStrictEqual({
       content: {
         action: "create",
         content_type: "report",
@@ -304,7 +304,7 @@ describe("TestBlueprintOperations", () => {
     >;
     expect(result).toHaveLength(2);
     const names = new Set(result.map((t) => t["name"]));
-    expect(names).toEqual(new Set(["onboarding", "marketing"]));
+    expect(names).toStrictEqual(new Set(["onboarding", "marketing"]));
     const onboarding = result.find((t) => t["name"] === "onboarding");
     expect(onboarding?.["title_key"]).toBe("Get Started");
   });
@@ -318,7 +318,7 @@ describe("TestBlueprintOperations", () => {
     await client.updateBlueprintCohorts([
       { placeholder: "new_users", cohort_id: 42 },
     ]);
-    expect(captured[0]).toEqual({
+    expect(captured[0]).toStrictEqual({
       cohorts: [{ placeholder: "new_users", cohort_id: 42 }],
     });
   });
@@ -335,7 +335,7 @@ describe("TestBlueprintOperations", () => {
     const result = toNativeJson(
       await client.createBlueprint("onboarding"),
     ) as Record<string, unknown>;
-    expect(captured[0]).toEqual({ template_type: "onboarding" });
+    expect(captured[0]).toStrictEqual({ template_type: "onboarding" });
     expect(result["id"]).toBe(1);
   });
 
@@ -397,7 +397,7 @@ describe("TestDashboardAdvanced", () => {
       json: { status: "ok", results: [1, 2, 3] },
     }));
     const result = toNativeJson(await client.getBookmarkDashboardIds(42));
-    expect(result).toEqual([1, 2, 3]);
+    expect(result).toStrictEqual([1, 2, 3]);
   });
 
   it("test_get_dashboard_erf", async () => {
@@ -421,7 +421,7 @@ describe("TestDashboardAdvanced", () => {
     await client.updateReportLink(1, 42, { type: "embedded" });
     expect(captured[0]?.[0]).toBe("PATCH");
     expect(captured[0]?.[1]).toContain("/dashboards/1/report-links/42");
-    expect(captured[0]?.[2]).toEqual({ type: "embedded" });
+    expect(captured[0]?.[2]).toStrictEqual({ type: "embedded" });
   });
 
   it("test_update_text_card", async () => {
@@ -433,7 +433,7 @@ describe("TestDashboardAdvanced", () => {
     await client.updateTextCard(1, 99, { markdown: "# Hello" });
     expect(captured[0]?.[0]).toBe("PATCH");
     expect(captured[0]?.[1]).toContain("/dashboards/1/text-cards/99");
-    expect(captured[0]?.[2]).toEqual({ markdown: "# Hello" });
+    expect(captured[0]?.[2]).toStrictEqual({ markdown: "# Hello" });
   });
 });
 
@@ -553,7 +553,7 @@ describe("TestBookmarkCRUD", () => {
     await client.bulkDeleteBookmarks([1, 2]);
     expect(captured[0]?.[0]).toBe("POST");
     expect(captured[0]?.[1]).toContain("/bookmarks/bulk-delete");
-    expect(captured[0]?.[2]).toEqual({ bookmark_ids: [1, 2] });
+    expect(captured[0]?.[2]).toStrictEqual({ bookmark_ids: [1, 2] });
   });
 
   it("test_bulk_update_bookmarks", async () => {
@@ -563,7 +563,9 @@ describe("TestBookmarkCRUD", () => {
       return { status: 204 };
     });
     await client.bulkUpdateBookmarks([{ id: 1, name: "Renamed" }]);
-    expect(captured[0]).toEqual({ bookmarks: [{ id: 1, name: "Renamed" }] });
+    expect(captured[0]).toStrictEqual({
+      bookmarks: [{ id: 1, name: "Renamed" }],
+    });
   });
 
   it("test_bookmark_linked_dashboard_ids", async () => {
@@ -572,7 +574,7 @@ describe("TestBookmarkCRUD", () => {
       json: { status: "ok", results: [10, 20, 30] },
     }));
     const result = toNativeJson(await client.bookmarkLinkedDashboardIds(1));
-    expect(result).toEqual([10, 20, 30]);
+    expect(result).toStrictEqual([10, 20, 30]);
   });
 
   it("test_get_bookmark_history", async () => {
@@ -745,7 +747,7 @@ describe("TestCohortCRUD", () => {
     await client.bulkDeleteCohorts([1, 2]);
     expect(captured[0]?.[0]).toBe("POST");
     expect(captured[0]?.[1]).toContain("/cohorts/bulk-delete");
-    expect(captured[0]?.[2]).toEqual({ cohort_ids: [1, 2] });
+    expect(captured[0]?.[2]).toStrictEqual({ cohort_ids: [1, 2] });
   });
 
   it("test_bulk_update_cohorts", async () => {
@@ -755,6 +757,8 @@ describe("TestCohortCRUD", () => {
       return { status: 204 };
     });
     await client.bulkUpdateCohorts([{ id: 1, name: "Renamed" }]);
-    expect(captured[0]).toEqual({ cohorts: [{ id: 1, name: "Renamed" }] });
+    expect(captured[0]).toStrictEqual({
+      cohorts: [{ id: 1, name: "Renamed" }],
+    });
   });
 });

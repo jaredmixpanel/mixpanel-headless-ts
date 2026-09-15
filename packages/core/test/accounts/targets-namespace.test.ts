@@ -115,7 +115,7 @@ describe("TestTargetWorkspaceValidation (test_targets_namespace.py:62)", () => {
     expect(() =>
       targets.add("ecom", { account: "x", project: "3018488", workspace: 0 }),
     ).toThrow(ConfigError);
-    expect(targets.list()).toEqual([]);
+    expect(targets.list()).toStrictEqual([]);
   });
 });
 
@@ -123,7 +123,7 @@ describe("TestList (test_targets_namespace.py:98)", () => {
   it("no targets → empty list", async () => {
     const bundle = await seeded();
     const targets = createTargetsNamespace(bundle.effects);
-    expect(targets.list()).toEqual([]);
+    expect(targets.list()).toStrictEqual([]);
   });
 
   it("all registered targets appear sorted by name", async () => {
@@ -132,7 +132,7 @@ describe("TestList (test_targets_namespace.py:98)", () => {
     targets.add("b", { account: "x", project: "1" });
     targets.add("a", { account: "x", project: "2" });
 
-    expect(targets.list().map((t) => t.name)).toEqual(["a", "b"]);
+    expect(targets.list().map((t) => t.name)).toStrictEqual(["a", "b"]);
   });
 });
 
@@ -166,7 +166,7 @@ describe("TestRemove (test_targets_namespace.py:136)", () => {
 
     targets.remove("ecom");
 
-    expect(targets.list()).toEqual([]);
+    expect(targets.list()).toStrictEqual([]);
   });
 
   it("removing a non-existent target raises", async () => {

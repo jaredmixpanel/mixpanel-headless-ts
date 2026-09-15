@@ -116,12 +116,14 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
       string,
       unknown
     >;
-    expect(body["redirect_uris"]).toEqual(["http://localhost:19284/callback"]);
-    expect(body["grant_types"]).toEqual([
+    expect(body["redirect_uris"]).toStrictEqual([
+      "http://localhost:19284/callback",
+    ]);
+    expect(body["grant_types"]).toStrictEqual([
       "authorization_code",
       "refresh_token",
     ]);
-    expect(body["response_types"]).toEqual(["code"]);
+    expect(body["response_types"]).toStrictEqual(["code"]);
     expect(body["token_endpoint_auth_method"]).toBe("none");
     expect(typeof body["scope"]).toBe("string");
     const scopeStr = String(body["scope"]);

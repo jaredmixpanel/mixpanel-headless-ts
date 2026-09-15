@@ -107,7 +107,7 @@ describe("TestSegmentation", () => {
     expect(result.to_date).toBe("2024-01-03");
     expect(result.unit).toBe("day");
     expect(result.segment_property).toBeNull();
-    expect(result.series).toEqual({
+    expect(result.series).toStrictEqual({
       "Sign Up": {
         "2024-01-01": 147,
         "2024-01-02": 146,
@@ -204,7 +204,7 @@ describe("TestSegmentation", () => {
     );
 
     expect(result.total).toBe(0);
-    expect(result.series).toEqual({});
+    expect(result.series).toStrictEqual({});
   });
 
   it("propagates AuthenticationError from the API", async () => {
@@ -364,7 +364,7 @@ describe("TestFunnel", () => {
     }));
     const result = await live.funnel(12345, "2024-01-01", "2024-01-01");
 
-    expect(result.steps).toEqual([]);
+    expect(result.steps).toStrictEqual([]);
     expect(result.conversion_rate).toBe(0.0);
   });
 
@@ -392,7 +392,7 @@ describe("TestExtractStepsFromDateData", () => {
         { count: 80, step_label: "Step 2" },
       ],
     };
-    expect(extractStepsFromDateData(dateData)).toEqual([
+    expect(extractStepsFromDateData(dateData)).toStrictEqual([
       { count: 100, step_label: "Step 1" },
       { count: 80, step_label: "Step 2" },
     ]);
@@ -414,36 +414,38 @@ describe("TestExtractStepsFromDateData", () => {
       ],
     };
     // Should return $overall, not individual segments
-    expect(extractStepsFromDateData(dateData)).toEqual([
+    expect(extractStepsFromDateData(dateData)).toStrictEqual([
       { count: 200, step_label: "Step 1" },
       { count: 150, step_label: "Step 2" },
     ]);
   });
 
   it("empty steps list returns an empty list", () => {
-    expect(extractStepsFromDateData({ steps: [] })).toEqual([]);
+    expect(extractStepsFromDateData({ steps: [] })).toStrictEqual([]);
   });
 
   it("empty $overall list returns an empty list", () => {
-    expect(extractStepsFromDateData({ $overall: [] })).toEqual([]);
+    expect(extractStepsFromDateData({ $overall: [] })).toStrictEqual([]);
   });
 
   it("non-list type for steps returns an empty list", () => {
-    expect(extractStepsFromDateData({ steps: "not a list" })).toEqual([]);
+    expect(extractStepsFromDateData({ steps: "not a list" })).toStrictEqual([]);
   });
 
   it("non-list type for $overall returns an empty list", () => {
-    expect(extractStepsFromDateData({ $overall: { not: "a list" } })).toEqual(
-      [],
-    );
+    expect(
+      extractStepsFromDateData({ $overall: { not: "a list" } }),
+    ).toStrictEqual([]);
   });
 
   it("unrecognized format returns an empty list", () => {
-    expect(extractStepsFromDateData({ some_other_key: [1, 2, 3] })).toEqual([]);
+    expect(
+      extractStepsFromDateData({ some_other_key: [1, 2, 3] }),
+    ).toStrictEqual([]);
   });
 
   it("empty dict returns an empty list", () => {
-    expect(extractStepsFromDateData({})).toEqual([]);
+    expect(extractStepsFromDateData({})).toStrictEqual([]);
   });
 
   it("'steps' takes precedence over '$overall'", () => {
@@ -452,7 +454,7 @@ describe("TestExtractStepsFromDateData", () => {
       $overall: [{ count: 100, step_label: "From overall" }],
     };
     // steps key is checked first, so it takes precedence
-    expect(extractStepsFromDateData(dateData)).toEqual([
+    expect(extractStepsFromDateData(dateData)).toStrictEqual([
       { count: 50, step_label: "From steps" },
     ]);
   });
@@ -559,7 +561,7 @@ describe("TestRetention", () => {
       "2024-01-01",
     );
 
-    expect(result.cohorts).toEqual([]);
+    expect(result.cohorts).toStrictEqual([]);
   });
 
   it("returns cohorts sorted by date", async () => {
@@ -610,7 +612,7 @@ describe("TestEventCounts", () => {
       "2024-01-02",
     );
 
-    expect(result.events).toEqual(["Sign Up", "Purchase"]);
+    expect(result.events).toStrictEqual(["Sign Up", "Purchase"]);
     expect(result.from_date).toBe("2024-01-01");
     expect(result.to_date).toBe("2024-01-02");
     expect(result.unit).toBe("day");
@@ -681,7 +683,7 @@ describe("TestEventCounts", () => {
     }));
     const result = await live.eventCounts([], "2024-01-01", "2024-01-01");
 
-    expect(result.series).toEqual({});
+    expect(result.series).toStrictEqual({});
     expect(result.toRows()).toHaveLength(0);
   });
 
@@ -839,7 +841,7 @@ describe("TestPropertyCounts", () => {
       "2024-01-01",
     );
 
-    expect(result.series).toEqual({});
+    expect(result.series).toStrictEqual({});
     expect(result.toRows()).toHaveLength(0);
   });
 

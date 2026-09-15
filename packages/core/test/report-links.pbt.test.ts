@@ -333,7 +333,7 @@ describe("TestDecorationInvariance", () => {
           const base = parseReportLink(url);
           const decorated = decorate(url, variant);
           const got = parseReportLink(decorated);
-          expect({ ...got, raw: base.raw }).toEqual(base);
+          expect({ ...got, raw: base.raw }).toStrictEqual(base);
         },
       ),
     );
@@ -358,7 +358,7 @@ describe("TestDecorationInvariance", () => {
           });
           const base = parseReportLink(url);
           const got = parseReportLink(decorate(url, variant));
-          expect({ ...got, raw: base.raw }).toEqual(base);
+          expect({ ...got, raw: base.raw }).toStrictEqual(base);
         },
       ),
     );
@@ -450,7 +450,7 @@ describe("TestTotality", () => {
             parsed.region,
             parsed.project_id,
             parsed.workspace_id,
-          ]).toEqual([null, null, null, null]);
+          ]).toStrictEqual([null, null, null, null]);
         },
       ),
     );

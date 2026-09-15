@@ -127,7 +127,7 @@ describe("batchStatusFor — table lookup", () => {
     const orphans = apis.filter((api) =>
       [...BATCH_STATUS.keys()].every((p) => !api.startsWith(p)),
     );
-    expect(orphans).toEqual([]);
+    expect(orphans).toStrictEqual([]);
   });
 
   it("covers every api name in the corpus snapshot itself (measured + setup)", () => {
@@ -153,7 +153,7 @@ describe("batchStatusFor — table lookup", () => {
         }
       }
     }
-    expect([...orphans]).toEqual([]);
+    expect([...orphans]).toStrictEqual([]);
   });
 
   it("types.* is declared done (the P2-8 flip)", () => {
@@ -240,7 +240,7 @@ describe("batchStatusFor — table lookup", () => {
     const workspaceEntries = [...BATCH_STATUS.keys()].filter((p) =>
       p.startsWith("workspace."),
     );
-    expect(workspaceEntries).toEqual(["workspace."]);
+    expect(workspaceEntries).toStrictEqual(["workspace."]);
   });
 
   it("region_probe.* is declared done (the B7 gate flip)", () => {
@@ -263,7 +263,7 @@ describe("batchStatusFor — table lookup", () => {
     const pendingEntries = [...BATCH_STATUS]
       .filter(([, status]) => status === "pending")
       .map(([prefix]) => prefix);
-    expect(pendingEntries).toEqual([]);
+    expect(pendingEntries).toStrictEqual([]);
   });
 
   it("every corpus api name (measured + setup) resolves done (terminal state)", () => {
@@ -287,7 +287,7 @@ describe("batchStatusFor — table lookup", () => {
         }
       }
     }
-    expect([...pending]).toEqual([]);
+    expect([...pending]).toStrictEqual([]);
   });
 });
 

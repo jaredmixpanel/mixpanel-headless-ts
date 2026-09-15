@@ -193,7 +193,7 @@ describe("TestListBookmarks", () => {
   it("handles empty results", async () => {
     const stub = bookmarkStub();
     stub.setResponse({ results: [] });
-    expect(await stub.service.listBookmarks()).toEqual([]);
+    expect(await stub.service.listBookmarks()).toStrictEqual([]);
   });
 
   it("passes bookmark_type to the API client", async () => {
@@ -202,7 +202,7 @@ describe("TestListBookmarks", () => {
 
     await stub.service.listBookmarks("insights");
 
-    expect(stub.calls).toEqual(["insights"]);
+    expect(stub.calls).toStrictEqual(["insights"]);
   });
 
   it("parses every bookmark type", async () => {

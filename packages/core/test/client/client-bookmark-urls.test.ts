@@ -121,7 +121,7 @@ describe("TestCreateBookmarkUrl", () => {
       bookmark_id: 9,
     });
 
-    expect(bodies).toEqual([
+    expect(bodies).toStrictEqual([
       {
         slug: SLUG,
         type: "funnels",
@@ -163,7 +163,7 @@ describe("TestCreateBookmarkUrl", () => {
       params: {},
     });
 
-    expect(seen).toEqual(["/api/app/projects/12345/bookmark-urls/"]);
+    expect(seen).toStrictEqual(["/api/app/projects/12345/bookmark-urls/"]);
   });
 
   it("test_unwraps_results_envelope", async () => {
@@ -216,7 +216,7 @@ describe("TestCreateBookmarkUrlErrors", () => {
     const exc = thrown as QueryError;
     expect(exc.statusCode).toBe(400);
     // `"slug already exists" in str(exc)` → the server body is kept.
-    expect(exc.responseBody).toEqual({ error: "slug already exists" });
+    expect(exc.responseBody).toStrictEqual({ error: "slug already exists" });
   });
 
   it("test_401_is_authentication_error", async () => {
@@ -266,7 +266,7 @@ describe("TestGetBookmarkUrl", () => {
       `/api/app/projects/12345/bookmark-urls/${SLUG}/`,
     );
     expect(result["slug"]).toBe(SLUG);
-    expect(result["params"]).toEqual(PARAMS);
+    expect(result["params"]).toStrictEqual(PARAMS);
   });
 
   it("test_stays_project_scoped_with_pinned_workspace", async () => {
@@ -278,7 +278,9 @@ describe("TestGetBookmarkUrl", () => {
     client.setWorkspaceId(789);
     await client.getBookmarkUrl(SLUG);
 
-    expect(seen).toEqual([`/api/app/projects/12345/bookmark-urls/${SLUG}/`]);
+    expect(seen).toStrictEqual([
+      `/api/app/projects/12345/bookmark-urls/${SLUG}/`,
+    ]);
   });
 
   it("test_404_maps_to_report_link_not_found", async () => {
@@ -519,7 +521,7 @@ describe("TestResolveShortLink", () => {
 
     expect(target).toBe(TARGET);
     // `sleep.assert_called_once_with(2.0)` — seconds→ms at the seam.
-    expect(sleeps).toEqual([2000]);
+    expect(sleeps).toStrictEqual([2000]);
   });
 
   it("test_403_is_query_error", async () => {
@@ -532,7 +534,7 @@ describe("TestResolveShortLink", () => {
     const exc = thrown as QueryError;
     expect(exc.statusCode).toBe(403);
     // `"forbidden" in str(exc)` → the server body is kept.
-    expect(exc.responseBody).toEqual({ error: "forbidden" });
+    expect(exc.responseBody).toStrictEqual({ error: "forbidden" });
   });
 
   it.each([
@@ -651,7 +653,7 @@ describe("TestResolveShortLink", () => {
     });
     await client.resolveShortLink(CODE);
 
-    expect(seen).toEqual([`https://eu.mixpanel.com/s/${CODE}`]);
+    expect(seen).toStrictEqual([`https://eu.mixpanel.com/s/${CODE}`]);
   });
 
   it("test_no_log_record_contains_authorization", async () => {

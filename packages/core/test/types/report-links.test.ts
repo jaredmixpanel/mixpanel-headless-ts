@@ -51,7 +51,7 @@ type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 describe("TestReportLinkType", () => {
   it("test_members", () => {
-    expect(new Set(REPORT_LINK_TYPE_VALUES)).toEqual(
+    expect(new Set(REPORT_LINK_TYPE_VALUES)).toStrictEqual(
       new Set(["insights", "funnels", "retention", "flows"]),
     );
   });
@@ -76,7 +76,7 @@ describe("TestBookmarkUrl", () => {
     });
     expect(record.slug).toBe(SLUG);
     expect(record.bookmark_type).toBe("funnels");
-    expect(record.params).toEqual(PARAMS);
+    expect(record.params).toStrictEqual(PARAMS);
     expect(record.project_id).toBe(3);
     expect(record.user_id).toBe(42);
     expect(record.created_at).toBe("2026-09-02T10:00:00");
@@ -89,7 +89,7 @@ describe("TestBookmarkUrl", () => {
 
   it("test_params_default_empty_dict", () => {
     const record = BookmarkUrl.fromDict({ slug: SLUG, type: "insights" });
-    expect(record.params).toEqual({});
+    expect(record.params).toStrictEqual({});
   });
 
   it("test_populate_by_name", () => {
@@ -118,7 +118,7 @@ describe("TestBookmarkUrl", () => {
     expect(record.bookmark).toBeInstanceOf(Bookmark);
     expect(record.bookmark?.id).toBe(123);
     expect(record.bookmark?.bookmark_type).toBe("insights");
-    expect(record.overrides).toEqual({ originDashboard: 555 });
+    expect(record.overrides).toStrictEqual({ originDashboard: 555 });
   });
 
   it("test_extra_keys_kept", () => {
@@ -127,7 +127,7 @@ describe("TestBookmarkUrl", () => {
       type: "insights",
       future_key: 1,
     });
-    expect(record.__extras).toEqual({ future_key: 1 });
+    expect(record.__extras).toStrictEqual({ future_key: 1 });
   });
 
   // PORT-GAP: Python `BookmarkUrl` is `model_config(frozen=True)` and raises
@@ -174,7 +174,7 @@ describe("TestReportLink", () => {
   it("test_to_dict_returns_every_field", () => {
     const link = build();
     const d = link.toDict();
-    expect(d).toEqual({
+    expect(d).toStrictEqual({
       url: link.url,
       slug: SLUG,
       report_type: "insights",
@@ -276,7 +276,7 @@ describe("TestResolvedReport", () => {
     expect(d["bookmark"]).toBeNull();
     expect(d["source"]).toBe("slug");
     expect(d["report_type"]).toBe("insights");
-    expect(d["params"]).toEqual(PARAMS);
+    expect(d["params"]).toStrictEqual(PARAMS);
     expect(d["project_id"]).toBe(3);
     expect(d["workspace_id"]).toBe(75);
     expect(d["region"]).toBe("us");
@@ -286,8 +286,8 @@ describe("TestResolvedReport", () => {
     expect(d["bookmark_id"]).toBeNull();
     expect(d["name"]).toBe("Logins");
     expect(d["description"]).toBeNull();
-    expect(d["overrides"]).toEqual({ originDashboard: 555 });
-    expect(new Set(Object.keys(d))).toEqual(
+    expect(d["overrides"]).toStrictEqual({ originDashboard: 555 });
+    expect(new Set(Object.keys(d))).toStrictEqual(
       new Set([
         "source",
         "report_type",
@@ -314,7 +314,7 @@ describe("TestResolvedReport", () => {
     const assign = (): void => void (resolved.params = {});
     expect(Object.isFrozen(resolved)).toBe(true);
     expect(assign).toThrow(TypeError);
-    expect(resolved.params).toEqual(PARAMS);
+    expect(resolved.params).toStrictEqual(PARAMS);
   });
 
   it("test_slug_source_requires_slug", () => {
@@ -327,7 +327,7 @@ describe("TestResolvedReport", () => {
     expect(caught).toBeInstanceOf(ParamValidationError);
     const exc = caught as ParamValidationError;
     expect(exc.code).toBe("RL5_RESOLVED_REPORT_INCONSISTENT");
-    expect(exc.details).toEqual({ source: "slug", missing: "slug" });
+    expect(exc.details).toStrictEqual({ source: "slug", missing: "slug" });
   });
 
   it("test_bookmark_source_requires_bookmark_id", () => {
@@ -340,7 +340,10 @@ describe("TestResolvedReport", () => {
     expect(caught).toBeInstanceOf(ParamValidationError);
     const exc = caught as ParamValidationError;
     expect(exc.code).toBe("RL5_RESOLVED_REPORT_INCONSISTENT");
-    expect(exc.details).toEqual({ source: "bookmark", missing: "bookmark_id" });
+    expect(exc.details).toStrictEqual({
+      source: "bookmark",
+      missing: "bookmark_id",
+    });
   });
 
   it("test_bookmark_source_with_id_is_fine", () => {

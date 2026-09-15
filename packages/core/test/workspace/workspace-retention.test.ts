@@ -89,8 +89,8 @@ describe("TestQueryRetentionIntegration", () => {
     expect(Object.hasOwn(result.cohorts, "$average")).toBe(false);
     const cohort = result.cohorts["2025-01-01"]!;
     expect(cohort["first"]).toBe(100);
-    expect(cohort["counts"]).toEqual([100, 50, 25]);
-    expect(cohort["rates"]).toEqual([1.0, 0.5, 0.25]);
+    expect(cohort["counts"]).toStrictEqual([100, 50, 25]);
+    expect(cohort["rates"]).toStrictEqual([1.0, 0.5, 0.25]);
   });
 
   it("average is populated from the $average series entry", async () => {
@@ -99,8 +99,8 @@ describe("TestQueryRetentionIntegration", () => {
 
     expect(result.average).not.toBeNull();
     expect(result.average["first"]).toBe(100);
-    expect(result.average["counts"]).toEqual([100, 50, 25]);
-    expect(result.average["rates"]).toEqual([1.0, 0.5, 0.25]);
+    expect(result.average["counts"]).toStrictEqual([100, 50, 25]);
+    expect(result.average["rates"]).toStrictEqual([1.0, 0.5, 0.25]);
   });
 
   it("params is a non-empty dict with a sections key", async () => {
@@ -173,7 +173,7 @@ describe("TestBuildRetentionParams", () => {
     await ws.queryRetention("Signup", "Login");
     const bookmark = mock.insightsCalls[0]!["bookmark"];
 
-    expect(params).toEqual(bookmark);
+    expect(params).toStrictEqual(bookmark);
   });
 });
 

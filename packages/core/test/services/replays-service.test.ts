@@ -227,7 +227,7 @@ describe("sign wraps the client call in SignedReplay objects (TestSignWrapping)"
     // `api.sign_replays.assert_called_once_with(["r-1","r-2"], env="prod")`
     // — the ported client's request body is the observable twin.
     expect(signCalls).toHaveLength(1);
-    expect(JSON.parse(signCalls[0]?.bodyText ?? "")).toEqual({
+    expect(JSON.parse(signCalls[0]?.bodyText ?? "")).toStrictEqual({
       replays: [
         { replay_id: "r-1", replay_env: "prod" },
         { replay_id: "r-2", replay_env: "prod" },
@@ -261,7 +261,7 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
       concurrency: 50,
     });
 
-    expect(events.map((e) => e["timestamp"])).toEqual([10, 20, 30, 40]);
+    expect(events.map((e) => e["timestamp"])).toStrictEqual([10, 20, 30, 40]);
   });
 
   it("test_uses_correct_file_naming", async () => {
@@ -285,7 +285,7 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
       concurrency: 1,
     });
     // Sequential walk stops the moment file 2 returns 404.
-    expect([...callLog].sort((a, b) => a - b)).toEqual([0, 1, 2]);
+    expect([...callLog].sort((a, b) => a - b)).toStrictEqual([0, 1, 2]);
   });
 
   it("test_respects_max_files_bound", async () => {
@@ -357,7 +357,7 @@ describe("404 termination semantics (TestFetchFilesTermination)", () => {
       maxFiles: 500,
       concurrency: 50,
     });
-    expect(events.map((e) => e["timestamp"])).toEqual([10, 20, 30]);
+    expect(events.map((e) => e["timestamp"])).toStrictEqual([10, 20, 30]);
   });
 });
 
@@ -405,7 +405,7 @@ describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
     // Re-sign was called exactly once.
     expect(signCalls).toHaveLength(1);
     // After re-sign we got the events for files 0 and 1.
-    expect(events.map((e) => e["timestamp"])).toEqual([0, 10]);
+    expect(events.map((e) => e["timestamp"])).toStrictEqual([0, 10]);
   });
 
   it("test_403_without_re_sign_raises_expired", async () => {
@@ -536,7 +536,7 @@ describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
       },
     });
     const result = await service.discover({ replayIds: [] });
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(calls).toHaveLength(0);
   });
 });
@@ -649,7 +649,7 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
       toDate: "2026-05-27",
     });
     const byId = new Map(out.map((s) => [s.replay_id, s]));
-    expect(new Set(byId.keys())).toEqual(new Set(["rid-aaa", "rid-bbb"]));
+    expect(new Set(byId.keys())).toStrictEqual(new Set(["rid-aaa", "rid-bbb"]));
     expect(byId.get("rid-aaa")?.retention_days).toBe(30);
     expect(byId.get("rid-bbb")?.retention_days).toBe(7);
     // Leaf is unix seconds; start_time is unix ms.
@@ -668,7 +668,7 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     const kwargs = calls[0]?.options ?? {};
     expect(kwargs["math"]).toBe("min");
     expect(kwargs["math_property"]).toBe("$time");
-    expect(kwargs["group_by"]).toEqual([
+    expect(kwargs["group_by"]).toStrictEqual([
       "$mp_replay_id",
       "$mp_replay_retention_period",
     ]);
@@ -700,7 +700,7 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
         fromDate: "2026-05-20",
         toDate: "2026-05-27",
       }),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_nonstandard_retention_defaults_30_with_warning", async () => {
@@ -783,9 +783,9 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
   it("test_returns_time_sorted_events_per_replay", async () => {
     const { service } = serviceWithSeries(EVENTS_SERIES);
     const out = await service.eventsFor(["rid-bab"]);
-    expect(new Set(out.keys())).toEqual(new Set(["rid-bab"]));
+    expect(new Set(out.keys())).toStrictEqual(new Set(["rid-bab"]));
     const events = out.get("rid-bab") ?? [];
-    expect(events.map((e) => e.event_name)).toEqual([
+    expect(events.map((e) => e.event_name)).toStrictEqual([
       "Browser API fetch",
       "$mp_dead_click",
     ]);
@@ -797,7 +797,9 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     const out = await service.eventsFor(["rid-bab"], {
       eventProperties: ["$browser"],
     });
-    expect(out.get("rid-bab")?.[0]?.properties).toEqual({ $browser: "Chrome" });
+    expect(out.get("rid-bab")?.[0]?.properties).toStrictEqual({
+      $browser: "Chrome",
+    });
   });
 
   it("test_issues_all_events_query_shape", async () => {
@@ -806,7 +808,7 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     expect(calls[0]?.events).toBe("$all_events");
     expect(
       (calls[0]?.options["group_by"] as readonly string[]).slice(0, 3),
-    ).toEqual(["$time", "$event_name", "$mp_replay_id"]);
+    ).toStrictEqual(["$time", "$event_name", "$mp_replay_id"]);
   });
 
   it("test_empty_series_returns_empty_dict", async () => {
@@ -887,6 +889,6 @@ describe("FID-F3: walker per-file sort key null vs absent timestamps", () => {
       maxFiles: 500,
       concurrency: 50,
     });
-    expect(events.map((e) => e["timestamp"])).toEqual([undefined, 20]);
+    expect(events.map((e) => e["timestamp"])).toStrictEqual([undefined, 20]);
   });
 });

@@ -153,7 +153,7 @@ describe("Workspace.listSchemaRegistry", () => {
   it("returns empty list when no schemas exist (:182)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
 
-    expect(await ws.listSchemaRegistry()).toEqual([]);
+    expect(await ws.listSchemaRegistry()).toStrictEqual([]);
   });
 
   it("passes the entity_type filter to the API (:194)", async () => {
@@ -188,7 +188,7 @@ describe("Workspace.listSchemaRegistry", () => {
     const schemas = await ws.listSchemaRegistry();
 
     expect(schemas).toHaveLength(1);
-    expect(schemas[0]?.schema_definition).toEqual(customSchema);
+    expect(schemas[0]?.schema_definition).toStrictEqual(customSchema);
   });
 
   it("preserves the version field (:251)", async () => {
@@ -500,7 +500,7 @@ describe("Workspace.updateSchemasBulk", () => {
       new BulkCreateSchemasParams({ entries: [] }),
     );
 
-    expect(results).toEqual([]);
+    expect(results).toStrictEqual([]);
   });
 
   it("sends PATCH to the schemas endpoint (:720)", async () => {
@@ -605,7 +605,7 @@ describe("Workspace.deleteSchemas", () => {
       /entity_name requires entity_type/,
     );
     // The guard fires BEFORE any request (packet Caution #4 twin).
-    expect(captured).toEqual([]);
+    expect(captured).toStrictEqual([]);
   });
 });
 
@@ -660,7 +660,7 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
     await listSchemaRegistryMember(client, { entity_type: "profile" });
     await listSchemaRegistryMember(client);
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       { method: "listSchemaRegistry", args: [{ entity_type: "profile" }] },
       { method: "listSchemaRegistry", args: [{ entity_type: null }] },
     ]);
@@ -676,7 +676,7 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
     await createSchemaMember(client, "event", "Purchase", schema);
     await updateSchemaMember(client, "profile", "$user", schema);
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       { method: "createSchema", args: ["event", "Purchase", schema] },
       { method: "updateSchema", args: ["profile", "$user", schema] },
     ]);
@@ -707,7 +707,10 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
         { entityType: "event", name: "Test", schemaJson: { properties: {} } },
       ],
     };
-    expect(calls.map((call) => call.args[0])).toEqual([expected, expected]);
+    expect(calls.map((call) => call.args[0])).toStrictEqual([
+      expected,
+      expected,
+    ]);
   });
 
   it("deleteSchemas forwards both filters and never pre-shapes", async () => {
@@ -720,7 +723,7 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
       entity_name: "Purchase",
     });
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         method: "deleteSchemas",
         args: [{ entity_type: "event", entity_name: "Purchase" }],
@@ -735,7 +738,7 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
     await expect(
       deleteSchemasMember(client, { entity_name: "Purchase" }),
     ).rejects.toMatchObject({ code: "UNKNOWN_ERROR" });
-    expect(calls).toEqual([]);
+    expect(calls).toStrictEqual([]);
   });
 
   it("malformed 200 payloads surface RESPONSE_VALIDATION_ERROR", async () => {

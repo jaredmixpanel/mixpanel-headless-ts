@@ -9,7 +9,7 @@
  * pydantic: `bookmarks/schema{,-sorting}.ts` reproduces the models as
  * structural VALIDATORS, not parsers. So a Python assert of the form
  * `m = Model.model_validate(raw); assert m.sortBy == "column"` becomes
- * `expect(types(MODEL.validate(raw))).toEqual([])` — the strongest
+ * `expect(types(MODEL.validate(raw))).toStrictEqual([])` — the strongest
  * statement the twin can make (there is no `m` to inspect, and the
  * package's only consumer of these models,
  * `Workspace._validate_bookmark_params_schema`, reads the error stream
@@ -97,7 +97,7 @@ describe("TestSortByColumnsConfig", () => {
           colSortAttrs: [],
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_with_value_field_passes", () => {
@@ -109,7 +109,7 @@ describe("TestSortByColumnsConfig", () => {
           valueField: "averageValue",
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_missing_col_sort_attrs_rejected", () => {
@@ -139,7 +139,7 @@ describe("TestSortByColumnsConfig", () => {
           sortOrder: "asc",
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_legacy_view_n_limit_tolerated", () => {
@@ -151,7 +151,7 @@ describe("TestSortByColumnsConfig", () => {
           viewNLimit: 50,
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_unknown_field_rejected", () => {
@@ -173,7 +173,7 @@ describe("TestSortByValueConfig", () => {
           colSortAttrs: [],
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_missing_col_sort_attrs_rejected", () => {
@@ -192,7 +192,7 @@ describe("TestSortByValueConfig", () => {
           colSortAttrs: [],
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_sort_order_when_provided_validated", () => {
@@ -213,7 +213,7 @@ describe("TestSortByValueConfig", () => {
           colSortAttrs: [],
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_extra_segmentation_field_rejected", () => {
@@ -240,7 +240,7 @@ describe("TestFlatSortConfigs", () => {
           sortOrder: "asc",
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_flat_value_valid", () => {
@@ -252,7 +252,7 @@ describe("TestFlatSortConfigs", () => {
           valueField: "averageValue",
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_flat_label_missing_sort_order_rejected", () => {
@@ -264,7 +264,9 @@ describe("TestFlatSortConfigs", () => {
 
 describe("TestInsightsBookmarkSortConfig", () => {
   it("test_empty_passes", () => {
-    expect(types(INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate({}))).toEqual([]);
+    expect(
+      types(INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate({})),
+    ).toStrictEqual([]);
   });
 
   it("test_bar_with_columns_config_passes", () => {
@@ -274,7 +276,7 @@ describe("TestInsightsBookmarkSortConfig", () => {
           bar: { sortBy: "column", colSortAttrs: [] },
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_funnel_steps_kebab_alias_accepted", () => {
@@ -284,7 +286,7 @@ describe("TestInsightsBookmarkSortConfig", () => {
           "funnel-steps": { sortBy: "column", colSortAttrs: [] },
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_retention_curve_kebab_alias_accepted", () => {
@@ -294,7 +296,7 @@ describe("TestInsightsBookmarkSortConfig", () => {
           "retention-curve": { sortBy: "column", colSortAttrs: [] },
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_unknown_chart_type_rejected", () => {
@@ -408,7 +410,7 @@ describe("TestPydanticAdapter", () => {
         sortBy: "label",
         sortOrder: "asc",
       }),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });
 
@@ -438,7 +440,7 @@ describe("TestEnumParity", () => {
 
   for (const [literalName, literalValues, frozenSet] of cases) {
     it(`test_literal_matches_frozenset[${literalName}]`, () => {
-      expect([...literalValues].sort()).toEqual([...frozenSet].sort());
+      expect([...literalValues].sort()).toStrictEqual([...frozenSet].sort());
     });
   }
 });
@@ -492,7 +494,7 @@ describe("TestMathAndChartTypeTightening", () => {
   it("test_behavior_measurement_accepts_valid_math", () => {
     expect(
       types(BEHAVIOR_MEASUREMENT_MODEL.validate({ math: "total" })),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_display_options_rejects_invalid_chart_type", () => {
@@ -502,9 +504,9 @@ describe("TestMathAndChartTypeTightening", () => {
   });
 
   it("test_display_options_accepts_valid_chart_type", () => {
-    expect(types(DISPLAY_OPTIONS_MODEL.validate({ chartType: "bar" }))).toEqual(
-      [],
-    );
+    expect(
+      types(DISPLAY_OPTIONS_MODEL.validate({ chartType: "bar" })),
+    ).toStrictEqual([]);
   });
 });
 
@@ -524,7 +526,7 @@ describe("TestFlowsBookmarkParams", () => {
           totally_unknown_ui_field: 12345,
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_flows_step_bool_op_rejects_invalid", () => {
@@ -554,7 +556,7 @@ describe("probe-pinned pydantic-core shapes", () => {
       aaa: 2,
       analysis: "y",
     });
-    expect(errs.map((e) => [e.type, e.loc.join(".")])).toEqual([
+    expect(errs.map((e) => [e.type, e.loc.join(".")])).toStrictEqual([
       ["literal_error", "chartType"],
       ["literal_error", "plotStyle"],
       ["literal_error", "analysis"],
@@ -572,7 +574,7 @@ describe("probe-pinned pydantic-core shapes", () => {
         conv_first_step: false,
       },
     });
-    expect(errs.map((e) => [e.type, e.loc.join(".")])).toEqual([
+    expect(errs.map((e) => [e.type, e.loc.join(".")])).toStrictEqual([
       ["extra_forbidden", "funnelStepsSelectedTableColumns.conv_first_step"],
     ]);
   });
@@ -588,7 +590,7 @@ describe("probe-pinned pydantic-core shapes", () => {
       ],
       time: [],
     });
-    expect(errs.map((e) => [e.type, e.loc.join(".")])).toEqual([
+    expect(errs.map((e) => [e.type, e.loc.join(".")])).toStrictEqual([
       [
         "literal_error",
         "show.0.BehaviorShowClause.behavior.behaviors.0.behaviors.0.type",
@@ -602,7 +604,7 @@ describe("probe-pinned pydantic-core shapes", () => {
       show: [{ formula: "A", behavior: {} }],
       time: [],
     });
-    expect(errs.map((e) => [e.type, e.loc.join(".")])).toEqual([
+    expect(errs.map((e) => [e.type, e.loc.join(".")])).toStrictEqual([
       ["extra_forbidden", "show.0.FormulaShowClause.behavior"],
     ]);
   });
@@ -612,7 +614,7 @@ describe("probe-pinned pydantic-core shapes", () => {
     // element lands under the BehaviorShowClause Tag as `model_type`,
     // NOT as `union_tag_invalid`.
     const errs = SECTIONS_MODEL.validate({ show: [5], time: [] });
-    expect(errs.map((e) => [e.type, e.loc.join(".")])).toEqual([
+    expect(errs.map((e) => [e.type, e.loc.join(".")])).toStrictEqual([
       ["model_type", "show.0.BehaviorShowClause"],
     ]);
   });
@@ -622,7 +624,7 @@ describe("probe-pinned pydantic-core shapes", () => {
     const errs = BEHAVIOR_MEASUREMENT_MODEL.validate({
       multiAttribution: { type: "nope" },
     });
-    expect(errs.map((e) => [e.type, e.loc.join(".")])).toEqual([
+    expect(errs.map((e) => [e.type, e.loc.join(".")])).toStrictEqual([
       ["literal_error", "multiAttribution.PredefinedMultiAttribution.type"],
       ["literal_error", "multiAttribution.CustomMultiAttribution.type"],
       ["missing", "multiAttribution.CustomMultiAttribution.name"],
@@ -638,7 +640,7 @@ describe("probe-pinned pydantic-core shapes", () => {
           multiAttribution: { type: "custom" },
         }),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("type-checks Ignore[str] / Ignore[int] / Ignore[bool] legacy fields", () => {
@@ -646,7 +648,7 @@ describe("probe-pinned pydantic-core shapes", () => {
     const model = FLOWS_BOOKMARK_PARAMS_MODEL;
     expect(
       types(model.validate({ steps: [], date_range: {}, chartType: 5 })),
-    ).toEqual(["string_type"]);
+    ).toStrictEqual(["string_type"]);
   });
 
   it("rejects explicit null on a non-Optional defaulted field", () => {
@@ -657,7 +659,7 @@ describe("probe-pinned pydantic-core shapes", () => {
         date_range: {},
         collapse_repeated: null,
       }).map((e) => [e.type, e.loc.join(".")]),
-    ).toEqual([["bool_type", "collapse_repeated"]]);
+    ).toStrictEqual([["bool_type", "collapse_repeated"]]);
   });
 
   it("keeps the i64 window for float->int and float->bool coercion", () => {
@@ -674,38 +676,38 @@ describe("probe-pinned pydantic-core shapes", () => {
         chartType: "bar",
         rollingWindowSize: carrier("4.611686018427388e+18"),
       }),
-    ).toEqual([]);
+    ).toStrictEqual([]);
     expect(
       DISPLAY_OPTIONS_MODEL.validate({
         chartType: "bar",
         rollingWindowSize: carrier("1e+300"),
       }).map((e) => e.type),
-    ).toEqual(["int_parsing_size"]);
+    ).toStrictEqual(["int_parsing_size"]);
     // A bare JS number stands for a Python int — arbitrary precision.
     expect(
       DISPLAY_OPTIONS_MODEL.validate({
         chartType: "bar",
         rollingWindowSize: 1e300,
       }),
-    ).toEqual([]);
+    ).toStrictEqual([]);
     expect(
       DISPLAY_OPTIONS_MODEL.validate({
         chartType: "bar",
         queryTimeSampling: carrier("2.0"),
       }).map((e) => e.type),
-    ).toEqual(["bool_parsing"]);
+    ).toStrictEqual(["bool_parsing"]);
     expect(
       DISPLAY_OPTIONS_MODEL.validate({
         chartType: "bar",
         queryTimeSampling: carrier("1e+300"),
       }).map((e) => e.type),
-    ).toEqual(["bool_type"]);
+    ).toStrictEqual(["bool_type"]);
     expect(
       DISPLAY_OPTIONS_MODEL.validate({
         chartType: "bar",
         queryTimeSampling: 2 ** 70,
       }).map((e) => e.type),
-    ).toEqual(["bool_type"]);
+    ).toStrictEqual(["bool_type"]);
   });
 
   it("maps every reachable pydantic type through DEFAULT_CODE_MAP", () => {

@@ -260,7 +260,7 @@ function diffPlain(actual: unknown, expected: JsonValue, path: string): void {
   if (isTagged(expected, "datetime")) {
     // toVectorPayload re-tags datetimes with the preserved iso text.
     const tagged = expected as Readonly<Record<string, JsonValue>>;
-    expect(actual, path).toEqual({
+    expect(actual, path).toStrictEqual({
       $type: "datetime",
       iso: tagged["iso"] as string,
     });
@@ -281,7 +281,7 @@ function diffPlain(actual: unknown, expected: JsonValue, path: string): void {
   }
   expect(typeof actual === "object" && actual !== null, path).toBe(true);
   const actualRecord = actual as Readonly<Record<string, unknown>>;
-  expect(Object.keys(actualRecord).sort(), path).toEqual(
+  expect(Object.keys(actualRecord).sort(), path).toStrictEqual(
     Object.keys(expected).sort(),
   );
   for (const [key, item] of Object.entries(expected)) {
@@ -331,7 +331,7 @@ describe("C8(b) result-shape goldens", () => {
             vector.expect["result"] as JsonValue,
           );
           const instance = entry.fromDict(decoded);
-          expect(Object.keys(instance.toJSON()), vector.id).toEqual([
+          expect(Object.keys(instance.toJSON()), vector.id).toStrictEqual([
             ...entry.expectedJsonKeys(instance),
           ]);
         }

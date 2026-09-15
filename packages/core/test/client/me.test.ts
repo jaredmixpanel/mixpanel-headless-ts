@@ -39,7 +39,7 @@ describe("TestMeOrgInfo", () => {
       permissions: ["manage_users", "view_billing"],
     });
     expect(org.role).toBe("admin");
-    expect(org.permissions).toEqual(["manage_users", "view_billing"]);
+    expect(org.permissions).toStrictEqual(["manage_users", "view_billing"]);
   });
 
   it("test_extra_fields_allowed", () => {
@@ -140,9 +140,9 @@ describe("TestMeResponse", () => {
     expect(me.user_name).toBeNull();
     // Python `== {}` on the empty dicts → empty ordered Maps in TS
     // (B8-MAPFIX ordered-dict containers, user-ratifications.md:14-22).
-    expect(me.organizations).toEqual(new Map());
-    expect(me.projects).toEqual(new Map());
-    expect(me.workspaces).toEqual(new Map());
+    expect(me.organizations).toStrictEqual(new Map());
+    expect(me.projects).toStrictEqual(new Map());
+    expect(me.workspaces).toStrictEqual(new Map());
   });
 
   it("test_construct_full", () => {

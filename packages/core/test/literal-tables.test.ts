@@ -40,8 +40,8 @@ describe("literal-alias and enum tables (C9 #7 runtime backstop)", () => {
   });
 
   it("spot-checks the documented representative values", () => {
-    expect(TIME_UNIT_VALUES).toEqual(["day", "week", "month"]);
-    expect(ACCOUNT_TYPE_VALUES).toEqual([
+    expect(TIME_UNIT_VALUES).toStrictEqual(["day", "week", "month"]);
+    expect(ACCOUNT_TYPE_VALUES).toStrictEqual([
       "service_account",
       "oauth_browser",
       "oauth_token",

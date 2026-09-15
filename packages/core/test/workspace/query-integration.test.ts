@@ -173,7 +173,7 @@ describe("TestQueryTimeseries", () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.query("Login");
     expect(result.toRows()).toHaveLength(3);
-    expect(result.rowColumns()).toEqual(["date", "event", "count"]);
+    expect(result.rowColumns()).toStrictEqual(["date", "event", "count"]);
   });
 
   it("calls insights_query with the correct body structure", async () => {
@@ -263,7 +263,7 @@ describe("TestTotalModeIntegration", () => {
     const { ws } = wsWith(TOTAL_RESPONSE);
     const result = await ws.query("Login", { math: "unique", mode: "total" });
     expect(result.toRows()).toHaveLength(1);
-    expect(result.rowColumns()).toEqual(["event", "count"]);
+    expect(result.rowColumns()).toStrictEqual(["event", "count"]);
     expect(result.toRows()[0]!["count"]).toBe(3551);
   });
 });

@@ -54,9 +54,9 @@ describe("Secret", () => {
 
   it("has no own enumerable properties (spread/keys/entries leak nothing)", () => {
     const s = new Secret("value");
-    expect(Object.keys(s)).toEqual([]);
-    expect(Object.entries(s)).toEqual([]);
-    expect({ ...s }).toEqual({});
+    expect(Object.keys(s)).toStrictEqual([]);
+    expect(Object.entries(s)).toStrictEqual([]);
+    expect({ ...s }).toStrictEqual({});
   });
 
   it("property #1: Secret never leaks the wrapped value on any surface", () => {
@@ -79,10 +79,10 @@ describe("Secret", () => {
         expect(JSON.stringify(secret)).toBe(`"${MASK}"`);
         expect(JSON.stringify({ k: secret })).toBe(`{"k":"${MASK}"}`);
         expect(JSON.stringify([secret])).toBe(`["${MASK}"]`);
-        expect(Object.keys(secret)).toEqual([]);
-        expect(Object.entries(secret)).toEqual([]);
-        expect(Object.getOwnPropertyNames(secret)).toEqual([]);
-        expect({ ...secret }).toEqual({});
+        expect(Object.keys(secret)).toStrictEqual([]);
+        expect(Object.entries(secret)).toStrictEqual([]);
+        expect(Object.getOwnPropertyNames(secret)).toStrictEqual([]);
+        expect({ ...secret }).toStrictEqual({});
         expect(String(secret)).toBe(MASK);
       }),
     );

@@ -129,7 +129,7 @@ describe("TestBuildFunnelParamsDefaults", () => {
 
   it("sections.formula is an empty list", async () => {
     const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
-    expect(section(result, "formula")).toEqual([]);
+    expect(section(result, "formula")).toStrictEqual([]);
   });
 
   it("sections.time is a list", async () => {
@@ -227,7 +227,7 @@ describe("TestBuildFunnelParamsConfiguration", () => {
     const time = section(result, "time") as Array<Record<string, unknown>>;
     expect(time.length).toBeGreaterThan(0);
     expect(time[0]!["dateRangeType"]).toBe("between");
-    expect(time[0]!["value"]).toEqual(["2025-01-01", "2025-03-31"]);
+    expect(time[0]!["value"]).toStrictEqual(["2025-01-01", "2025-03-31"]);
   });
 
   it("last=90 produces a window-based time section", async () => {
@@ -259,7 +259,7 @@ describe("TestBuildFunnelParamsConfiguration", () => {
       math: "average",
       math_property: "amount",
     });
-    expect(measurementOf(result)["property"]).toEqual({
+    expect(measurementOf(result)["property"]).toStrictEqual({
       name: "amount",
       type: "number",
       resourceType: "events",
@@ -399,7 +399,7 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
 
   it("a step with no filters produces an empty filters list", async () => {
     const result = await makeWs().buildFunnelParams(filteredSteps());
-    expect(behaviorsOf(result)[0]!["filters"]).toEqual([]);
+    expect(behaviorsOf(result)[0]!["filters"]).toStrictEqual([]);
   });
 
   it("a step with a filter produces a non-empty filters list", async () => {
@@ -469,8 +469,12 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
     ]);
     const behaviorsEmpty = behaviorsOf(resultEmpty);
     const behaviorsNone = behaviorsOf(resultNone);
-    expect(behaviorsEmpty[0]!["filters"]).toEqual(behaviorsNone[0]!["filters"]);
-    expect(behaviorsEmpty[1]!["filters"]).toEqual(behaviorsNone[1]!["filters"]);
+    expect(behaviorsEmpty[0]!["filters"]).toStrictEqual(
+      behaviorsNone[0]!["filters"],
+    );
+    expect(behaviorsEmpty[1]!["filters"]).toStrictEqual(
+      behaviorsNone[1]!["filters"],
+    );
   });
 });
 
@@ -542,7 +546,7 @@ describe("TestBuildFunnelParamsMixedSteps", () => {
 
   it("the string step has empty filters", async () => {
     const result = await makeWs().buildFunnelParams(mixedSteps());
-    expect(behaviorsOf(result)[0]!["filters"]).toEqual([]);
+    expect(behaviorsOf(result)[0]!["filters"]).toStrictEqual([]);
   });
 
   it("the FunnelStep with filters has non-empty filters", async () => {
@@ -561,7 +565,7 @@ describe("TestBuildFunnelParamsMixedSteps", () => {
       "Signup",
       new FunnelStep({ event: "Purchase", filters: null }),
     ]);
-    expect(behaviorsOf(resultEmpty)[1]!["filters"]).toEqual(
+    expect(behaviorsOf(resultEmpty)[1]!["filters"]).toStrictEqual(
       behaviorsOf(resultNone)[1]!["filters"],
     );
   });
@@ -638,7 +642,7 @@ describe("TestBuildFunnelParamsExclusions", () => {
 
   it("no exclusions produce an empty list", async () => {
     const result = await makeWs().buildFunnelParams(["A", "B"]);
-    expect(behaviorOf(result)["exclusions"]).toEqual([]);
+    expect(behaviorOf(result)["exclusions"]).toStrictEqual([]);
   });
 });
 
@@ -709,7 +713,7 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
 
   it("no holding_constant produces an empty aggregateBy", async () => {
     const result = await makeWs().buildFunnelParams(["A", "B"]);
-    expect(behaviorOf(result)["aggregateBy"]).toEqual([]);
+    expect(behaviorOf(result)["aggregateBy"]).toStrictEqual([]);
   });
 });
 

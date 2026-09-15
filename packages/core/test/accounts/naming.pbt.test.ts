@@ -157,7 +157,7 @@ describe("naming PBT (test_naming_pbt.py)", () => {
           }
           existing.add(next);
         }
-        expect(seen).toEqual([...seen].sort((a, b) => a - b));
+        expect(seen).toStrictEqual([...seen].sort((a, b) => a - b));
         expect(new Set(seen).size).toBe(seen.length);
       }),
       { numRuns: 100 },

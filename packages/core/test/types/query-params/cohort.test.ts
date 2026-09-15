@@ -52,7 +52,7 @@ function at(value: unknown, ...path: Array<string | number>): unknown {
 
 describe("operator maps (test_cohort_definition.py::TestOperatorMaps)", () => {
   it("PROPERTY_OPERATOR_MAP maps all expected CohortCriteria operators", () => {
-    expect(Object.fromEntries(PROPERTY_OPERATOR_MAP)).toEqual({
+    expect(Object.fromEntries(PROPERTY_OPERATOR_MAP)).toStrictEqual({
       equals: "==",
       not_equals: "!=",
       contains: "in",
@@ -65,7 +65,7 @@ describe("operator maps (test_cohort_definition.py::TestOperatorMaps)", () => {
   });
 
   it("FILTER_TO_SELECTOR_SUPPORTED contains all expected Filter._operator strings", () => {
-    expect(new Set(FILTER_TO_SELECTOR_SUPPORTED)).toEqual(
+    expect(new Set(FILTER_TO_SELECTOR_SUPPORTED)).toStrictEqual(
       new Set([
         "equals",
         "does not equal",
@@ -97,7 +97,7 @@ describe("CohortCriteria.didEvent shapes", () => {
     );
     expect(at(c._behavior, "count", "event_selector", "selector")).toBeNull();
     expect(at(c._behavior, "count", "type")).toBe("absolute");
-    expect(at(c._behavior, "window")).toEqual({ unit: "day", value: 30 });
+    expect(at(c._behavior, "window")).toStrictEqual({ unit: "day", value: 30 });
   });
 
   it("at_most maps to <= and exactly maps to ==", () => {
@@ -120,12 +120,15 @@ describe("CohortCriteria.didEvent shapes", () => {
       at_least: 1,
       within_weeks: 4,
     });
-    expect(at(weeks._behavior, "window")).toEqual({ unit: "week", value: 4 });
+    expect(at(weeks._behavior, "window")).toStrictEqual({
+      unit: "week",
+      value: 4,
+    });
     const months = CohortCriteria.didEvent("Purchase", {
       at_least: 1,
       within_months: 3,
     });
-    expect(at(months._behavior, "window")).toEqual({
+    expect(at(months._behavior, "window")).toStrictEqual({
       unit: "month",
       value: 3,
     });
@@ -158,7 +161,7 @@ describe("CohortCriteria.didEvent shapes", () => {
     expect(child["resourceType"]).toBe("events");
     expect(child["value"]).toBe("plan");
     expect(child["filterOperator"]).toBe("equals");
-    expect(child["filterValue"]).toEqual(["premium"]);
+    expect(child["filterValue"]).toStrictEqual(["premium"]);
     expect(child["filterType"]).toBe("string");
     expect(child["defaultType"]).toBe("string");
   });
@@ -453,8 +456,8 @@ describe("CohortCriteria.didNotDoEvent", () => {
     ]) {
       const a = CohortCriteria.didNotDoEvent("Login", options);
       const b = CohortCriteria.didEvent("Login", { exactly: 0, ...options });
-      expect(a._selector_node).toEqual(b._selector_node);
-      expect(a._behavior).toEqual(b._behavior);
+      expect(a._selector_node).toStrictEqual(b._selector_node);
+      expect(a._behavior).toStrictEqual(b._behavior);
     }
   });
 
@@ -538,7 +541,7 @@ describe("CohortCriteria.hasProperty / propertyIsSet / propertyIsNotSet", () => 
 describe("CohortCriteria.inCohort / notInCohort", () => {
   it("produce cohort reference selector nodes", () => {
     const inC = CohortCriteria.inCohort(456);
-    expect(inC._selector_node).toEqual({
+    expect(inC._selector_node).toStrictEqual({
       property: "cohort",
       value: 456,
       operator: "in",
@@ -546,7 +549,7 @@ describe("CohortCriteria.inCohort / notInCohort", () => {
     expect(inC._behavior_key).toBeNull();
     expect(inC._behavior).toBeNull();
     const notIn = CohortCriteria.notInCohort(456);
-    expect(notIn._selector_node).toEqual({
+    expect(notIn._selector_node).toStrictEqual({
       property: "cohort",
       value: 456,
       operator: "not in",
@@ -607,7 +610,7 @@ describe("CohortDefinition composition + toDict", () => {
       within_days: 30,
     });
     const d = new CohortDefinition(c);
-    expect(d._criteria).toEqual([c]);
+    expect(d._criteria).toStrictEqual([c]);
     expect(d._operator).toBe("and");
   });
 
@@ -616,7 +619,7 @@ describe("CohortDefinition composition + toDict", () => {
       CohortCriteria.didEvent("Login", { at_least: 1, within_days: 30 }),
     );
     const result = d.toDict();
-    expect(Object.keys(result)).toEqual(["selector", "behaviors"]);
+    expect(Object.keys(result)).toStrictEqual(["selector", "behaviors"]);
     expect(at(result, "selector", "operator")).toBe("and");
     expect(at(result, "selector", "children")).toHaveLength(1);
   });
@@ -629,11 +632,11 @@ describe("CohortDefinition composition + toDict", () => {
     const result = d.toDict();
     expect(at(result, "selector", "operator")).toBe("and");
     const behaviors = result["behaviors"] as Record<string, unknown>;
-    expect(Object.keys(behaviors)).toEqual(["bhvr_0", "bhvr_1"]);
+    expect(Object.keys(behaviors)).toStrictEqual(["bhvr_0", "bhvr_1"]);
     const children = at(result, "selector", "children") as Array<
       Record<string, unknown>
     >;
-    expect(new Set(children.map((child) => child["value"]))).toEqual(
+    expect(new Set(children.map((child) => child["value"]))).toStrictEqual(
       new Set(Object.keys(behaviors)),
     );
   });
@@ -664,7 +667,7 @@ describe("CohortDefinition composition + toDict", () => {
     expect(children[0]?.["operator"]).toBe("and");
     expect(children[0]?.["children"]).toHaveLength(2);
     expect(children[1]?.["property"]).toBe("behaviors");
-    expect(Object.keys(result["behaviors"] as object)).toEqual([
+    expect(Object.keys(result["behaviors"] as object)).toStrictEqual([
       "bhvr_0",
       "bhvr_1",
       "bhvr_2",
@@ -682,7 +685,7 @@ describe("CohortDefinition composition + toDict", () => {
       make("D"),
     );
     const keys = Object.keys(deep.toDict()["behaviors"] as object).sort();
-    expect(keys).toEqual(["bhvr_0", "bhvr_1", "bhvr_2", "bhvr_3"]);
+    expect(keys).toStrictEqual(["bhvr_0", "bhvr_1", "bhvr_2", "bhvr_3"]);
   });
 
   it("CD9_EMPTY_CRITERIA at all three construction sites", () => {
@@ -697,15 +700,15 @@ describe("CohortDefinition composition + toDict", () => {
       CohortCriteria.propertyIsSet("email"),
     );
     const result = d.toDict();
-    expect(result["behaviors"]).toEqual({});
+    expect(result["behaviors"]).toStrictEqual({});
     expect(at(result, "selector", "operator")).toBe("and");
     expect(at(result, "selector", "children")).toHaveLength(2);
   });
 
   it("cohort-reference definitions have empty behaviors", () => {
     const result = new CohortDefinition(CohortCriteria.inCohort(456)).toDict();
-    expect(result["behaviors"]).toEqual({});
-    expect(at(result, "selector", "children", 0)).toEqual({
+    expect(result["behaviors"]).toStrictEqual({});
+    expect(at(result, "selector", "children", 0)).toStrictEqual({
       property: "cohort",
       value: 456,
       operator: "in",
@@ -773,7 +776,7 @@ describe("toDict isolation (deep-copy semantics)", () => {
     (at(result, "selector", "children", 0, "operand") as string[]).push(
       "CORRUPTED",
     );
-    expect(c._selector_node["operand"]).toEqual(["premium", "active"]);
+    expect(c._selector_node["operand"]).toStrictEqual(["premium", "active"]);
   });
 });
 
@@ -818,13 +821,13 @@ describe("sanitizeRawCohort (tests/test_types_cohort_behaviors.py::TestSanitizeR
         "event_selector",
         "selector",
       ),
-    ).toEqual({ type: "and", children: [] });
+    ).toStrictEqual({ type: "and", children: [] });
   });
 
   it("returns an independent copy when behaviors is absent", () => {
     const raw = { name: "Test", version: 1 };
     const result = sanitizeRawCohort(raw);
-    expect(result).toEqual(raw);
+    expect(result).toStrictEqual(raw);
     expect(result).not.toBe(raw);
   });
 
@@ -845,7 +848,7 @@ describe("sanitizeRawCohort (tests/test_types_cohort_behaviors.py::TestSanitizeR
     ).not.toContain("selector");
     expect(
       at(result, "behaviors", "b2", "count", "event_selector", "selector"),
-    ).toEqual({ type: "or" });
+    ).toStrictEqual({ type: "or" });
   });
 
   it("never mutates the input (deep-copy semantics)", () => {
@@ -935,7 +938,7 @@ describe("buildEventSelector edge behavior", () => {
     ];
     const tree = buildEventSelector(filters);
     const children = tree["children"] as Array<Record<string, unknown>>;
-    expect(children.map((child) => child["filterOperator"])).toEqual([
+    expect(children.map((child) => child["filterOperator"])).toStrictEqual([
       "equals",
       "does not equal",
       "contains",

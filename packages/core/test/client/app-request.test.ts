@@ -192,7 +192,9 @@ describe("TestAppRequest", () => {
       "GET",
       "/projects/12345/dashboards",
     );
-    expect(result).toEqual([{ id: new JsonNumber("1"), name: "Dashboard 1" }]);
+    expect(result).toStrictEqual([
+      { id: new JsonNumber("1"), name: "Dashboard 1" },
+    ]);
   });
 
   it("test_returns_full_response_when_no_results_key", async () => {
@@ -202,7 +204,7 @@ describe("TestAppRequest", () => {
       "GET",
       "/projects/12345/some-endpoint",
     );
-    expect(result).toEqual({ status: "ok", data: "something" });
+    expect(result).toStrictEqual({ status: "ok", data: "something" });
   });
 
   it("test_handles_204_no_content", async () => {
@@ -212,7 +214,7 @@ describe("TestAppRequest", () => {
       "DELETE",
       "/projects/12345/dashboards/1",
     );
-    expect(result).toEqual({ status: "ok" });
+    expect(result).toStrictEqual({ status: "ok" });
   });
 
   it("test_maps_404_to_query_error", async () => {
@@ -266,7 +268,7 @@ describe("TestAppRequest", () => {
     // API endpoints reject unknown query parameters.
     const h = harness([res(200, { status: "ok", results: [] })]);
     await appRequest(h.deps, "GET", "/dashboards");
-    expect(h.calls[0]?.params).toEqual({});
+    expect(h.calls[0]?.params).toStrictEqual({});
   });
 
   it("test_passes_json_body", async () => {
@@ -276,7 +278,7 @@ describe("TestAppRequest", () => {
     await appRequest(h.deps, "POST", "/projects/12345/dashboards", {
       jsonBody: { name: "New Dashboard" },
     });
-    expect(h.calls[0]?.jsonBody).toEqual({ name: "New Dashboard" });
+    expect(h.calls[0]?.jsonBody).toStrictEqual({ name: "New Dashboard" });
     expect(h.calls[0]?.formBody).toBeNull();
   });
 
@@ -297,7 +299,10 @@ describe("TestAppRequest", () => {
     const result = await appRequest(h.deps, "GET", "/dashboards", {
       raw: true,
     });
-    expect(result).toEqual({ status: "ok", results: [new JsonNumber("1")] });
+    expect(result).toStrictEqual({
+      status: "ok",
+      results: [new JsonNumber("1")],
+    });
   });
 });
 
@@ -311,7 +316,7 @@ describe("TestAppRequestFormBody", () => {
       formBody: { name: "X", alternatives: '[{"event": "Y"}]' },
     });
     expect(h.calls[0]?.method).toBe("POST");
-    expect(h.calls[0]?.formBody).toEqual({
+    expect(h.calls[0]?.formBody).toStrictEqual({
       name: "X",
       alternatives: '[{"event": "Y"}]',
     });
@@ -330,7 +335,7 @@ describe("TestAppRequestFormBody", () => {
       { formBody: { name: "X", alternatives: "[]" } },
     );
     expect(h.calls).toHaveLength(2); // one retry then success
-    expect(result).toEqual({ id: new JsonNumber("1") });
+    expect(result).toStrictEqual({ id: new JsonNumber("1") });
   });
 
   it("test_form_body_wraps_httpx_transport_error", async () => {
@@ -397,8 +402,8 @@ describe("TestRetryAfterHardening (app_request half)", () => {
       "GET",
       "/projects/12345/dashboards",
     );
-    expect(result).toEqual([new JsonNumber("1")]);
-    expect(h.sleepsMs).toEqual([1000]);
+    expect(result).toStrictEqual([new JsonNumber("1")]);
+    expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
   it("test_app_request_huge_retry_after_is_capped", async () => {
@@ -411,8 +416,8 @@ describe("TestRetryAfterHardening (app_request half)", () => {
       "GET",
       "/projects/12345/dashboards",
     );
-    expect(result).toEqual([new JsonNumber("1")]);
-    expect(h.sleepsMs).toEqual([60000]);
+    expect(result).toStrictEqual([new JsonNumber("1")]);
+    expect(h.sleepsMs).toStrictEqual([60000]);
   });
 });
 
@@ -429,8 +434,8 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
       },
     ).catch((error_: unknown) => error_)) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
-    expect(error.requestParams).toEqual({ workspace_id: "77" });
-    expect(error.requestBody).toEqual({ title: "x" });
+    expect(error.requestParams).toStrictEqual({ workspace_id: "77" });
+    expect(error.requestBody).toStrictEqual({ title: "x" });
   });
 
   it("test_app_request_rate_limit_carries_request_params", async () => {
@@ -444,7 +449,7 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
       },
     ).catch((error_: unknown) => error_)) as RateLimitError;
     expect(error).toBeInstanceOf(RateLimitError);
-    expect(error.requestParams).toEqual({ workspace_id: "77" });
+    expect(error.requestParams).toStrictEqual({ workspace_id: "77" });
     expect(error.projectId).toBe("12345");
   });
 
@@ -458,7 +463,9 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
         params: { workspace_id: "77" },
       },
     ).catch((error_: unknown) => error_)) as MixpanelHeadlessError;
-    expect(error.details["request_params"]).toEqual({ workspace_id: "77" });
+    expect(error.details["request_params"]).toStrictEqual({
+      workspace_id: "77",
+    });
   });
 });
 

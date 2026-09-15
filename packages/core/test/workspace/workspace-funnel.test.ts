@@ -170,7 +170,7 @@ describe("TestQueryFunnelExecution", () => {
     expect(Object.hasOwn(body, "project_id")).toBe(true);
     expect(Object.hasOwn(body, "queryLimits")).toBe(true);
     expect(body["project_id"]).toBe(12345);
-    expect(body["queryLimits"]).toEqual({ limit: 3000 });
+    expect(body["queryLimits"]).toStrictEqual({ limit: 3000 });
   });
 
   it("the bookmark carries sections and displayOptions", async () => {
@@ -198,7 +198,7 @@ describe("TestQueryFunnelExecution", () => {
     expect(result.computed_at).toBe("2025-01-15T12:00:00");
     expect(result.from_date).toBe("2025-01-01");
     expect(result.to_date).toBe("2025-01-31");
-    expect(result.meta).toEqual({ sampling_factor: 1.0 });
+    expect(result.meta).toStrictEqual({ sampling_factor: 1.0 });
   });
 
   it("steps_data carries the step-level information", async () => {
@@ -259,7 +259,7 @@ describe("TestBuildFunnelParamsVsQueryFunnel", () => {
     await ws.queryFunnel(["Signup", "Purchase"]);
     const queryParams = mock.insightsCalls[0]!["bookmark"];
 
-    expect(builtParams).toEqual(queryParams);
+    expect(builtParams).toStrictEqual(queryParams);
   });
 
   it("makes no API call", async () => {

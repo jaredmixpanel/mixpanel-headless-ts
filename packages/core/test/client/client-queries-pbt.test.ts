@@ -37,15 +37,15 @@ describe("TestActivityFeedDateRange", () => {
           result["type"],
         );
         if (fromDate !== null && toDate !== null) {
-          expect(result).toEqual({
+          expect(result).toStrictEqual({
             type: "between",
             from: fromDate,
             to: toDate,
           });
         } else if (fromDate !== null) {
-          expect(result).toEqual({ type: "since", from: fromDate });
+          expect(result).toStrictEqual({ type: "since", from: fromDate });
         } else if (toDate === null) {
-          expect(result).toEqual({
+          expect(result).toStrictEqual({
             type: "relative_after",
             window: { unit: "day", value: 30 },
           });

@@ -424,7 +424,7 @@ describe("extractCohortFilter (TestExtractCohortFilter)", () => {
   it("empty list", () => {
     const [remaining, cohort] = extractCohortFilter([]);
 
-    expect(remaining).toEqual([]);
+    expect(remaining).toStrictEqual([]);
     expect(cohort).toBeNull();
   });
 
@@ -433,7 +433,7 @@ describe("extractCohortFilter (TestExtractCohortFilter)", () => {
       Filter.inCohort(123, "Power Users"),
     ]);
 
-    expect(remaining).toEqual([]);
+    expect(remaining).toStrictEqual([]);
     expect(cohort).not.toBeNull();
   });
 

@@ -205,7 +205,7 @@ describe("C8(b) authored entity fixtures", () => {
         const instance = cls.fromDict(payload);
         expect(instance).toBeInstanceOf(cls as unknown as CallableFunction);
         expect(instance).toBeInstanceOf(EntityModel);
-        expect(instance.toVectorPayload()).toEqual(payload);
+        expect(instance.toVectorPayload()).toStrictEqual(payload);
       });
 
       it("survives the unknown-key mutation probe", () => {
@@ -214,7 +214,7 @@ describe("C8(b) authored entity fixtures", () => {
           expect(() => cls.fromDict(mutated)).toThrow(ResponseValidationError);
         } else {
           const instance = cls.fromDict(mutated);
-          expect(Object.keys(instance.toJSON())).toEqual([
+          expect(Object.keys(instance.toJSON())).toStrictEqual([
             ...cls.fieldSpecs.map((spec) => spec.name),
             ...(cls.computedSpecs ?? []).map((spec) => spec.name),
           ]);

@@ -159,7 +159,7 @@ function emptyPropertyFilter(): Filter {
 describe("TestValidateUserArgsValid", () => {
   it("test_defaults_are_valid", () => {
     const errors = validateUserArgs();
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_filter", () => {
@@ -167,7 +167,7 @@ describe("TestValidateUserArgsValid", () => {
       where: Filter.equals("plan", "premium"),
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_string_where", () => {
@@ -175,7 +175,7 @@ describe("TestValidateUserArgsValid", () => {
       where: 'properties["plan"] == "premium"',
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_filter_list", () => {
@@ -183,12 +183,12 @@ describe("TestValidateUserArgsValid", () => {
       where: [Filter.equals("plan", "premium"), Filter.greaterThan("age", 18)],
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_cohort_id", () => {
     const errors = validateUserArgs({ cohort: 123, mode: "profiles" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_cohort_definition", () => {
@@ -196,7 +196,7 @@ describe("TestValidateUserArgsValid", () => {
       cohort: makeCohortDefinition(),
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_properties", () => {
@@ -204,7 +204,7 @@ describe("TestValidateUserArgsValid", () => {
       properties: ["$email", "$name"],
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_sort_by", () => {
@@ -212,12 +212,12 @@ describe("TestValidateUserArgsValid", () => {
       sort_by: "$last_seen",
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_search", () => {
     const errors = validateUserArgs({ search: "john", mode: "profiles" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_distinct_id", () => {
@@ -225,7 +225,7 @@ describe("TestValidateUserArgsValid", () => {
       distinct_id: "user123",
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_distinct_ids", () => {
@@ -233,33 +233,33 @@ describe("TestValidateUserArgsValid", () => {
       distinct_ids: ["user1", "user2"],
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_parallel", () => {
     const errors = validateUserArgs({ parallel: true, mode: "profiles" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_as_of_date", () => {
     const yesterday = shiftDays(todayIso(), -1);
     const errors = validateUserArgs({ as_of: yesterday, mode: "profiles" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_as_of_today", () => {
     const errors = validateUserArgs({ as_of: todayIso(), mode: "profiles" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_profiles_mode_with_as_of_int", () => {
     const errors = validateUserArgs({ as_of: 1700000000, mode: "profiles" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_aggregate_mode_count", () => {
     const errors = validateUserArgs({ mode: "aggregate", aggregate: "count" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_aggregate_mode_extremes_with_property", () => {
@@ -268,7 +268,7 @@ describe("TestValidateUserArgsValid", () => {
       aggregate: "extremes",
       aggregate_property: "ltv",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_aggregate_mode_numeric_summary_with_property", () => {
@@ -277,7 +277,7 @@ describe("TestValidateUserArgsValid", () => {
       aggregate: "numeric_summary",
       aggregate_property: "revenue",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_aggregate_mode_percentile_with_property", () => {
@@ -287,7 +287,7 @@ describe("TestValidateUserArgsValid", () => {
       aggregate_property: "age",
       percentile: 50,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_aggregate_mode_with_segment_by", () => {
@@ -296,7 +296,7 @@ describe("TestValidateUserArgsValid", () => {
       aggregate: "count",
       segment_by: [1, 2, 3],
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_aggregate_mode_with_cohort_filter", () => {
@@ -305,7 +305,7 @@ describe("TestValidateUserArgsValid", () => {
       aggregate: "count",
       cohort: 123,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_include_all_users_with_cohort", () => {
@@ -314,13 +314,13 @@ describe("TestValidateUserArgsValid", () => {
       include_all_users: true,
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_workers_valid_range", () => {
     for (const n of [1, 2, 3, 4, 5]) {
       const errors = validateUserArgs({ workers: n, mode: "profiles" });
-      expect(errors, `workers=${n} should be valid`).toEqual([]);
+      expect(errors, `workers=${n} should be valid`).toStrictEqual([]);
     }
   });
 
@@ -329,7 +329,7 @@ describe("TestValidateUserArgsValid", () => {
       where: [Filter.inCohort(123)],
       mode: "profiles",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });
 
@@ -1164,21 +1164,23 @@ describe("TestValidateUserArgsErrorShape", () => {
 
 describe("TestValidateUserParamsValid", () => {
   it("test_empty_params_are_valid", () => {
-    expect(validateUserParams({})).toEqual([]);
+    expect(validateUserParams({})).toStrictEqual([]);
   });
 
   it("test_valid_params_with_sort_order", () => {
-    expect(validateUserParams({ sort_order: "ascending" })).toEqual([]);
+    expect(validateUserParams({ sort_order: "ascending" })).toStrictEqual([]);
   });
 
   it("test_valid_params_with_output_properties", () => {
     expect(
       validateUserParams({ output_properties: ["$email", "$name"] }),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_valid_params_with_filter_by_cohort_id", () => {
-    expect(validateUserParams({ filter_by_cohort: { id: 123 } })).toEqual([]);
+    expect(validateUserParams({ filter_by_cohort: { id: 123 } })).toStrictEqual(
+      [],
+    );
   });
 
   it("test_valid_params_with_filter_by_cohort_raw", () => {
@@ -1186,7 +1188,7 @@ describe("TestValidateUserParamsValid", () => {
       validateUserParams({
         filter_by_cohort: { raw_cohort: { selector: {}, behaviors: {} } },
       }),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_valid_params_with_action", () => {
@@ -1197,7 +1199,7 @@ describe("TestValidateUserParamsValid", () => {
       'percentile(properties["age"], 50)',
     ]) {
       const errors = validateUserParams({ action });
-      expect(errors, `action='${action}' should be valid`).toEqual([]);
+      expect(errors, `action='${action}' should be valid`).toStrictEqual([]);
     }
   });
 });
@@ -1425,7 +1427,7 @@ describe("today clock seam (TS-only — no Python twin)", () => {
       mode: "profiles",
       today: frozen,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("a date after the frozen clock raises U8", () => {
@@ -1434,7 +1436,7 @@ describe("today clock seam (TS-only — no Python twin)", () => {
       mode: "profiles",
       today: frozen,
     });
-    expect(codes(errors)).toEqual(["U8"]);
+    expect(codes(errors)).toStrictEqual(["U8"]);
   });
 
   it("a date before the frozen clock is silent", () => {
@@ -1443,7 +1445,7 @@ describe("today clock seam (TS-only — no Python twin)", () => {
       mode: "profiles",
       today: frozen,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("the seam does not affect the U6 grammar", () => {
@@ -1452,6 +1454,6 @@ describe("today clock seam (TS-only — no Python twin)", () => {
       mode: "profiles",
       today: frozen,
     });
-    expect(codes(errors)).toEqual(["U6"]);
+    expect(codes(errors)).toStrictEqual(["U6"]);
   });
 });

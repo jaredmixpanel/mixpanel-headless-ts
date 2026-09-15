@@ -65,7 +65,7 @@ describe("segfilter string operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("==");
-    expect(filterOf(result)["operand"]).toEqual(["US"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["US"]);
   });
 
   it("Filter.equals with a list produces operator '==' with list operand", () => {
@@ -73,7 +73,7 @@ describe("segfilter string operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("==");
-    expect(filterOf(result)["operand"]).toEqual(["US", "UK"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["US", "UK"]);
   });
 
   it("Filter.notEquals produces operator '!=' with list operand", () => {
@@ -81,7 +81,7 @@ describe("segfilter string operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("!=");
-    expect(filterOf(result)["operand"]).toEqual(["US"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["US"]);
   });
 
   it("Filter.contains produces operator 'in' with string operand", () => {
@@ -159,7 +159,7 @@ describe("segfilter number operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("><");
-    expect(filterOf(result)["operand"]).toEqual(["10", "100"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["10", "100"]);
   });
 
   it("number is set uses 'is set' operator with empty string operand", () => {
@@ -277,7 +277,7 @@ describe("segfilter number operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("!><");
-    expect(filterOf(result)["operand"]).toEqual(["10", "100"]);
+    expect(filterOf(result)["operand"]).toStrictEqual(["10", "100"]);
   });
 });
 
@@ -363,7 +363,10 @@ describe("segfilter datetime operators", () => {
     const result = buildSegfilterEntry(f);
 
     expect(filterOf(result)["operator"]).toBe("><");
-    expect(filterOf(result)["operand"]).toEqual(["01/01/2026", "01/31/2026"]);
+    expect(filterOf(result)["operand"]).toStrictEqual([
+      "01/01/2026",
+      "01/31/2026",
+    ]);
   });
 
   it("YYYY-MM-DD dates are converted to MM/DD/YYYY in output", () => {

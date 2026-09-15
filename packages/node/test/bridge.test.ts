@@ -208,7 +208,9 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     const bridge = loadBridge(out);
     expect(bridge?.project).toBe("3018488");
     expect(bridge?.workspace).toBe(3448414);
-    expect(bridge?.headers).toEqual({ "X-Mixpanel-Cluster": "internal-1" });
+    expect(bridge?.headers).toStrictEqual({
+      "X-Mixpanel-Cluster": "internal-1",
+    });
   });
 
   it("test_idempotent_overwrite_at_same_path", () => {
@@ -282,7 +284,7 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
       },
     });
     const bridge = loadBridge(out);
-    expect(bridge?.headers).toEqual({ "X-Mixpanel-Cluster": "cell-3" });
+    expect(bridge?.headers).toStrictEqual({ "X-Mixpanel-Cluster": "cell-3" });
   });
 
   it("test_remove_bridge_via_bridge_effects", () => {
@@ -307,7 +309,7 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
     expect(view?.account.name).toBe("team");
     expect(view?.project).toBe("3018488");
     expect(view?.workspace).toBeNull();
-    expect(view?.headers).toEqual({ "X-H": "v" });
+    expect(view?.headers).toStrictEqual({ "X-H": "v" });
   });
 });
 

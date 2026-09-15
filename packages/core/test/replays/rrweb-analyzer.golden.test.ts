@@ -78,7 +78,7 @@ describe("rrweb analyzer goldens", () => {
   ] as ReadonlyArray<
     readonly [string, ReadonlyArray<Readonly<Record<string, unknown>>>, unknown]
   >)("matches the Python golden for %s", (_name, events, golden) => {
-    expect(freeze(events)).toEqual(golden);
+    expect(freeze(events)).toStrictEqual(golden);
   });
 
   it("analyzeEvents() agrees with analyze().markdown_summary", () => {

@@ -141,7 +141,7 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
         const config = buildCm(name, project);
         const s1 = resolveSession({}, sources(config));
         const s2 = resolveSession({}, sources(config));
-        expect(s1).toEqual(s2);
+        expect(s1).toStrictEqual(s2);
       }),
     );
   });
@@ -159,7 +159,7 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
             { project: perturbedProject },
             sources(config),
           );
-          expect(sBase.account).toEqual(sPerturbed.account);
+          expect(sBase.account).toStrictEqual(sPerturbed.account);
         },
       ),
     );
@@ -175,8 +175,8 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
           const config = buildCm(name, project);
           const sBase = resolveSession({}, sources(config));
           const sPerturbed = resolveSession({ workspace }, sources(config));
-          expect(sBase.account).toEqual(sPerturbed.account);
-          expect(sBase.project).toEqual(sPerturbed.project);
+          expect(sBase.account).toStrictEqual(sPerturbed.account);
+          expect(sBase.project).toStrictEqual(sPerturbed.project);
         },
       ),
     );

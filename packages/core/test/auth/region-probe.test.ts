@@ -137,9 +137,9 @@ describe("TestProbeRegionHappyPaths", () => {
     expect(result).toHaveProperty("region");
     expect(result).toHaveProperty("attempts");
     expect(result.region).toBe("us");
-    expect(result.attempts).toEqual([["us", 200]]);
+    expect(result.attempts).toStrictEqual([["us", 200]]);
     // "EU/IN should not be probed after US success"
-    expect(visited).toEqual(["us"]);
+    expect(visited).toStrictEqual(["us"]);
   });
 
   it("test_eu_succeeds_after_us_fails", async () => {
@@ -150,11 +150,11 @@ describe("TestProbeRegionHappyPaths", () => {
     );
     const result = await probeRegion(factory, { Authorization: "Basic xxx" });
     expect(result.region).toBe("eu");
-    expect(result.attempts).toEqual([
+    expect(result.attempts).toStrictEqual([
       ["us", 401],
       ["eu", 200],
     ]);
-    expect(visited).toEqual(["us", "eu"]);
+    expect(visited).toStrictEqual(["us", "eu"]);
   });
 
   it("test_in_succeeds_after_us_and_eu_fail", async () => {
@@ -165,12 +165,12 @@ describe("TestProbeRegionHappyPaths", () => {
     );
     const result = await probeRegion(factory, { Authorization: "Basic xxx" });
     expect(result.region).toBe("in");
-    expect(result.attempts).toEqual([
+    expect(result.attempts).toStrictEqual([
       ["us", 401],
       ["eu", 401],
       ["in", 200],
     ]);
-    expect(visited).toEqual(["us", "eu", "in"]);
+    expect(visited).toStrictEqual(["us", "eu", "in"]);
   });
 });
 
@@ -191,8 +191,8 @@ describe("TestProbeRegionErrorPaths", () => {
     const attempts = (thrown as RegionProbeError).attempts;
     // Three attempts, in order; each carries the response body.
     expect(attempts).toHaveLength(3);
-    expect(attempts.map((a) => a[0])).toEqual(["us", "eu", "in"]);
-    expect(attempts.map((a) => a[1])).toEqual([401, 401, 401]);
+    expect(attempts.map((a) => a[0])).toStrictEqual(["us", "eu", "in"]);
+    expect(attempts.map((a) => a[1])).toStrictEqual([401, 401, 401]);
     for (const attempt of attempts) {
       expect(attempt[2]).toContain("Unauthorized");
     }
@@ -283,7 +283,7 @@ describe("TestProbeRegionOrdering", () => {
       { order: ["eu", "us"] },
     );
     expect(result.region).toBe("eu");
-    expect(visited).toEqual(["eu"]);
+    expect(visited).toStrictEqual(["eu"]);
   });
 
   it("test_custom_order_skips_unlisted_regions", async () => {
@@ -301,9 +301,9 @@ describe("TestProbeRegionOrdering", () => {
       (error: unknown) => error,
     );
     expect(thrown).toBeInstanceOf(RegionProbeError);
-    expect((thrown as RegionProbeError).attempts.map((a) => a[0])).toEqual([
-      "eu",
-    ]);
+    expect(
+      (thrown as RegionProbeError).attempts.map((a) => a[0]),
+    ).toStrictEqual(["eu"]);
   });
 });
 
@@ -344,7 +344,7 @@ describe("TestProbeRegionSendsHeaders", () => {
       in: okHandler,
     });
     await probeRegion(factory, { Authorization: "Basic SECRET" });
-    expect(captured).toEqual(["Basic SECRET"]);
+    expect(captured).toStrictEqual(["Basic SECRET"]);
   });
 
   it("test_request_targets_me_endpoint", async () => {
@@ -359,7 +359,7 @@ describe("TestProbeRegionSendsHeaders", () => {
       in: okHandler,
     });
     await probeRegion(factory, {});
-    expect(capturedPaths).toEqual(["/api/app/me"]);
+    expect(capturedPaths).toStrictEqual(["/api/app/me"]);
   });
 });
 

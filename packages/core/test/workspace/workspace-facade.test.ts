@@ -206,7 +206,7 @@ describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", ()
       to_date: "2024-01-31",
     });
 
-    expect(got.events).toEqual(["A", "B"]);
+    expect(got.events).toStrictEqual(["A", "B"]);
     expect(eventCounts).toHaveBeenCalledTimes(1);
     await ws.close();
   });
@@ -252,7 +252,7 @@ describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", ()
 
     const got = await ws.activityFeed(["user1"]);
 
-    expect(got.distinct_ids).toEqual(["user1"]);
+    expect(got.distinct_ids).toStrictEqual(["user1"]);
     expect(activityFeed).toHaveBeenCalledTimes(1);
     await ws.close();
   });
@@ -371,7 +371,7 @@ describe("TestDiscovery (test_workspace.py:439) — discovery delegation", () =>
 
     const events = await ws.events();
 
-    expect(events).toEqual(["Login", "Purchase"]);
+    expect(events).toStrictEqual(["Login", "Purchase"]);
     expect(listEvents).toHaveBeenCalledTimes(1);
     await ws.close();
   });
@@ -385,7 +385,7 @@ describe("TestDiscovery (test_workspace.py:439) — discovery delegation", () =>
 
     const properties = await ws.properties("Login");
 
-    expect(properties).toEqual(["plan", "country"]);
+    expect(properties).toStrictEqual(["plan", "country"]);
     expect(listProperties).toHaveBeenCalledWith("Login");
     await ws.close();
   });
@@ -489,7 +489,7 @@ describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
 
     // Defaults to the current project's id from the session.
     expect(listWorkspaces).toHaveBeenCalledWith({ project_id: "12345" });
-    expect(result.map((w) => [w.id, w.name, w.is_default])).toEqual([
+    expect(result.map((w) => [w.id, w.name, w.is_default])).toStrictEqual([
       [1, "Default", true],
       [2, "Staging", false],
     ]);
@@ -527,7 +527,7 @@ describe("TestProjectsMethod (test_workspace.py:861)", () => {
     expect(listProjects).toHaveBeenCalledWith();
     expect(
       result.map((p) => [p.id, p.name, p.organization_id, p.timezone]),
-    ).toEqual([
+    ).toStrictEqual([
       ["100", "Alpha", 42, "US/Pacific"],
       ["200", "Beta", 43, null],
     ]);

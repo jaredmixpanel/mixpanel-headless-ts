@@ -106,7 +106,7 @@ async function call(
 describe("oracle.info / oracle.shutdown / framing", () => {
   it("reports the identity block", async () => {
     const envelope = await serve(makeServer(), "oracle.info");
-    expect(envelope.result).toEqual({
+    expect(envelope.result).toStrictEqual({
       language: "typescript",
       library_version: "0.0.0-test",
       source_commit: "f".repeat(40),
@@ -118,7 +118,7 @@ describe("oracle.info / oracle.shutdown / framing", () => {
     const server = makeServer();
     expect(server.shutdownRequested).toBe(false);
     const envelope = await serve(server, "oracle.shutdown");
-    expect(envelope.result).toEqual({ ok: true });
+    expect(envelope.result).toStrictEqual({ ok: true });
     expect(server.shutdownRequested).toBe(true);
   });
 
@@ -188,7 +188,7 @@ describe("oracle.call: compat surface", () => {
   it("returns ok output for compat.zfill", async () => {
     expect(
       await call(makeServer(), "compat.zfill", { value: "-1", width: 3 }),
-    ).toEqual({ ok: true, output: "-01" });
+    ).toStrictEqual({ ok: true, output: "-01" });
   });
 
   // Raw request lines mirror Python json.dumps tokens exactly — JS
@@ -206,7 +206,7 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       `{"api": "compat.python_float_str", "input": {"value": ${token}}}}`;
     const envelope = await serveLine(makeServer(), line);
-    expect(envelope.result).toEqual({ ok: true, output: expected });
+    expect(envelope.result).toStrictEqual({ ok: true, output: expected });
   });
 
   it("recovers nested integral floats from raw tokens in python_str", async () => {
@@ -217,7 +217,10 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       '{"api": "compat.python_str", "input": {"value": [18.0, {"k": 1.0}]}}}';
     const envelope = await serveLine(makeServer(), line);
-    expect(envelope.result).toEqual({ ok: true, output: "[18.0, {'k': 1.0}]" });
+    expect(envelope.result).toStrictEqual({
+      ok: true,
+      output: "[18.0, {'k': 1.0}]",
+    });
   });
 
   it("preserves insertion order of integer-like dict keys in python_str", async () => {
@@ -228,7 +231,7 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       '{"api": "compat.python_str", "input": {"value": {"1": null, "0": true}}}}';
     const envelope = await serveLine(makeServer(), line);
-    expect(envelope.result).toEqual({
+    expect(envelope.result).toStrictEqual({
       ok: true,
       output: "{'1': None, '0': True}",
     });
@@ -240,7 +243,10 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       '{"api": "compat.python_str", "input": {"value": {"a": 1, "b": 2, "a": 3}}}}';
     const envelope = await serveLine(server, line);
-    expect(envelope.result).toEqual({ ok: true, output: "{'a': 3, 'b': 2}" });
+    expect(envelope.result).toStrictEqual({
+      ok: true,
+      output: "{'a': 3, 'b': 2}",
+    });
   });
 
   it("renders integers beyond 2^53 exactly in python_str", async () => {
@@ -249,7 +255,7 @@ describe("oracle.call: compat surface", () => {
       '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
       '{"api": "compat.python_str", "input": {"value": 12345678901234567890123}}}';
     const envelope = await serveLine(server, line);
-    expect(envelope.result).toEqual({
+    expect(envelope.result).toStrictEqual({
       ok: true,
       output: "12345678901234567890123",
     });
@@ -257,38 +263,46 @@ describe("oracle.call: compat surface", () => {
 
   it("returns R10.9 edge outputs matching CPython", async () => {
     const server = makeServer();
-    expect(await call(server, "compat.python_str", { value: true })).toEqual({
+    expect(
+      await call(server, "compat.python_str", { value: true }),
+    ).toStrictEqual({
       ok: true,
       output: "True",
     });
-    expect(await call(server, "compat.python_str", { value: null })).toEqual({
+    expect(
+      await call(server, "compat.python_str", { value: null }),
+    ).toStrictEqual({
       ok: true,
       output: "None",
     });
-    expect(await call(server, "compat.python_str", { value: [] })).toEqual({
+    expect(
+      await call(server, "compat.python_str", { value: [] }),
+    ).toStrictEqual({
       ok: true,
       output: "[]",
     });
-    expect(await call(server, "compat.python_str", { value: "" })).toEqual({
+    expect(
+      await call(server, "compat.python_str", { value: "" }),
+    ).toStrictEqual({
       ok: true,
       output: "",
     });
-    expect(await call(server, "compat.zfill", { value: "", width: 2 })).toEqual(
-      {
-        ok: true,
-        output: "00",
-      },
-    );
+    expect(
+      await call(server, "compat.zfill", { value: "", width: 2 }),
+    ).toStrictEqual({
+      ok: true,
+      output: "00",
+    });
     expect(
       await call(server, "compat.zfill", { value: "\u{1F40D}", width: 3 }),
-    ).toEqual({ ok: true, output: "00\u{1F40D}" });
+    ).toStrictEqual({ ok: true, output: "00\u{1F40D}" });
   });
 
   it("returns thrown library errors as bare-class DATA (R5.4)", async () => {
     // Wrong argument types are library errors, not protocol errors —
     // "Python raised TypeError / TS raised TypeError" stays comparable.
     const result = await call(makeServer(), "compat.zfill", { value: "5" });
-    expect(result).toEqual({ ok: false, error: { class: "TypeError" } });
+    expect(result).toStrictEqual({ ok: false, error: { class: "TypeError" } });
   });
 });
 
@@ -306,7 +320,7 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
       "oauth_flow.build_authorize_url",
       {},
     );
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
     });
@@ -325,7 +339,7 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     const result = await call(makeServer(), "oauth_flow.build_authorize_url", {
       where: { $type: "Filter", field: "x" },
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
     });
@@ -338,7 +352,7 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
       input: { method: "GET", path: "/ping" },
       interactions: [],
     });
-    expect(envelope.result).toEqual({
+    expect(envelope.result).toStrictEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
     });
@@ -406,8 +420,8 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
       input: { value: "5", width: 3 },
       session: { kind: "service_account", username: "u" },
     });
-    expect(withSession.result).toEqual(result);
-    expect(withSession.result).toEqual({ ok: true, output: "005" });
+    expect(withSession.result).toStrictEqual(result);
+    expect(withSession.result).toStrictEqual({ ok: true, output: "005" });
   });
 
   it("answers -32000 when the output fails D6 canonicalization", async () => {
@@ -425,14 +439,14 @@ describe("raw-json: ordered lossless model", () => {
     const value = parseRawJson('{"1": 18.0, "0": null}');
     expect(value).toBeInstanceOf(RawObject);
     const entries = (value as RawObject).entries;
-    expect(entries.map(([key]) => key)).toEqual(["1", "0"]);
+    expect(entries.map(([key]) => key)).toStrictEqual(["1", "0"]);
     expect(entries[0]?.[1]).toBeInstanceOf(JsonNumber);
     expect((entries[0]?.[1] as JsonNumber).raw).toBe("18.0");
   });
 
   it("flattens to JsonValue for codec/canonicalizer consumers", async () => {
     const flat = toJsonValue(parseRawJson('{"a": [1, "x"], "b": true}'));
-    expect(flat).toEqual({
+    expect(flat).toStrictEqual({
       a: [new JsonNumber("1"), "x"],
       b: true,
     });
@@ -473,7 +487,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       property: "plan",
       date: "2025-01-01",
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: true,
       output: {
         _property: "plan",
@@ -494,7 +508,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       quantity: 0,
       date_unit: "day",
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: false,
       error: {
         class: "ParamValidationError",
@@ -531,7 +545,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       computed_at: "",
       project_id: 0,
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: true,
       output: {
         _df_cache: null,
@@ -552,7 +566,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
       method: "GET",
       path: "/ping",
     });
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
     });
@@ -588,7 +602,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
       _list_item_filters: null,
       _list_item_quantifier: null,
     };
-    expect(await roundtrip(makeServer(), payload)).toEqual({
+    expect(await roundtrip(makeServer(), payload)).toStrictEqual({
       ok: true,
       output: payload,
     });
@@ -597,7 +611,10 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
   it("round-trips SecretStr to the REVEALED value (C8a anti-vacuity)", async () => {
     expect(
       await roundtrip(makeServer(), { $type: "SecretStr", value: "s3cr3t" }),
-    ).toEqual({ ok: true, output: { $type: "SecretStr", value: "s3cr3t" } });
+    ).toStrictEqual({
+      ok: true,
+      output: { $type: "SecretStr", value: "s3cr3t" },
+    });
   });
 
   it("round-trips plain-position integral floats as raw tokens", async () => {
@@ -623,7 +640,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
       _list_item_filters: null,
       _list_item_quantifier: null,
     };
-    expect(await roundtrip(makeServer(), payload)).toEqual({
+    expect(await roundtrip(makeServer(), payload)).toStrictEqual({
       ok: true,
       output: payload,
     });

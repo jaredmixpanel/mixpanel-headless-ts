@@ -334,7 +334,7 @@ describe("TestTransformRetentionProperties", () => {
             unit,
           );
           const dates = result.cohorts.map((cohort) => cohort.date);
-          expect(dates).toEqual(sortedByCodepoint(dates));
+          expect(dates).toStrictEqual(sortedByCodepoint(dates));
         },
       ),
       { numRuns: 100 },
@@ -445,7 +445,7 @@ describe("TestTransformRetentionProperties", () => {
             toDate,
             unit,
           );
-          expect(result.cohorts).toEqual([]);
+          expect(result.cohorts).toStrictEqual([]);
         },
       ),
       { numRuns: 100 },

@@ -310,10 +310,10 @@ describe("coerceBool", () => {
 
 describe("resolveWithDefault (default_factory-on-absent-only)", () => {
   it("fires the factory only when the key is ABSENT", () => {
-    expect(resolveWithDefault({}, "tags", () => ["d"])).toEqual(["d"]);
-    expect(resolveWithDefault({ tags: ["x"] }, "tags", () => ["d"])).toEqual([
-      "x",
-    ]);
+    expect(resolveWithDefault({}, "tags", () => ["d"])).toStrictEqual(["d"]);
+    expect(
+      resolveWithDefault({ tags: ["x"] }, "tags", () => ["d"]),
+    ).toStrictEqual(["x"]);
   });
 
   it("explicit null is returned verbatim — never replaced by the default", () => {

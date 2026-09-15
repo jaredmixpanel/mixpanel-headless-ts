@@ -393,9 +393,9 @@ describe("TestNoSideEffects", () => {
     const activeBefore = { ...config.active };
     const accountNamesBefore = [...config.accounts.keys()];
     resolveSession({}, bag);
-    expect(env).toEqual(envBefore);
-    expect(config.active).toEqual(activeBefore);
-    expect([...config.accounts.keys()]).toEqual(accountNamesBefore);
+    expect(env).toStrictEqual(envBefore);
+    expect(config.active).toStrictEqual(activeBefore);
+    expect([...config.accounts.keys()]).toStrictEqual(accountNamesBefore);
   });
 
   it("test_does_not_read_oauth_tokens", () => {
@@ -672,7 +672,7 @@ describe("packet §2.2 byte-for-byte rules", () => {
       expect.unreachable();
     } catch (error) {
       expect(error).toBeInstanceOf(ConfigError);
-      expect((error as ConfigError).details).toEqual({
+      expect((error as ConfigError).details).toStrictEqual({
         env_var: "MP_REGION",
         value: "mars",
       });
@@ -685,7 +685,7 @@ describe("packet §2.2 byte-for-byte rules", () => {
       expect.unreachable();
     } catch (error) {
       expect(error).toBeInstanceOf(ConfigError);
-      expect((error as ConfigError).details).toEqual({
+      expect((error as ConfigError).details).toStrictEqual({
         env_var: "MP_PROJECT_ID",
         value: "12a",
       });

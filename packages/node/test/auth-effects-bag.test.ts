@@ -228,7 +228,7 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
 
     // The constant itself stays committed in core — every name above
     // maps to a real member (owner map, packet §4.4).
-    expect([...UNPORTED_AUTH_SEAMS].sort()).toEqual(
+    expect([...UNPORTED_AUTH_SEAMS].sort()).toStrictEqual(
       [
         "persistActive",
         "config.*",
@@ -399,7 +399,7 @@ describe("Bag swap-in runs — representative namespace subset (packet §4.3 las
       secret: "s2",
       default_project: "3713224",
     });
-    expect(accounts.list().map((summary) => summary.name)).toEqual([
+    expect(accounts.list().map((summary) => summary.name)).toStrictEqual([
       "other",
       "team",
     ]);

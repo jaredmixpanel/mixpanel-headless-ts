@@ -56,7 +56,7 @@ describe("transformProfile", () => {
 
     expect(result["distinct_id"]).toBe("");
     expect(result["last_seen"]).toBeNull();
-    expect(result["properties"]).toEqual({ plan: "free" });
+    expect(result["properties"]).toStrictEqual({ plan: "free" });
   });
 
   it("T5.04: empty dict produces a valid normalized profile with defaults", () => {
@@ -64,7 +64,7 @@ describe("transformProfile", () => {
 
     expect(result["distinct_id"]).toBe("");
     expect(result["last_seen"]).toBeNull();
-    expect(result["properties"]).toEqual({});
+    expect(result["properties"]).toStrictEqual({});
   });
 
   // NEW (no Python source test; docstring `transforms.py:101-117` locked)
@@ -79,7 +79,7 @@ describe("transformProfile", () => {
     };
     const result = transformProfile(raw);
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       distinct_id: "user123",
       last_seen: "2024-01-15T10:30:00",
       properties: { plan: "premium", email: "alice@example.com" },
@@ -97,7 +97,7 @@ describe("transformProfile", () => {
 
     transformProfile(raw);
 
-    expect(properties).toEqual({
+    expect(properties).toStrictEqual({
       $last_seen: "2024-01-15T10:30:00",
       plan: "premium",
     });
@@ -106,7 +106,7 @@ describe("transformProfile", () => {
   // NEW — `RESERVED_PROFILE_KEYS` is exported for parity
   // (`transforms.py:85`).
   it("exports the reserved profile key set", () => {
-    expect([...RESERVED_PROFILE_KEYS]).toEqual(["$last_seen"]);
+    expect([...RESERVED_PROFILE_KEYS]).toStrictEqual(["$last_seen"]);
   });
 });
 
@@ -128,7 +128,7 @@ describe("transformEvent", () => {
     };
     const result = transformEvent(raw, { uuid: fixedUuid });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       event_name: "Sign Up",
       event_time: "2024-01-01T00:00:00+00:00",
       distinct_id: "user123",
@@ -142,7 +142,7 @@ describe("transformEvent", () => {
   it("applies every default for an empty event dict", () => {
     const result = transformEvent({}, { uuid: fixedUuid });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       event_name: "",
       event_time: "1970-01-01T00:00:00+00:00",
       distinct_id: "",
@@ -174,7 +174,7 @@ describe("transformEvent", () => {
 
     transformEvent({ event: "E", properties }, { uuid: fixedUuid });
 
-    expect(properties).toEqual({
+    expect(properties).toStrictEqual({
       distinct_id: "u",
       time: 5,
       $insert_id: "i",
@@ -292,13 +292,13 @@ describe("transformEvent", () => {
     );
 
     expect(result["event_name"]).toBe("𝒳");
-    expect(result["properties"]).toEqual({ "𝒳key": "𝒳value" });
+    expect(result["properties"]).toStrictEqual({ "𝒳key": "𝒳value" });
   });
 
   // NEW — `RESERVED_EVENT_KEYS` is exported for parity
   // (`transforms.py:18`; consumers land at B4).
   it("exports the reserved event key set", () => {
-    expect([...RESERVED_EVENT_KEYS].sort()).toEqual([
+    expect([...RESERVED_EVENT_KEYS].sort()).toStrictEqual([
       "$insert_id",
       "distinct_id",
       "time",
@@ -364,7 +364,11 @@ describe("dictKeyText — float-carrier pair keys use the json.dumps spelling (N
       { uuid: fixedUuid },
     );
 
-    expect(result["properties"]).toEqual({ "18.0": 1, "1e+16": 2, "-0.0": 3 });
+    expect(result["properties"]).toStrictEqual({
+      "18.0": 1,
+      "1e+16": 2,
+      "-0.0": 3,
+    });
   });
 
   // NEW — same policy through transform_profile:
@@ -377,7 +381,7 @@ describe("dictKeyText — float-carrier pair keys use the json.dumps spelling (N
       $properties: [[new PyFloatStub("2.5"), "x"]],
     });
 
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       distinct_id: "u",
       last_seen: null,
       properties: { "2.5": "x" },

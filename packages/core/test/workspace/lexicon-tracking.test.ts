@@ -230,9 +230,9 @@ describe("TestGetEventDefinitions", () => {
 
   it("get_event_definitions() returns empty list when no matches", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.getEventDefinitions({ names: ["NonExistent"] })).toEqual(
-      [],
-    );
+    expect(
+      await ws.getEventDefinitions({ names: ["NonExistent"] }),
+    ).toStrictEqual([]);
   });
 });
 
@@ -311,9 +311,9 @@ describe("TestGetPropertyDefinitions", () => {
 
   it("get_property_definitions() returns empty list when no matches", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.getPropertyDefinitions({ names: ["nonexistent"] })).toEqual(
-      [],
-    );
+    expect(
+      await ws.getPropertyDefinitions({ names: ["nonexistent"] }),
+    ).toStrictEqual([]);
   });
 });
 
@@ -380,7 +380,7 @@ describe("TestListLexiconTags", () => {
 
   it("list_lexicon_tags() returns empty list when no tags exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listLexiconTags()).toEqual([]);
+    expect(await ws.listLexiconTags()).toStrictEqual([]);
   });
 });
 
@@ -451,7 +451,7 @@ describe("TestGetEventHistory", () => {
 
   it("get_event_history() returns empty list when no history", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.getEventHistory("Purchase")).toEqual([]);
+    expect(await ws.getEventHistory("Purchase")).toStrictEqual([]);
   });
 });
 
@@ -522,14 +522,14 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     const calls: unknown[][] = [];
     const client = stubClient("getEventDefinitions", [], calls);
     await getEventDefinitionsMember(client, { names: ["A", "B"] });
-    expect(calls[0]).toEqual([["A", "B"]]);
+    expect(calls[0]).toStrictEqual([["A", "B"]]);
   });
 
   it("get_property_definitions forwards resource_type as `null` when absent", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("getPropertyDefinitions", [], calls);
     await getPropertyDefinitionsMember(client, { names: ["p"] });
-    expect(calls[0]).toEqual([["p"], null]);
+    expect(calls[0]).toStrictEqual([["p"], null]);
   });
 
   it("get_property_definitions forwards resource_type verbatim when given", async () => {
@@ -539,7 +539,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
       names: ["p"],
       resource_type: "people",
     });
-    expect(calls[0]).toEqual([["p"], "people"]);
+    expect(calls[0]).toStrictEqual([["p"], "people"]);
   });
 
   it("update_event_definition dumps by_alias and drops None (`workspace.py:7266`)", async () => {
@@ -554,7 +554,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
       }),
     );
     expect(calls[0]?.[0]).toBe("Purchase");
-    expect(calls[0]?.[1]).toEqual({ displayName: "Bought" });
+    expect(calls[0]?.[1]).toStrictEqual({ displayName: "Bought" });
   });
 
   it("bulk_update_event_definitions dumps by_alias recursively (`:7325`)", async () => {
@@ -566,7 +566,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
         events: [new BulkEventUpdate({ name: "E1", display_name: "One" })],
       }),
     );
-    expect(calls[0]?.[0]).toEqual({
+    expect(calls[0]?.[0]).toStrictEqual({
       events: [{ name: "E1", displayName: "One" }],
     });
   });
@@ -588,7 +588,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
       }),
     );
     expect(calls[0]?.[0]).toBe("$browser");
-    expect(calls[0]?.[1]).toEqual({
+    expect(calls[0]?.[1]).toStrictEqual({
       exampleValue: "Chrome",
       resourceType: "Event",
     });
@@ -609,7 +609,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
         ],
       }),
     );
-    expect(calls[0]?.[0]).toEqual({
+    expect(calls[0]?.[0]).toStrictEqual({
       properties: [
         { name: "$city", resourceType: "Event", displayName: "City" },
       ],
@@ -620,21 +620,21 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     const calls: unknown[][] = [];
     const client = stubClient("createLexiconTag", tagJson(), calls);
     await createLexiconTagMember(client, new CreateTagParams({ name: "t" }));
-    expect(calls[0]?.[0]).toEqual({ name: "t" });
+    expect(calls[0]?.[0]).toStrictEqual({ name: "t" });
   });
 
   it("update_lexicon_tag forwards the INT id then the plain dump (`:7557`)", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("updateLexiconTag", tagJson(), calls);
     await updateLexiconTagMember(client, 7, new UpdateTagParams({ name: "t" }));
-    expect(calls[0]).toEqual([7, { name: "t" }]);
+    expect(calls[0]).toStrictEqual([7, { name: "t" }]);
   });
 
   it("update_lexicon_tag drops a None name (exclude_none)", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("updateLexiconTag", tagJson(), calls);
     await updateLexiconTagMember(client, 7, new UpdateTagParams({}));
-    expect(calls[0]?.[1]).toEqual({});
+    expect(calls[0]?.[1]).toStrictEqual({});
   });
 
   it("list_lexicon_tags wraps plain STRING entries with the id=0 sentinel (`:7491-7499`)", async () => {
@@ -658,28 +658,28 @@ describe("ADDITIVE: W6 delegation contracts", () => {
       stubClient("deleteEventDefinition", undefined, eventCalls),
       "OldEvent",
     );
-    expect(eventCalls[0]).toEqual(["OldEvent"]);
+    expect(eventCalls[0]).toStrictEqual(["OldEvent"]);
 
     const tagCalls: unknown[][] = [];
     await deleteLexiconTagMember(
       stubClient("deleteLexiconTag", undefined, tagCalls),
       "core-metrics",
     );
-    expect(tagCalls[0]).toEqual(["core-metrics"]);
+    expect(tagCalls[0]).toStrictEqual(["core-metrics"]);
   });
 
   it("export_lexicon forwards `null` when export_types is absent (`:8648`)", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("exportLexicon", {}, calls);
     await exportLexiconMember(client, {});
-    expect(calls[0]).toEqual([null]);
+    expect(calls[0]).toStrictEqual([null]);
   });
 
   it("export_lexicon forwards the caller's list verbatim", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("exportLexicon", {}, calls);
     await exportLexiconMember(client, { export_types: ["events"] });
-    expect(calls[0]).toEqual([["events"]]);
+    expect(calls[0]).toStrictEqual([["events"]]);
   });
 
   it("the three opaque passthroughs return native values, unvalidated", async () => {
@@ -687,26 +687,26 @@ describe("ADDITIVE: W6 delegation contracts", () => {
       stubClient("getTrackingMetadata", { volume: 12 }),
       "Purchase",
     );
-    expect(metadata).toEqual({ volume: 12 });
+    expect(metadata).toStrictEqual({ volume: 12 });
 
     const eventHistory = await getEventHistoryMember(
       stubClient("getEventHistory", [{ action: "created" }]),
       "Purchase",
     );
-    expect(eventHistory).toEqual([{ action: "created" }]);
+    expect(eventHistory).toStrictEqual([{ action: "created" }]);
 
     const propertyHistory = await getPropertyHistoryMember(
       stubClient("getPropertyHistory", [{ action: "hidden" }]),
       "$browser",
       "event",
     );
-    expect(propertyHistory).toEqual([{ action: "hidden" }]);
+    expect(propertyHistory).toStrictEqual([{ action: "hidden" }]);
   });
 
   it("get_property_history forwards BOTH positional args (`:8614`)", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("getPropertyHistory", [], calls);
     await getPropertyHistoryMember(client, "$browser", "user");
-    expect(calls[0]).toEqual(["$browser", "user"]);
+    expect(calls[0]).toStrictEqual(["$browser", "user"]);
   });
 });

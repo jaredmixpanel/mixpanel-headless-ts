@@ -38,7 +38,7 @@ describe("createVectorFetch — ordered serving", () => {
       { headers: { authorization: "Basic dGVzdA==" } },
     );
     expect(first.status).toBe(200);
-    expect(await first.json()).toEqual({ data: { values: {} } });
+    expect(await first.json()).toStrictEqual({ data: { values: {} } });
     const second = await harness.fetch("https://mixpanel.com/api/app/me", {
       method: "POST",
       body: JSON.stringify({ a: 1 }),
@@ -47,13 +47,13 @@ describe("createVectorFetch — ordered serving", () => {
     expect(second.headers.get("x-extra")).toBe("yes");
     expect(harness.captures).toHaveLength(2);
     expect(harness.captures[0]?.method).toBe("GET");
-    expect(harness.captures[0]?.params).toEqual({ event: "Login" });
+    expect(harness.captures[0]?.params).toStrictEqual({ event: "Login" });
     expect(harness.captures[0]?.headers["authorization"]).toBe(
       "Basic dGVzdA==",
     );
     expect(harness.captures[1]?.slotIndex).toBe(1);
-    expect(harness.unservedSlots()).toEqual([]);
-    expect(harness.violations).toEqual([]);
+    expect(harness.unservedSlots()).toStrictEqual([]);
+    expect(harness.violations).toStrictEqual([]);
   });
 
   it("serves a mismatched ordered request anyway (diff is the runner's job)", async () => {
@@ -66,7 +66,7 @@ describe("createVectorFetch — ordered serving", () => {
     const response = await harness.fetch("https://mixpanel.com/actual");
     expect(response.status).toBe(200);
     expect(harness.captures[0]?.slotIndex).toBe(0);
-    expect(harness.violations).toEqual([]); // field mismatch != sequence violation
+    expect(harness.violations).toStrictEqual([]); // field mismatch != sequence violation
   });
 
   it("throws AND records a violation on overflow requests", async () => {
@@ -91,7 +91,7 @@ describe("createVectorFetch — ordered serving", () => {
          "response": {"status": 200, "body": {}}}
       ]`),
     );
-    expect(harness.unservedSlots()).toEqual([0]);
+    expect(harness.unservedSlots()).toStrictEqual([0]);
   });
 });
 
@@ -110,12 +110,12 @@ describe("createVectorFetch — unordered groups (keyed serving)", () => {
     // Request the SECOND recorded member first: keyed serving must hand
     // each URL its own body under async scheduling.
     const b = await harness.fetch("https://cdn.mixpanel.com/cdn/file-b");
-    expect(await b.json()).toEqual({ file: "b" });
+    expect(await b.json()).toStrictEqual({ file: "b" });
     const a = await harness.fetch("https://cdn.mixpanel.com/cdn/file-a");
-    expect(await a.json()).toEqual({ file: "a" });
+    expect(await a.json()).toStrictEqual({ file: "a" });
     expect(harness.captures[0]?.slotIndex).toBe(1);
     expect(harness.captures[1]?.slotIndex).toBe(0);
-    expect(harness.unservedSlots()).toEqual([]);
+    expect(harness.unservedSlots()).toStrictEqual([]);
   });
 
   it("consumes each group member exactly once", async () => {
@@ -125,7 +125,7 @@ describe("createVectorFetch — unordered groups (keyed serving)", () => {
       harness.fetch("https://cdn.mixpanel.com/cdn/file-b"),
     ).rejects.toThrow(VectorFetchSequenceError);
     expect(harness.violations).toHaveLength(1);
-    expect(harness.unservedSlots()).toEqual([0]);
+    expect(harness.unservedSlots()).toStrictEqual([0]);
   });
 
   it("rejects a request matching no group member", async () => {
@@ -157,7 +157,7 @@ describe("createVectorFetch — transport errors", () => {
       "ECONNREFUSED",
     );
     expect(harness.captures).toHaveLength(1);
-    expect(harness.unservedSlots()).toEqual([]);
+    expect(harness.unservedSlots()).toStrictEqual([]);
   });
 });
 
@@ -185,7 +185,11 @@ describe("createVectorFetch — response bodies", () => {
       chunks.push(new TextDecoder().decode(value));
     }
     // Chunk boundaries are contract (D2): three reads, split mid-JSON-line.
-    expect(chunks).toEqual(['{"line": 1}\n{"li', 'ne": 2}\n', '{"line": 3}\n']);
+    expect(chunks).toStrictEqual([
+      '{"line": 1}\n{"li',
+      'ne": 2}\n',
+      '{"line": 3}\n',
+    ]);
   });
 
   it("serves body_text and body_base64 bodies", async () => {
@@ -203,7 +207,7 @@ describe("createVectorFetch — response bodies", () => {
     });
     expect(await text.text()).toBe("ok,done");
     const binary = await harness.fetch("https://gcs.example.com/download");
-    expect(new Uint8Array(await binary.arrayBuffer())).toEqual(
+    expect(new Uint8Array(await binary.arrayBuffer())).toStrictEqual(
       new TextEncoder().encode("hello"),
     );
   });

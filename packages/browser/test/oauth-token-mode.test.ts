@@ -54,7 +54,7 @@ describe("browserSession (§2.2) — real parseAccount/parseSession output", () 
     });
     expect(session.account.name).toBe("ci-bot");
     expect(session.account.region).toBe("eu");
-    expect(session.workspace).toEqual({ id: 789 });
+    expect(session.workspace).toStrictEqual({ id: 789 });
   });
 
   it("rejects a non-digit projectId at the param boundary", () => {

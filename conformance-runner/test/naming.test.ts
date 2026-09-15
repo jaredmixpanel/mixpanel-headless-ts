@@ -68,21 +68,25 @@ describe("resolveTsApiName (naming-map §4-§5)", () => {
   ];
 
   it("prefers exact rows over wildcards", () => {
-    expect(resolveTsApiName("segfilter.build_segfilter_entry", ROWS)).toEqual({
+    expect(
+      resolveTsApiName("segfilter.build_segfilter_entry", ROWS),
+    ).toStrictEqual({
       tsModule: "core/query/segfilter",
       tsName: "buildSegfilterEntry",
     });
   });
 
   it("splits exact rows on the FIRST dot (class-qualified members)", () => {
-    expect(resolveTsApiName("types.CohortDefinition.to_dict", ROWS)).toEqual({
+    expect(
+      resolveTsApiName("types.CohortDefinition.to_dict", ROWS),
+    ).toStrictEqual({
       tsModule: "core/types",
       tsName: "CohortDefinition.toDict",
     });
   });
 
   it("applies the mechanical transform under module wildcards", () => {
-    expect(resolveTsApiName("api_client.get_events", ROWS)).toEqual({
+    expect(resolveTsApiName("api_client.get_events", ROWS)).toStrictEqual({
       tsModule: "core/client/api-client",
       tsName: "getEvents",
     });

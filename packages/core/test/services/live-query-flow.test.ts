@@ -210,7 +210,7 @@ describe("TestArbFunnelsQuery", () => {
     >;
 
     expect(mock.arbFunnelsCalls).toHaveLength(1);
-    expect(mock.arbFunnelsCalls[0]).toEqual(body);
+    expect(mock.arbFunnelsCalls[0]).toStrictEqual(body);
     expect(Object.hasOwn(result, "computed_at")).toBe(true);
   });
 
@@ -251,7 +251,7 @@ describe("TestTransformFlowResult", () => {
     expect(result.breakdowns).toHaveLength(1);
     expect(result.overall_conversion_rate).toBe(0.3);
     expect(result.mode).toBe("sankey");
-    expect(result.meta).toEqual({ sampling_factor: 1.0 });
+    expect(result.meta).toStrictEqual({ sampling_factor: 1.0 });
   });
 
   it("top-paths response extracts the flows field", () => {
@@ -262,7 +262,7 @@ describe("TestTransformFlowResult", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.flows).toHaveLength(2);
-    expect(result.flows[0]!["path"]).toEqual(["Login", "Purchase"]);
+    expect(result.flows[0]!["path"]).toStrictEqual(["Login", "Purchase"]);
     expect(result.overall_conversion_rate).toBe(0.5);
     expect(result.mode).toBe("paths");
   });
@@ -282,7 +282,7 @@ describe("TestTransformFlowResult", () => {
 
     const result = transformFlowResult(raw, bookmark, "sankey");
 
-    expect(result.params).toEqual(bookmark);
+    expect(result.params).toStrictEqual(bookmark);
   });
 });
 
@@ -301,7 +301,7 @@ describe("TestQueryFlow", () => {
 
     expect(mock.arbFunnelsCalls).toHaveLength(1);
     const body = mock.arbFunnelsCalls[0]!;
-    expect(body["bookmark"]).toEqual(bookmark);
+    expect(body["bookmark"]).toStrictEqual(bookmark);
     expect(body["project_id"]).toBe(12345);
     expect(body["query_type"]).toBe("flows_sankey");
 
@@ -373,7 +373,7 @@ describe("TestParseTreeNode", () => {
       converted_total_count: 0,
     };
     const node = parseTreeNode(leafRaw);
-    expect(node.children).toEqual([]);
+    expect(node.children).toStrictEqual([]);
     expect(node.total_count).toBe(20);
   });
 
@@ -397,8 +397,10 @@ describe("TestParseTreeNode", () => {
       time_percentiles_from_prev: { percentiles: [50], values: [0.5] },
     };
     const node = parseTreeNode(raw);
-    expect(node.time_percentiles_from_start["percentiles"]).toEqual([50, 90]);
-    expect(node.time_percentiles_from_prev["values"]).toEqual([0.5]);
+    expect(node.time_percentiles_from_start["percentiles"]).toStrictEqual([
+      50, 90,
+    ]);
+    expect(node.time_percentiles_from_prev["values"]).toStrictEqual([0.5]);
   });
 });
 
@@ -430,7 +432,7 @@ describe("TestTransformFlowResultTree", () => {
     const result = transformFlowResult(raw, sampleBookmarkParams(), "tree");
 
     expect(result.mode).toBe("tree");
-    expect(result.trees).toEqual([]);
+    expect(result.trees).toStrictEqual([]);
   });
 
   it("error-as-200 still raises QueryError in tree mode", () => {

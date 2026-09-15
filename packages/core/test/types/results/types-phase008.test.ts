@@ -60,7 +60,7 @@ describe("ActivityFeedResult (TestActivityFeedResult)", () => {
       to_date: "2024-01-31",
       events,
     });
-    expect(result.distinct_ids).toEqual(["user_123"]);
+    expect(result.distinct_ids).toStrictEqual(["user_123"]);
     expect(result.from_date).toBe("2024-01-01");
     expect(result.events).toHaveLength(1);
   });
@@ -108,7 +108,7 @@ describe("ActivityFeedResult (TestActivityFeedResult)", () => {
       to_date: null,
       events: [],
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {
@@ -184,7 +184,7 @@ describe("NumericSumResult (TestNumericSumResult)", () => {
       unit: "day",
       results: { "2024-01-01": 100.0 },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_with_computed_at", () => {
@@ -263,7 +263,7 @@ describe("NumericAverageResult (TestNumericAverageResult)", () => {
       unit: "day",
       results: { "2024-01-01": 50.0 },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {
@@ -338,7 +338,7 @@ describe("FrequencyResult (TestFrequencyResult)", () => {
       addiction_unit: "hour",
       data: { "2024-01-01": [100, 50] },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_event_can_be_none", () => {
@@ -427,7 +427,7 @@ describe("NumericBucketResult (TestNumericBucketResult)", () => {
       unit: "day",
       series: { "0 - 100": { "2024-01-01": 50 } },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {
@@ -505,7 +505,7 @@ describe("SavedReportResult phase008 (TestSavedReportResult)", () => {
       headers: ["$event"],
       series: { "Sign Up": { "2024-01-01": 100 } },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {

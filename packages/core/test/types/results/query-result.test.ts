@@ -67,7 +67,7 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
       params: {},
       meta: {},
     });
-    expect(qr.rowColumns()).toEqual(["date", "event", "count"]);
+    expect(qr.rowColumns()).toStrictEqual(["date", "event", "count"]);
     expect(qr.toRows()).toHaveLength(2);
   });
 
@@ -120,7 +120,7 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
       params: {},
       meta: {},
     });
-    expect(qr.rowColumns()).toEqual(["event", "count"]);
+    expect(qr.rowColumns()).toStrictEqual(["event", "count"]);
     expect(qr.toRows()).toHaveLength(1);
     expect(qr.toRows()[0]?.["count"]).toBe(500);
   });
@@ -152,7 +152,7 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
     });
     const rows = qr.toRows();
     expect(rows).toHaveLength(2);
-    expect(new Set(rows.map((row) => row["event"]))).toEqual(
+    expect(new Set(rows.map((row) => row["event"]))).toStrictEqual(
       new Set(["Login [Total]", "Signup [Total]"]),
     );
   });
@@ -166,7 +166,7 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
       params: {},
       meta: {},
     });
-    expect(qr.toRows()).toEqual(qr.toRows());
+    expect(qr.toRows()).toStrictEqual(qr.toRows());
   });
 });
 
@@ -253,7 +253,12 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
       params: {},
       meta: {},
     });
-    expect(qr.rowColumns()).toEqual(["date", "event", "segment", "count"]);
+    expect(qr.rowColumns()).toStrictEqual([
+      "date",
+      "event",
+      "segment",
+      "count",
+    ]);
   });
 
   it("test_segmented_timeseries_scalar_counts", () => {
@@ -351,9 +356,9 @@ describe("QueryResult.to_dict (TestQueryResultToDict)", () => {
     expect(d["computed_at"]).toBe("ts");
     expect(d["from_date"]).toBe("f");
     expect(d["to_date"]).toBe("t");
-    expect(d["headers"]).toEqual(["h"]);
-    expect(d["series"]).toEqual({ s: {} });
-    expect(d["params"]).toEqual({ p: 1 });
-    expect(d["meta"]).toEqual({ m: 2 });
+    expect(d["headers"]).toStrictEqual(["h"]);
+    expect(d["series"]).toStrictEqual({ s: {} });
+    expect(d["params"]).toStrictEqual({ p: 1 });
+    expect(d["meta"]).toStrictEqual({ m: 2 });
   });
 });
