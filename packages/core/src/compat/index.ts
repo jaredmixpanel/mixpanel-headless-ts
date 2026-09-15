@@ -1,9 +1,10 @@
 /**
- * `pythonCompat` module of @mixpanel-headless/core (rulebook §11; D13).
- *
- * Python stdlib semantics ported once, first — every later port batch
- * imports these; no module re-derives them (root cause of parity findings
- * P1, P2, P6 and half the semantic-trap watchlist).
+ * Python standard-library semantics the port depends on — `str`/`repr`,
+ * `int()`/`float()` parsing, `json.dumps`, codepoint string operations,
+ * `dict` discrimination, `difflib`, `random.Random` — each implemented
+ * once here so no other module re-derives them. Internal sub-barrel of
+ * `@mixpanel-headless/core`: the public barrel re-exports only what
+ * `src/index.ts` lists.
  */
 export {
   codepoints,

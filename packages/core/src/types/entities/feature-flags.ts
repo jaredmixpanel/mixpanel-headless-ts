@@ -1,11 +1,13 @@
 /**
  * Feature-flag family + flag CRUD/history params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import type {
@@ -86,8 +88,18 @@ export interface FeatureFlagInit {
 /**
  * A Mixpanel feature flag as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.FeatureFlag` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const featureFlag = FeatureFlag.fromDict({
+ *   id: "f1a2b3c4",
+ *   project_id: 123456,
+ *   name: "new-checkout",
+ *   key: "new-checkout",
+ * });
+ * featureFlag.id; // "f1a2b3c4"
+ * ```
+ * @see mixpanel_headless.types.FeatureFlag
  */
 export class FeatureFlag extends EntityModel<FeatureFlagInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -197,7 +209,7 @@ export class FeatureFlag extends EntityModel<FeatureFlagInit> {
    * Construct a validated FeatureFlag (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: FeatureFlagInit) {
@@ -210,7 +222,7 @@ export class FeatureFlag extends EntityModel<FeatureFlagInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): FeatureFlag {
     return new FeatureFlag(prepareInit(FeatureFlag, raw));
@@ -243,8 +255,17 @@ export interface CreateFeatureFlagParamsInit {
 /**
  * Parameters for creating a new feature flag.
  *
- * Mirror of Python `mixpanel_headless.types.CreateFeatureFlagParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateFeatureFlagParams({
+ *   name: "New checkout",
+ *   key: "new-checkout",
+ *   description: "Weekly overview",
+ * });
+ * params.name; // "New checkout"
+ * ```
+ * @see mixpanel_headless.types.CreateFeatureFlagParams
  */
 export class CreateFeatureFlagParams extends EntityModel<CreateFeatureFlagParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -315,7 +336,7 @@ export class CreateFeatureFlagParams extends EntityModel<CreateFeatureFlagParams
    * Construct a validated CreateFeatureFlagParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateFeatureFlagParamsInit) {
@@ -328,7 +349,7 @@ export class CreateFeatureFlagParams extends EntityModel<CreateFeatureFlagParams
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateFeatureFlagParams {
     return new CreateFeatureFlagParams(
@@ -363,8 +384,18 @@ export interface UpdateFeatureFlagParamsInit {
 /**
  * Parameters for updating an existing feature flag (PUT semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateFeatureFlagParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateFeatureFlagParams({
+ *   name: "New checkout",
+ *   key: "new-checkout",
+ *   status: "enabled",
+ *   ruleset: {},
+ * });
+ * params.name; // "New checkout"
+ * ```
+ * @see mixpanel_headless.types.UpdateFeatureFlagParams
  */
 export class UpdateFeatureFlagParams extends EntityModel<UpdateFeatureFlagParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -414,7 +445,7 @@ export class UpdateFeatureFlagParams extends EntityModel<UpdateFeatureFlagParams
    * Construct a validated UpdateFeatureFlagParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateFeatureFlagParamsInit) {
@@ -427,7 +458,7 @@ export class UpdateFeatureFlagParams extends EntityModel<UpdateFeatureFlagParams
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateFeatureFlagParams {
     return new UpdateFeatureFlagParams(
@@ -448,8 +479,15 @@ export interface SetTestUsersParamsInit {
 /**
  * Parameters for setting test user variant overrides on a flag.
  *
- * Mirror of Python `mixpanel_headless.types.SetTestUsersParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new SetTestUsersParams({
+ *   users: { "user-123": "treatment" },
+ * });
+ * params.users; // { "user-123": "treatment" }
+ * ```
+ * @see mixpanel_headless.types.SetTestUsersParams
  */
 export class SetTestUsersParams extends EntityModel<SetTestUsersParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -470,7 +508,7 @@ export class SetTestUsersParams extends EntityModel<SetTestUsersParamsInit> {
    * Construct a validated SetTestUsersParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: SetTestUsersParamsInit) {
@@ -483,7 +521,7 @@ export class SetTestUsersParams extends EntityModel<SetTestUsersParamsInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): SetTestUsersParams {
     return new SetTestUsersParams(prepareInit(SetTestUsersParams, raw));
@@ -504,8 +542,13 @@ export interface FlagHistoryParamsInit {
 /**
  * Parameters for querying feature flag change history.
  *
- * Mirror of Python `mixpanel_headless.types.FlagHistoryParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new FlagHistoryParams({ page: "example" });
+ * params.page; // "example"
+ * ```
+ * @see mixpanel_headless.types.FlagHistoryParams
  */
 export class FlagHistoryParams extends EntityModel<FlagHistoryParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -529,7 +572,7 @@ export class FlagHistoryParams extends EntityModel<FlagHistoryParamsInit> {
    * Construct a validated FlagHistoryParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: FlagHistoryParamsInit) {
@@ -542,7 +585,7 @@ export class FlagHistoryParams extends EntityModel<FlagHistoryParamsInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): FlagHistoryParams {
     return new FlagHistoryParams(prepareInit(FlagHistoryParams, raw));
@@ -563,8 +606,16 @@ export interface FlagHistoryResponseInit {
 /**
  * Paginated change history for a feature flag.
  *
- * Mirror of Python `mixpanel_headless.types.FlagHistoryResponse` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const flagHistoryResponse = FlagHistoryResponse.fromDict({
+ *   events: [],
+ *   count: 3,
+ * });
+ * flagHistoryResponse.events; // []
+ * ```
+ * @see mixpanel_headless.types.FlagHistoryResponse
  */
 export class FlagHistoryResponse extends EntityModel<FlagHistoryResponseInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -588,7 +639,7 @@ export class FlagHistoryResponse extends EntityModel<FlagHistoryResponseInit> {
    * Construct a validated FlagHistoryResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: FlagHistoryResponseInit) {
@@ -601,7 +652,7 @@ export class FlagHistoryResponse extends EntityModel<FlagHistoryResponseInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): FlagHistoryResponse {
     return new FlagHistoryResponse(prepareInit(FlagHistoryResponse, raw));
@@ -626,8 +677,18 @@ export interface FlagLimitsResponseInit {
 /**
  * Account-level feature flag usage and limits.
  *
- * Mirror of Python `mixpanel_headless.types.FlagLimitsResponse` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const flagLimitsResponse = FlagLimitsResponse.fromDict({
+ *   limit: 5,
+ *   is_trial: true,
+ *   current_usage: 2,
+ *   contract_status: "active",
+ * });
+ * flagLimitsResponse.limit; // 5
+ * ```
+ * @see mixpanel_headless.types.FlagLimitsResponse
  */
 export class FlagLimitsResponse extends EntityModel<FlagLimitsResponseInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -661,7 +722,7 @@ export class FlagLimitsResponse extends EntityModel<FlagLimitsResponseInit> {
    * Construct a validated FlagLimitsResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: FlagLimitsResponseInit) {
@@ -674,7 +735,7 @@ export class FlagLimitsResponse extends EntityModel<FlagLimitsResponseInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): FlagLimitsResponse {
     return new FlagLimitsResponse(prepareInit(FlagLimitsResponse, raw));

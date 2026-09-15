@@ -1,11 +1,13 @@
 /**
  * Project webhook family + webhook CRUD/test params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import type { WebhookAuthType } from "../enums.js";
@@ -44,8 +46,18 @@ export interface ProjectWebhookInit {
 /**
  * Response model for a project webhook.
  *
- * Mirror of Python `mixpanel_headless.types.ProjectWebhook` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const projectWebhook = ProjectWebhook.fromDict({
+ *   id: "f1a2b3c4",
+ *   name: "Slack alerts",
+ *   url: "https://example.com/hooks/mixpanel",
+ *   is_enabled: true,
+ * });
+ * projectWebhook.id; // "f1a2b3c4"
+ * ```
+ * @see mixpanel_headless.types.ProjectWebhook
  */
 export class ProjectWebhook extends EntityModel<ProjectWebhookInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -90,7 +102,7 @@ export class ProjectWebhook extends EntityModel<ProjectWebhookInit> {
    * Construct a validated ProjectWebhook (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ProjectWebhookInit) {
@@ -103,7 +115,7 @@ export class ProjectWebhook extends EntityModel<ProjectWebhookInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ProjectWebhook {
     return new ProjectWebhook(prepareInit(ProjectWebhook, raw));
@@ -130,8 +142,17 @@ export interface CreateWebhookParamsInit {
 /**
  * Parameters for creating a webhook.
  *
- * Mirror of Python `mixpanel_headless.types.CreateWebhookParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateWebhookParams({
+ *   name: "Slack alerts",
+ *   url: "https://example.com/hooks/mixpanel",
+ *   username: "example",
+ * });
+ * params.name; // "Slack alerts"
+ * ```
+ * @see mixpanel_headless.types.CreateWebhookParams
  */
 export class CreateWebhookParams extends EntityModel<CreateWebhookParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -164,7 +185,7 @@ export class CreateWebhookParams extends EntityModel<CreateWebhookParamsInit> {
    * Construct a validated CreateWebhookParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateWebhookParamsInit) {
@@ -177,7 +198,7 @@ export class CreateWebhookParams extends EntityModel<CreateWebhookParamsInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateWebhookParams {
     return new CreateWebhookParams(prepareInit(CreateWebhookParams, raw));
@@ -206,8 +227,13 @@ export interface UpdateWebhookParamsInit {
 /**
  * Parameters for updating a webhook (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateWebhookParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateWebhookParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateWebhookParams
  */
 export class UpdateWebhookParams extends EntityModel<UpdateWebhookParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -243,7 +269,7 @@ export class UpdateWebhookParams extends EntityModel<UpdateWebhookParamsInit> {
    * Construct a validated UpdateWebhookParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateWebhookParamsInit) {
@@ -256,7 +282,7 @@ export class UpdateWebhookParams extends EntityModel<UpdateWebhookParamsInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateWebhookParams {
     return new UpdateWebhookParams(prepareInit(UpdateWebhookParams, raw));
@@ -283,8 +309,16 @@ export interface WebhookTestParamsInit {
 /**
  * Parameters for testing webhook connectivity.
  *
- * Mirror of Python `mixpanel_headless.types.WebhookTestParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new WebhookTestParams({
+ *   url: "https://example.com/hooks/mixpanel",
+ *   name: "Example",
+ * });
+ * params.url; // "https://example.com/hooks/mixpanel"
+ * ```
+ * @see mixpanel_headless.types.WebhookTestParams
  */
 export class WebhookTestParams extends EntityModel<WebhookTestParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -317,7 +351,7 @@ export class WebhookTestParams extends EntityModel<WebhookTestParamsInit> {
    * Construct a validated WebhookTestParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: WebhookTestParamsInit) {
@@ -330,7 +364,7 @@ export class WebhookTestParams extends EntityModel<WebhookTestParamsInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): WebhookTestParams {
     return new WebhookTestParams(prepareInit(WebhookTestParams, raw));
@@ -353,8 +387,17 @@ export interface WebhookTestResultInit {
 /**
  * Response model for webhook connectivity test.
  *
- * Mirror of Python `mixpanel_headless.types.WebhookTestResult` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const webhookTestResult = WebhookTestResult.fromDict({
+ *   success: true,
+ *   status_code: 200,
+ *   message: "OK",
+ * });
+ * webhookTestResult.success; // true
+ * ```
+ * @see mixpanel_headless.types.WebhookTestResult
  */
 export class WebhookTestResult extends EntityModel<WebhookTestResultInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -381,7 +424,7 @@ export class WebhookTestResult extends EntityModel<WebhookTestResultInit> {
    * Construct a validated WebhookTestResult (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: WebhookTestResultInit) {
@@ -394,7 +437,7 @@ export class WebhookTestResult extends EntityModel<WebhookTestResultInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): WebhookTestResult {
     return new WebhookTestResult(prepareInit(WebhookTestResult, raw));
@@ -415,8 +458,16 @@ export interface WebhookMutationResultInit {
 /**
  * Response model for webhook create/update (returns id + name only).
  *
- * Mirror of Python `mixpanel_headless.types.WebhookMutationResult` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const webhookMutationResult = WebhookMutationResult.fromDict({
+ *   id: "f1a2b3c4",
+ *   name: "Slack alerts",
+ * });
+ * webhookMutationResult.id; // "f1a2b3c4"
+ * ```
+ * @see mixpanel_headless.types.WebhookMutationResult
  */
 export class WebhookMutationResult extends EntityModel<WebhookMutationResultInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -440,7 +491,7 @@ export class WebhookMutationResult extends EntityModel<WebhookMutationResultInit
    * Construct a validated WebhookMutationResult (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: WebhookMutationResultInit) {
@@ -453,7 +504,7 @@ export class WebhookMutationResult extends EntityModel<WebhookMutationResultInit
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): WebhookMutationResult {
     return new WebhookMutationResult(prepareInit(WebhookMutationResult, raw));

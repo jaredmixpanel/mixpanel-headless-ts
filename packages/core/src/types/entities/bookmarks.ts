@@ -1,11 +1,13 @@
 /**
  * Bookmark (saved report) family + history models.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import { isPythonDict } from "../../compat/python-dict.js";
@@ -41,8 +43,15 @@ export interface BookmarkMetadataInit {
 /**
  * Metadata associated with a bookmark/report.
  *
- * Mirror of Python `mixpanel_headless.types.BookmarkMetadata` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const bookmarkMetadata = BookmarkMetadata.fromDict({
+ *   table_display_mode: "example",
+ * });
+ * bookmarkMetadata.table_display_mode; // "example"
+ * ```
+ * @see mixpanel_headless.types.BookmarkMetadata
  */
 export class BookmarkMetadata extends EntityModel<BookmarkMetadataInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -81,7 +90,7 @@ export class BookmarkMetadata extends EntityModel<BookmarkMetadataInit> {
    * Construct a validated BookmarkMetadata (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BookmarkMetadataInit) {
@@ -94,7 +103,7 @@ export class BookmarkMetadata extends EntityModel<BookmarkMetadataInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BookmarkMetadata {
     return new BookmarkMetadata(prepareInit(BookmarkMetadata, raw));
@@ -112,7 +121,7 @@ export interface BookmarkInit {
   readonly project_id?: number | null | undefined;
   /** Bookmark name. */
   readonly name: string;
-  /** Report type (aliased from ``"type"``). */
+  /** Report type (aliased from `"type"`). */
   readonly bookmark_type: string;
   /** Bookmark description. */
   readonly description?: string | null | undefined;
@@ -168,8 +177,18 @@ export interface BookmarkInit {
 /**
  * A Mixpanel bookmark (saved report) as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Bookmark` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const bookmark = Bookmark.fromDict({
+ *   id: 42,
+ *   name: "Signup funnel",
+ *   bookmark_type: "insights",
+ *   description: "Weekly overview",
+ * });
+ * bookmark.id; // 42
+ * ```
+ * @see mixpanel_headless.types.Bookmark
  */
 export class Bookmark extends EntityModel<BookmarkInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -222,7 +241,7 @@ export class Bookmark extends EntityModel<BookmarkInit> {
   declare readonly project_id: number | null;
   /** Bookmark name. */
   declare readonly name: string;
-  /** Report type (aliased from ``"type"``). */
+  /** Report type (aliased from `"type"`). */
   declare readonly bookmark_type: string;
   /** Bookmark description. */
   declare readonly description: string | null;
@@ -277,7 +296,7 @@ export class Bookmark extends EntityModel<BookmarkInit> {
    * Construct a validated Bookmark (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BookmarkInit) {
@@ -290,7 +309,7 @@ export class Bookmark extends EntityModel<BookmarkInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): Bookmark {
     return new Bookmark(prepareInit(Bookmark, raw));
@@ -304,7 +323,7 @@ export class Bookmark extends EntityModel<BookmarkInit> {
 export interface CreateBookmarkParamsInit {
   /** Bookmark name (required). */
   readonly name: string;
-  /** Report type (required, serialized as ``"type"``). Pydantic-validated against the canonical set on construction — typos like ``"insightz"`` are rejected before any API call. */
+  /** Report type (required, serialized as `"type"`). Pydantic-validated against the canonical set on construction — typos like `"insightz"` are rejected before any API call. */
   readonly bookmark_type:
     "insights" | "funnels" | "retention" | "flows" | "user";
   /** Query parameters (required). */
@@ -324,8 +343,18 @@ export interface CreateBookmarkParamsInit {
 /**
  * Parameters for creating a new bookmark/report.
  *
- * Mirror of Python `mixpanel_headless.types.CreateBookmarkParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateBookmarkParams({
+ *   name: "Signup funnel",
+ *   bookmark_type: "insights",
+ *   params: {},
+ *   description: "Weekly overview",
+ * });
+ * params.name; // "Signup funnel"
+ * ```
+ * @see mixpanel_headless.types.CreateBookmarkParams
  */
 export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -354,7 +383,7 @@ export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> 
 
   /** Bookmark name (required). */
   declare readonly name: string;
-  /** Report type (required, serialized as ``"type"``). Pydantic-validated against the canonical set on construction — typos like ``"insightz"`` are rejected before any API call. */
+  /** Report type (required, serialized as `"type"`). Pydantic-validated against the canonical set on construction — typos like `"insightz"` are rejected before any API call. */
   declare readonly bookmark_type:
     "insights" | "funnels" | "retention" | "flows" | "user";
   /** Query parameters (required). */
@@ -374,7 +403,7 @@ export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> 
    * Construct a validated CreateBookmarkParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateBookmarkParamsInit) {
@@ -387,7 +416,7 @@ export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> 
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateBookmarkParams {
     return new CreateBookmarkParams(prepareInit(CreateBookmarkParams, raw));
@@ -420,8 +449,13 @@ export interface UpdateBookmarkParamsInit {
 /**
  * Parameters for updating an existing bookmark/report.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateBookmarkParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateBookmarkParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateBookmarkParams
  */
 export class UpdateBookmarkParams extends EntityModel<UpdateBookmarkParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -463,7 +497,7 @@ export class UpdateBookmarkParams extends EntityModel<UpdateBookmarkParamsInit> 
    * Construct a validated UpdateBookmarkParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateBookmarkParamsInit) {
@@ -476,7 +510,7 @@ export class UpdateBookmarkParams extends EntityModel<UpdateBookmarkParamsInit> 
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateBookmarkParams {
     return new UpdateBookmarkParams(prepareInit(UpdateBookmarkParams, raw));
@@ -507,8 +541,13 @@ export interface BulkUpdateBookmarkEntryInit {
 /**
  * Entry for bulk-updating bookmarks.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateBookmarkEntry` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new BulkUpdateBookmarkEntry({ id: 42, name: "Example" });
+ * params.id; // 42
+ * ```
+ * @see mixpanel_headless.types.BulkUpdateBookmarkEntry
  */
 export class BulkUpdateBookmarkEntry extends EntityModel<BulkUpdateBookmarkEntryInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -547,7 +586,7 @@ export class BulkUpdateBookmarkEntry extends EntityModel<BulkUpdateBookmarkEntry
    * Construct a validated BulkUpdateBookmarkEntry (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdateBookmarkEntryInit) {
@@ -560,7 +599,7 @@ export class BulkUpdateBookmarkEntry extends EntityModel<BulkUpdateBookmarkEntry
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkUpdateBookmarkEntry {
     return new BulkUpdateBookmarkEntry(
@@ -585,8 +624,15 @@ export interface BookmarkHistoryPaginationInit {
 /**
  * Pagination metadata for bookmark history responses.
  *
- * Mirror of Python `mixpanel_headless.types.BookmarkHistoryPagination` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const bookmarkHistoryPagination = BookmarkHistoryPagination.fromDict({
+ *   next_cursor: "example",
+ * });
+ * bookmarkHistoryPagination.next_cursor; // "example"
+ * ```
+ * @see mixpanel_headless.types.BookmarkHistoryPagination
  */
 export class BookmarkHistoryPagination extends EntityModel<BookmarkHistoryPaginationInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -614,7 +660,7 @@ export class BookmarkHistoryPagination extends EntityModel<BookmarkHistoryPagina
    * Construct a validated BookmarkHistoryPagination (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BookmarkHistoryPaginationInit) {
@@ -627,7 +673,7 @@ export class BookmarkHistoryPagination extends EntityModel<BookmarkHistoryPagina
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BookmarkHistoryPagination {
     return new BookmarkHistoryPagination(
@@ -654,8 +700,15 @@ export interface BookmarkHistoryResponseInit {
 /**
  * Response from the bookmark history endpoint.
  *
- * Mirror of Python `mixpanel_headless.types.BookmarkHistoryResponse` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const bookmarkHistoryResponse = BookmarkHistoryResponse.fromDict({
+ *   results: [],
+ * });
+ * bookmarkHistoryResponse.results; // []
+ * ```
+ * @see mixpanel_headless.types.BookmarkHistoryResponse
  */
 export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponseInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -683,7 +736,7 @@ export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponse
    * Construct a validated BookmarkHistoryResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BookmarkHistoryResponseInit) {
@@ -696,7 +749,7 @@ export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponse
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BookmarkHistoryResponse {
     return new BookmarkHistoryResponse(
@@ -712,7 +765,7 @@ export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponse
 export interface BookmarkUrlInit {
   /** The 12-character slug. */
   readonly slug: string;
-  /** Report type (aliased from ``"type"``). */
+  /** Report type (aliased from `"type"`). */
   readonly bookmark_type: string;
   /** The raw query parameters stored under the slug (default `{}`). */
   readonly params?: Readonly<Record<string, unknown>> | undefined;
@@ -736,16 +789,24 @@ export interface BookmarkUrlInit {
 }
 
 /**
- * The server record for an unsaved report, keyed by a 12-character slug
- * (045-report-links, Python PR #223).
+ * The server record for an unsaved report, keyed by a 12-character slug.
  *
  * Returned by `GET /api/app/projects/{pid}/bookmark-urls/{slug}/`. The
  * `bookmark_type` field is aliased from `"type"` in the API response,
  * the same as {@link Bookmark}. When the record references a saved
  * report, the server replaces `bookmark_id` with the full `bookmark`.
  *
- * Mirror of Python `mixpanel_headless.types.BookmarkUrl` (model_config:
- * frozen=True, extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const bookmarkUrl = BookmarkUrl.fromDict({
+ *   slug: "3q7xk2",
+ *   bookmark_type: "insights",
+ *   name: "Example",
+ * });
+ * bookmarkUrl.slug; // "3q7xk2"
+ * ```
+ * @see mixpanel_headless.types.BookmarkUrl
  */
 export class BookmarkUrl extends EntityModel<BookmarkUrlInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -777,7 +838,7 @@ export class BookmarkUrl extends EntityModel<BookmarkUrlInit> {
 
   /** The 12-character slug. */
   declare readonly slug: string;
-  /** Report type (aliased from ``"type"``). */
+  /** Report type (aliased from `"type"`). */
   declare readonly bookmark_type: string;
   /** The raw query parameters stored under the slug. */
   declare readonly params: Readonly<Record<string, unknown>>;
@@ -802,7 +863,7 @@ export class BookmarkUrl extends EntityModel<BookmarkUrlInit> {
    * Construct a validated BookmarkUrl (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BookmarkUrlInit) {
@@ -815,7 +876,7 @@ export class BookmarkUrl extends EntityModel<BookmarkUrlInit> {
    * the field-spec vocabulary has no bare dict guard, so the shape check
    * lives here (the `model_validator(mode="after")` slot).
    *
-   * @throws ResponseValidationError - `params` / `overrides` is not a
+   * @throws {@link ResponseValidationError} - `params` / `overrides` is not a
    *   plain mapping.
    */
   protected override afterValidate(): void {
@@ -833,7 +894,7 @@ export class BookmarkUrl extends EntityModel<BookmarkUrlInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BookmarkUrl {
     return new BookmarkUrl(prepareInit(BookmarkUrl, raw));

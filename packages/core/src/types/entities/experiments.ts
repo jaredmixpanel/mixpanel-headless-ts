@@ -1,11 +1,13 @@
 /**
  * Experiment family + experiment CRUD params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import type { ExperimentStatus } from "../enums.js";
@@ -32,8 +34,13 @@ export interface ExperimentCreatorInit {
 /**
  * Creator metadata for an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentCreator` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const experimentCreator = ExperimentCreator.fromDict({ id: 42 });
+ * experimentCreator.id; // 42
+ * ```
+ * @see mixpanel_headless.types.ExperimentCreator
  */
 export class ExperimentCreator extends EntityModel<ExperimentCreatorInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -60,7 +67,7 @@ export class ExperimentCreator extends EntityModel<ExperimentCreatorInit> {
    * Construct a validated ExperimentCreator (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ExperimentCreatorInit) {
@@ -73,7 +80,7 @@ export class ExperimentCreator extends EntityModel<ExperimentCreatorInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ExperimentCreator {
     return new ExperimentCreator(prepareInit(ExperimentCreator, raw));
@@ -140,8 +147,17 @@ export interface ExperimentInit {
 /**
  * A Mixpanel A/B experiment as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Experiment` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const experiment = Experiment.fromDict({
+ *   id: "f1a2b3c4",
+ *   name: "New checkout",
+ *   description: "Weekly overview",
+ * });
+ * experiment.id; // "f1a2b3c4"
+ * ```
+ * @see mixpanel_headless.types.Experiment
  */
 export class Experiment extends EntityModel<ExperimentInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -234,7 +250,7 @@ export class Experiment extends EntityModel<ExperimentInit> {
    * Construct a validated Experiment (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ExperimentInit) {
@@ -247,7 +263,7 @@ export class Experiment extends EntityModel<ExperimentInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): Experiment {
     return new Experiment(prepareInit(Experiment, raw));
@@ -276,8 +292,16 @@ export interface CreateExperimentParamsInit {
 /**
  * Parameters for creating a new experiment.
  *
- * Mirror of Python `mixpanel_headless.types.CreateExperimentParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateExperimentParams({
+ *   name: "New checkout",
+ *   description: "Weekly overview",
+ * });
+ * params.name; // "New checkout"
+ * ```
+ * @see mixpanel_headless.types.CreateExperimentParams
  */
 export class CreateExperimentParams extends EntityModel<CreateExperimentParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -313,7 +337,7 @@ export class CreateExperimentParams extends EntityModel<CreateExperimentParamsIn
    * Construct a validated CreateExperimentParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateExperimentParamsInit) {
@@ -326,7 +350,7 @@ export class CreateExperimentParams extends EntityModel<CreateExperimentParamsIn
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateExperimentParams {
     return new CreateExperimentParams(prepareInit(CreateExperimentParams, raw));
@@ -372,8 +396,13 @@ export interface UpdateExperimentParamsInit {
 /**
  * Parameters for updating an existing experiment (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateExperimentParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateExperimentParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateExperimentParams
  */
 export class UpdateExperimentParams extends EntityModel<UpdateExperimentParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -436,7 +465,7 @@ export class UpdateExperimentParams extends EntityModel<UpdateExperimentParamsIn
    * Construct a validated UpdateExperimentParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateExperimentParamsInit) {
@@ -449,7 +478,7 @@ export class UpdateExperimentParams extends EntityModel<UpdateExperimentParamsIn
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateExperimentParams {
     return new UpdateExperimentParams(prepareInit(UpdateExperimentParams, raw));
@@ -468,8 +497,13 @@ export interface ExperimentConcludeParamsInit {
 /**
  * Parameters for concluding an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentConcludeParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new ExperimentConcludeParams({ end_date: "example" });
+ * params.end_date; // "example"
+ * ```
+ * @see mixpanel_headless.types.ExperimentConcludeParams
  */
 export class ExperimentConcludeParams extends EntityModel<ExperimentConcludeParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -490,7 +524,7 @@ export class ExperimentConcludeParams extends EntityModel<ExperimentConcludePara
    * Construct a validated ExperimentConcludeParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ExperimentConcludeParamsInit) {
@@ -503,7 +537,7 @@ export class ExperimentConcludeParams extends EntityModel<ExperimentConcludePara
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ExperimentConcludeParams {
     return new ExperimentConcludeParams(
@@ -528,8 +562,16 @@ export interface ExperimentDecideParamsInit {
 /**
  * Parameters for recording an experiment decision.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentDecideParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new ExperimentDecideParams({
+ *   success: true,
+ *   variant: "treatment",
+ * });
+ * params.success; // true
+ * ```
+ * @see mixpanel_headless.types.ExperimentDecideParams
  */
 export class ExperimentDecideParams extends EntityModel<ExperimentDecideParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -556,7 +598,7 @@ export class ExperimentDecideParams extends EntityModel<ExperimentDecideParamsIn
    * Construct a validated ExperimentDecideParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ExperimentDecideParamsInit) {
@@ -569,7 +611,7 @@ export class ExperimentDecideParams extends EntityModel<ExperimentDecideParamsIn
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ExperimentDecideParams {
     return new ExperimentDecideParams(prepareInit(ExperimentDecideParams, raw));
@@ -588,8 +630,15 @@ export interface DuplicateExperimentParamsInit {
 /**
  * Parameters for duplicating an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.DuplicateExperimentParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new DuplicateExperimentParams({
+ *   name: "New checkout (copy)",
+ * });
+ * params.name; // "New checkout (copy)"
+ * ```
+ * @see mixpanel_headless.types.DuplicateExperimentParams
  */
 export class DuplicateExperimentParams extends EntityModel<DuplicateExperimentParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -609,7 +658,7 @@ export class DuplicateExperimentParams extends EntityModel<DuplicateExperimentPa
    * Construct a validated DuplicateExperimentParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DuplicateExperimentParamsInit) {
@@ -622,7 +671,7 @@ export class DuplicateExperimentParams extends EntityModel<DuplicateExperimentPa
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): DuplicateExperimentParams {
     return new DuplicateExperimentParams(

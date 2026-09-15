@@ -2,18 +2,13 @@
  * CPython `random.Random` parity — the MT19937 core plus the two
  * methods the port needs (`getrandbits`, `_randbelow`, `sample`).
  *
- * Added at B5-S3 for `ReplayBundle.sample(n, seed)`
- * (`types.py:13808-13831`), the packet's **S3-D1** decision
- * (`b5-packets.md:529-540`): port CPython parity rather than
- * substituting a different PRNG, so a seeded sample produces the SAME
- * selection in both runtimes. The alternative — "same-seed
- * self-consistency only" — is all the Layer-3 test locks
- * (`test_replay_bundle.py:448-449`), but a divergent selection would be
- * a silent behavioural fork and would need a sanctioned-deviation
- * filing. Locked by pinned CPython probe outputs
- * (`test/compat/python-random.test.ts`).
+ * Ported for `ReplayBundle.sample(n, seed)` as full CPython parity rather
+ * than a substitute PRNG, so a seeded sample selects the same replays in
+ * both runtimes. The Python tests only lock same-seed self-consistency,
+ * but a divergent selection would be a silent behavioural fork. Locked by
+ * pinned CPython probe outputs (`test/compat/python-random.test.ts`).
  *
- * Scope: INTEGER (and `null`) seeds only — the `str`/`bytes` seeding
+ * Scope: integer (and `null`) seeds only — the `str`/`bytes` seeding
  * paths hash through CPython's SipHash and are unreachable from this
  * port's surface (`sample(n, seed: number | null)`). A `null` seed
  * means "unseeded"; the caller supplies the entropy source, matching
@@ -48,6 +43,13 @@ const TWO32 = 0x100000000n;
 /**
  * The CPython Mersenne Twister, exposing exactly the surface
  * `random.Random` builds on.
+ *
+ * @example
+ * ```ts
+ * const rng = new PythonRandom(42);
+ * rng.getrandbits(32); // 2746317213n — what `random.Random(42).getrandbits(32)` returns
+ * rng.randbelow(10); // an int in [0, 10), CPython's rejection-sampling sequence
+ * ```
  */
 export class PythonRandom {
   /** The 624-word state vector (`self->state`). */
@@ -61,10 +63,10 @@ export class PythonRandom {
    *
    * @param seed - A non-negative or negative integer (CPython takes the
    *   absolute value), or `null` for "unseeded" — in which case the
-   *   caller MUST supply `entropy` (32-bit words) standing in for
+   *   caller must supply `entropy` (32-bit words) standing in for
    *   `os.urandom`.
    * @param entropy - The word array to seed with when `seed` is `null`.
-   * @throws MixpanelHeadlessError - Code `PY_RANDOM_SEED_UNSUPPORTED`
+   * @throws {@link MixpanelHeadlessError} - Code `PY_RANDOM_SEED_UNSUPPORTED`
    *   when `seed` is `null` and no entropy was supplied, or when the
    *   seed is not a safe integer.
    */
@@ -219,7 +221,7 @@ export class PythonRandom {
    *
    * @param k - How many bits to draw (`0 <= k`).
    * @returns The drawn value as a `bigint` (Python ints are unbounded).
-   * @throws MixpanelHeadlessError - Code `PY_RANDOM_NEGATIVE_BITS` for
+   * @throws {@link MixpanelHeadlessError} - Code `PY_RANDOM_NEGATIVE_BITS` for
    *   `k < 0` (CPython raises `ValueError`).
    */
   getrandbits(k: number): bigint {
@@ -235,7 +237,7 @@ export class PythonRandom {
     if (k <= 32) {
       return BigInt(this.genrandUint32() >>> (32 - k));
     }
-    // Words are laid down LITTLE-ENDIAN, the final (most significant)
+    // Words are laid down little-endian, the final (most significant)
     // word shifted right by the leftover bit count.
     const words = Math.floor((k - 1) / 32) + 1;
     let result = 0n;
@@ -280,10 +282,14 @@ export class PythonRandom {
  * @param k - How many elements to draw.
  * @param seed - The integer seed, or `null` with `entropy`.
  * @param entropy - Seed words when `seed` is `null`.
- * @returns The `k` selected elements, in SELECTION order.
- * @throws MixpanelHeadlessError - Code `PY_RANDOM_SAMPLE_RANGE` when
+ * @returns The `k` selected elements, in selection order.
+ * @throws {@link MixpanelHeadlessError} - Code `PY_RANDOM_SAMPLE_RANGE` when
  *   `k` is negative or larger than the population (CPython raises
  *   `ValueError`).
+ * @example
+ * ```ts
+ * pythonSample(["a", "b", "c", "d"], 2, 42, []); // the same pair CPython's random.Random(42).sample picks
+ * ```
  */
 export function pythonSample<T>(
   population: readonly T[],

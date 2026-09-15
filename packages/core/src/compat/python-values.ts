@@ -11,7 +11,6 @@
  * therefore could not be imported from low-level modules without an
  * evaluation cycle. This module imports only compat leaves.
  *
- * @module compat/python-values
  * @internal
  */
 
@@ -35,13 +34,18 @@ import { pythonRepr, pythonStr, type PythonValue } from "./python-str.js";
  * retention R5_BUCKET_SIZES_INTEGER) classify carriers exactly where
  * Python classifies floats, without any binding-side unwrapping.
  *
- * The rig's carrier is a CLASS instance (`conformance-runner/src/codecs.ts`
+ * The rig's carrier is a class instance (`conformance-runner/src/codecs.ts`
  * `PyFloat` — its single construction site), never a plain object, so the
  * duck check additionally rejects {@link isPythonDict} values: a consumer
  * dict `{"spelling": "..."}` is a Python dict, not a float.
  *
  * @param value - Candidate value.
  * @returns True when `value` carries the PyFloat duck-shape.
+ * @example
+ * ```ts
+ * isFloatCarrier(new PyFloat("18.0")); // true — the rig's carrier class
+ * isFloatCarrier({ spelling: "18.0" }); // false — a plain dict
+ * ```
  */
 export function isFloatCarrier(
   value: unknown,
@@ -58,7 +62,7 @@ export function isFloatCarrier(
 
 /**
  * Numeric value of a PyFloat carrier, for the branches that compare a
- * float NUMERICALLY rather than by type.
+ * float numerically rather than by type.
  *
  * The spelling is CPython `repr(float)` output produced by the rig's
  * codec, so it is parsed with `pythonFloat` — never with
@@ -67,9 +71,13 @@ export function isFloatCarrier(
  * @param carrier - A value that satisfied {@link isFloatCarrier}.
  * @returns The double the carrier stands for (`Infinity` / `NaN`
  *   included).
- * @throws MixpanelHeadlessError - Code `PY_FLOAT_INVALID_LITERAL` when
+ * @throws {@link MixpanelHeadlessError} - Code `PY_FLOAT_INVALID_LITERAL` when
  *   the spelling is not a CPython float literal (unreachable for
  *   codec-produced carriers).
+ * @example
+ * ```ts
+ * floatCarrierValue(new PyFloat("inf")); // Infinity
+ * ```
  */
 export function floatCarrierValue(carrier: {
   readonly spelling: string;
@@ -79,29 +87,35 @@ export function floatCarrierValue(carrier: {
 
 /**
  * Python `str(value)` for a value that may be a PyFloat carrier — the
- * ONE implementation of the "stringify an operand whose float-ness the
+ * one implementation of the "stringify an operand whose float-ness the
  * rig preserved" pattern.
  *
  * `pythonStr` already matches CPython for strings, bools, `None`,
  * containers and non-integral numbers. The one gap JS cannot close on
- * its own is int-vs-float-ness of an INTEGRAL value; where the
+ * its own is int-vs-float-ness of an integral value; where the
  * conformance rig preserves it ({@link isFloatCarrier}), the carrier's
  * CPython `repr` spelling is used, so `18.0` renders `"18.0"` and not
  * `"18"`.
  *
- * Both ported call sites are `str(x)` landing in OUTPUT, so
+ * Both ported call sites are `str(x)` landing in output, so
  * `String(...)` is forbidden (`String(true)` is `"true"`, Python's is
  * `"True"`):
  *
  * - `mixpanel_headless._internal.query.segfilter` — the number/datetime
  *   operand positions.
  * - `mixpanel_headless._internal.query.user_builders._format_value` —
- *   the non-string branch (the `selector_str` codec compares VERBATIM).
+ *   the non-string branch (the `selector_str` codec compares verbatim).
  *
  * @param value - The value to stringify.
  * @returns The CPython `str()` rendering.
- * @throws TypeError - When the value is outside the `pythonStr` domain
+ * @throws {@link TypeError} - When the value is outside the `pythonStr` domain
  *   (class instances, `undefined`) — out-of-annotation input only.
+ * @example
+ * ```ts
+ * pythonStrValue(true); // "True"
+ * pythonStrValue(new PyFloat("18.0")); // "18.0"
+ * pythonStrValue(18); // "18"
+ * ```
  */
 export function pythonStrValue(value: unknown): string {
   if (isFloatCarrier(value)) {
@@ -124,6 +138,12 @@ export function pythonStrValue(value: unknown): string {
  *
  * @param value - Candidate value.
  * @returns True when Python would classify the value as a `float`.
+ * @example
+ * ```ts
+ * isPythonFloat(1.5); // true
+ * isPythonFloat(2); // false — an integral JS number is a Python int
+ * isPythonFloat(NaN); // true
+ * ```
  */
 export function isPythonFloat(value: unknown): boolean {
   if (typeof value === "number") {
@@ -133,15 +153,21 @@ export function isPythonFloat(value: unknown): boolean {
 }
 
 /**
- * TS analog of Python `isinstance(value, int) and not isinstance(value,
- * bool)` — the bool-before-int guard order.
+ * TS analog of Python's `isinstance(value, int)` with the bool-before-int
+ * guard order (`and not isinstance(value, bool)`).
  *
  * Not to be confused with `types/query-params/guards.ts` `isPyIntOrBool`,
  * which serves the sites where Python's `isinstance(v, int)` is meant to
- * ADMIT booleans.
+ * admit booleans.
  *
  * @param value - Candidate value.
  * @returns True when Python would classify the value as a non-bool int.
+ * @example
+ * ```ts
+ * isPythonInt(2); // true
+ * isPythonInt(true); // false
+ * isPythonInt(2.5); // false
+ * ```
  */
 export function isPythonInt(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value);
@@ -163,7 +189,12 @@ export function isPythonInt(value: unknown): value is number {
  * here anyway.
  *
  * @param value - The membership-test candidate.
- * @throws TypeError - When Python's `hash(value)` would raise.
+ * @throws {@link TypeError} - When Python's `hash(value)` would raise.
+ * @example
+ * ```ts
+ * requireHashable("dau"); // returns
+ * requireHashable(["dau"]); // throws TypeError: cannot use 'list' as a set element …
+ * ```
  */
 export function requireHashable(value: unknown): void {
   if (Array.isArray(value)) {
@@ -182,8 +213,8 @@ export function requireHashable(value: unknown): void {
  * Elements CPython's iteration protocol would yield, or `null` when the
  * value is not iterable.
  *
- * Strings yield CODE POINTS (never UTF-16 units), lists yield their
- * elements and dicts yield their KEYS. Ported once because two modules
+ * Strings yield code points (never UTF-16 units), lists yield their
+ * elements and dicts yield their keys. Ported once because two modules
  * need it: `segfilter`'s range comprehensions (`[str(v) for v in value]`)
  * and `transforms`' `dict(properties)` copy. Callers decide what a
  * `null` means — CPython's message differs per site — so this helper
@@ -191,6 +222,12 @@ export function requireHashable(value: unknown): void {
  *
  * @param value - The value being iterated.
  * @returns The drawn elements in order, or `null` for a non-iterable.
+ * @example
+ * ```ts
+ * pythonIterableElements("a😀"); // ["a", "😀"]
+ * pythonIterableElements({ k: 1 }); // ["k"]
+ * pythonIterableElements(42); // null
+ * ```
  */
 export function pythonIterableElements(value: unknown): unknown[] | null {
   if (typeof value === "string") {
@@ -206,16 +243,21 @@ export function pythonIterableElements(value: unknown): unknown[] | null {
 }
 
 /**
- * Python `dict.get(key, default)` over a plain-object dict — an OWN-key
+ * Python `dict.get(key, default)` over a plain-object dict — an own-key
  * lookup, never a prototype member (`"toString" in obj` is true in JS,
  * false in Python).
  *
  * @param source - The dict being read.
  * @param key - Key to look up.
- * @param fallback - Value returned when the key is ABSENT (a present
+ * @param fallback - Value returned when the key is absent (a present
  *   `null` is returned as `null`, exactly like Python). Defaults to
  *   `undefined`, the local stand-in for `.get(key)`'s `None`.
  * @returns The stored value or the fallback.
+ * @example
+ * ```ts
+ * dictGet({ a: null }, "a", "x"); // null — present key wins over the fallback
+ * dictGet({}, "toString", "x"); // "x" — prototype members are not dict keys
+ * ```
  */
 export function dictGet(
   source: Readonly<Record<string, unknown>>,
@@ -243,6 +285,12 @@ export function dictGet(
  * @param value - The value whose Python type name to approximate.
  * @returns The Python type name Python would print for the
  *   equivalent value.
+ * @example
+ * ```ts
+ * pythonTypeName(null); // "NoneType"
+ * pythonTypeName([1]); // "list"
+ * pythonTypeName(new Filter({ name: "plan" })); // "Filter"
+ * ```
  */
 export function pythonTypeName(value: unknown): string {
   if (value === null || value === undefined) {
@@ -278,6 +326,10 @@ export function pythonTypeName(value: unknown): string {
  *
  * @param items - The (already ordered) list members.
  * @returns Python-style list repr, e.g. `['birth', 'interval_start']`.
+ * @example
+ * ```ts
+ * pythonListRepr(["birth", "interval_start"]); // "['birth', 'interval_start']"
+ * ```
  */
 export function pythonListRepr(items: readonly string[]): string {
   return `[${items.map((item) => pythonRepr(item)).join(", ")}]`;
@@ -293,6 +345,12 @@ export function pythonListRepr(items: readonly string[]): string {
  *
  * @param value - The number (or `null`) to render.
  * @returns The Python `str()` rendering.
+ * @example
+ * ```ts
+ * pythonNumberStr(18); // "18"
+ * pythonNumberStr(1.5); // "1.5"
+ * pythonNumberStr(null); // "None"
+ * ```
  */
 export function pythonNumberStr(value: number | null): string {
   if (value === null) {
@@ -312,6 +370,12 @@ export function pythonNumberStr(value: number | null): string {
  *
  * @param value - Candidate enum value.
  * @returns The Python `str()` rendering.
+ * @example
+ * ```ts
+ * pythonStrLoose("day"); // "day"
+ * pythonStrLoose(null); // "None"
+ * pythonStrLoose(7); // "7"
+ * ```
  */
 export function pythonStrLoose(value: unknown): string {
   if (typeof value === "string") {
@@ -341,6 +405,10 @@ export function pythonStrLoose(value: unknown): string {
  * @param a - Left operand.
  * @param b - Right operand.
  * @returns True when Python would evaluate `a > b`.
+ * @example
+ * ```ts
+ * codepointGreater("😀", "｡"); // true (JS "😀" > "｡" is false)
+ * ```
  */
 export function codepointGreater(a: string, b: string): boolean {
   return compareCodepoints(a, b) > 0;

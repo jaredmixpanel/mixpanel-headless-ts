@@ -1,7 +1,5 @@
 /**
- * Python `str()` / `repr()` semantics (rulebook R11.1; semantic-trap
- * watchlist item 8). Part of the `pythonCompat` module (rulebook §11):
- * ported once, first; no other module re-derives these semantics.
+ * Python `str()` / `repr()` semantics, implemented once here.
  *
  * The trap this closes: `String(true)` is `"true"` and `String(null)` is
  * `"null"`, while Python stringifies the same operands as `"True"` and
@@ -14,9 +12,9 @@ import { pythonFloatStr } from "./python-float-str.js";
 /**
  * The JSON-like value domain `pythonStr` / `pythonRepr` accept.
  *
- * `null` maps to Python `None`. `undefined` is deliberately EXCLUDED:
- * per the tri-state rule (semantic-trap watchlist item 4) `undefined`
- * means "absent", and stringifying an absent value is a caller bug —
+ * `null` maps to Python `None`. `undefined` is deliberately excluded:
+ * under the port's tri-state rule `undefined` means "absent", and
+ * stringifying an absent value is a caller bug —
  * both functions throw `TypeError` rather than silently blessing it as
  * `None`. `bigint` maps to Python `int` (arbitrary precision).
  */
@@ -32,8 +30,8 @@ export type PythonValue =
 // Printability is classified by the generated, CPython-derived range
 // table (non-printable.ts) rather than `\p{Cn}`-style engine property
 // escapes: the JS engine's Unicode database version can lead CPython's
-// (V8 Unicode 17 vs CPython 3.14's Unicode 16), and the TS-7 differential
-// run proved the skew produces live repr() divergences on codepoints
+// (V8 Unicode 17 vs CPython 3.14's Unicode 16), and the differential
+// fuzz proved the skew produces live repr() divergences on codepoints
 // newly assigned in the engine's database.
 
 /**
@@ -45,7 +43,7 @@ export type PythonValue =
  *
  * @param value - The value to stringify; see {@link PythonValue}.
  * @returns The CPython `str()` rendering.
- * @throws TypeError - When the value (or a nested member) is `undefined`
+ * @throws {@link TypeError} - When the value (or a nested member) is `undefined`
  *   or otherwise outside the {@link PythonValue} domain.
  * @example
  * ```typescript
@@ -79,7 +77,7 @@ export function pythonStr(value: PythonValue): string {
  *
  * @param value - The value to repr; see {@link PythonValue}.
  * @returns The CPython `repr()` rendering.
- * @throws TypeError - When the value (or a nested member) is `undefined`
+ * @throws {@link TypeError} - When the value (or a nested member) is `undefined`
  *   or otherwise outside the {@link PythonValue} domain.
  * @example
  * ```typescript
@@ -105,7 +103,7 @@ export function pythonRepr(value: PythonValue): string {
  * ```typescript
  * isPythonValue({ a: [1, null] }); // true
  * isPythonValue(new Map()); // false (not a plain object)
- * isPythonValue(undefined); // false (undefined means ABSENT)
+ * isPythonValue(undefined); // false (undefined means absent)
  * ```
  */
 export function isPythonValue(value: unknown): value is PythonValue {
@@ -223,7 +221,7 @@ function looseTypeName(value: unknown): string {
  * @param active - Containers currently on the recursion stack; a revisit
  *   renders as CPython's `[...]` / `{...}` marker.
  * @returns The CPython `repr()` rendering of `value`.
- * @throws TypeError - When `value` is outside the {@link PythonValue}
+ * @throws {@link TypeError} - When `value` is outside the {@link PythonValue}
  *   domain (`undefined`, functions, symbols, class instances are all
  *   rejected).
  */

@@ -1,9 +1,7 @@
 /**
- * Python `str.strip()` semantics (rulebook R11.3 enabling dependency).
- * Part of the `pythonCompat` module (rulebook §11): ported once, first;
- * no other module re-derives these semantics.
+ * Python `str.strip()` semantics, implemented once here.
  *
- * The trap this closes: the CPython whitespace table is NOT the JS
+ * The trap this closes: the CPython whitespace table is not the JS
  * `String.prototype.trim()` table — Python strips the U+001C..U+001F
  * file/group/record/unit separators (JS keeps them) and keeps U+FEFF
  * (JS trims it). Membership comes from the pinned, CPython-generated

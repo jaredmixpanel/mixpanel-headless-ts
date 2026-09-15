@@ -1,11 +1,13 @@
 /**
  * Dashboard family + blueprint/RCA/report-link params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import {
@@ -105,8 +107,17 @@ export interface DashboardInit {
 /**
  * A Mixpanel dashboard as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Dashboard` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const dashboard = Dashboard.fromDict({
+ *   id: 42,
+ *   title: "Weekly KPIs",
+ *   description: "Weekly overview",
+ * });
+ * dashboard.id; // 42
+ * ```
+ * @see mixpanel_headless.types.Dashboard
  */
 export class Dashboard extends EntityModel<DashboardInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -244,7 +255,7 @@ export class Dashboard extends EntityModel<DashboardInit> {
    * Construct a validated Dashboard (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DashboardInit) {
@@ -257,7 +268,7 @@ export class Dashboard extends EntityModel<DashboardInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): Dashboard {
     return new Dashboard(prepareInit(Dashboard, raw));
@@ -269,17 +280,25 @@ export class Dashboard extends EntityModel<DashboardInit> {
  * defaults; `undefined` counts as absent.
  */
 export interface DashboardRowContentInit {
-  /** Type of content: ``"text"`` for text cards, ``"report"`` for reports. */
+  /** Type of content: `"text"` for text cards, `"report"` for reports. */
   readonly content_type: "text" | "report";
-  /** Content parameters. Shape depends on ``content_type``. */
+  /** Content parameters. Shape depends on `content_type`. */
   readonly content_params: Readonly<Record<string, unknown>>;
 }
 
 /**
  * A single content item within a dashboard row.
  *
- * Mirror of Python `mixpanel_headless.types.DashboardRowContent` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const dashboardRowContent = DashboardRowContent.fromDict({
+ *   content_type: "text",
+ *   content_params: {},
+ * });
+ * dashboardRowContent.content_type; // "text"
+ * ```
+ * @see mixpanel_headless.types.DashboardRowContent
  */
 export class DashboardRowContent extends EntityModel<DashboardRowContentInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -294,16 +313,16 @@ export class DashboardRowContent extends EntityModel<DashboardRowContentInit> {
     { name: "content_params", required: true },
   ];
 
-  /** Type of content: ``"text"`` for text cards, ``"report"`` for reports. */
+  /** Type of content: `"text"` for text cards, `"report"` for reports. */
   declare readonly content_type: "text" | "report";
-  /** Content parameters. Shape depends on ``content_type``. */
+  /** Content parameters. Shape depends on `content_type`. */
   declare readonly content_params: Readonly<Record<string, unknown>>;
 
   /**
    * Construct a validated DashboardRowContent (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DashboardRowContentInit) {
@@ -316,7 +335,7 @@ export class DashboardRowContent extends EntityModel<DashboardRowContentInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): DashboardRowContent {
     return new DashboardRowContent(prepareInit(DashboardRowContent, raw));
@@ -337,8 +356,15 @@ export interface DashboardRowInit {
 /**
  * A row of content items for a dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.DashboardRow` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const dashboardRow = DashboardRow.fromDict({
+ *   contents: [{ content_type: "text", content_params: {} }],
+ * });
+ * dashboardRow.contents; // [{ content_type: "text", … }]
+ * ```
+ * @see mixpanel_headless.types.DashboardRow
  */
 export class DashboardRow extends EntityModel<DashboardRowInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -364,7 +390,7 @@ export class DashboardRow extends EntityModel<DashboardRowInit> {
    * Construct a validated DashboardRow (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DashboardRowInit) {
@@ -377,7 +403,7 @@ export class DashboardRow extends EntityModel<DashboardRowInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): DashboardRow {
     return new DashboardRow(prepareInit(DashboardRow, raw));
@@ -415,8 +441,16 @@ export interface CreateDashboardParamsInit {
 /**
  * Parameters for creating a new dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.CreateDashboardParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateDashboardParams({
+ *   title: "Weekly KPIs",
+ *   description: "Weekly overview",
+ * });
+ * params.title; // "Weekly KPIs"
+ * ```
+ * @see mixpanel_headless.types.CreateDashboardParams
  */
 export class CreateDashboardParams extends EntityModel<CreateDashboardParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -466,7 +500,7 @@ export class CreateDashboardParams extends EntityModel<CreateDashboardParamsInit
    * Construct a validated CreateDashboardParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateDashboardParamsInit) {
@@ -479,7 +513,7 @@ export class CreateDashboardParams extends EntityModel<CreateDashboardParamsInit
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateDashboardParams {
     return new CreateDashboardParams(prepareInit(CreateDashboardParams, raw));
@@ -514,8 +548,13 @@ export interface UpdateDashboardParamsInit {
 /**
  * Parameters for updating an existing dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateDashboardParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateDashboardParams({ title: "Weekly KPIs" });
+ * params.title; // "Weekly KPIs"
+ * ```
+ * @see mixpanel_headless.types.UpdateDashboardParams
  */
 export class UpdateDashboardParams extends EntityModel<UpdateDashboardParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -560,7 +599,7 @@ export class UpdateDashboardParams extends EntityModel<UpdateDashboardParamsInit
    * Construct a validated UpdateDashboardParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateDashboardParamsInit) {
@@ -573,7 +612,7 @@ export class UpdateDashboardParams extends EntityModel<UpdateDashboardParamsInit
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateDashboardParams {
     return new UpdateDashboardParams(prepareInit(UpdateDashboardParams, raw));
@@ -598,8 +637,17 @@ export interface BlueprintTemplateInit {
 /**
  * A dashboard blueprint template.
  *
- * Mirror of Python `mixpanel_headless.types.BlueprintTemplate` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const blueprintTemplate = BlueprintTemplate.fromDict({
+ *   title_key: "onboarding.title",
+ *   description_key: "onboarding.description",
+ *   alternative_description_key: "example",
+ * });
+ * blueprintTemplate.title_key; // "onboarding.title"
+ * ```
+ * @see mixpanel_headless.types.BlueprintTemplate
  */
 export class BlueprintTemplate extends EntityModel<BlueprintTemplateInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -629,7 +677,7 @@ export class BlueprintTemplate extends EntityModel<BlueprintTemplateInit> {
    * Construct a validated BlueprintTemplate (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BlueprintTemplateInit) {
@@ -642,7 +690,7 @@ export class BlueprintTemplate extends EntityModel<BlueprintTemplateInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BlueprintTemplate {
     return new BlueprintTemplate(prepareInit(BlueprintTemplate, raw));
@@ -661,8 +709,15 @@ export interface BlueprintConfigInit {
 /**
  * Configuration for a dashboard blueprint.
  *
- * Mirror of Python `mixpanel_headless.types.BlueprintConfig` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const blueprintConfig = BlueprintConfig.fromDict({
+ *   variables: { signup_event: "Signup" },
+ * });
+ * blueprintConfig.variables; // { signup_event: "Signup" }
+ * ```
+ * @see mixpanel_headless.types.BlueprintConfig
  */
 export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -683,7 +738,7 @@ export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
    * Construct a validated BlueprintConfig (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BlueprintConfigInit) {
@@ -696,7 +751,7 @@ export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BlueprintConfig {
     return new BlueprintConfig(prepareInit(BlueprintConfig, raw));
@@ -708,7 +763,7 @@ export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
  * defaults; `undefined` counts as absent.
  */
 export interface BlueprintCardInit {
-  /** Card type (serialized as ``"type"``). */
+  /** Card type (serialized as `"type"`). */
   readonly card_type: string;
   /** Text card ID, if applicable. */
   readonly text_card_id?: number | null | undefined;
@@ -725,8 +780,16 @@ export interface BlueprintCardInit {
 /**
  * A card in a blueprint dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.BlueprintCard` (types.py;
- * model_config: extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const blueprintCard = BlueprintCard.fromDict({
+ *   card_type: "report",
+ *   markdown: "# Notes",
+ * });
+ * blueprintCard.card_type; // "report"
+ * ```
+ * @see mixpanel_headless.types.BlueprintCard
  */
 export class BlueprintCard extends EntityModel<BlueprintCardInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -751,7 +814,7 @@ export class BlueprintCard extends EntityModel<BlueprintCardInit> {
     { name: "params", nullable: true },
   ];
 
-  /** Card type (serialized as ``"type"``). */
+  /** Card type (serialized as `"type"`). */
   declare readonly card_type: string;
   /** Text card ID, if applicable. */
   declare readonly text_card_id: number | null;
@@ -768,7 +831,7 @@ export class BlueprintCard extends EntityModel<BlueprintCardInit> {
    * Construct a validated BlueprintCard (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BlueprintCardInit) {
@@ -781,7 +844,7 @@ export class BlueprintCard extends EntityModel<BlueprintCardInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BlueprintCard {
     return new BlueprintCard(prepareInit(BlueprintCard, raw));
@@ -804,8 +867,16 @@ export interface BlueprintFinishParamsInit {
 /**
  * Parameters for finalizing a blueprint dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.BlueprintFinishParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new BlueprintFinishParams({
+ *   dashboard_id: 9,
+ *   cards: [{ card_type: "report" }],
+ * });
+ * params.dashboard_id; // 9
+ * ```
+ * @see mixpanel_headless.types.BlueprintFinishParams
  */
 export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -834,7 +905,7 @@ export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit
    * Construct a validated BlueprintFinishParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BlueprintFinishParamsInit) {
@@ -847,7 +918,7 @@ export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BlueprintFinishParams {
     return new BlueprintFinishParams(prepareInit(BlueprintFinishParams, raw));
@@ -859,7 +930,7 @@ export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit
  * defaults; `undefined` counts as absent.
  */
 export interface RcaSourceDataInit {
-  /** Source type (serialized as ``"type"``). */
+  /** Source type (serialized as `"type"`). */
   readonly source_type: string;
   /** Date string. */
   readonly date?: string | null | undefined;
@@ -870,8 +941,16 @@ export interface RcaSourceDataInit {
 /**
  * Source data for RCA dashboard creation.
  *
- * Mirror of Python `mixpanel_headless.types.RcaSourceData` (types.py;
- * model_config: extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const rcaSourceData = RcaSourceData.fromDict({
+ *   source_type: "bookmark",
+ *   metric_source: true,
+ * });
+ * rcaSourceData.source_type; // "bookmark"
+ * ```
+ * @see mixpanel_headless.types.RcaSourceData
  */
 export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -893,7 +972,7 @@ export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
     { name: "metric_source", kind: "bool", nullable: true },
   ];
 
-  /** Source type (serialized as ``"type"``). */
+  /** Source type (serialized as `"type"`). */
   declare readonly source_type: string;
   /** Date string. */
   declare readonly date: string | null;
@@ -904,7 +983,7 @@ export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
    * Construct a validated RcaSourceData (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: RcaSourceDataInit) {
@@ -917,7 +996,7 @@ export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): RcaSourceData {
     return new RcaSourceData(prepareInit(RcaSourceData, raw));
@@ -938,8 +1017,16 @@ export interface CreateRcaDashboardParamsInit {
 /**
  * Parameters for creating an RCA dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.CreateRcaDashboardParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateRcaDashboardParams({
+ *   rca_source_id: 7,
+ *   rca_source_data: { source_type: "bookmark" },
+ * });
+ * params.rca_source_id; // 7
+ * ```
+ * @see mixpanel_headless.types.CreateRcaDashboardParams
  */
 export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -963,7 +1050,7 @@ export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardPara
    * Construct a validated CreateRcaDashboardParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateRcaDashboardParamsInit) {
@@ -976,7 +1063,7 @@ export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardPara
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateRcaDashboardParams {
     return new CreateRcaDashboardParams(
@@ -990,15 +1077,20 @@ export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardPara
  * defaults; `undefined` counts as absent.
  */
 export interface UpdateReportLinkParamsInit {
-  /** Link type (serialized as ``"type"``). */
+  /** Link type (serialized as `"type"`). */
   readonly link_type: string;
 }
 
 /**
  * Parameters for updating a report link on a dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateReportLinkParams` (types.py;
- * model_config: extra='allow', populate_by_name=True).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const params = new UpdateReportLinkParams({ link_type: "report" });
+ * params.link_type; // "report"
+ * ```
+ * @see mixpanel_headless.types.UpdateReportLinkParams
  */
 export class UpdateReportLinkParams extends EntityModel<UpdateReportLinkParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1018,14 +1110,14 @@ export class UpdateReportLinkParams extends EntityModel<UpdateReportLinkParamsIn
     },
   ];
 
-  /** Link type (serialized as ``"type"``). */
+  /** Link type (serialized as `"type"`). */
   declare readonly link_type: string;
 
   /**
    * Construct a validated UpdateReportLinkParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateReportLinkParamsInit) {
@@ -1038,7 +1130,7 @@ export class UpdateReportLinkParams extends EntityModel<UpdateReportLinkParamsIn
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateReportLinkParams {
     return new UpdateReportLinkParams(prepareInit(UpdateReportLinkParams, raw));
@@ -1057,8 +1149,13 @@ export interface UpdateTextCardParamsInit {
 /**
  * Parameters for updating a text card on a dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateTextCardParams` (types.py;
- * model_config: extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const params = new UpdateTextCardParams({ markdown: "# Notes" });
+ * params.markdown; // "# Notes"
+ * ```
+ * @see mixpanel_headless.types.UpdateTextCardParams
  */
 export class UpdateTextCardParams extends EntityModel<UpdateTextCardParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1079,7 +1176,7 @@ export class UpdateTextCardParams extends EntityModel<UpdateTextCardParamsInit> 
    * Construct a validated UpdateTextCardParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateTextCardParamsInit) {
@@ -1092,7 +1189,7 @@ export class UpdateTextCardParams extends EntityModel<UpdateTextCardParamsInit> 
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateTextCardParams {
     return new UpdateTextCardParams(prepareInit(UpdateTextCardParams, raw));

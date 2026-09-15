@@ -1,11 +1,13 @@
 /**
  * Schema registry family: entries, enforcement, audits, anomalies, deletion requests.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import {
@@ -32,8 +34,18 @@ export interface SchemaEntryInit {
 /**
  * A schema registry entry for an event, custom event, or profile.
  *
- * Mirror of Python `mixpanel_headless.types.SchemaEntry` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new SchemaEntry({
+ *   entity_type: "event",
+ *   name: "Signup",
+ *   schema_definition: { type: "object" },
+ *   version: "example",
+ * });
+ * params.entity_type; // "event"
+ * ```
+ * @see mixpanel_headless.types.SchemaEntry
  */
 export class SchemaEntry extends EntityModel<SchemaEntryInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -74,7 +86,7 @@ export class SchemaEntry extends EntityModel<SchemaEntryInit> {
    * Construct a validated SchemaEntry (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: SchemaEntryInit) {
@@ -87,7 +99,7 @@ export class SchemaEntry extends EntityModel<SchemaEntryInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): SchemaEntry {
     return new SchemaEntry(prepareInit(SchemaEntry, raw));
@@ -112,8 +124,16 @@ export interface BulkCreateSchemasParamsInit {
 /**
  * Parameters for bulk-creating schemas in the registry.
  *
- * Mirror of Python `mixpanel_headless.types.BulkCreateSchemasParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new BulkCreateSchemasParams({
+ *   entries: [{ entity_type: "event", name: "Signup", schema_definition: { type: "object" } }],
+ *   truncate: true,
+ * });
+ * params.entries; // [{ entity_type: "event", … }]
+ * ```
+ * @see mixpanel_headless.types.BulkCreateSchemasParams
  */
 export class BulkCreateSchemasParams extends EntityModel<BulkCreateSchemasParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -151,7 +171,7 @@ export class BulkCreateSchemasParams extends EntityModel<BulkCreateSchemasParams
    * Construct a validated BulkCreateSchemasParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkCreateSchemasParamsInit) {
@@ -164,7 +184,7 @@ export class BulkCreateSchemasParams extends EntityModel<BulkCreateSchemasParams
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkCreateSchemasParams {
     return new BulkCreateSchemasParams(
@@ -187,8 +207,16 @@ export interface BulkCreateSchemasResponseInit {
 /**
  * Response from a bulk schema creation operation.
  *
- * Mirror of Python `mixpanel_headless.types.BulkCreateSchemasResponse` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const bulkCreateSchemasResponse = BulkCreateSchemasResponse.fromDict({
+ *   added: 2,
+ *   deleted: 0,
+ * });
+ * bulkCreateSchemasResponse.added; // 2
+ * ```
+ * @see mixpanel_headless.types.BulkCreateSchemasResponse
  */
 export class BulkCreateSchemasResponse extends EntityModel<BulkCreateSchemasResponseInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -213,7 +241,7 @@ export class BulkCreateSchemasResponse extends EntityModel<BulkCreateSchemasResp
    * Construct a validated BulkCreateSchemasResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkCreateSchemasResponseInit) {
@@ -226,7 +254,7 @@ export class BulkCreateSchemasResponse extends EntityModel<BulkCreateSchemasResp
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkCreateSchemasResponse {
     return new BulkCreateSchemasResponse(
@@ -253,8 +281,17 @@ export interface BulkPatchResultInit {
 /**
  * Per-entry result from a bulk schema update operation.
  *
- * Mirror of Python `mixpanel_headless.types.BulkPatchResult` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const bulkPatchResult = BulkPatchResult.fromDict({
+ *   entity_type: "event",
+ *   name: "Signup",
+ *   status: "ok",
+ * });
+ * bulkPatchResult.entity_type; // "event"
+ * ```
+ * @see mixpanel_headless.types.BulkPatchResult
  */
 export class BulkPatchResult extends EntityModel<BulkPatchResultInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -290,7 +327,7 @@ export class BulkPatchResult extends EntityModel<BulkPatchResultInit> {
    * Construct a validated BulkPatchResult (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkPatchResultInit) {
@@ -303,7 +340,7 @@ export class BulkPatchResult extends EntityModel<BulkPatchResultInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkPatchResult {
     return new BulkPatchResult(prepareInit(BulkPatchResult, raw));
@@ -322,8 +359,15 @@ export interface DeleteSchemasResponseInit {
 /**
  * Response from a schema deletion operation.
  *
- * Mirror of Python `mixpanel_headless.types.DeleteSchemasResponse` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const deleteSchemasResponse = DeleteSchemasResponse.fromDict({
+ *   delete_count: 1,
+ * });
+ * deleteSchemasResponse.delete_count; // 1
+ * ```
+ * @see mixpanel_headless.types.DeleteSchemasResponse
  */
 export class DeleteSchemasResponse extends EntityModel<DeleteSchemasResponseInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -350,7 +394,7 @@ export class DeleteSchemasResponse extends EntityModel<DeleteSchemasResponseInit
    * Construct a validated DeleteSchemasResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DeleteSchemasResponseInit) {
@@ -363,7 +407,7 @@ export class DeleteSchemasResponse extends EntityModel<DeleteSchemasResponseInit
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): DeleteSchemasResponse {
     return new DeleteSchemasResponse(prepareInit(DeleteSchemasResponse, raw));
@@ -409,8 +453,13 @@ export interface SchemaEnforcementConfigInit {
 /**
  * Schema enforcement configuration for a project.
  *
- * Mirror of Python `mixpanel_headless.types.SchemaEnforcementConfig` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const schemaEnforcementConfig = SchemaEnforcementConfig.fromDict({ id: 42 });
+ * schemaEnforcementConfig.id; // 42
+ * ```
+ * @see mixpanel_headless.types.SchemaEnforcementConfig
  */
 export class SchemaEnforcementConfig extends EntityModel<SchemaEnforcementConfigInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -519,7 +568,7 @@ export class SchemaEnforcementConfig extends EntityModel<SchemaEnforcementConfig
    * Construct a validated SchemaEnforcementConfig (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: SchemaEnforcementConfigInit) {
@@ -532,7 +581,7 @@ export class SchemaEnforcementConfig extends EntityModel<SchemaEnforcementConfig
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): SchemaEnforcementConfig {
     return new SchemaEnforcementConfig(
@@ -553,8 +602,13 @@ export interface InitSchemaEnforcementParamsInit {
 /**
  * Parameters for initializing schema enforcement.
  *
- * Mirror of Python `mixpanel_headless.types.InitSchemaEnforcementParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new InitSchemaEnforcementParams({ rule_event: "Signup" });
+ * params.rule_event; // "Signup"
+ * ```
+ * @see mixpanel_headless.types.InitSchemaEnforcementParams
  */
 export class InitSchemaEnforcementParams extends EntityModel<InitSchemaEnforcementParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -582,7 +636,7 @@ export class InitSchemaEnforcementParams extends EntityModel<InitSchemaEnforceme
    * Construct a validated InitSchemaEnforcementParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: InitSchemaEnforcementParamsInit) {
@@ -595,7 +649,7 @@ export class InitSchemaEnforcementParams extends EntityModel<InitSchemaEnforceme
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): InitSchemaEnforcementParams {
     return new InitSchemaEnforcementParams(
@@ -623,8 +677,13 @@ export interface UpdateSchemaEnforcementParamsInit {
 /**
  * Parameters for partially updating schema enforcement.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateSchemaEnforcementParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new UpdateSchemaEnforcementParams({ rule_event: "Signup" });
+ * params.rule_event; // "Signup"
+ * ```
+ * @see mixpanel_headless.types.UpdateSchemaEnforcementParams
  */
 export class UpdateSchemaEnforcementParams extends EntityModel<UpdateSchemaEnforcementParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -668,7 +727,7 @@ export class UpdateSchemaEnforcementParams extends EntityModel<UpdateSchemaEnfor
    * Construct a validated UpdateSchemaEnforcementParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateSchemaEnforcementParamsInit) {
@@ -681,7 +740,7 @@ export class UpdateSchemaEnforcementParams extends EntityModel<UpdateSchemaEnfor
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateSchemaEnforcementParams {
     return new UpdateSchemaEnforcementParams(
@@ -712,8 +771,19 @@ export interface ReplaceSchemaEnforcementParamsInit {
 /**
  * Parameters for fully replacing schema enforcement configuration.
  *
- * Mirror of Python `mixpanel_headless.types.ReplaceSchemaEnforcementParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new ReplaceSchemaEnforcementParams({
+ *   common_properties: [],
+ *   user_properties: [],
+ *   events: [],
+ *   rule_event: "Signup",
+ *   notification_emails: ["ana@example.com"],
+ * });
+ * params.common_properties; // []
+ * ```
+ * @see mixpanel_headless.types.ReplaceSchemaEnforcementParams
  */
 export class ReplaceSchemaEnforcementParams extends EntityModel<ReplaceSchemaEnforcementParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -781,7 +851,7 @@ export class ReplaceSchemaEnforcementParams extends EntityModel<ReplaceSchemaEnf
    * Construct a validated ReplaceSchemaEnforcementParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ReplaceSchemaEnforcementParamsInit) {
@@ -794,7 +864,7 @@ export class ReplaceSchemaEnforcementParams extends EntityModel<ReplaceSchemaEnf
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ReplaceSchemaEnforcementParams {
     return new ReplaceSchemaEnforcementParams(
@@ -829,8 +899,18 @@ export interface AuditViolationInit {
 /**
  * A single violation found during a data audit.
  *
- * Mirror of Python `mixpanel_headless.types.AuditViolation` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const auditViolation = AuditViolation.fromDict({
+ *   violation: "unknown_event",
+ *   name: "Signup",
+ *   count: 3,
+ *   platform: "example",
+ * });
+ * auditViolation.violation; // "unknown_event"
+ * ```
+ * @see mixpanel_headless.types.AuditViolation
  */
 export class AuditViolation extends EntityModel<AuditViolationInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -878,7 +958,7 @@ export class AuditViolation extends EntityModel<AuditViolationInit> {
    * Construct a validated AuditViolation (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AuditViolationInit) {
@@ -891,7 +971,7 @@ export class AuditViolation extends EntityModel<AuditViolationInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AuditViolation {
     return new AuditViolation(prepareInit(AuditViolation, raw));
@@ -914,8 +994,16 @@ export interface AuditResponseInit {
 /**
  * Response from a data audit operation.
  *
- * Mirror of Python `mixpanel_headless.types.AuditResponse` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const auditResponse = AuditResponse.fromDict({
+ *   violations: [{ violation: "unknown_event", name: "Signup", count: 3 }],
+ *   computed_at: "2026-01-15T12:00:00Z",
+ * });
+ * auditResponse.violations; // [{ violation: "unknown_event", … }]
+ * ```
+ * @see mixpanel_headless.types.AuditResponse
  */
 export class AuditResponse extends EntityModel<AuditResponseInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -944,7 +1032,7 @@ export class AuditResponse extends EntityModel<AuditResponseInit> {
    * Construct a validated AuditResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AuditResponseInit) {
@@ -957,7 +1045,7 @@ export class AuditResponse extends EntityModel<AuditResponseInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AuditResponse {
     return new AuditResponse(prepareInit(AuditResponse, raw));
@@ -1010,8 +1098,22 @@ export interface DataVolumeAnomalyInit {
 /**
  * A detected data volume anomaly.
  *
- * Mirror of Python `mixpanel_headless.types.DataVolumeAnomaly` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const dataVolumeAnomaly = DataVolumeAnomaly.fromDict({
+ *   id: 42,
+ *   actual_count: 900,
+ *   predicted_upper: 500,
+ *   predicted_lower: 100,
+ *   percent_variance: "42.0",
+ *   status: "acknowledged",
+ *   project: 123456,
+ *   anomaly_class: "spike",
+ * });
+ * dataVolumeAnomaly.id; // 42
+ * ```
+ * @see mixpanel_headless.types.DataVolumeAnomaly
  */
 export class DataVolumeAnomaly extends EntityModel<DataVolumeAnomalyInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1148,7 +1250,7 @@ export class DataVolumeAnomaly extends EntityModel<DataVolumeAnomalyInit> {
    * Construct a validated DataVolumeAnomaly (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DataVolumeAnomalyInit) {
@@ -1161,7 +1263,7 @@ export class DataVolumeAnomaly extends EntityModel<DataVolumeAnomalyInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): DataVolumeAnomaly {
     return new DataVolumeAnomaly(prepareInit(DataVolumeAnomaly, raw));
@@ -1184,8 +1286,17 @@ export interface UpdateAnomalyParamsInit {
 /**
  * Parameters for updating a single anomaly status.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateAnomalyParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new UpdateAnomalyParams({
+ *   id: 42,
+ *   status: "acknowledged",
+ *   anomaly_class: "spike",
+ * });
+ * params.id; // 42
+ * ```
+ * @see mixpanel_headless.types.UpdateAnomalyParams
  */
 export class UpdateAnomalyParams extends EntityModel<UpdateAnomalyParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1218,7 +1329,7 @@ export class UpdateAnomalyParams extends EntityModel<UpdateAnomalyParamsInit> {
    * Construct a validated UpdateAnomalyParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateAnomalyParamsInit) {
@@ -1231,7 +1342,7 @@ export class UpdateAnomalyParams extends EntityModel<UpdateAnomalyParamsInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateAnomalyParams {
     return new UpdateAnomalyParams(prepareInit(UpdateAnomalyParams, raw));
@@ -1252,8 +1363,13 @@ export interface BulkAnomalyEntryInit {
 /**
  * A single entry in a bulk anomaly update.
  *
- * Mirror of Python `mixpanel_headless.types.BulkAnomalyEntry` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new BulkAnomalyEntry({ id: 42, anomaly_class: "spike" });
+ * params.id; // 42
+ * ```
+ * @see mixpanel_headless.types.BulkAnomalyEntry
  */
 export class BulkAnomalyEntry extends EntityModel<BulkAnomalyEntryInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1283,7 +1399,7 @@ export class BulkAnomalyEntry extends EntityModel<BulkAnomalyEntryInit> {
    * Construct a validated BulkAnomalyEntry (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkAnomalyEntryInit) {
@@ -1296,7 +1412,7 @@ export class BulkAnomalyEntry extends EntityModel<BulkAnomalyEntryInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkAnomalyEntry {
     return new BulkAnomalyEntry(prepareInit(BulkAnomalyEntry, raw));
@@ -1319,8 +1435,16 @@ export interface BulkUpdateAnomalyParamsInit {
 /**
  * Parameters for bulk-updating anomaly statuses.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateAnomalyParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new BulkUpdateAnomalyParams({
+ *   anomalies: [{ id: 42, anomaly_class: "spike" }],
+ *   status: "acknowledged",
+ * });
+ * params.anomalies; // [{ id: 42, … }]
+ * ```
+ * @see mixpanel_headless.types.BulkUpdateAnomalyParams
  */
 export class BulkUpdateAnomalyParams extends EntityModel<BulkUpdateAnomalyParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1349,7 +1473,7 @@ export class BulkUpdateAnomalyParams extends EntityModel<BulkUpdateAnomalyParams
    * Construct a validated BulkUpdateAnomalyParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdateAnomalyParamsInit) {
@@ -1362,7 +1486,7 @@ export class BulkUpdateAnomalyParams extends EntityModel<BulkUpdateAnomalyParams
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkUpdateAnomalyParams {
     return new BulkUpdateAnomalyParams(
@@ -1401,8 +1525,22 @@ export interface EventDeletionRequestInit {
 /**
  * An event deletion request with lifecycle status.
  *
- * Mirror of Python `mixpanel_headless.types.EventDeletionRequest` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const eventDeletionRequest = EventDeletionRequest.fromDict({
+ *   id: 42,
+ *   event_name: "Signup",
+ *   from_date: "2026-01-01",
+ *   to_date: "2026-01-31",
+ *   status: "pending",
+ *   deleted_events_count: 120,
+ *   created: "2026-01-15T12:00:00Z",
+ *   requesting_user: { id: 1, name: "Ana" },
+ * });
+ * eventDeletionRequest.id; // 42
+ * ```
+ * @see mixpanel_headless.types.EventDeletionRequest
  */
 export class EventDeletionRequest extends EntityModel<EventDeletionRequestInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1496,7 +1634,7 @@ export class EventDeletionRequest extends EntityModel<EventDeletionRequestInit> 
    * Construct a validated EventDeletionRequest (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: EventDeletionRequestInit) {
@@ -1509,7 +1647,7 @@ export class EventDeletionRequest extends EntityModel<EventDeletionRequestInit> 
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): EventDeletionRequest {
     return new EventDeletionRequest(prepareInit(EventDeletionRequest, raw));
@@ -1534,8 +1672,17 @@ export interface CreateDeletionRequestParamsInit {
 /**
  * Parameters for creating an event deletion request.
  *
- * Mirror of Python `mixpanel_headless.types.CreateDeletionRequestParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new CreateDeletionRequestParams({
+ *   from_date: "2026-01-01",
+ *   to_date: "2026-01-31",
+ *   event_name: "Signup",
+ * });
+ * params.from_date; // "2026-01-01"
+ * ```
+ * @see mixpanel_headless.types.CreateDeletionRequestParams
  */
 export class CreateDeletionRequestParams extends EntityModel<CreateDeletionRequestParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1584,7 +1731,7 @@ export class CreateDeletionRequestParams extends EntityModel<CreateDeletionReque
    * Construct a validated CreateDeletionRequestParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateDeletionRequestParamsInit) {
@@ -1597,7 +1744,7 @@ export class CreateDeletionRequestParams extends EntityModel<CreateDeletionReque
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateDeletionRequestParams {
     return new CreateDeletionRequestParams(
@@ -1624,8 +1771,17 @@ export interface PreviewDeletionFiltersParamsInit {
 /**
  * Parameters for previewing event deletion filters.
  *
- * Mirror of Python `mixpanel_headless.types.PreviewDeletionFiltersParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new PreviewDeletionFiltersParams({
+ *   event_name: "Signup",
+ *   from_date: "2026-01-01",
+ *   to_date: "2026-01-31",
+ * });
+ * params.event_name; // "Signup"
+ * ```
+ * @see mixpanel_headless.types.PreviewDeletionFiltersParams
  */
 export class PreviewDeletionFiltersParams extends EntityModel<PreviewDeletionFiltersParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1674,7 +1830,7 @@ export class PreviewDeletionFiltersParams extends EntityModel<PreviewDeletionFil
    * Construct a validated PreviewDeletionFiltersParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: PreviewDeletionFiltersParamsInit) {
@@ -1687,7 +1843,7 @@ export class PreviewDeletionFiltersParams extends EntityModel<PreviewDeletionFil
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): PreviewDeletionFiltersParams {
     return new PreviewDeletionFiltersParams(

@@ -1,22 +1,17 @@
 /**
- * Per-replay session-replay result dataclasses — TS ports of
- * `ReplaySummary`, `SignedReplay`, `ReplayEvent` and `Replay` from
- * `mixpanel_headless/types.py`, plus the `events_df` row projection
- * `rrwebEventRow` they and `ReplayBundle` share.
+ * Per-replay session-replay result dataclasses — `ReplaySummary`,
+ * `SignedReplay`, `ReplayEvent` and `Replay` — plus the `events_df` row
+ * projection `rrwebEventRow` they and `ReplayBundle` share.
  *
- * Constructor guards fire exactly as Python's `__post_init__` does, IN
- * THE SAME CHECK ORDER, one comment per registry code — their `types.*`
- * guard vectors replay in the conformance corpus.
+ * Constructor guards fire exactly as Python's `__post_init__` does, in
+ * the same check order, one comment per registry code; their guard
+ * vectors replay in the conformance corpus. `UserAction` lives in
+ * `replays/user-action.ts` (the family's shared leaf) and `ReplayBundle`
+ * in `replays.ts` (the top of the family). The codec-visible cache slots
+ * stay `null`: the pandas frames they memoized are row-array projections
+ * here, and the recorded field-walk payloads still expect `null`.
  *
- * `UserAction` lives in `replays/user-action.ts` (the family's shared
- * leaf) and `ReplayBundle` in `./replays.ts` (the top of the family,
- * which imports the aggregations). `Replay.summaryMarkdown` composes
- * the rrweb analyzer's `renderMarkdown`, mirroring Python's deferred
- * function-local import at the same call site.
- *
- * The codec-visible cache slots stay `null`: the pandas frames they
- * memoized are row-array projections here, and the recorded field-walk
- * payloads still expect `null`.
+ * @see mixpanel_headless.types.Replay
  */
 
 import { pythonFloatStr } from "../../compat/index.js";
@@ -46,12 +41,18 @@ const RRWEB_TYPE_META = 4;
 const RRWEB_SOURCE_MOUSE_INTERACTION = 2;
 
 /**
- * Project one raw rrweb event into the `events_df` row shape — mirror
- * of `types._rrweb_event_row` (missing attributes are `null`; `raw`
- * always points at the original event).
+ * Project one raw rrweb event into the `events_df` row shape: missing
+ * attributes are `null` and `raw` always points at the original event.
  *
  * @param event - Raw rrweb event dict (`type`, `data`, `timestamp`).
  * @returns The seven-column row.
+ * @example
+ * ```ts
+ * rrwebEventRow({ type: 4, data: { href: "https://app.example.com/" }, timestamp: 1700000000123 });
+ * // { t: 1700000000123, type: 4, source: null, mouse_type: null,
+ * //   target_node_id: null, url: "https://app.example.com/", raw: event }
+ * ```
+ * @see mixpanel_headless.types._rrweb_event_row
  * @internal
  */
 export function rrwebEventRow(event: Readonly<Record<string, unknown>>): Row {
@@ -106,7 +107,22 @@ export interface ReplaySummaryFields {
 }
 
 /**
- * A discovered replay summary — TS port of `types.ReplaySummary`.
+ * A discovered replay summary, as returned by replay listing.
+ *
+ * @example
+ * ```ts
+ * const summary = new ReplaySummary({
+ *   replay_id: "r1",
+ *   distinct_id: "u1",
+ *   project_id: 123,
+ *   start_time: 1700000000000,
+ *   retention_days: 30,
+ * });
+ * summary.toRows();
+ * // [{ replay_id: "r1", distinct_id: "u1", project_id: 123,
+ * //    start_time: 1700000000000, retention_days: 30 }]
+ * ```
+ * @see mixpanel_headless.types.ReplaySummary
  */
 export class ReplaySummary {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -132,7 +148,7 @@ export class ReplaySummary {
    * `__post_init__`, in source order).
    *
    * @param fields - Declared fields.
-   * @throws ParamValidationError - `RS1_EMPTY_REPLAY_ID`,
+   * @throws {@link ParamValidationError} - `RS1_EMPTY_REPLAY_ID`,
    *   `RS2_PROJECT_ID_NOT_POSITIVE`, `RS3_START_TIME_NOT_POSITIVE`, or
    *   `RS4_INVALID_RETENTION_DAYS`.
    */
@@ -173,7 +189,7 @@ export class ReplaySummary {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: a single row of the
+   * Build the pre-pandas rows of Python's `.df`: a single row of the
    * five declared fields.
    *
    * @returns The one-row list.
@@ -226,8 +242,8 @@ export class ReplaySummary {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance (guards fire).
-   * @throws ResponseValidationError - On unknown keys or wrong types.
-   * @throws ParamValidationError - When a constructor guard fires.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
+   * @throws {@link ParamValidationError} - When a constructor guard fires.
    * @internal
    */
   static fromDict(raw: unknown): ReplaySummary {
@@ -280,7 +296,25 @@ export interface SignedReplayFields {
 }
 
 /**
- * A signed replay-CDN access grant — TS port of `types.SignedReplay`.
+ * A signed replay-CDN access grant.
+ *
+ * @remarks
+ * `query_string` is a short-lived bearer credential: `toString()` and
+ * Node's `util.inspect` mask it, and `toJSON()` prefixes a `_warning`
+ * key.
+ * @example
+ * ```ts
+ * const grant = new SignedReplay({
+ *   replay_id: "r1",
+ *   url: "https://cdn.example.com/replays/r1/",
+ *   query_string: "Expires=…&Signature=…",
+ *   env: "prod",
+ *   signed_at: 1700000000,
+ * });
+ * grant.expires_at; // 1700000300
+ * String(grant); // "SignedReplay(replay_id='r1', …, query_string='<redacted 22 chars>', …)"
+ * ```
+ * @see mixpanel_headless.types.SignedReplay
  */
 export class SignedReplay {
   /** Replay identifier. */
@@ -303,7 +337,7 @@ export class SignedReplay {
    * `__post_init__`, in source order).
    *
    * @param fields - Declared fields.
-   * @throws ParamValidationError - `SR1_URL_NO_TRAILING_SLASH`,
+   * @throws {@link ParamValidationError} - `SR1_URL_NO_TRAILING_SLASH`,
    *   `SR2_EMPTY_QUERY_STRING`, `SR3_INVALID_ENV`, or
    *   `SR4_SIGNED_AT_NEGATIVE`.
    */
@@ -346,20 +380,20 @@ export class SignedReplay {
   }
 
   /**
-   * Expiry instant — Python's `expires_at` property
-   * (`signed_at + 300`).
+   * Expiry instant: `signed_at + 300`.
    *
    * @returns Unix seconds.
+   * @see mixpanel_headless.types.SignedReplay.expires_at
    */
   get expires_at(): number {
     return this.signed_at + 300;
   }
 
   /**
-   * Whether the grant has expired — Python's `is_expired` property
-   * (`time.time() >= expires_at`).
+   * Whether the grant has expired (`time.time() >= expires_at`).
    *
-   * @returns True when the wall clock is at/past expiry.
+   * @returns `true` when the wall clock is at or past expiry.
+   * @see mixpanel_headless.types.SignedReplay.is_expired
    */
   get is_expired(): boolean {
     return Date.now() / 1000 >= this.expires_at;
@@ -383,9 +417,9 @@ export class SignedReplay {
   }
 
   /**
-   * Masked debug rendering — port of Python `__repr__`/`__str__`: the
-   * bearer `query_string` NEVER appears; it renders as
-   * `'<redacted N chars>'`. Non-credential fields stay visible.
+   * Render the masked debug representation (Python's `__repr__` /
+   * `__str__`): the bearer `query_string` never appears, only
+   * `'<redacted N chars>'`; non-credential fields stay visible.
    *
    * @returns The masked representation.
    */
@@ -407,8 +441,8 @@ export class SignedReplay {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance (guards fire).
-   * @throws ResponseValidationError - On unknown keys or wrong types.
-   * @throws ParamValidationError - When a constructor guard fires.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
+   * @throws {@link ParamValidationError} - When a constructor guard fires.
    * @internal
    */
   static fromDict(raw: unknown): SignedReplay {
@@ -435,8 +469,8 @@ export class SignedReplay {
 }
 
 // Node `util.inspect` hook for {@link SignedReplay} — same masked
-// rendering as `toString()` (registered via `Symbol.for`, no `node:util`
-// import — R9.1-safe, ignored in browsers). Installed on the prototype
+// rendering as `toString()`. Registered via `Symbol.for` so core needs
+// no `node:util` import (browsers ignore it). Installed on the prototype
 // with a class method's attributes rather than declared in the class
 // body: `isolatedDeclarations` only accepts well-known `Symbol.*`
 // computed names, and the method was never part of the emitted
@@ -466,15 +500,32 @@ export interface ReplayEventFields {
   readonly event_name: string;
   /** Event instant (unix seconds). */
   readonly event_time: number;
-  /** Event properties. Default: `null`. */
+  /**
+   * Event properties.
+   *
+   * @defaultValue `null`
+   */
   readonly properties?: Readonly<Record<string, unknown>> | null;
   /** Codec-visible DataFrame cache slot — always `null` in TS. */
   readonly _df_cache?: null | undefined;
 }
 
 /**
- * A Mixpanel event correlated with a replay — TS port of
- * `types.ReplayEvent`.
+ * A Mixpanel event correlated with a replay.
+ *
+ * @example
+ * ```ts
+ * const event = new ReplayEvent({
+ *   replay_id: "r1",
+ *   event_name: "Purchase",
+ *   event_time: 1700000042,
+ *   properties: { amount: 12.5 },
+ * });
+ * event.toRows();
+ * // [{ replay_id: "r1", event_name: "Purchase", event_time: 1700000042,
+ * //    properties: { amount: 12.5 } }]
+ * ```
+ * @see mixpanel_headless.types.ReplayEvent
  */
 export class ReplayEvent {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -498,7 +549,7 @@ export class ReplayEvent {
    *
    * @param fields - Declared fields; absent `properties` defaults to
    *   `null`.
-   * @throws ParamValidationError - `RE1_EMPTY_REPLAY_ID`,
+   * @throws {@link ParamValidationError} - `RE1_EMPTY_REPLAY_ID`,
    *   `RE2_EMPTY_EVENT_NAME`, or `RE3_EVENT_TIME_NOT_POSITIVE`.
    */
   constructor(fields: ReplayEventFields) {
@@ -530,7 +581,7 @@ export class ReplayEvent {
   }
 
   /**
-   * Pre-pandas rows of the Python `.df` body: a single row of the
+   * Build the pre-pandas rows of Python's `.df`: a single row of the
    * four declared fields.
    *
    * @returns The one-row list.
@@ -577,8 +628,8 @@ export class ReplayEvent {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance (guards fire).
-   * @throws ResponseValidationError - On unknown keys or wrong types.
-   * @throws ParamValidationError - When a constructor guard fires.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
+   * @throws {@link ParamValidationError} - When a constructor guard fires.
    * @internal
    */
   static fromDict(raw: unknown): ReplayEvent {
@@ -618,8 +669,8 @@ export class ReplayEvent {
 }
 
 /**
- * Deep-clone a JSON-shaped value (mirror of Python `copy.deepcopy`
- * for the JSON subset — no `structuredClone` dependency, R9.1-safe).
+ * Deep-clone a JSON-shaped value — Python's `copy.deepcopy` for the JSON
+ * subset, without a `structuredClone` dependency.
  *
  * @param value - A JSON-shaped value.
  * @returns A structurally equal deep copy.
@@ -655,11 +706,23 @@ export interface ReplayFields {
   readonly end_time: number;
   /** CDN retention window in days. */
   readonly retention_days: number;
-  /** Raw rrweb events. Default: `[]`. */
+  /**
+   * Raw rrweb events.
+   *
+   * @defaultValue `[]`
+   */
   readonly rrweb_events?: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  /** Extracted user actions. Default: `[]`. */
+  /**
+   * Extracted user actions.
+   *
+   * @defaultValue `[]`
+   */
   readonly actions?: readonly UserAction[];
-  /** Correlated Mixpanel events. Default: `[]`. */
+  /**
+   * Correlated Mixpanel events.
+   *
+   * @defaultValue `[]`
+   */
   readonly mixpanel_events?: readonly ReplayEvent[];
   /** Codec-visible DataFrame cache slots — always `null` in TS. */
   readonly _df_cache?: null | undefined;
@@ -672,11 +735,25 @@ export interface ReplayFields {
 }
 
 /**
- * A fully fetched session replay — TS port of `types.Replay`.
+ * A fully fetched session replay: rrweb events, the user actions the
+ * analyzer extracted from them, and correlated Mixpanel events.
  *
- * Multi-frame surface: `events_df`/`actions_df`/`mixpanel_df` become
- * `toEventsRows()`/`toActionsRows()`/`toMixpanelRows()`; the main
- * `.df` delegates to the actions frame.
+ * @remarks
+ * Python's `events_df` / `actions_df` / `mixpanel_df` become
+ * `toEventsRows()` / `toActionsRows()` / `toMixpanelRows()`; the main
+ * `toRows()` delegates to the actions frame.
+ * @example
+ * ```ts
+ * const replay = await ws.fetchReplay("r1");
+ * replay.duration_seconds; // 300
+ * replay.toRows();
+ * // [{ t: 1.2, action: "navigate", target_node_id: null, target_desc: null,
+ * //    description: "Navigated to /", url: "https://app.example.com/", metadata: {} },
+ * //  { t: 4.8, action: "click", target_node_id: 42, target_desc: "button#buy",
+ * //    description: "Clicked button#buy", url: "https://app.example.com/", metadata: {} }]
+ * replay.summaryMarkdown(); // "# Replay r1 …" timeline
+ * ```
+ * @see mixpanel_headless.types.Replay
  */
 export class Replay {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -724,7 +801,7 @@ export class Replay {
    *
    * @param fields - Declared fields; Python defaults apply to absent
    *   optionals.
-   * @throws ParamValidationError - `RP1_EMPTY_REPLAY_ID`,
+   * @throws {@link ParamValidationError} - `RP1_EMPTY_REPLAY_ID`,
    *   `RP2_PROJECT_ID_NOT_POSITIVE`, `RP3_START_TIME_NOT_POSITIVE`,
    *   `RP4_TIME_ORDER`, or `RP5_INVALID_RETENTION_DAYS`.
    */
@@ -776,19 +853,21 @@ export class Replay {
   }
 
   /**
-   * Recording duration — Python's `duration_seconds` property.
+   * Recording duration in seconds: `(end_time - start_time) / 1000`.
    *
-   * @returns `(end_time - start_time) / 1000`.
+   * @returns The duration.
+   * @see mixpanel_headless.types.Replay.duration_seconds
    */
   get duration_seconds(): number {
     return (this.end_time - this.start_time) / 1000;
   }
 
   /**
-   * Pre-pandas rows of the Python `events_df` body (one projected row
-   * per rrweb event).
+   * Build the pre-pandas rows of Python's `events_df`: one projected row
+   * per rrweb event.
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.Replay.events_df
    */
   toEventsRows(): readonly Row[] {
     return this.rrweb_events.map((event) => rrwebEventRow(event));
@@ -813,9 +892,11 @@ export class Replay {
   }
 
   /**
-   * Pre-pandas rows of the Python `actions_df` body.
+   * Build the pre-pandas rows of Python's `actions_df`: one row per
+   * extracted user action.
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.Replay.actions_df
    */
   toActionsRows(): readonly Row[] {
     return this.actions.map((a) => ({
@@ -848,9 +929,11 @@ export class Replay {
   }
 
   /**
-   * Pre-pandas rows of the Python `mixpanel_df` body.
+   * Build the pre-pandas rows of Python's `mixpanel_df`: one row per
+   * correlated Mixpanel event.
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.Replay.mixpanel_df
    */
   toMixpanelRows(): readonly Row[] {
     return this.mixpanel_events.map((e) => ({
@@ -871,10 +954,10 @@ export class Replay {
   }
 
   /**
-   * The main `.df` contract — Python's `df` property returns
+   * Build the main `.df` rows — Python's `df` property returns
    * `actions_df`.
    *
-   * @returns.
+   * @returns The actions rows.
    */
   toRows(): readonly Row[] {
     return this.toActionsRows();
@@ -883,17 +966,18 @@ export class Replay {
   /**
    * Column contract of the main `.df` frame.
    *
-   * @returns.
+   * @returns The actions column list.
    */
   rowColumns(): readonly string[] {
     return this.actionsRowColumns();
   }
 
   /**
-   * URLs of navigate actions — mirror of Python `page_path()`
-   * (`str(a.url)` for navigate actions with a non-`null` URL).
+   * List the URLs of navigate actions (`str(a.url)` for every navigate
+   * action with a non-`null` URL).
    *
    * @returns The page path.
+   * @see mixpanel_headless.types.Replay.page_path
    */
   pagePath(): readonly string[] {
     return this.actions
@@ -902,11 +986,11 @@ export class Replay {
   }
 
   /**
-   * rrweb events sorted by timestamp for the rrweb player — mirror of
-   * Python `to_rrweb_player_json()` (stable sort, missing timestamps
-   * treated as `0`).
+   * Sort the rrweb events by timestamp for the rrweb player (stable
+   * sort, missing timestamps treated as `0`).
    *
    * @returns The sorted events.
+   * @see mixpanel_headless.types.Replay.to_rrweb_player_json
    */
   toRrwebPlayerJson(): ReadonlyArray<Readonly<Record<string, unknown>>> {
     const key = (event: Readonly<Record<string, unknown>>): number => {
@@ -917,10 +1001,11 @@ export class Replay {
   }
 
   /**
-   * Console-error rows of the actions frame — mirror of Python's
-   * `errors` property (`actions_df[action == "console_error"]`).
+   * Select the console-error rows of the actions frame
+   * (`actions_df[action == "console_error"]`).
    *
    * @returns The filtered rows (actions-frame columns).
+   * @see mixpanel_headless.types.Replay.errors
    */
   toErrorsRows(): readonly Row[] {
     return this.toActionsRows().filter(
@@ -929,12 +1014,12 @@ export class Replay {
   }
 
   /**
-   * Click rows matching a predicate — mirror of Python
-   * `clicks_on(predicate)` (note: NO `description` column, unlike the
-   * actions frame).
+   * Select the click rows matching a predicate. Unlike the actions
+   * frame, these rows carry no `description` column.
    *
    * @param predicate - Filter applied to click actions.
    * @returns The matching rows.
+   * @see mixpanel_headless.types.Replay.clicks_on
    */
   clicksOnRows(predicate: (action: UserAction) => boolean): readonly Row[] {
     return this.actions
@@ -960,18 +1045,14 @@ export class Replay {
   }
 
   /**
-   * Analyzer-produced markdown timeline rendered from `actions`
-   * (Python `summary_markdown` property, `types.py`).
-   * Closed at B5-S3 — the `_render_markdown` dependency landed with
-   * the analyzer.
+   * Render the analyzer's Markdown timeline from `actions`.
    *
+   * @remarks
    * `Workspace.fetchReplay` runs the rrweb analyzer; when `actions` is
-   * non-empty this returns the markdown timeline. When `actions` is
-   * empty (test fixture, no-events fetch) it returns a one-line
-   * placeholder.
-   *
-   * @returns Multi-line markdown suitable for stdout / LLM
-   *   consumption.
+   * empty (a no-events fetch) this returns a one-line placeholder
+   * instead of the timeline.
+   * @returns Multi-line markdown suitable for stdout or LLM consumption.
+   * @see mixpanel_headless.types.Replay.summary_markdown
    */
   summaryMarkdown(): string {
     if (this.actions.length === 0) {
@@ -1005,8 +1086,8 @@ export class Replay {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance (guards fire).
-   * @throws ResponseValidationError - On unknown keys or wrong types.
-   * @throws ParamValidationError - When a constructor guard fires.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
+   * @throws {@link ParamValidationError} - When a constructor guard fires.
    * @internal
    */
   static fromDict(raw: unknown): Replay {

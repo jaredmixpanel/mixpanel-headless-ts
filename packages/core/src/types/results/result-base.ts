@@ -1,26 +1,21 @@
 /**
- * Shared plumbing for the result dataclass ports (phase2-design C6,
- * packet P2-6).
+ * Strict field decoders and row helpers shared by the result classes.
  *
  * Python's result types are frozen dataclasses whose `.df` property
  * builds a `rows: list[dict[str, Any]]` before it enters pandas; the TS
  * contract is that pre-pandas rows list (`toRows()`) plus the
  * empty-frame column constant (`rowColumns()`). pandas itself (NaN
- * fill, dtype coercion, index objects) is explicitly OUT of the TS
- * contract — see phase2-design C6 and Risk #6.
+ * fill, dtype coercion, index objects) is outside the TS contract.
  *
- * The strict `fromDict` decoders here mirror the design rule
- * "dataclasses don't coerce — so `fromDict` for dataclass results is
- * strict: wrong JSON type → ResponseValidationError" (C6). Two
- * duck-typed tolerances exist because the conformance corpus wraps
- * some scalars: `$type: datetime` payloads decode to an iso-carrying
- * object and `$type: float` payloads to a spelling-carrying object
- * (the runner's `PyDatetime`/`PyFloat`), which this module cannot
- * import (dependency direction: runner -> core, never the reverse).
+ * Dataclasses do not coerce, so `fromDict` is strict: a wrong JSON type
+ * raises `ResponseValidationError`. Two duck-typed tolerances exist
+ * because the conformance corpus wraps some scalars — `$type: datetime`
+ * payloads decode to an iso-carrying object and `$type: float` payloads
+ * to a spelling-carrying object (the runner's `PyDatetime` / `PyFloat`),
+ * which this module cannot import (the runner depends on core, never the
+ * reverse). Nothing here is part of the public package surface.
  *
- * @internal Everything in this module is `@internal` plumbing for the
- * result classes, the C8(b) golden tests, and the conformance codecs —
- * none of it is part of the public package surface.
+ * @internal
  */
 
 import { ResponseValidationError } from "../../errors.js";
@@ -37,12 +32,16 @@ export type Row = Record<string, unknown>;
 /**
  * Raise the strict-decode error for one field.
  *
- * @param cls - Result class name (for the message only, R5.4).
+ * @param cls - Result class name (used in the message only).
  * @param field - Offending field path.
  * @param expected - Human description of the expected JSON type.
  * @param value - The offending value.
- * @returns Never returns.
- * @throws ResponseValidationError - Always.
+ * @throws {@link ResponseValidationError} - Always.
+ * @example
+ * ```ts
+ * decodeFail("QueryResult", "series", "object", 42);
+ * // ResponseValidationError: QueryResult.series: expected object, got number
+ * ```
  * @internal
  */
 export function decodeFail(
@@ -57,14 +56,20 @@ export function decodeFail(
 }
 
 /**
- * Reject payload keys outside the declared dataclass field set (the
- * strict half of `fromDict` — mirrors the recorder's exhaustive field
- * walk, so an unknown key always means payload/class drift).
+ * Reject payload keys outside the declared dataclass field set.
  *
+ * @remarks
+ * This is the strict half of `fromDict`: the recorder walks every
+ * dataclass field, so an unknown key always means payload/class drift.
  * @param raw - The payload under decode.
  * @param allowed - Declared field names.
  * @param cls - Result class name for error messages.
- * @throws ResponseValidationError - When unknown keys are present.
+ * @throws {@link ResponseValidationError} - When unknown keys are present.
+ * @example
+ * ```ts
+ * rejectUnknownKeys({ event: "Signup", extra: 1 }, new Set(["event"]), "TopEvent");
+ * // ResponseValidationError: TopEvent: unknown fields ["extra"] in payload
+ * ```
  * @internal
  */
 export function rejectUnknownKeys(
@@ -88,7 +93,12 @@ export function rejectUnknownKeys(
  * @param raw - The candidate payload.
  * @param cls - Result class name for error messages.
  * @returns The payload as a string-keyed record.
- * @throws ResponseValidationError - When `raw` is not a plain object.
+ * @throws {@link ResponseValidationError} - When `raw` is not a plain object.
+ * @example
+ * ```ts
+ * const payload = expectPayload(raw, "TopEvent");
+ * const event = expectStr(payload, "event", "TopEvent");
+ * ```
  * @internal
  */
 export function expectPayload(
@@ -102,10 +112,15 @@ export function expectPayload(
 }
 
 /**
- * Whether a value is a plain (non-array, non-class) object.
+ * Return whether a value is a plain (non-array, non-class) object.
  *
  * @param value - Any value.
- * @returns True for plain records.
+ * @returns `true` for plain records.
+ * @example
+ * ```ts
+ * isPlainRecord({ a: 1 }); // true
+ * isPlainRecord([1]); // false
+ * ```
  * @internal
  */
 export function isPlainRecord(
@@ -126,7 +141,11 @@ export function isPlainRecord(
  * @param field - Field name.
  * @param cls - Result class name.
  * @returns The string value.
- * @throws ResponseValidationError - On wrong JSON type.
+ * @throws {@link ResponseValidationError} - On a wrong JSON type.
+ * @example
+ * ```ts
+ * expectStr({ event: "Signup" }, "event", "TopEvent"); // "Signup"
+ * ```
  * @internal
  */
 export function expectStr(
@@ -148,8 +167,12 @@ export function expectStr(
  * @param field - Field name.
  * @param cls - Result class name.
  * @returns The integer value.
- * @throws ResponseValidationError - On wrong JSON type or a
+ * @throws {@link ResponseValidationError} - On a wrong JSON type or a
  *   non-integral number.
+ * @example
+ * ```ts
+ * expectInt({ count: 42 }, "count", "TopEvent"); // 42
+ * ```
  * @internal
  */
 export function expectInt(
@@ -167,16 +190,21 @@ export function expectInt(
 /**
  * Strictly decode a float field (Python `float`).
  *
+ * @remarks
  * Accepts a native number or a `$type: float`-decoded wrapper (an
  * object with a string `spelling`, duck-typed — the runner's
  * `PyFloat`); Python floats with integral values ride the corpus as
  * tagged spellings.
- *
  * @param raw - The payload.
  * @param field - Field name.
  * @param cls - Result class name.
  * @returns The numeric value.
- * @throws ResponseValidationError - On wrong JSON type.
+ * @throws {@link ResponseValidationError} - On a wrong JSON type.
+ * @example
+ * ```ts
+ * expectFloat({ rate: 0.25 }, "rate", "FunnelResultStep"); // 0.25
+ * expectFloat({ rate: { spelling: "1.0" } }, "rate", "FunnelResultStep"); // 1
+ * ```
  * @internal
  */
 export function expectFloat(
@@ -196,6 +224,11 @@ export function expectFloat(
  *
  * @param value - A native number or a spelling-carrying wrapper.
  * @returns The numeric value, or `undefined` when neither shape fits.
+ * @example
+ * ```ts
+ * floatValue({ spelling: "2.5" }); // 2.5
+ * floatValue("2.5"); // undefined
+ * ```
  * @internal
  */
 export function floatValue(value: unknown): number | undefined {
@@ -220,7 +253,11 @@ export function floatValue(value: unknown): number | undefined {
  * @param field - Field name.
  * @param cls - Result class name.
  * @returns The boolean value.
- * @throws ResponseValidationError - On wrong JSON type.
+ * @throws {@link ResponseValidationError} - On a wrong JSON type.
+ * @example
+ * ```ts
+ * expectBool({ is_computed: true }, "is_computed", "FlowTreeNode"); // true
+ * ```
  * @internal
  */
 export function expectBool(
@@ -242,7 +279,12 @@ export function expectBool(
  * @param field - Field name.
  * @param cls - Result class name.
  * @returns The record value.
- * @throws ResponseValidationError - On wrong JSON type.
+ * @throws {@link ResponseValidationError} - On a wrong JSON type.
+ * @example
+ * ```ts
+ * expectRecord({ meta: { is_cached: true } }, "meta", "QueryResult");
+ * // { is_cached: true }
+ * ```
  * @internal
  */
 export function expectRecord(
@@ -264,7 +306,11 @@ export function expectRecord(
  * @param field - Field name.
  * @param cls - Result class name.
  * @returns The array value.
- * @throws ResponseValidationError - On wrong JSON type.
+ * @throws {@link ResponseValidationError} - On a wrong JSON type.
+ * @example
+ * ```ts
+ * expectArray({ steps: [] }, "steps", "FunnelResult"); // []
+ * ```
  * @internal
  */
 export function expectArray(
@@ -286,8 +332,12 @@ export function expectArray(
  * @param field - Field name.
  * @param cls - Result class name.
  * @returns The string array.
- * @throws ResponseValidationError - On wrong JSON type or a non-string
- *   element.
+ * @throws {@link ResponseValidationError} - On a wrong JSON type or a
+ *   non-string element.
+ * @example
+ * ```ts
+ * expectStrArray({ tags: ["a", "b"] }, "tags", "BookmarkInfo"); // ["a", "b"]
+ * ```
  * @internal
  */
 export function expectStrArray(
@@ -311,8 +361,13 @@ export function expectStrArray(
  * @param field - Field name.
  * @param cls - Result class name.
  * @returns The record array.
- * @throws ResponseValidationError - On wrong JSON type or a non-object
- *   element.
+ * @throws {@link ResponseValidationError} - On a wrong JSON type or a
+ *   non-object element.
+ * @example
+ * ```ts
+ * expectRecordArray({ steps: [{ event: "Signup" }] }, "steps", "FunnelResult");
+ * // [{ event: "Signup" }]
+ * ```
  * @internal
  */
 export function expectRecordArray(
@@ -335,7 +390,11 @@ export function expectRecordArray(
  * @param raw - The payload.
  * @param field - Field name.
  * @param cls - Result class name.
- * @throws ResponseValidationError - When the key is absent.
+ * @throws {@link ResponseValidationError} - When the key is absent.
+ * @example
+ * ```ts
+ * requirePresent(payload, "series", "QueryResult");
+ * ```
  * @internal
  */
 export function requirePresent(
@@ -351,14 +410,20 @@ export function requirePresent(
 }
 
 /**
- * Validate a codec-visible `_*_cache` slot: recorded vectors always
- * carry these DataFrame caches as `null` (pandas frames are not
- * encodable), so decode accepts only `null` or an absent key.
+ * Validate a codec-visible `_*_cache` slot.
  *
+ * @remarks
+ * Recorded vectors always carry these DataFrame caches as `null`
+ * (pandas frames are not encodable), so decode accepts only `null` or
+ * an absent key.
  * @param raw - The payload.
  * @param field - Cache field name.
  * @param cls - Result class name.
- * @throws ResponseValidationError - On any non-null present value.
+ * @throws {@link ResponseValidationError} - On any present non-null value.
+ * @example
+ * ```ts
+ * expectNullCache(payload, "_df_cache", "QueryResult");
+ * ```
  * @internal
  */
 export function expectNullCache(
@@ -374,15 +439,20 @@ export function expectNullCache(
 /**
  * Extract the ISO text from a `$type: datetime`-decoded child.
  *
+ * @remarks
  * The runner decodes datetime payloads to an iso-carrying wrapper (its
  * `PyDatetime`); a raw string passes through for already-decoded
  * callers.
- *
  * @param value - The decoded child value.
  * @param field - Field path for error messages.
  * @param cls - Result class name.
  * @returns The ISO-8601 text.
- * @throws ResponseValidationError - When the value is neither shape.
+ * @throws {@link ResponseValidationError} - When the value is neither shape.
+ * @example
+ * ```ts
+ * expectIsoText({ iso: "2026-01-15T12:00:00" }, "time", "UserEvent");
+ * // "2026-01-15T12:00:00"
+ * ```
  * @internal
  */
 export function expectIsoText(
@@ -405,14 +475,19 @@ export function expectIsoText(
 }
 
 /**
- * Python truthiness for JSON-shaped values (`bool(x)`): `None`/`False`,
- * numeric zero, empty strings, and empty containers are falsy.
+ * Return Python's `bool(x)` for a JSON-shaped value: `null`/`undefined`,
+ * `false`, numeric zero, empty strings and empty containers are falsy.
  *
- * Used where a Python `.df`/`__post_init__` body branches on bare
+ * @remarks
+ * Used where a Python `.df` / `__post_init__` body branches on bare
  * truthiness of payload data (e.g. `if not prop.get("name")`).
- *
  * @param value - A JSON-shaped value.
  * @returns Python's `bool(value)`.
+ * @example
+ * ```ts
+ * pyTruthy([]); // false
+ * pyTruthy({ a: 1 }); // true
+ * ```
  * @internal
  */
 export function pyTruthy(value: unknown): boolean {
@@ -435,12 +510,16 @@ export function pyTruthy(value: unknown): boolean {
 }
 
 /**
- * Column list pandas would infer for `pd.DataFrame(rows)` without an
- * explicit `columns=` argument: every key in first-occurrence order
- * across the rows.
+ * Return the column list pandas would infer for `pd.DataFrame(rows)`
+ * without an explicit `columns=` argument: every key in first-occurrence
+ * order across the rows.
  *
  * @param rows - The pre-pandas rows list.
  * @returns Inferred column names.
+ * @example
+ * ```ts
+ * firstOccurrenceColumns([{ a: 1 }, { b: 2, a: 3 }]); // ["a", "b"]
+ * ```
  * @internal
  */
 export function firstOccurrenceColumns(

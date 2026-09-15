@@ -1,11 +1,13 @@
 /**
  * Lexicon definition family (events, properties, tags, bulk updates).
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import {
@@ -55,8 +57,17 @@ export interface EventDefinitionInit {
 /**
  * A Mixpanel event definition from the Lexicon.
  *
- * Mirror of Python `mixpanel_headless.types.EventDefinition` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const eventDefinition = EventDefinition.fromDict({
+ *   id: 42,
+ *   name: "Signup",
+ *   display_name: "example",
+ * });
+ * eventDefinition.id; // 42
+ * ```
+ * @see mixpanel_headless.types.EventDefinition
  */
 export class EventDefinition extends EntityModel<EventDefinitionInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -149,7 +160,7 @@ export class EventDefinition extends EntityModel<EventDefinitionInit> {
    * Construct a validated EventDefinition (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: EventDefinitionInit) {
@@ -162,7 +173,7 @@ export class EventDefinition extends EntityModel<EventDefinitionInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): EventDefinition {
     return new EventDefinition(prepareInit(EventDefinition, raw));
@@ -178,13 +189,13 @@ export interface PropertyDefinitionInit {
   readonly id?: number | null | undefined;
   /** Property name. */
   readonly name: string;
-  /** Property resource type as the API returns it, e.g. ``Event`` / ``User`` (capitalized, matching the write contract). */
+  /** Property resource type as the API returns it, e.g. `Event` / `User` (capitalized, matching the write contract). */
   readonly resource_type?: string | null | undefined;
-  /** Human-readable name (Lexicon ``displayName``). */
+  /** Human-readable name (Lexicon `displayName`). */
   readonly display_name?: string | null | undefined;
   /** Property description. */
   readonly description?: string | null | undefined;
-  /** Example value shown in the Lexicon (``exampleValue``). */
+  /** Example value shown in the Lexicon (`exampleValue`). */
   readonly example_value?: string | null | undefined;
   /** Whether hidden from UI. */
   readonly hidden?: boolean | null | undefined;
@@ -201,8 +212,16 @@ export interface PropertyDefinitionInit {
 /**
  * A Mixpanel property definition from the Lexicon.
  *
- * Mirror of Python `mixpanel_headless.types.PropertyDefinition` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const propertyDefinition = PropertyDefinition.fromDict({
+ *   name: "plan",
+ *   id: 42,
+ * });
+ * propertyDefinition.name; // "plan"
+ * ```
+ * @see mixpanel_headless.types.PropertyDefinition
  */
 export class PropertyDefinition extends EntityModel<PropertyDefinitionInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -254,13 +273,13 @@ export class PropertyDefinition extends EntityModel<PropertyDefinitionInit> {
   declare readonly id: number | null;
   /** Property name. */
   declare readonly name: string;
-  /** Property resource type as the API returns it, e.g. ``Event`` / ``User`` (capitalized, matching the write contract). */
+  /** Property resource type as the API returns it, e.g. `Event` / `User` (capitalized, matching the write contract). */
   declare readonly resource_type: string | null;
-  /** Human-readable name (Lexicon ``displayName``). */
+  /** Human-readable name (Lexicon `displayName`). */
   declare readonly display_name: string | null;
   /** Property description. */
   declare readonly description: string | null;
-  /** Example value shown in the Lexicon (``exampleValue``). */
+  /** Example value shown in the Lexicon (`exampleValue`). */
   declare readonly example_value: string | null;
   /** Whether hidden from UI. */
   declare readonly hidden: boolean | null;
@@ -277,7 +296,7 @@ export class PropertyDefinition extends EntityModel<PropertyDefinitionInit> {
    * Construct a validated PropertyDefinition (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: PropertyDefinitionInit) {
@@ -290,7 +309,7 @@ export class PropertyDefinition extends EntityModel<PropertyDefinitionInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): PropertyDefinition {
     return new PropertyDefinition(prepareInit(PropertyDefinition, raw));
@@ -312,7 +331,7 @@ export interface UpdateEventDefinitionParamsInit {
   readonly verified?: boolean | null | undefined;
   /** Tag names to assign. */
   readonly tags?: readonly string[] | null | undefined;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   readonly display_name?: string | null | undefined;
   /** Event description. */
   readonly description?: string | null | undefined;
@@ -321,8 +340,13 @@ export interface UpdateEventDefinitionParamsInit {
 /**
  * Parameters for updating an event definition (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateEventDefinitionParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new UpdateEventDefinitionParams({ hidden: true });
+ * params.hidden; // true
+ * ```
+ * @see mixpanel_headless.types.UpdateEventDefinitionParams
  */
 export class UpdateEventDefinitionParams extends EntityModel<UpdateEventDefinitionParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -359,7 +383,7 @@ export class UpdateEventDefinitionParams extends EntityModel<UpdateEventDefiniti
   declare readonly verified: boolean | null;
   /** Tag names to assign. */
   declare readonly tags: readonly string[] | null;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   declare readonly display_name: string | null;
   /** Event description. */
   declare readonly description: string | null;
@@ -368,7 +392,7 @@ export class UpdateEventDefinitionParams extends EntityModel<UpdateEventDefiniti
    * Construct a validated UpdateEventDefinitionParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateEventDefinitionParamsInit) {
@@ -381,7 +405,7 @@ export class UpdateEventDefinitionParams extends EntityModel<UpdateEventDefiniti
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateEventDefinitionParams {
     return new UpdateEventDefinitionParams(
@@ -403,21 +427,26 @@ export interface UpdatePropertyDefinitionParamsInit {
   readonly merged?: boolean | null | undefined;
   /** PII flag. */
   readonly sensitive?: boolean | null | undefined;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   readonly display_name?: string | null | undefined;
   /** Property description. */
   readonly description?: string | null | undefined;
-  /** Example value (sent as ``exampleValue``). */
+  /** Example value (sent as `exampleValue`). */
   readonly example_value?: string | null | undefined;
-  /** Resource type, constrained to the capitalized forms the data-definitions API accepts. Sent verbatim as ``resourceType`` to disambiguate a user property from an event property of the same name. */
+  /** Resource type, constrained to the capitalized forms the data-definitions API accepts. Sent verbatim as `resourceType` to disambiguate a user property from an event property of the same name. */
   readonly resource_type?: "Event" | "User" | null | undefined;
 }
 
 /**
  * Parameters for updating a property definition (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdatePropertyDefinitionParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new UpdatePropertyDefinitionParams({ hidden: true });
+ * params.hidden; // true
+ * ```
+ * @see mixpanel_headless.types.UpdatePropertyDefinitionParams
  */
 export class UpdatePropertyDefinitionParams extends EntityModel<UpdatePropertyDefinitionParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -465,20 +494,20 @@ export class UpdatePropertyDefinitionParams extends EntityModel<UpdatePropertyDe
   declare readonly merged: boolean | null;
   /** PII flag. */
   declare readonly sensitive: boolean | null;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   declare readonly display_name: string | null;
   /** Property description. */
   declare readonly description: string | null;
-  /** Example value (sent as ``exampleValue``). */
+  /** Example value (sent as `exampleValue`). */
   declare readonly example_value: string | null;
-  /** Resource type, constrained to the capitalized forms the data-definitions API accepts. Sent verbatim as ``resourceType`` to disambiguate a user property from an event property of the same name. */
+  /** Resource type, constrained to the capitalized forms the data-definitions API accepts. Sent verbatim as `resourceType` to disambiguate a user property from an event property of the same name. */
   declare readonly resource_type: "Event" | "User" | null;
 
   /**
    * Construct a validated UpdatePropertyDefinitionParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdatePropertyDefinitionParamsInit) {
@@ -491,7 +520,7 @@ export class UpdatePropertyDefinitionParams extends EntityModel<UpdatePropertyDe
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdatePropertyDefinitionParams {
     return new UpdatePropertyDefinitionParams(
@@ -519,7 +548,7 @@ export interface BulkEventUpdateInit {
   readonly verified?: boolean | null | undefined;
   /** Tag names. */
   readonly tags?: readonly string[] | null | undefined;
-  /** Human-readable name. Always emitted as ``displayName`` via an explicit serialization alias (rather than a model-wide ``alias_generator``) so the established ``team_contacts`` wire shape stays snake_case. Accepts either ``display_name`` or ``displayName`` on input, so a camelCase payload echoed by ``lexicon events get`` round-trips instead of silently dropping the field. (``contacts`` / ``team_contacts`` remain snake_case on input and the wire by design.) */
+  /** Human-readable name. Always emitted as `displayName` via an explicit serialization alias (rather than a model-wide `alias_generator`) so the established `team_contacts` wire shape stays snake_case. Accepts either `display_name` or `displayName` on input, so a camelCase payload echoed by `lexicon events get` round-trips instead of silently dropping the field. (`contacts` / `team_contacts` remain snake_case on input and the wire by design.) */
   readonly display_name?: string | null | undefined;
   /** Contact emails. */
   readonly contacts?: readonly string[] | null | undefined;
@@ -530,8 +559,13 @@ export interface BulkEventUpdateInit {
 /**
  * A single event update entry for bulk operations.
  *
- * Mirror of Python `mixpanel_headless.types.BulkEventUpdate` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new BulkEventUpdate({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.BulkEventUpdate
  */
 export class BulkEventUpdate extends EntityModel<BulkEventUpdateInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -574,7 +608,7 @@ export class BulkEventUpdate extends EntityModel<BulkEventUpdateInit> {
   declare readonly verified: boolean | null;
   /** Tag names. */
   declare readonly tags: readonly string[] | null;
-  /** Human-readable name. Always emitted as ``displayName`` via an explicit serialization alias (rather than a model-wide ``alias_generator``) so the established ``team_contacts`` wire shape stays snake_case. Accepts either ``display_name`` or ``displayName`` on input, so a camelCase payload echoed by ``lexicon events get`` round-trips instead of silently dropping the field. (``contacts`` / ``team_contacts`` remain snake_case on input and the wire by design.) */
+  /** Human-readable name. Always emitted as `displayName` via an explicit serialization alias (rather than a model-wide `alias_generator`) so the established `team_contacts` wire shape stays snake_case. Accepts either `display_name` or `displayName` on input, so a camelCase payload echoed by `lexicon events get` round-trips instead of silently dropping the field. (`contacts` / `team_contacts` remain snake_case on input and the wire by design.) */
   declare readonly display_name: string | null;
   /** Contact emails. */
   declare readonly contacts: readonly string[] | null;
@@ -585,7 +619,7 @@ export class BulkEventUpdate extends EntityModel<BulkEventUpdateInit> {
    * Construct a validated BulkEventUpdate (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkEventUpdateInit) {
@@ -598,7 +632,7 @@ export class BulkEventUpdate extends EntityModel<BulkEventUpdateInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkEventUpdate {
     return new BulkEventUpdate(prepareInit(BulkEventUpdate, raw));
@@ -619,8 +653,13 @@ export interface BulkUpdateEventsParamsInit {
 /**
  * Parameters for bulk-updating event definitions.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateEventsParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new BulkUpdateEventsParams({ events: [{ name: "Example" }] });
+ * params.events; // [{ name: "Example" }]
+ * ```
+ * @see mixpanel_headless.types.BulkUpdateEventsParams
  */
 export class BulkUpdateEventsParams extends EntityModel<BulkUpdateEventsParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -646,7 +685,7 @@ export class BulkUpdateEventsParams extends EntityModel<BulkUpdateEventsParamsIn
    * Construct a validated BulkUpdateEventsParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdateEventsParamsInit) {
@@ -659,7 +698,7 @@ export class BulkUpdateEventsParams extends EntityModel<BulkUpdateEventsParamsIn
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkUpdateEventsParams {
     return new BulkUpdateEventsParams(prepareInit(BulkUpdateEventsParams, raw));
@@ -673,7 +712,7 @@ export class BulkUpdateEventsParams extends EntityModel<BulkUpdateEventsParamsIn
 export interface BulkPropertyUpdateInit {
   /** Property name. */
   readonly name: string;
-  /** Resource type (``Event`` / ``User``); sent verbatim as ``resourceType`` to disambiguate a user property from an event property of the same name. Constrained to the capitalized forms the data-definitions API accepts. */
+  /** Resource type (`Event` / `User`); sent verbatim as `resourceType` to disambiguate a user property from an event property of the same name. Constrained to the capitalized forms the data-definitions API accepts. */
   readonly resource_type: "Event" | "User";
   /** Property ID. */
   readonly id?: number | null | undefined;
@@ -683,9 +722,9 @@ export interface BulkPropertyUpdateInit {
   readonly dropped?: boolean | null | undefined;
   /** PII flag. */
   readonly sensitive?: boolean | null | undefined;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   readonly display_name?: string | null | undefined;
-  /** Example value (sent as ``exampleValue``). */
+  /** Example value (sent as `exampleValue`). */
   readonly example_value?: string | null | undefined;
   /** Data group identifier. */
   readonly data_group_id?: string | null | undefined;
@@ -694,8 +733,17 @@ export interface BulkPropertyUpdateInit {
 /**
  * A single property update entry for bulk operations.
  *
- * Mirror of Python `mixpanel_headless.types.BulkPropertyUpdate` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new BulkPropertyUpdate({
+ *   name: "plan",
+ *   resource_type: "Event",
+ *   id: 42,
+ * });
+ * params.name; // "plan"
+ * ```
+ * @see mixpanel_headless.types.BulkPropertyUpdate
  */
 export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -743,7 +791,7 @@ export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
 
   /** Property name. */
   declare readonly name: string;
-  /** Resource type (``Event`` / ``User``); sent verbatim as ``resourceType`` to disambiguate a user property from an event property of the same name. Constrained to the capitalized forms the data-definitions API accepts. */
+  /** Resource type (`Event` / `User`); sent verbatim as `resourceType` to disambiguate a user property from an event property of the same name. Constrained to the capitalized forms the data-definitions API accepts. */
   declare readonly resource_type: "Event" | "User";
   /** Property ID. */
   declare readonly id: number | null;
@@ -753,9 +801,9 @@ export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
   declare readonly dropped: boolean | null;
   /** PII flag. */
   declare readonly sensitive: boolean | null;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   declare readonly display_name: string | null;
-  /** Example value (sent as ``exampleValue``). */
+  /** Example value (sent as `exampleValue`). */
   declare readonly example_value: string | null;
   /** Data group identifier. */
   declare readonly data_group_id: string | null;
@@ -764,7 +812,7 @@ export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
    * Construct a validated BulkPropertyUpdate (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkPropertyUpdateInit) {
@@ -777,7 +825,7 @@ export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkPropertyUpdate {
     return new BulkPropertyUpdate(prepareInit(BulkPropertyUpdate, raw));
@@ -798,8 +846,15 @@ export interface BulkUpdatePropertiesParamsInit {
 /**
  * Parameters for bulk-updating property definitions.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdatePropertiesParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new BulkUpdatePropertiesParams({
+ *   properties: [{ name: "plan", resource_type: "Event" }],
+ * });
+ * params.properties; // [{ name: "plan", … }]
+ * ```
+ * @see mixpanel_headless.types.BulkUpdatePropertiesParams
  */
 export class BulkUpdatePropertiesParams extends EntityModel<BulkUpdatePropertiesParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -826,7 +881,7 @@ export class BulkUpdatePropertiesParams extends EntityModel<BulkUpdateProperties
    * Construct a validated BulkUpdatePropertiesParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdatePropertiesParamsInit) {
@@ -839,7 +894,7 @@ export class BulkUpdatePropertiesParams extends EntityModel<BulkUpdateProperties
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BulkUpdatePropertiesParams {
     return new BulkUpdatePropertiesParams(
@@ -862,8 +917,13 @@ export interface LexiconTagInit {
 /**
  * A Lexicon tag for categorizing event/property definitions.
  *
- * Mirror of Python `mixpanel_headless.types.LexiconTag` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const lexiconTag = LexiconTag.fromDict({ id: 42, name: "core" });
+ * lexiconTag.id; // 42
+ * ```
+ * @see mixpanel_headless.types.LexiconTag
  */
 export class LexiconTag extends EntityModel<LexiconTagInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -887,7 +947,7 @@ export class LexiconTag extends EntityModel<LexiconTagInit> {
    * Construct a validated LexiconTag (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: LexiconTagInit) {
@@ -900,7 +960,7 @@ export class LexiconTag extends EntityModel<LexiconTagInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): LexiconTag {
     return new LexiconTag(prepareInit(LexiconTag, raw));
@@ -919,8 +979,13 @@ export interface CreateTagParamsInit {
 /**
  * Parameters for creating a Lexicon tag.
  *
- * Mirror of Python `mixpanel_headless.types.CreateTagParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateTagParams({ name: "core" });
+ * params.name; // "core"
+ * ```
+ * @see mixpanel_headless.types.CreateTagParams
  */
 export class CreateTagParams extends EntityModel<CreateTagParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -941,7 +1006,7 @@ export class CreateTagParams extends EntityModel<CreateTagParamsInit> {
    * Construct a validated CreateTagParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateTagParamsInit) {
@@ -954,7 +1019,7 @@ export class CreateTagParams extends EntityModel<CreateTagParamsInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateTagParams {
     return new CreateTagParams(prepareInit(CreateTagParams, raw));
@@ -973,8 +1038,13 @@ export interface UpdateTagParamsInit {
 /**
  * Parameters for updating a Lexicon tag.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateTagParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateTagParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateTagParams
  */
 export class UpdateTagParams extends EntityModel<UpdateTagParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -995,7 +1065,7 @@ export class UpdateTagParams extends EntityModel<UpdateTagParamsInit> {
    * Construct a validated UpdateTagParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateTagParamsInit) {
@@ -1008,7 +1078,7 @@ export class UpdateTagParams extends EntityModel<UpdateTagParamsInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateTagParams {
     return new UpdateTagParams(prepareInit(UpdateTagParams, raw));

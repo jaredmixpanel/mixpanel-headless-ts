@@ -1,81 +1,40 @@
 /**
  * Hand-rolled structural twin of the pydantic v2 sorting models in
- * `src/mixpanel_headless/_internal/bookmark_schema.py`, plus the
- * pydantic-error → `ValidationError` adapter that sits on top of them.
+ * `bookmark_schema.py`, the model-description machinery (`FieldType` /
+ * `ModelSpec` / `UnionSpec` / {@link validateModel}) that
+ * `bookmarks/schema.ts` reuses for the rest of the model tree, and the
+ * pydantic-error → `ValidationError` adapter on top of them.
  *
- * Python ranges ported here (re-read before touching anything):
- * `bookmark_schema.py` (the adapter: `_DEFAULT_CODE_MAP`,
- * `_default_code_mapper`, `_sorting_code_mapper`, `validate_with_pydantic`,
- * `_translate_pydantic_error`, `_DISCRIMINATOR_TAGS`, `_loc_to_jsonpath`)
- * and `bookmark_schema.py` (the sorting models
- * `FlatLabelSortConfig`, `FlatValueSortConfig`, `SortByColumnsConfig`,
- * `SortByValueConfig`, `OldTableSortByValue`, the four discriminator
- * callables and `InsightsBookmarkSortConfig`).
+ * TS has no pydantic, so the reference semantics here are pydantic-core
+ * in lax mode (the shared `_BASE_CONFIG` sets only `populate_by_name` +
+ * `extra="forbid"`, never `strict=True`) — not CPython's `int()` /
+ * `str.strip()` and not JS's `parseInt` / `String.trim()`. Every
+ * acceptance decision was measured against pydantic-core itself. The
+ * load-bearing findings: error order is model field-definition order,
+ * then `extra_forbidden` for unexpected keys in input insertion order
+ * (emission order is contract); discriminated unions insert the variant
+ * `Tag` name into `loc`, which {@link DISCRIMINATOR_TAGS} strips back
+ * out; lax coercion lets `int` fields take bools, integral finite floats
+ * and a restricted numeric-string grammar, while `str` fields take
+ * strings only and `list` fields arrays only; non-Optional fields that
+ * merely carry a default reject an explicit `null`.
  *
- * **R11.7 third-parser carve-out.** TS has no pydantic. The reference
- * semantics of this module are **pydantic-core in LAX mode** (the shared
- * `_BASE_CONFIG` sets only `populate_by_name` + `extra="forbid"`, so no
- * `strict=True`) — NOT CPython's `int()`/`str.strip()` and NOT JS's
- * `parseInt`/`String.trim()`. Every acceptance decision below is pinned to
- * measured probe evidence recorded in
- * `docs/history/phase3/notes/B2-M2-notes.md` §"CPython pydantic probe"
- * (scripts `throwaway/b2-m2/probe-sorting{,2}.py`,
- * `probe-int-grammar.py`, run 2026-08-15 against the support-branch
- * pydantic pin). The three load-bearing findings:
- *
- * 1. Error ORDER is model field-definition order, then `extra_forbidden`
- *    for unexpected keys in input insertion order (Caution §11: emission
- *    order is contract).
- * 2. Discriminated unions insert the variant `Tag` name into `loc`;
- *    {@link DISCRIMINATOR_TAGS} strips it back out.
- * 3. Lax coercion: `int` fields take bools, integral finite floats and
- *    a restricted numeric-string grammar; `str` fields take strings only;
- *    `list` fields take arrays only.
- *
- * **R10.8 ownership**: this file is the single TS home of the
- * `bookmark_schema` slice. Batch **B3-K1** (the full `bookmark_schema.py`
- * port) IMPORTS and GROWS this file — it must never re-implement the
- * sorting models, the code mappers or the loc→JSONPath renderer.
- *
- * **B3-K1 growth (2026-08-15)**: the model-description machinery below
- * (`FieldType` / `FieldSpec` / `ModelSpec` / `UnionSpec` /
- * {@link validateModel}) is now EXPORTED and generalised so
- * `bookmarks/schema.ts` can describe the non-sorting model tree with
- * the same one pydantic-core twin. Added kinds: `float`, `bool`,
- * `json`, `literalInt`, generic `list`/`dict`/`tuple`, nested `model`
- * (thunked, for the recursive `SubBehavior` / `Behavior` cycle) and
- * `plainUnion` (pydantic smart unions). Added model-level
- * `extra: "allow"` (FlowsBookmarkParams) and field-level `nullable`
- * (non-Optional fields WITH defaults, e.g. `forward: int = 0`, reject
- * explicit `null` — probe `fbp/collapse_repeated-null`). The old
- * `optionalStr` / `optionalInt` / `ignore` kinds folded into
- * `str` / `int` / `json` + `nullable`; the sorting specs below were
- * rewritten onto them with identical semantics.
- *
- * B3-K1 probe evidence: `docs/history/phase3/notes/B3-K1-notes.md` §Probe
- * (`throwaway/b3-k1/probe-{schema,grammar,detail,order,bool}.py`,
- * CPython + pydantic pin, run 2026-08-15).
- *
- * @module bookmarks/schema-sorting
+ * @see mixpanel_headless._internal.bookmark_schema
  * @internal
  */
 
 import { codepoints } from "../compat/codepoint.js";
-// R10.8: the PyFloat-carrier duck check has exactly one implementation in
-// the port (landed by B2 shard V1a). Importing it here keeps the sorting
-// slice carrier-aware WITHOUT asking the (b′) binding to unwrap floats on
-// the `params.sorting` path only — see the module note on float carriers
-// below. `query/validation-shared.ts` imports nothing from `bookmarks/`,
-// so this direction is acyclic.
+// The PyFloat-carrier duck check has exactly one implementation in the
+// port. Importing it here keeps the sorting slice carrier-aware without
+// asking the conformance binding to unwrap floats on the `params.sorting`
+// path only — see the module note on float carriers below.
 import { isPythonDict } from "../compat/python-dict.js";
 import { floatCarrierValue, isFloatCarrier } from "../compat/python-values.js";
 import { PYTHON_NUMERIC_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ValidationError } from "../errors.js";
 import { defined } from "../invariant.js";
 
-// =============================================================================
-// Pydantic error shape
-// =============================================================================
+// --- Pydantic error shape ---
 
 /**
  * One entry of `pydantic.ValidationError.errors()` — the subset
@@ -86,28 +45,27 @@ export interface PydanticErrorEntry {
   readonly type: string;
   /** Location tuple: field names, list indices and discriminator Tags. */
   readonly loc: ReadonlyArray<string | number>;
-  /** Human-readable message (display-only, R5.4). */
+  /** Human-readable message (display-only, never contract). */
   readonly msg: string;
 }
 
 /**
  * Path-aware code mapper: `(pydantic_error_type, loc) -> package_code`.
  *
- * Port of the `CodeMapper` alias.
+ * @see mixpanel_headless._internal.bookmark_schema.CodeMapper
  */
 type CodeMapper = (
   errType: string,
   loc: ReadonlyArray<string | number>,
 ) => string;
 
-// =============================================================================
-// Adapter tables (bookmark_schema.py)
-// =============================================================================
+// --- Adapter tables (bookmark_schema.py) ---
 
 /**
  * Maps pydantic v2 `error['type']` strings to the package's stable
- * `B*` / `S*` codes. Port of `_DEFAULT_CODE_MAP`
- * as a `ReadonlyMap`.
+ * `B*` / `S*` codes.
+ *
+ * @see mixpanel_headless._internal.bookmark_schema._DEFAULT_CODE_MAP
  */
 export const DEFAULT_CODE_MAP: ReadonlyMap<string, string> = new Map([
   // Missing required field
@@ -137,12 +95,17 @@ export const DEFAULT_CODE_MAP: ReadonlyMap<string, string> = new Map([
 
 /**
  * Default `CodeMapper` — ignores `loc`, falls back to
- * {@link DEFAULT_CODE_MAP}. Port of `_default_code_mapper`
- * (`bookmark_schema.py`).
+ * {@link DEFAULT_CODE_MAP}.
  *
  * @param errType - Pydantic error `type`.
  * @param _loc - Unused by the default mapper (protocol requirement).
  * @returns A package error code, or `"VALIDATION_ERROR"`.
+ * @example
+ * ```typescript
+ * defaultCodeMapper("missing", ["sections"]); // "B0_MISSING_FIELD"
+ * defaultCodeMapper("weird_type", []); // "VALIDATION_ERROR"
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema._default_code_mapper
  */
 export function defaultCodeMapper(
   errType: string,
@@ -153,15 +116,18 @@ export function defaultCodeMapper(
 }
 
 /**
- * Path-aware code mapper for sorting-block validation errors.
- *
- * Port of `_sorting_code_mapper`,
- * branch-for-branch in source order.
+ * Path-aware code mapper for sorting-block validation errors,
+ * branch-for-branch in Python source order.
  *
  * @param errType - Pydantic error `type`.
  * @param loc - Pydantic `loc` tuple.
  * @returns An `S*` code when the path identifies a sorting-specific
  *   rule, otherwise the default mapping.
+ * @example
+ * ```typescript
+ * sortingCodeMapper("extra_forbidden", ["line", "unknownKey"]); // "S3_UNKNOWN_FIELD"
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema._sorting_code_mapper
  */
 export function sortingCodeMapper(
   errType: string,
@@ -220,9 +186,10 @@ export function sortingCodeMapper(
 /**
  * Tag names that discriminated-union annotations insert into `loc`.
  *
- * Port of `_DISCRIMINATOR_TAGS` —
- * including the two `ShowClause` tags, which belong to the B3-K1 half
- * of the module but are part of the same frozenset in Python.
+ * Includes the two `ShowClause` tags, which belong to the non-sorting
+ * half of the module but are part of the same frozenset in Python.
+ *
+ * @see mixpanel_headless._internal.bookmark_schema._DISCRIMINATOR_TAGS
  */
 const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
   // FlatSortConfig (colSortAttrs[i])
@@ -241,11 +208,15 @@ const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
 /**
  * Convert a pydantic `loc` tuple to a dotted JSONPath string.
  *
- * Port of `_loc_to_jsonpath`.
- *
  * @param loc - Pydantic location tuple.
  * @param prefix - Optional dotted prefix (without trailing dot).
  * @returns A dotted JSONPath string.
+ * @example
+ * ```typescript
+ * locToJsonPath(["colSortAttrs", 0, "FlatLabelSortConfig", "sortOrder"], "params.sorting");
+ * // "params.sorting.colSortAttrs[0].sortOrder"
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema._loc_to_jsonpath
  */
 export function locToJsonPath(
   loc: ReadonlyArray<string | number>,
@@ -276,12 +247,11 @@ export function locToJsonPath(
 /**
  * Convert one pydantic error entry to a package `ValidationError`.
  *
- * Port of `_translate_pydantic_error`.
- *
  * @param err - A single pydantic error entry.
  * @param codeMapper - Path-aware mapper to a package code.
  * @param pathPrefix - JSONPath prefix to prepend.
  * @returns The translated error.
+ * @see mixpanel_headless._internal.bookmark_schema._translate_pydantic_error
  */
 function translatePydanticError(
   err: PydanticErrorEntry,
@@ -293,20 +263,18 @@ function translatePydanticError(
   return new ValidationError(path, err.msg, code);
 }
 
-// =============================================================================
-// pydantic-core lax coercion primitives (probe-pinned)
-// =============================================================================
+// --- pydantic-core lax coercion primitives ---
 
 /**
  * Strip pydantic-core's (Rust `str::trim`) whitespace set from both
  * ends of a string.
  *
  * Measured identical to {@link PYTHON_NUMERIC_WHITESPACE} — the pinned
- * CPython `str.isspace()` table minus `U+001C..U+001F` (notes §probe
- * finding 4). It is NOT `pythonStrip` (which strips `U+001C..U+001F`)
- * and NOT `String.trim()` (which strips `U+FEFF`); using either would
- * change accept/reject decisions, so the set is spelled out here by
- * codepoint rather than by regex (R11.7 bans `\s` grammars).
+ * CPython `str.isspace()` table minus `U+001C..U+001F`. It is not
+ * `pythonStrip` (which strips `U+001C..U+001F`) and not `String.trim()`
+ * (which strips `U+FEFF`); using either would change accept/reject
+ * decisions, so the set is spelled out here by codepoint rather than by
+ * a `\s` grammar that drifts with the engine's Unicode tables.
  *
  * @param text - String to trim.
  * @returns The trimmed string.
@@ -335,7 +303,7 @@ function pydanticTrim(text: string): string {
 /**
  * pydantic-core's lax `str -> int` grammar (accept/reject only).
  *
- * Probe-pinned (notes §probe finding 4): trim, then
+ * Measured against pydantic-core: trim, then
  * `[+-]? DIGITS(single underscores between digits) ( "." "0"+ )?`
  * with ASCII digits only. Accepts `"5"`, `"+5"`, `"05"`, `"1_0"`,
  * `"1_000.0"`, `"0.000"`, arbitrarily long digit runs; rejects
@@ -343,7 +311,7 @@ function pydanticTrim(text: string): string {
  * `"10.01"`, `"1.0_0"`, non-ASCII digits and the empty string.
  *
  * No numeric value is produced — the model result is discarded, only
- * the error stream matters — so the R4.5 2^53 policy never applies
+ * the error stream matters — so the 2^53 integer policy never applies
  * (CPython accepts arbitrary-precision ints here).
  *
  * @param text - The candidate string.
@@ -356,7 +324,7 @@ function pydanticIntFromString(text: string): boolean {
 }
 
 /**
- * ASCII-only lowercase fold (R11.7: no locale-sensitive
+ * ASCII-only lowercase fold (no locale-sensitive
  * `toLowerCase`, no `/i` regex flag whose Unicode folding differs
  * from pydantic-core's `eq_ignore_ascii_case`).
  *
@@ -376,8 +344,8 @@ function asciiLower(text: string): string {
 
 /**
  * True when every `_` in `text` sits strictly between two ASCII
- * digits — pydantic-core's numeric-underscore rule (probe finding:
- * `1_0` / `1_0.5` / `1.0_0` accepted, `1__0` / `_1` / `1_` rejected).
+ * digits — pydantic-core's numeric-underscore rule (`1_0` / `1_0.5` /
+ * `1.0_0` accepted, `1__0` / `_1` / `1_` rejected).
  *
  * @param text - Candidate numeric string (already trimmed).
  * @returns True when the underscore placement is legal.
@@ -400,7 +368,7 @@ function underscoresWellPlaced(text: string): boolean {
 /**
  * pydantic-core's lax `str -> float` grammar (accept/reject only).
  *
- * Probe-pinned (`throwaway/b3-k1/probe-grammar.py`): trim with
+ * Measured against pydantic-core: trim with
  * {@link pydanticTrim}, then either a signed `inf`/`infinity`/`nan`
  * word (ASCII case-insensitive) or a decimal literal with an optional
  * fraction and exponent, single underscores allowed between digits.
@@ -454,20 +422,20 @@ const PYDANTIC_BOOL_STRINGS: ReadonlySet<string> = new Set([
 
 /**
  * `2**63` — pydantic-core converts a float to an integer through Rust's
- * `i64`, so an INTEGRAL float at or beyond this magnitude does not
- * reach the int/bool coercion paths at all (probe `probe-bool2.py`:
- * `4.6e18 -> bool_parsing / int OK` but `9.223372036854776e18 ->
- * bool_type / int_parsing_size`). Python `int`s have no such ceiling —
- * `2**70` validates fine on an `int` field — so the guard is keyed on
- * float-ness, never on magnitude alone.
+ * `i64`, so an integral float at or beyond this magnitude never reaches
+ * the int/bool coercion paths: `4.6e18` gives `bool_parsing` on a bool
+ * field and validates on an int field, while `9.223372036854776e18`
+ * gives `bool_type` / `int_parsing_size`. Python `int`s have no such
+ * ceiling — `2**70` validates fine on an `int` field — so the guard is
+ * keyed on float-ness, never on magnitude alone.
  */
 const I64_LIMIT = 2 ** 63;
 
 /**
  * Numeric view of a value for pydantic's lax scalar coercions: plain
  * JS numbers stand for Python `int`s, PyFloat carriers for Python
- * `float`s, and both classify by VALUE (probe: `2` and `2.0` both
- * reach the same accept/reject decision on every field kind K1 owns).
+ * `float`s, and both classify by value: `2` and `2.0` reach the same
+ * accept/reject decision on every field kind.
  * Booleans are excluded — pydantic handles `bool` before `int`.
  *
  * @param value - Candidate value.
@@ -484,8 +452,8 @@ function numericValue(value: unknown): number | undefined {
  * True when a numeric value stands for a Python `float` rather than a
  * Python `int`.
  *
- * Contract rule (P2 codec convention): Python floats cross the wire as
- * PyFloat carriers, so a BARE JS number is a Python `int` — unless it
+ * Codec convention: Python floats cross the wire as PyFloat carriers,
+ * so a bare JS number is a Python `int` — unless it
  * is non-integral, which no Python `int` can be. This is the only
  * place the int/float distinction changes an outcome (`int` fields:
  * Python ints are arbitrary-precision and always fit, floats blow up
@@ -499,14 +467,12 @@ function isPydanticFloat(value: unknown, numeric: number): boolean {
   return isFloatCarrier(value) || !Number.isInteger(numeric);
 }
 
-// =============================================================================
-// Model description tables (bookmark_schema.py)
-// =============================================================================
+// --- Model description tables (bookmark_schema.py) ---
 
 /**
  * A field's declared type, in pydantic-lax terms.
  *
- * `model` carries a THUNK because the Python model tree is cyclic
+ * `model` carries a thunk because the Python model tree is cyclic
  * (`SubBehavior.behaviors: list[SubBehavior]`,
  * `FormulaShowClause.referencedMetrics: list[BehaviorShowClause]`) —
  * a direct reference would hit the TS temporal dead zone.
@@ -564,9 +530,9 @@ interface FieldSpec {
    * Whether an explicit `null` is accepted (`X | None` in the
    * annotation). Defaults to `!required`, which is right for every
    * `X | None = None` field; set it to `false` for the non-Optional
-   * fields that merely carry a DEFAULT (`forward: int = 0`,
+   * fields that merely carry a default (`forward: int = 0`,
    * `conv_first_step: bool = False`) — those reject `null` with the
-   * field's own type error (probe `fbp/collapse_repeated-null`).
+   * field's own type error.
    */
   readonly nullable?: boolean;
 }
@@ -596,13 +562,13 @@ export interface UnionSpec {
 
 /**
  * A named structural validator for one model — the TS stand-in for a
- * pydantic model CLASS.
+ * pydantic model class.
  *
  * `validate_with_pydantic(model_cls, …)` takes a class; TS has none,
  * so the port passes this handle around instead. `.name` is what the
  * conformance `model_name` output codec serialises for
- * `get_root_model_for_bookmark_type`, and what B6-W3's dispatch keys
- * on; `.validate` is what {@link validateWithPydantic} consumes.
+ * `get_root_model_for_bookmark_type`, and what the facade's dispatch
+ * keys on; `.validate` is what {@link validateWithPydantic} consumes.
  */
 export interface RootModelHandle {
   /** The Python class name. */
@@ -616,6 +582,12 @@ export interface RootModelHandle {
  *
  * @param spec - The model description.
  * @returns A handle whose `validate` runs the model at `loc = ()`.
+ * @example
+ * ```typescript
+ * const handle = modelHandle(FLAT_LABEL_SORT_CONFIG);
+ * handle.name; // "FlatLabelSortConfig"
+ * handle.validate({ sortBy: "label", sortOrder: "sideways" }).length; // 1
+ * ```
  */
 export function modelHandle(spec: ModelSpec): RootModelHandle {
   return {
@@ -672,10 +644,9 @@ const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
 /**
  * Discriminator callable for `FlatSortConfig` (`colSortAttrs[i]`).
  *
- * Port of `_flat_sort_discriminator`.
- *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
+ * @see mixpanel_headless._internal.bookmark_schema._flat_sort_discriminator
  */
 function flatSortDiscriminator(value: unknown): string {
   const sortBy =
@@ -745,10 +716,9 @@ const SORT_BY_VALUE_CONFIG: ModelSpec = {
 /**
  * Discriminator callable for `SortConfig` (per-chart-type sort).
  *
- * Port of `_sort_config_discriminator`.
- *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
+ * @see mixpanel_headless._internal.bookmark_schema._sort_config_discriminator
  */
 function sortConfigDiscriminator(value: unknown): string {
   const sortBy =
@@ -800,11 +770,9 @@ const OLD_TABLE_SORT_BY_VALUE: ModelSpec = {
 /**
  * Discriminator callable for the line-chart `FlatOrColumnSortConfig`.
  *
- * Port of `_flat_or_column_sort_discriminator`
- * (`bookmark_schema.py`).
- *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
+ * @see mixpanel_headless._internal.bookmark_schema._flat_or_column_sort_discriminator
  */
 function flatOrColumnSortDiscriminator(value: unknown): string {
   let sortBy: unknown;
@@ -845,12 +813,12 @@ const FLAT_OR_COLUMN_SORT_CONFIG: UnionSpec = {
 /**
  * Discriminator callable for `InsightsBookmarkSortConfig.table`.
  *
- * Port of `_table_sort_discriminator`.
  * Note the asymmetry with the other discriminators: `sortColumn` is
- * tested with `in` (key PRESENCE, `null` included), not `is not None`.
+ * tested with `in` (key presence, `null` included), not `is not None`.
  *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
+ * @see mixpanel_headless._internal.bookmark_schema._table_sort_discriminator
  */
 function tableSortDiscriminator(value: unknown): string {
   let sortBy: unknown;
@@ -931,9 +899,7 @@ export const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
   ],
 };
 
-// =============================================================================
-// The structural validator
-// =============================================================================
+// --- The structural validator ---
 
 /**
  * Validate one value against a field's declared type.
@@ -953,8 +919,7 @@ function validateFieldValue(
   switch (type.kind) {
     case "json": {
       // `JsonValue` / `Any` / `Ignore[JsonValue]` — accepted at parse
-      // time, never reported (probe `sections/behavior-ignore-filter-junk`,
-      // `jsonvalue/*`: dicts, lists, scalars, NaN and Infinity all pass).
+      // time, never reported.
       return;
     }
     case "literal": {
@@ -970,8 +935,7 @@ function validateFieldValue(
     }
     case "literalInt": {
       // Python equality decides membership, so `True`/`False` match
-      // `1`/`0` and `1.0` matches `1`; strings never coerce
-      // (probe `lit-int/*`).
+      // `1`/`0` and `1.0` matches `1`; strings never coerce.
       const numeric =
         typeof value === "boolean" ? Number(value) : numericValue(value);
       if (numeric !== undefined && type.values.includes(numeric)) {
@@ -999,12 +963,12 @@ function validateFieldValue(
       if (typeof value === "boolean") {
         return;
       }
-      // A PyFloat carrier IS a Python float here (Caution §8). pydantic
+      // A PyFloat carrier is a Python float here. pydantic
       // treats ints and floats uniformly on an `int` field except for the
       // fractional/non-finite branches, so classify by numeric value and
       // never by JS type — that keeps the binding free of a sorting-only
-      // unwrap rule (which would collide with B18B's `isinstance(int)`
-      // check on the SAME params dict).
+      // unwrap rule (which would collide with the bookmark validator's
+      // B18B `isinstance(int)` check on the same params dict).
       const numeric = numericValue(value);
       if (numeric !== undefined) {
         if (!Number.isFinite(numeric)) {
@@ -1048,8 +1012,8 @@ function validateFieldValue(
       return;
     }
     case "float": {
-      // Every finite AND non-finite number is accepted, ints included
-      // (probe `lax/float/*`: `inf`, `nan`, `True` all pass).
+      // Every finite and non-finite number is accepted, ints included
+      // (`inf`, `nan`, `True` all pass).
       if (typeof value === "boolean" || numericValue(value) !== undefined) {
         return;
       }
@@ -1076,8 +1040,8 @@ function validateFieldValue(
       }
       const numeric = numericValue(value);
       if (numeric !== undefined) {
-        // Probe `probe-bool.py` / `probe-bool2.py`: value-based, NOT
-        // type-based — `0`/`1`/`0.0`/`1.0`/`-0.0` pass; other INTEGRAL
+        // Value-based, not type-based (measured against pydantic-core):
+        // `0`/`1`/`0.0`/`1.0`/`-0.0` pass; other integral
         // numbers inside the i64 window give `bool_parsing`; everything
         // else (fractional, inf, nan, |v| >= 2**63 whether int or
         // float) gives `bool_type`.
@@ -1100,7 +1064,7 @@ function validateFieldValue(
         return;
       }
       if (typeof value === "string") {
-        // No trimming here — probe: `" true "` is rejected.
+        // No trimming here: `" true "` is rejected.
         if (!PYDANTIC_BOOL_STRINGS.has(asciiLower(value))) {
           out.push({
             type: "bool_parsing",
@@ -1188,9 +1152,8 @@ function validateFieldValue(
     }
     case "plainUnion": {
       // pydantic smart union: the first member that validates wins and
-      // silences everything; when none does, EVERY member's errors are
-      // emitted in declaration order, each tagged with the member name
-      // (probe `sections/meas-multiattr-bad-type`, `nesteddict/*`).
+      // silences everything; when none does, every member's errors are
+      // emitted in declaration order, each tagged with the member name.
       const collected: PydanticErrorEntry[] = [];
       for (const member of type.members) {
         const memberErrors: PydanticErrorEntry[] = [];
@@ -1213,8 +1176,7 @@ function validateFieldValue(
 
 /**
  * Render pydantic's `literal_error` message for a value set
- * (display-only, R5.4 — reproduced for parity of the ported message
- * text only).
+ * (display-only — reproduced for parity of the ported message text).
  *
  * @param quoted - The literal's admitted values, already rendered
  *   (string literals arrive single-quoted, int literals bare).
@@ -1235,6 +1197,9 @@ function literalMessage(quoted: readonly string[]): string {
  * @param union - The union spec.
  * @param loc - `loc` prefix (without the Tag).
  * @param out - Error sink.
+ * @throws {@link Error} - when the discriminator returns an undeclared
+ *   Tag — unreachable by construction, every discriminator returns a
+ *   declared one.
  */
 function validateUnion(
   value: unknown,
@@ -1254,15 +1219,13 @@ function validateUnion(
 /**
  * Validate a value against a model.
  *
- * Emission order (probe finding 1, re-confirmed at B3-K1 by
- * `order/do-multiple`): declared fields in class-body order, then —
+ * Emission order: declared fields in class-body order, then —
  * for `extra="forbid"` models only — unexpected keys in input
  * insertion order.
  *
- * Alias handling under `populate_by_name=True`: the ALIAS wins when
+ * Alias handling under `populate_by_name=True`: the alias wins when
  * both spellings are present, and the Python-name key then falls
- * through to the extras pass (probe `alias/fsstc-both`,
- * `alias/both-_idx-and-idx`, `alias/steps-both-from`).
+ * through to the extras pass.
  *
  * @param value - The input value.
  * @param model - The model spec.
@@ -1331,27 +1294,30 @@ function validateModel(
  * Run `InsightsBookmarkSortConfig.model_validate(raw)` and return the
  * pydantic error stream it would raise (empty when valid).
  *
- * NOTE (documented JS/Python divergence, harmless for every real chart
- * type): `Object.keys` orders integer-like keys first, while a Python
- * dict is purely insertion-ordered. Only reachable with numeric-string
- * chart-type keys, which `validate_sorting_block` filters out as
- * `S4_UNKNOWN_CHART_TYPE` before this validator ever sees them.
- *
  * @param raw - The value at `params['sorting']` (already chart-type
  *   pre-filtered by the caller).
  * @returns Pydantic error entries in emission order.
+ * @example
+ * ```typescript
+ * validateInsightsBookmarkSortConfig({ bar: { sortBy: "value", sortOrder: "desc" } });
+ * // []
+ * validateInsightsBookmarkSortConfig({ bar: { sortBy: "value", sortOrder: 1 } });
+ * // [{ type: "literal_error", loc: ["bar", "SortByValueConfig", "sortOrder"], msg: "…" }]
+ * ```
  */
 export function validateInsightsBookmarkSortConfig(
   raw: unknown,
 ): PydanticErrorEntry[] {
+  // Divergence: `Object.keys` orders integer-like keys first while a
+  // Python dict is insertion-ordered, so the error emission order flips
+  // for numeric-string chart-type keys — which `validate_sorting_block`
+  // filters out as `S4_UNKNOWN_CHART_TYPE` before this runs.
   const out: PydanticErrorEntry[] = [];
   validateModel(raw, INSIGHTS_BOOKMARK_SORT_CONFIG, [], out);
   return out;
 }
 
-// =============================================================================
-// Model handles — the TS stand-ins for the pydantic classes
-// =============================================================================
+// --- Model handles — the TS stand-ins for the pydantic classes ---
 
 /** Handle for `FlatLabelSortConfig`. */
 export const FLAT_LABEL_SORT_CONFIG_MODEL: RootModelHandle = modelHandle(
@@ -1373,15 +1339,16 @@ export const SORT_BY_VALUE_CONFIG_MODEL: RootModelHandle =
   modelHandle(SORT_BY_VALUE_CONFIG);
 
 /**
- * Handle for `InsightsBookmarkSortConfig` — the model the (b′) binder
- * resolves for the `"InsightsBookmarkSortConfig"` adapter name.
+ * Handle for `InsightsBookmarkSortConfig` — the model the conformance
+ * binding resolves for the `"InsightsBookmarkSortConfig"` adapter name.
  */
 export const INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL: RootModelHandle = modelHandle(
   INSIGHTS_BOOKMARK_SORT_CONFIG,
 );
 
 /**
- * Options for {@link validateWithPydantic} (Python kwonly args, R3.9).
+ * Options for {@link validateWithPydantic} (Python keyword-only
+ * arguments).
  */
 export interface ValidateWithPydanticOptions {
   /** Path-aware mapper from `(err_type, loc)` to a package code. */
@@ -1393,16 +1360,26 @@ export interface ValidateWithPydanticOptions {
 /**
  * Validate `raw` against a model and translate pydantic's errors.
  *
- * Port of `validate_with_pydantic` (`bookmark_schema.py:170-220`),
- * specialised to the model set this file owns: the `model_cls`
+ * Specialised to the model set this file owns: the `model_cls`
  * positional becomes the structural validator function, because TS has
  * no pydantic model objects.
  *
  * @param validator - The structural validator for the model.
  * @param raw - The raw value to validate.
- * @param options - `code_mapper` / `path_prefix` (both kwonly in Python).
+ * @param options - `code_mapper` (defaults to {@link defaultCodeMapper})
+ *   and `path_prefix` (defaults to `""`), both keyword-only in Python.
  * @returns Empty list if validation passed, one `ValidationError` per
  *   pydantic error otherwise.
+ * @example
+ * ```typescript
+ * const errors = validateWithPydantic(
+ *   INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate,
+ *   { bar: { sortBy: "value", sortOrder: 1 } },
+ *   { code_mapper: sortingCodeMapper, path_prefix: "params.sorting" },
+ * );
+ * errors[0].code; // "S2_INVALID_SORT_ORDER"
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema.validate_with_pydantic
  */
 export function validateWithPydantic(
   validator: (raw: unknown) => PydanticErrorEntry[],

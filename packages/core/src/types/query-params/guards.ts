@@ -1,21 +1,13 @@
 /**
- * Shared constructor-guard helpers for the query-param dataclass family —
- * TS port of the module-level private helpers in
- * `mixpanel_headless/types.py` (phase2-design C7).
+ * Shared constructor guards for the query-parameter types: event-name and
+ * cohort-argument validation, calendar-date checks, Python `int`
+ * predicates and the raw-cohort deep-copy/sanitise helpers. Guards throw
+ * in Python source order — the first failing rule wins, and the corpus
+ * records one `{class, code}` per input. This module is the cycle-free
+ * leaf below `filter.ts` and `cohort.ts`, which need each other's types.
  *
- * Guard blocks everywhere in this directory are transcribed from the
- * Python source IN SOURCE ORDER (Risk #1: the first failing guard wins,
- * and vectors record one `{class, code}` per input), with one comment
- * per registry code.
- *
- * The raw-cohort dict helpers (`deepCopy`, `sanitizeRawCohort`) live
- * here rather than in `cohort.ts` because `filter.ts` needs
- * `sanitizeRawCohort` for inline cohort filters while `cohort.ts`
- * needs `Filter` for its `instanceof` checks — this module is the
- * shared leaf below both.
- *
- * @internal Not part of the public package surface — consumed by
- * `filter.ts` / `metric.ts` / `cohort.ts`.
+ * @see mixpanel_headless.types
+ * @internal
  */
 
 import { pythonStrip } from "../../compat/index.js";
@@ -23,19 +15,21 @@ import { isPythonDict, setOwn } from "../../compat/python-dict.js";
 import { ParamValidationError } from "../../errors.js";
 
 /**
- * Control characters rejected in event names — mirror of
- * `types._CONTROL_CHAR_RE` (`[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`;
- * duplicated from `validation.py` in Python to avoid circular imports).
+ * Control characters rejected in event names
+ * (`[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`); Python duplicates the pattern
+ * from its validation module to avoid a circular import.
  *
+ * @see mixpanel_headless.types._CONTROL_CHAR_RE
  * @internal
  */
 // eslint-disable-next-line no-control-regex -- the class exists to match control characters (Python `_CONTROL_CHAR_RE`)
 const CONTROL_CHAR_RE: RegExp = /[\x00-\x08\v\f\x0E-\x1F\x7F]/;
 
 /**
- * Math types that require a measurement property — mirror of
- * `types._MATH_REQUIRING_PROPERTY` (member order = Python source order).
+ * Math types that require a measurement property; member order is the
+ * Python source order.
  *
+ * @see mixpanel_headless.types._MATH_REQUIRING_PROPERTY
  * @internal
  */
 export const MATH_REQUIRING_PROPERTY: ReadonlySet<string> = new Set([
@@ -58,12 +52,19 @@ export const MATH_REQUIRING_PROPERTY: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Whether a value is Python-`int`-like (mirror of `isinstance(v, int)`
- * over codec-decoded JSON values: integral `number` or `bigint`; a
- * fractional `number` is a Python `float` and does NOT match).
+ * Report whether a value is Python-`int`-like: an integral `number` or a
+ * `bigint`, mirroring `isinstance(v, int)` over codec-decoded JSON values.
+ * A fractional `number` is a Python `float` and does not match; neither
+ * does a boolean.
  *
  * @param value - The candidate value.
  * @returns True when the Python twin would see an `int`.
+ * @example
+ * ```ts
+ * isPyInt(3); // true
+ * isPyInt(3.5); // false
+ * isPyInt(true); // false — see isPyIntOrBool
+ * ```
  * @internal
  */
 export function isPyInt(value: unknown): value is number | bigint {
@@ -74,19 +75,24 @@ export function isPyInt(value: unknown): value is number | bigint {
 }
 
 /**
- * Full `isinstance(v, int)` mirror INCLUDING booleans — Python's
- * `bool` is a subclass of `int`, so every `isinstance(cohort, int)`
- * saved-vs-inline split accepts `True`/`False` (B3 arbiter fix F1,
- * `b3-review-resolution.md` 2026-08-15; ratified Discrepancy #8 makes
- * a boolean cohort id in-annotation, b3-packets Caution #11).
+ * Mirror `isinstance(v, int)` including booleans. Python's `bool` is a
+ * subclass of `int`, so every `isinstance(cohort, int)` saved-vs-inline
+ * split accepts `True`/`False`, and a boolean cohort id is therefore
+ * in-annotation for those sites.
  *
- * Contrast {@link isPyInt} (bool-EXCLUSIVE) and the B2 validators'
- * `isPythonInt` (`validation-shared.ts`, also bool-EXCLUSIVE): those
- * serve sites where Python checks `isinstance(v, bool)` separately
- * FIRST — the direction flips per site; read each Python guard.
- *
+ * @remarks
+ * Contrast {@link isPyInt} (bool-exclusive) and `isPythonInt` in
+ * `query/validation-shared.ts` (also bool-exclusive): those serve sites
+ * where Python checks `isinstance(v, bool)` separately first. The
+ * direction flips per site, so read each Python guard before choosing.
  * @param value - The candidate value.
  * @returns True when Python's `isinstance(value, int)` would hold.
+ * @example
+ * ```ts
+ * isPyIntOrBool(true); // true
+ * isPyIntOrBool(7n); // true
+ * isPyIntOrBool(1.5); // false
+ * ```
  * @internal
  */
 export function isPyIntOrBool(
@@ -96,21 +102,26 @@ export function isPyIntOrBool(
 }
 
 /**
- * Validate that an event name is non-empty and has no control chars —
- * port of `types._validate_event_name`.
+ * Reject an event name that is blank or contains control characters.
  *
  * @param event - The event name to validate.
- * @param className - Name of the containing class (for error messages).
- * @throws ParamValidationError - `EV1_EMPTY_EVENT` when empty/blank,
- *   `EV2_CONTROL_CHAR_EVENT` when control characters are present.
+ * @param className - Name of the containing class, used in the message.
+ * @throws {@link ParamValidationError} - `EV1_EMPTY_EVENT` when the name is
+ *   empty or blank, `EV2_CONTROL_CHAR_EVENT` when it contains control
+ *   characters.
+ * @example
+ * ```ts
+ * validateEventName("Signup", "FunnelStep"); // returns
+ * validateEventName("  ", "FunnelStep"); // throws EV1_EMPTY_EVENT
+ * ```
+ * @see mixpanel_headless.types._validate_event_name
  * @internal
  */
 export function validateEventName(event: string, className: string): void {
-  // EV1_EMPTY_EVENT: event must be a non-empty, non-blank string.
-  // Blankness is CPython str.strip() (pythonStrip), NOT JS .trim() — the
-  // sets diverge on U+001C..1F/U+0085 vs U+FEFF (B0-gate RUN.md
-  // 2026-08-15 divergence; this check runs BEFORE the control-char
-  // guard, so U+001C-only inputs raise EV1, matching Python order).
+  // EV1_EMPTY_EVENT: event must be a non-empty, non-blank string. Blankness
+  // is CPython `str.strip()` (pythonStrip), not JS `.trim()`: the whitespace
+  // sets differ on U+001C..U+001F, U+0085 and U+FEFF. This check runs before
+  // the control-char guard, so a U+001C-only input raises EV1, as in Python.
   if (!event || !pythonStrip(event)) {
     throw new ParamValidationError(
       `${className}.event must be a non-empty string`,
@@ -127,20 +138,26 @@ export function validateEventName(event: string, className: string): void {
 }
 
 /**
- * Validate cohort ID and name shared by `CohortBreakdown`, `CohortMetric`,
- * and `Filter` — port of `types._validate_cohort_args`.
+ * Validate the cohort id and display name shared by `CohortBreakdown`,
+ * `CohortMetric` and the cohort `Filter` factories.
  *
- * @param cohort - Saved cohort ID or inline definition (any non-int
- *   value skips the ID guard, exactly like Python's
- *   `isinstance(cohort, int)` — which INCLUDES booleans:
- *   `CohortBreakdown(False)` fires the guard, `True` passes).
+ * @param cohort - Saved cohort id or inline definition. Any non-int value
+ *   skips the id guard, exactly like Python's `isinstance(cohort, int)` —
+ *   which includes booleans: `CohortBreakdown(False)` fires the guard,
+ *   `True` passes.
  * @param name - Display name for the cohort (`null` when not provided).
- * @param family - Error-code family of the caller — `"CF"` for
- *   `Filter.inCohort`/`notInCohort`, `"CB"` for `CohortBreakdown`, `"CM"`
- *   for `CohortMetric`.
- * @throws ParamValidationError - `{family}1_COHORT_ID_NOT_POSITIVE` when
- *   the cohort ID is not positive, `{family}2_COHORT_NAME_EMPTY` when the
- *   name is empty/blank while provided.
+ * @param family - Error-code family of the caller: `"CF"` for
+ *   `Filter.inCohort` / `notInCohort`, `"CB"` for `CohortBreakdown`,
+ *   `"CM"` for `CohortMetric`.
+ * @throws {@link ParamValidationError} - `<family>1_COHORT_ID_NOT_POSITIVE`
+ *   when the cohort id is not positive, `<family>2_COHORT_NAME_EMPTY` when
+ *   a provided name is blank.
+ * @example
+ * ```ts
+ * validateCohortArgs(42, null, "CB"); // returns
+ * validateCohortArgs(0, null, "CB"); // throws CB1_COHORT_ID_NOT_POSITIVE
+ * ```
+ * @see mixpanel_headless.types._validate_cohort_args
  * @internal
  */
 export function validateCohortArgs(
@@ -148,12 +165,10 @@ export function validateCohortArgs(
   name: string | null,
   family: "CF" | "CB" | "CM",
 ): void {
-  // {family}1_COHORT_ID_NOT_POSITIVE: integer cohort IDs must be
-  // positive. Python's `isinstance(cohort, int) and cohort <= 0`
-  // includes booleans (`bool <: int`): `False <= 0` is True and fires
-  // the guard, `True <= 0` is False and passes — `cohort === false` is
-  // the exact boolean residue (B3 arbiter fix F1,
-  // `b3-review-resolution.md` 2026-08-15).
+  // {family}1_COHORT_ID_NOT_POSITIVE: integer cohort ids must be positive.
+  // Python's `isinstance(cohort, int) and cohort <= 0` includes booleans
+  // (`bool <: int`): `False <= 0` is True and fires the guard, `True <= 0`
+  // is False and passes — `cohort === false` is the exact boolean residue.
   if ((isPyInt(cohort) && cohort <= 0) || cohort === false) {
     throw new ParamValidationError(
       "cohort must be a positive integer",
@@ -170,17 +185,21 @@ export function validateCohortArgs(
   }
 }
 
-/** Regex for YYYY-MM-DD date format validation (`types._DATE_RE`). */
+/** The `YYYY-MM-DD` shape check shared by the date guards. */
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Whether a `YYYY-MM-DD` string names a real proleptic-Gregorian
- * calendar date — mirror of Python `datetime.date.fromisoformat`
- * acceptance (years 1–9999, real month/day ranges, Gregorian leap
- * rules).
+ * Report whether a `YYYY-MM-DD` string names a real proleptic-Gregorian
+ * calendar date, mirroring what Python's `datetime.date.fromisoformat`
+ * accepts (years 1–9999, real month/day ranges, Gregorian leap rules).
  *
  * @param dateStr - A string already matching `YYYY-MM-DD`.
  * @returns True when the date exists on the calendar.
+ * @example
+ * ```ts
+ * isRealCalendarDate("2024-02-29"); // true
+ * isRealCalendarDate("2023-02-29"); // false
+ * ```
  * @internal
  */
 export function isRealCalendarDate(dateStr: string): boolean {
@@ -209,11 +228,16 @@ export function isRealCalendarDate(dateStr: string): boolean {
 }
 
 /**
- * Whether a string matches the `YYYY-MM-DD` shape (format only — see
- * {@link isRealCalendarDate} for calendar validity).
+ * Report whether a string matches the `YYYY-MM-DD` shape; format only —
+ * see {@link isRealCalendarDate} for calendar validity.
  *
  * @param dateStr - The candidate string.
  * @returns True on a format match.
+ * @example
+ * ```ts
+ * matchesDateFormat("2026-01-15"); // true
+ * matchesDateFormat("2026-1-15"); // false
+ * ```
  * @internal
  */
 export function matchesDateFormat(dateStr: string): boolean {
@@ -221,16 +245,20 @@ export function matchesDateFormat(dateStr: string): boolean {
 }
 
 /**
- * Deep-copy a decoded JSON-ish subtree — the TS twin of the
- * `copy.deepcopy` calls in Python's `CohortDefinition.to_dict` /
- * `_sanitize_raw_cohort`.
+ * Deep-copy a decoded JSON-ish subtree, as the `copy.deepcopy` calls in
+ * Python's `CohortDefinition.to_dict` and `_sanitize_raw_cohort` do.
  *
- * Plain objects and arrays are copied recursively; primitives, `bigint`,
- * and immutable class instances (e.g. lossless number wrappers riding in
- * decoded payloads) pass through by reference.
+ * Plain objects and arrays are copied recursively; primitives, `bigint`
+ * and immutable class instances (such as the lossless number wrappers
+ * riding in decoded payloads) pass through by reference.
  *
  * @param value - The subtree to copy.
  * @returns A structurally independent copy.
+ * @example
+ * ```ts
+ * const copy = deepCopy({ selector: { children: [1, 2] } });
+ * // copy.selector.children !== original.selector.children
+ * ```
  * @internal
  */
 export function deepCopy<T>(value: T): T {
@@ -249,26 +277,27 @@ export function deepCopy<T>(value: T): T {
 }
 
 /**
- * Remove null `selector` keys from behavioral event_selector entries —
- * port of the module-private `types._sanitize_raw_cohort` (exported
- * `@internal` for its conformance vectors).
+ * Remove `selector: null` entries from the behavioral `event_selector`
+ * blocks of a raw cohort definition, on a deep copy.
  *
- * The Mixpanel API calls `postorder_traverse` on nested `selector`
- * fields within `event_selector` blocks; a `None` root causes a crash.
- * This function deep-copies the raw cohort dict and removes any
- * `selector: null` entries from behavioral event_selectors.
- *
- * Python-parity note: the Python body runs `del es["selector"]` whenever
- * `es.get("selector") is None`, which would raise `KeyError` on an
- * absent key — but every constructible `CohortDefinition.to_dict()`
- * output always carries the key, so the reachable behavior is exactly
- * "delete when present and null" (mirrored here; a JS `delete` on an
- * absent key is a silent no-op).
- *
+ * @remarks
+ * The Mixpanel API runs `postorder_traverse` over nested `selector`
+ * fields inside `event_selector` blocks and crashes on a `null` root.
+ * Python's body runs `del es["selector"]` whenever
+ * `es.get("selector") is None`, which would raise `KeyError` on an absent
+ * key; every constructible `CohortDefinition.to_dict()` output carries
+ * the key, so the reachable behaviour is exactly "delete when present and
+ * null", and a JS `delete` on an absent key is a silent no-op anyway.
+ * Exported for the conformance binding and translated tests only.
  * @param raw - Output of `CohortDefinition.toDict()`.
  * @returns Sanitized deep copy safe for API submission.
- * @remarks Not part of the public package surface — exported from this
- * module for the conformance binding and translated tests only.
+ * @example
+ * ```ts
+ * const clean = sanitizeRawCohort(definition.toDict());
+ * // clean.behaviors.bhvr_0.count.event_selector has no `selector` key
+ * // when the criterion carried no `where` filters.
+ * ```
+ * @see mixpanel_headless.types._sanitize_raw_cohort
  */
 export function sanitizeRawCohort(
   raw: Readonly<Record<string, unknown>>,

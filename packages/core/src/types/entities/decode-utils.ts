@@ -12,10 +12,15 @@ import { ResponseValidationError } from "../../errors.js";
  * Raise the model-boundary validation error.
  *
  * @param path - `Model.field` style location.
- * @param message - What was violated (message text out of contract,
- *   R5.4).
- * @returns Never returns.
- * @throws ResponseValidationError - Always.
+ * @param message - What was violated (message text is not part of the
+ *   contract; class and code are).
+ * @throws {@link ResponseValidationError} - Always.
+ * @example
+ * ```ts
+ * if (typeof raw !== "string") {
+ *   return modelFail("Dashboard.title", "expected a string");
+ * }
+ * ```
  * @internal
  */
 export function modelFail(path: string, message: string): never {
@@ -27,6 +32,12 @@ export function modelFail(path: string, message: string): never {
  *
  * @param value - Any value.
  * @returns A short kind label (`"null"`, `"array"`, or the `typeof`).
+ * @example
+ * ```ts
+ * describeValue(null); // "null"
+ * describeValue([1, 2]); // "array"
+ * describeValue(3); // "number"
+ * ```
  * @internal
  */
 export function describeValue(value: unknown): string {
@@ -42,13 +53,19 @@ export function describeValue(value: unknown): string {
 /**
  * Extract preserved iso text from a datetime-valued input: raw string,
  * or the runner's duck-typed `PyDatetime` wrapper (an object carrying a
- * string `iso` field — core cannot import the runner class; dependency
- * direction is runner -> core).
+ * string `iso` field — core cannot import the runner class; the runner
+ * depends on core, never the reverse).
  *
  * @param value - The decoded child value.
  * @param path - `Model.field` location for errors.
  * @returns The iso-8601 text.
- * @throws ResponseValidationError - When neither shape matches.
+ * @throws {@link ResponseValidationError} - When neither shape matches.
+ * @example
+ * ```ts
+ * requireIsoText("2026-01-15T12:00:00Z", "Dashboard.created");
+ * requireIsoText({ iso: "2026-01-15T12:00:00Z" }, "Dashboard.created");
+ * // both return "2026-01-15T12:00:00Z"
+ * ```
  * @internal
  */
 export function requireIsoText(value: unknown, path: string): string {

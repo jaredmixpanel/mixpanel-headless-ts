@@ -1,13 +1,13 @@
 /**
- * Report-link result types — TS port of the 045-report-links tail of
- * `mixpanel_headless/types.py` (Python PR #223): the `ReportLink` and
- * `ResolvedReport` frozen dataclasses and the `ReportLinkQueryResult`
- * union. `ReportLinkType` lives with the other Literal aliases in
- * `literals.ts`; `BookmarkUrl` (a Pydantic model) lives with the entity
- * models in `entities/bookmarks.ts`.
+ * Report-link result types: the `ReportLink` and `ResolvedReport` frozen
+ * dataclasses and the `ReportLinkQueryResult` union. `ReportLinkType`
+ * lives with the other Literal aliases in `literals.ts`; `BookmarkUrl` (a
+ * Pydantic model) lives with the entity models in `entities/bookmarks.ts`.
  *
- * Field names keep their Python snake_case spelling — these are
- * the dataclass twins whose `toDict()` output is JSON-compared.
+ * Field names keep their Python snake_case spelling — these are the
+ * dataclass twins whose `toDict()` output is JSON-compared.
+ *
+ * @see mixpanel_headless.types.ReportLink
  */
 
 import { ParamValidationError } from "../errors.js";
@@ -219,7 +219,7 @@ export class ResolvedReport {
    * the id field that must accompany it.
    *
    * @param fields - The field values.
-   * @throws ParamValidationError - `RL5_RESOLVED_REPORT_INCONSISTENT`
+   * @throws {@link ParamValidationError} - `RL5_RESOLVED_REPORT_INCONSISTENT`
    *   when `source="slug"` has no `slug` or `source="bookmark"` has no
    *   `bookmark_id`.
    */

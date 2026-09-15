@@ -8,17 +8,26 @@
  *
  * @param year - The year.
  * @returns Whether the year is a leap year.
+ * @example
+ * ```ts
+ * isLeapYear(2024); // true
+ * isLeapYear(1900); // false — divisible by 100 but not by 400
+ * ```
  */
 export function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
 /**
- * `date.today().isoformat()` — today's LOCAL calendar date as
+ * `date.today().isoformat()` — today's local calendar date as
  * `YYYY-MM-DD`, the default of every `today` clock seam. The clock is
  * read and rendered here; no date string is ever parsed through `Date`.
  *
  * @returns Today's date as `YYYY-MM-DD`.
+ * @example
+ * ```ts
+ * dateTodayIso(); // e.g. "2026-09-14" (local calendar date)
+ * ```
  */
 export function dateTodayIso(): string {
   const now = new Date();

@@ -1,26 +1,18 @@
 /**
- * Layer-1 argument validators.
+ * Layer-1 argument validators for the time, group-by, funnel,
+ * retention, flow and query-engine entry points. Each is a total
+ * function returning `ValidationError[]`; callers decide whether to
+ * raise `BookmarkValidationError`.
  *
- * Source: `src/mixpanel_headless/_internal/validation.py`
- * (`validate_time_args` :511-647, `validate_group_by_args` :650-771,
- * `validate_funnel_args` :779-1155, `validate_retention_args`
- * :1179-1477, `validate_flow_args` :1498-1764, `validate_query_args`
- * :1885-2280). Python revision: `ts-port/phase2-contract-support` HEAD.
+ * Every validator is an ordered list of per-rule helper calls and
+ * every helper pushes in Python source order — emission order is
+ * contract, so the call order below mirrors the Python statement
+ * order, never a convenience. Parameters are deliberately loose where
+ * Python type-checks at runtime (`steps` elements, `conversion_window`,
+ * `bucket_sizes` elements, `data_group_id`, `group_by`) so the facade
+ * can forward raw user input: the validators are the type police.
  *
- * These validators are TOTAL functions returning `ValidationError[]`;
- * callers decide whether to raise `BookmarkValidationError`. Each
- * validator is an ordered list of per-rule helper calls, and every
- * helper pushes in Python source order — emission order is contract
- * (b2-packets.md Cautions §11), so the call order below is the port of
- * the Python statement order, never a convenience.
- *
- * Input-typing posture (R4.9 / R10.10): parameters are deliberately
- * loose where Python type-checks at runtime (`steps` elements,
- * `conversion_window`, `bucket_sizes` elements, `data_group_id`,
- * `group_by`) so the B5 facade can forward raw user input — the
- * validators ARE the type police.
- *
- * @module validation-args
+ * @see mixpanel_headless._internal.validation
  * @internal
  */
 
@@ -88,9 +80,7 @@ import {
   validateDataGroupId,
 } from "./validation-shared.js";
 
-// =============================================================================
-// Shared rule helpers
-// =============================================================================
+// --- Shared rule helpers ---
 
 /**
  * The math types that accept a property (required or optional), in
@@ -235,9 +225,7 @@ function pushInvalidChoice(
   );
 }
 
-// =============================================================================
-// validate_time_args (validation.py)
-// =============================================================================
+// --- validate_time_args ---
 
 /** Options bag for {@link validateTimeArgs} (Python is all-kwonly). */
 export interface ValidateTimeArgsOptions {
@@ -296,6 +284,7 @@ function checkDateField(
  * });
  * // errors.length === 0
  * ```
+ * @see mixpanel_headless._internal.validation.validate_time_args
  */
 export function validateTimeArgs(
   options: ValidateTimeArgsOptions,
@@ -331,9 +320,9 @@ export function validateTimeArgs(
     );
   }
 
-  // V15: Date ordering — from_date must be <= to_date. R11.5: Python
-  // `>` on str is codepoint-wise, and `_DATE_RE`'s `\d` admits non-BMP
-  // Unicode Nd digits, so JS `>` (UTF-16 code-unit order) would diverge.
+  // V15: Date ordering — from_date must be <= to_date. Python `>` on
+  // str is codepoint-wise, and `_DATE_RE`'s `\d` admits non-BMP Unicode
+  // Nd digits, so JS `>` (UTF-16 code-unit order) would diverge.
   if (
     from_date !== null &&
     to_date !== null &&
@@ -362,9 +351,7 @@ export function validateTimeArgs(
   return errors;
 }
 
-// =============================================================================
-// validate_group_by_args (validation.py)
-// =============================================================================
+// --- validate_group_by_args ---
 
 /** Options bag for {@link validateGroupByArgs}. */
 export interface ValidateGroupByArgsOptions {
@@ -468,6 +455,7 @@ function checkGroupByBuckets(push: PushError, gpath: string, g: GroupBy): void {
  * });
  * // errors.length === 0
  * ```
+ * @see mixpanel_headless._internal.validation.validate_group_by_args
  */
 export function validateGroupByArgs(
   options: ValidateGroupByArgsOptions,
@@ -493,9 +481,7 @@ export function validateGroupByArgs(
   return errors;
 }
 
-// =============================================================================
-// validate_funnel_args (validation.py)
-// =============================================================================
+// --- validate_funnel_args ---
 
 /** Options bag for {@link validateFunnelArgs}. */
 export interface ValidateFunnelArgsOptions {
@@ -805,7 +791,7 @@ function checkHoldingConstant(
  * Validate funnel query arguments before bookmark construction (Layer 1).
  *
  * Implements funnel-specific rules F1-F12 plus the reused time and
- * group-by validators, returning ALL errors so callers can fix multiple
+ * group-by validators, returning all errors so callers can fix multiple
  * issues in a single pass.
  *
  * @param options - Funnel query arguments.
@@ -824,6 +810,7 @@ function checkHoldingConstant(
  * });
  * // errors.length === 0
  * ```
+ * @see mixpanel_headless._internal.validation.validate_funnel_args
  */
 export function validateFunnelArgs(
   options: ValidateFunnelArgsOptions,
@@ -885,9 +872,7 @@ export function validateFunnelArgs(
   return errors;
 }
 
-// =============================================================================
-// validate_retention_args (validation.py)
-// =============================================================================
+// --- validate_retention_args ---
 
 /** Options bag for {@link validateRetentionArgs}. */
 export interface ValidateRetentionArgsOptions {
@@ -1112,7 +1097,7 @@ function checkRetentionGroupBy(push: PushError, groupBy: unknown): void {
  * (Layer 1).
  *
  * Implements retention-specific rules R1-R13 (+ CB3) plus the reused
- * time and group-by validators, returning ALL errors found.
+ * time and group-by validators, returning all errors found.
  *
  * @param options - Retention query arguments.
  * @returns List of validation errors; empty means all arguments are
@@ -1125,6 +1110,7 @@ function checkRetentionGroupBy(push: PushError, groupBy: unknown): void {
  * });
  * // errors.length === 0
  * ```
+ * @see mixpanel_headless._internal.validation.validate_retention_args
  */
 export function validateRetentionArgs(
   options: ValidateRetentionArgsOptions,
@@ -1193,9 +1179,7 @@ export function validateRetentionArgs(
   return errors;
 }
 
-// =============================================================================
-// validate_flow_args (validation.py)
-// =============================================================================
+// --- validate_flow_args ---
 
 /** Options bag for {@link validateFlowArgs}. */
 export interface ValidateFlowArgsOptions {
@@ -1430,7 +1414,7 @@ function checkFlowSessionRules(
  * Validate flow query arguments before bookmark construction (Layer 1).
  *
  * Implements FL1-FL10, DG1, the time-comparison rejection, and the
- * flow enum checks, returning ALL errors found.
+ * flow enum checks, returning all errors found.
  *
  * @param options - Flow query arguments.
  * @returns List of validation errors; empty means all arguments are
@@ -1444,6 +1428,7 @@ function checkFlowSessionRules(
  * });
  * // errors.length === 0
  * ```
+ * @see mixpanel_headless._internal.validation.validate_flow_args
  */
 export function validateFlowArgs(
   options: ValidateFlowArgsOptions,
@@ -1493,9 +1478,7 @@ export function validateFlowArgs(
   return errors;
 }
 
-// =============================================================================
-// validate_query_args (validation.py)
-// =============================================================================
+// --- validate_query_args ---
 
 /** Options bag for {@link validateQueryArgs}. */
 export interface ValidateQueryArgsOptions {
@@ -1561,9 +1544,9 @@ function checkQueryEvents(push: PushError, events: readonly unknown[]): void {
     // as it is unreachable in Python — the branch is ported for
     // completeness because callers may hold pre-existing instances.
     if (item instanceof CohortMetric) {
-      // B2 arbiter fix F3: spelled `instanceof CohortDefinition`, the
-      // literal twin of Python's isinstance — a bool or float-carrier
-      // cohort (ctor-constructible in BOTH languages) must NOT fire CM5.
+      // Spelled `instanceof CohortDefinition`, the literal twin of
+      // Python's isinstance — a bool or float-carrier cohort
+      // (constructible in both languages) must not fire CM5.
       if (item.cohort instanceof CohortDefinition) {
         push(
           epath,
@@ -1843,7 +1826,7 @@ function checkMetrics(push: PushError, events: readonly unknown[]): void {
  *
  * Implements V0-V27 (plus CM5 and DG1), delegating time (V7-V10, V15,
  * V20) and group-by (V11-V12, V18, V24) to the extracted helpers.
- * Returns ALL errors found, not just the first.
+ * Returns all errors found, not just the first.
  *
  * @param options - Insights query arguments.
  * @returns List of validation errors; empty means all arguments are
@@ -1865,6 +1848,7 @@ function checkMetrics(push: PushError, events: readonly unknown[]): void {
  * });
  * // errors.length === 0
  * ```
+ * @see mixpanel_headless._internal.validation.validate_query_args
  */
 export function validateQueryArgs(
   options: ValidateQueryArgsOptions,

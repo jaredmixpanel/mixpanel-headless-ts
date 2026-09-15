@@ -1,21 +1,16 @@
 /**
- * The 8 Python `Enum` classes from `src/mixpanel_headless/types.py`
- * (phase2-design C2, rulebook R4.3): every enum becomes an `as const`
- * object + literal union under the same name (closed wire domains
- * referenced by member NAME at Python call sites; member VALUES are
- * byte-identical to Python's). No TS `enum` syntax is used, so the
- * module is erasable (`erasableSyntaxOnly`); the one `IntEnum`
+ * The eight Python `Enum` classes of `mixpanel_headless.types`, each as
+ * an `as const` object plus a literal union under the same name. Member
+ * values are byte-identical to Python's; no TS `enum` syntax is used, so
+ * the module is erasable (`erasableSyntaxOnly`), and the one `IntEnum`
  * (`AlertFrequencyPreset`) keeps its numeric values.
  *
- * Hand-written source, machine-verified sync: the C8(d) lock test
- * (`conformance-runner/test/literal-alias-lock.test.ts`) asserts
- * member-set equality against the `enums` section of the generated
- * contract artifact
- * `conformance-runner/corpus/contract/literal-aliases.json`. Member
- * order mirrors Python declaration order.
+ * Hand-written, machine-verified: `conformance-runner/test/literal-alias-lock.test.ts`
+ * asserts member-set equality against the `enums` section of
+ * `conformance-runner/corpus/contract/literal-aliases.json`. Member order
+ * mirrors Python declaration order; serialization compares values only.
  *
- * Enum snapshot/serialization compares VALUES, not the TS-side
- * representation (phase2-design C2 ruling on R4.3).
+ * @see mixpanel_headless.types.FeatureFlagStatus
  */
 
 /**
@@ -150,15 +145,14 @@ export type CustomPropertyResourceType =
 export interface EnumTableEntry {
   /** `'str'` for the string enums, `'int'` for the IntEnum port. */
   readonly kind: "str" | "int";
-  /** Member NAME → member VALUE, exactly as Python declares them. */
+  /** Member name → member value, exactly as Python declares them. */
   readonly members: Readonly<Record<string, string | number>>;
 }
 
 /**
- * Serialization view of every ported enum class for the C8(d) lock
- * test: class name → `{kind, members}`. Built by spreading the live
- * enum objects so this registry cannot drift from the declarations
- * above. `ReadonlyMap` per R4.8.
+ * Serialization view of every ported enum class for the lock test:
+ * class name → `{kind, members}`. Built by spreading the live enum
+ * objects so this registry cannot drift from the declarations above.
  */
 export const ENUM_TABLES: ReadonlyMap<string, EnumTableEntry> = new Map<
   string,

@@ -1,19 +1,16 @@
 /**
  * `ReplayBundle` — a collection of session replays with aggregate
- * frames, the TS port of `mixpanel_headless.types.ReplayBundle`.
- *
- * The bundle sits at the top of the replay family: it composes the
- * per-replay dataclasses (`./replay-models.ts`), the bundle aggregations
- * (`replays/aggregators.ts`), the label functions
- * (`replays/replay-labels.ts`) and — for `sample` — full CPython
+ * frames. The bundle sits at the top of the replay family: it composes
+ * the per-replay dataclasses (`replay-models.ts`), the bundle
+ * aggregations (`replays/aggregators.ts`), the label functions
+ * (`replays/replay-labels.ts`) and, for `sample`, CPython
  * `random.Random(seed)` parity (`compat/python-random.ts`). Nothing
- * below it imports this module.
+ * below it imports this module. `sessions_df` / `actions_df` /
+ * `events_df` / `mixpanel_df` become `toSessionsRows()` /
+ * `toActionsRows()` / `toEventsRows()` / `toMixpanelRows()`; the main
+ * `.df` delegates to the sessions frame.
  *
- * Multi-frame surface: `sessions_df`/`actions_df`/`events_df`/
- * `mixpanel_df` become `toSessionsRows()`/`toActionsRows()`/
- * `toEventsRows()`/`toMixpanelRows()`; the main `.df` delegates to the
- * sessions frame. The codec-visible cache slots stay `null` (see
- * `replay-models.ts`).
+ * @see mixpanel_headless.types.ReplayBundle
  */
 
 import { compareCodepoints, compareCodeUnits } from "../../compat/index.js";
@@ -40,8 +37,8 @@ import {
 } from "./result-base.js";
 
 /**
- * One replay `fetch_replays` skipped — TS-only. Python's `ReplayBundle`
- * has no such field: its `fetch_replays` only logs the skipped id.
+ * One replay `fetch_replays` skipped. TS-only: Python's `ReplayBundle`
+ * has no such field because its `fetch_replays` only logs the skipped id.
  */
 export interface ReplayFetchFailure {
   /** The replay that was skipped. */
@@ -52,15 +49,29 @@ export interface ReplayFetchFailure {
 
 /** Declared fields of {@link ReplayBundle} (Python field order). */
 export interface ReplayBundleFields {
-  /** Replays in the bundle. Default: `[]`. */
+  /**
+   * Replays in the bundle.
+   *
+   * @defaultValue `[]`
+   */
   readonly replays?: readonly Replay[];
-  /** When the bundle was computed (ISO text). Default: `""`. */
+  /**
+   * When the bundle was computed (ISO text).
+   *
+   * @defaultValue `""`
+   */
   readonly computed_at?: string;
-  /** Owning project ID (`0` when unset). Default: `0`. */
+  /**
+   * Owning project ID (`0` when unset).
+   *
+   * @defaultValue `0`
+   */
   readonly project_id?: number;
   /**
    * Replays `fetch_replays` skipped (TS-only, additive; see
-   * {@link ReplayBundle.failures}). Default: `[]`.
+   * {@link ReplayBundle.failures}).
+   *
+   * @defaultValue `[]`
    */
   readonly failures?: readonly ReplayFetchFailure[] | undefined;
   /** Codec-visible DataFrame cache slots — always `null` in TS. */
@@ -78,13 +89,28 @@ export interface ReplayBundleFields {
 }
 
 /**
- * A collection of replays with aggregate frames — TS port of
- * `types.ReplayBundle`.
+ * A collection of session replays with aggregate frames.
  *
- * Multi-frame surface: `sessions_df`/`actions_df`/`events_df`/
- * `mixpanel_df` become `toSessionsRows()`/`toActionsRows()`/
- * `toEventsRows()`/`toMixpanelRows()`; the main `.df` delegates to the
- * sessions frame. See the module doc for the B5-deferred members.
+ * @remarks
+ * Python's `sessions_df` / `actions_df` / `events_df` / `mixpanel_df` /
+ * `elements_df` become `toSessionsRows()` / `toActionsRows()` /
+ * `toEventsRows()` / `toMixpanelRows()` / `toElementsRows()`; the main
+ * `toRows()` delegates to the sessions frame. Derived bundles (`filter`,
+ * `where`, `head`, `sample`, `findPattern`, `errorSessions`) keep
+ * `computed_at` and `project_id`.
+ * @example
+ * ```ts
+ * const bundle = await ws.fetchReplays(replayIds);
+ * bundle.toRows();
+ * // [{ replay_id: "r1", distinct_id: "u1", start_time: "2026-01-15T12:00:00",
+ * //    end_time: "2026-01-15T12:05:00", duration_s: 300, retention_days: 30,
+ * //    n_events: 120, n_actions: 14, n_clicks: 6, n_inputs: 2, n_pages: 3,
+ * //    n_errors: 0, n_mp_events: 4, entry_url: "https://app.example.com/",
+ * //    exit_url: "https://app.example.com/checkout" }]
+ * bundle.where({ has_event: "Purchase" }).topClicks(3);
+ * // [{ target_desc: "button#buy", count: 9 }, …]
+ * ```
+ * @see mixpanel_headless.types.ReplayBundle
  */
 export class ReplayBundle {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -127,7 +153,7 @@ export class ReplayBundle {
    *
    * @param fields - Declared fields; Python defaults apply to absent
    *   optionals.
-   * @throws ParamValidationError - `RB1_PROJECT_ID_MISMATCH` when
+   * @throws {@link ParamValidationError} - `RB1_PROJECT_ID_MISMATCH` when
    *   `project_id` is set (truthy) and any replay carries a different
    *   project ID.
    */
@@ -155,26 +181,27 @@ export class ReplayBundle {
   /**
    * The replays `fetch_replays` skipped under its per-replay failure
    * isolation, in input order — so a partial bundle is never silently
-   * short. Empty for bundles built any other way, and NOT carried over by
+   * short. Empty for bundles built any other way, and not carried over by
    * the derived-bundle members (`filter`, `head`, `sample`).
    *
-   * Divergence: Python only logs the skipped ids (`fetch_replays`
-   * `logger.warning`); the structured record is TS-only, following the
-   * `failed_pages` meta precedent of the parallel user query. A prototype
-   * getter, not an own property, so `toJSON()` / the conformance codec
-   * do not see it.
-   *
+   * @remarks
+   * A prototype getter, not an own property, so `toJSON()` and the
+   * conformance codec do not see it.
    * @returns The skipped replays with their errors.
    */
+  // Divergence: Python only logs the skipped ids (`fetch_replays`
+  // `logger.warning`); the structured record is TS-only, following the
+  // `failed_pages` meta precedent of the parallel user query.
   get failures(): readonly ReplayFetchFailure[] {
     return this.#failures;
   }
 
   /**
-   * Pre-pandas rows of the Python `sessions_df` body: one summary row
+   * Build the pre-pandas rows of Python's `sessions_df`: one summary row
    * per replay.
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.ReplayBundle.sessions_df
    */
   toSessionsRows(): readonly Row[] {
     return this.replays.map((r) => {
@@ -233,10 +260,11 @@ export class ReplayBundle {
   }
 
   /**
-   * Pre-pandas rows of the Python bundle `actions_df` body (replay-id
-   * prefixed action rows across every replay).
+   * Build the pre-pandas rows of Python's bundle `actions_df`: the
+   * action rows of every replay, each prefixed with its `replay_id`.
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.ReplayBundle.actions_df
    */
   toActionsRows(): readonly Row[] {
     const rows: Row[] = [];
@@ -276,11 +304,12 @@ export class ReplayBundle {
   }
 
   /**
-   * Pre-pandas rows of the Python bundle `events_df` body (projected
-   * rrweb rows with `replay_id` added AFTER projection, exactly as
-   * Python mutates the row dict — the key lands LAST).
+   * Build the pre-pandas rows of Python's bundle `events_df`: projected
+   * rrweb rows with `replay_id` added after projection, exactly as
+   * Python mutates the row dict (so the key lands last).
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.ReplayBundle.events_df
    */
   toEventsRows(): readonly Row[] {
     const rows: Row[] = [];
@@ -296,7 +325,7 @@ export class ReplayBundle {
 
   /**
    * Column contract of the bundle `events_df` frame (explicit
-   * `columns=cols` — `replay_id` FIRST, unlike the row-dict insertion
+   * `columns=cols` — `replay_id` first, unlike the row-dict insertion
    * order).
    *
    * @returns The column list.
@@ -315,9 +344,11 @@ export class ReplayBundle {
   }
 
   /**
-   * Pre-pandas rows of the Python bundle `mixpanel_df` body.
+   * Build the pre-pandas rows of Python's bundle `mixpanel_df`: one row
+   * per correlated Mixpanel event across every replay.
    *
    * @returns The rows list.
+   * @see mixpanel_headless.types.ReplayBundle.mixpanel_df
    */
   toMixpanelRows(): readonly Row[] {
     const rows: Row[] = [];
@@ -344,10 +375,10 @@ export class ReplayBundle {
   }
 
   /**
-   * The main `.df` contract — Python's `df` property returns
+   * Build the main `.df` rows — Python's `df` property returns
    * `sessions_df`.
    *
-   * @returns.
+   * @returns The sessions rows.
    */
   toRows(): readonly Row[] {
     return this.toSessionsRows();
@@ -356,18 +387,19 @@ export class ReplayBundle {
   /**
    * Column contract of the main `.df` frame.
    *
-   * @returns.
+   * @returns The sessions column list.
    */
   rowColumns(): readonly string[] {
     return this.sessionsRowColumns();
   }
 
   /**
-   * New bundle keeping only replays matching a predicate — mirror of
-   * Python `filter()` (same `computed_at`/`project_id`).
+   * Return a new bundle keeping only the replays matching a predicate
+   * (same `computed_at` / `project_id`).
    *
    * @param predicate - Keep test.
    * @returns The filtered bundle.
+   * @see mixpanel_headless.types.ReplayBundle.filter
    */
   filter(predicate: (replay: Replay) => boolean): ReplayBundle {
     return new ReplayBundle({
@@ -378,16 +410,20 @@ export class ReplayBundle {
   }
 
   /**
-   * Declarative filter — mirror of Python `where()` (all provided
-   * conditions must hold).
+   * Return a new bundle keeping the replays that satisfy every provided
+   * condition.
    *
-   * @param options - Filter conditions.
-   * @param options.distinct_id - Exact distinct-ID match.
-   * @param options.contains_url - Substring of any navigate URL.
-   * @param options.has_event - Name of a correlated Mixpanel event.
-   * @param options.min_duration_s - Minimum duration (inclusive).
-   * @param options.max_duration_s - Maximum duration (inclusive).
+   * @param options - Filter conditions, each unconstrained when omitted:
+   *   `distinct_id` (exact distinct-ID match), `contains_url` (substring
+   *   of any navigate URL), `has_event` (name of a correlated Mixpanel
+   *   event), `min_duration_s` / `max_duration_s` (inclusive bounds in
+   *   seconds).
    * @returns The filtered bundle.
+   * @example
+   * ```ts
+   * bundle.where({ contains_url: "/checkout", min_duration_s: 30 });
+   * ```
+   * @see mixpanel_headless.types.ReplayBundle.where
    */
   where(options: {
     readonly distinct_id?: string | null;
@@ -429,11 +465,12 @@ export class ReplayBundle {
   }
 
   /**
-   * New bundle with the first `n` replays — mirror of Python
-   * `head()`.
+   * Return a new bundle with the first `n` replays.
    *
-   * @param n - Max replays to keep. Default: `5`.
+   * @param n - Maximum replays to keep.
+   * @defaultValue `n` is `5`
    * @returns The truncated bundle.
+   * @see mixpanel_headless.types.ReplayBundle.head
    */
   head(n = 5): ReplayBundle {
     return new ReplayBundle({
@@ -444,18 +481,17 @@ export class ReplayBundle {
   }
 
   /**
-   * One row per `(target_desc, normalized_url)` with click counts
-   * (Python `elements_df` property, `types.py`). Closed at
-   * B5-S3 — the `real_clicks` + `url_normalizer` dependencies landed
-   * with the aggregators.
+   * Build one row per `(target_desc, normalized_url)` with click counts
+   * — Python's `elements_df`.
    *
+   * @remarks
    * Counts exclude focus-only interactions (a real click fires both a
    * `focused` and a `clicked` action; counting both double-counts every
    * click). URLs are normalized via `urlNormalizer` so the same element
    * on parameterized pages aggregates into one row.
-   *
    * @returns `{target_desc, url, n_clicks, n_unique_replays}` rows;
    *   empty when the bundle has no genuine clicks.
+   * @see mixpanel_headless.types.ReplayBundle.elements_df
    */
   toElementsRows(): readonly Row[] {
     const clicks = realClicks(this.toActionsRows());
@@ -464,7 +500,7 @@ export class ReplayBundle {
     }
     // `groupby(["target_desc", "url"], dropna=False).agg(...)` — pandas
     // sorts the composite group key ascending; the URL column is the
-    // NORMALIZED one (`clicks.assign(url=...)`), and Python's
+    // normalized one (`clicks.assign(url=...)`), and Python's
     // `url_normalizer(u) if u else u` leaves a falsy URL untouched.
     const groups = new Map<
       string,
@@ -494,7 +530,7 @@ export class ReplayBundle {
       }
       entry.n_clicks += 1;
       // `n_unique_replays=("replay_id", "nunique")` — pandas' nunique
-      // SKIPS NaN; the column is never null in this projection.
+      // skips NaN; the column is never null in this projection.
       entry.replays.add(row["replay_id"]);
     }
     return [...groups]
@@ -517,11 +553,12 @@ export class ReplayBundle {
   }
 
   /**
-   * Rank the most-clicked targets across every replay in the bundle
-   * (Python `top_clicks`, `types.py`).
+   * Rank the most-clicked targets across every replay in the bundle.
    *
-   * @param n - Maximum number of click targets to return. Default 10.
+   * @param n - Maximum number of click targets to return.
+   * @defaultValue `n` is `10`
    * @returns `{target_desc, count}` rows, descending by count.
+   * @see mixpanel_headless.types.ReplayBundle.top_clicks
    */
   topClicks(n = 10): readonly Row[] {
     return topClicks(this, n);
@@ -529,11 +566,18 @@ export class ReplayBundle {
 
   /**
    * Find rage-click bursts — repeated clicks on one target in a tight
-   * window (Python `rage_clicks`, `types.py`).
+   * window.
    *
-   * @param options - `threshold` (default 3) / `windowMs` (default
-   *   1000).
+   * @param options - Burst definition: `threshold`, the clicks needed to
+   *   count as a burst (default `3`), and `windowMs`, the window in
+   *   milliseconds (default `1000`).
    * @returns `{replay_id, t_start, target_desc, count}` rows.
+   * @example
+   * ```ts
+   * bundle.rageClicks({ threshold: 4, windowMs: 800 });
+   * // [{ replay_id: "r1", t_start: 12.4, target_desc: "button#buy", count: 5 }]
+   * ```
+   * @see mixpanel_headless.types.ReplayBundle.rage_clicks
    */
   rageClicks(
     options: { threshold?: number; windowMs?: number } = {},
@@ -543,25 +587,31 @@ export class ReplayBundle {
 
   /**
    * Find idle stretches between consecutive actions longer than a
-   * threshold (Python `long_pauses`, `types.py`).
+   * threshold.
    *
-   * @param thresholdS - Minimum pause length in seconds. Default 10.
+   * @param thresholdS - Minimum pause length in seconds.
+   * @defaultValue `thresholdS` is `10`
    * @returns `{replay_id, t_start, duration_s}` rows.
+   * @see mixpanel_headless.types.ReplayBundle.long_pauses
    */
   longPauses(thresholdS = 10): readonly Row[] {
     return longPauses(this, thresholdS);
   }
 
   /**
-   * New bundle whose action labels contain `actionSequence` as a
-   * CONTIGUOUS subsequence (Python `find_pattern`,
-   * `types.py`).
+   * Return a new bundle of the replays whose action labels contain
+   * `actionSequence` as a contiguous subsequence.
    *
    * @param actionSequence - Labels to look for, in order. An empty list
    *   matches every replay (returns a full clone).
-   * @param options - Optional `labelFn` override (defaults to
-   *   `defaultLabelFn`).
+   * @param options - Labelling overrides: `labelFn` maps an action to its
+   *   label (defaults to `defaultLabelFn`).
    * @returns The filtered bundle.
+   * @example
+   * ```ts
+   * bundle.findPattern(["click:button#buy@/cart", "click:button#pay@/checkout"]);
+   * ```
+   * @see mixpanel_headless.types.ReplayBundle.find_pattern
    */
   findPattern(
     actionSequence: readonly string[],
@@ -588,11 +638,11 @@ export class ReplayBundle {
   }
 
   /**
-   * New bundle of only the replays that emitted a console error
-   * (Python `error_sessions`, `types.py`).
+   * Return a new bundle of only the replays that emitted a console error.
    *
    * @returns The filtered bundle; empty when the bundle has no console
    *   errors.
+   * @see mixpanel_headless.types.ReplayBundle.error_sessions
    */
   errorSessions(): ReplayBundle {
     const ids = new Set(errorSessions(this));
@@ -600,20 +650,25 @@ export class ReplayBundle {
   }
 
   /**
-   * New bundle with up to `n` replays, deterministic per `seed`
-   * (Python `sample`, `types.py`). Closed at B5-S3 with
-   * FULL CPython `random.Random(seed).sample` parity (decision S3-D1,
-   * `B5-S3-notes.md`) — the same seed selects the same replays in both
-   * runtimes, not merely self-consistently.
+   * Return a new bundle with up to `n` replays, deterministic per `seed`.
    *
-   * @param n - How many replays to sample. Default 5.
-   * @param seed - Optional integer seed for reproducible sampling.
-   *   `null` / omitted needs `entropy` (there is no `os.urandom` seam
-   *   in `core`, R9.5).
+   * @remarks
+   * Sampling reproduces CPython's `random.Random(seed).sample`, so the
+   * same seed selects the same replays in both runtimes, not merely
+   * self-consistently.
+   * @param n - How many replays to sample.
+   * @param seed - Integer seed for reproducible sampling. When `null` or
+   *   omitted, `entropy` is required: core has no `os.urandom` seam.
    * @param entropy - 32-bit seed words used when `seed` is `null`.
+   * @defaultValue `n` is `5`, `seed` is `null`
    * @returns A bundle whose `replays` has length `min(n, total)`.
-   * @throws MixpanelHeadlessError - Code `PY_RANDOM_SEED_UNSUPPORTED`
+   * @throws {@link MixpanelHeadlessError} - Code `PY_RANDOM_SEED_UNSUPPORTED`
    *   when neither a seed nor entropy is supplied.
+   * @example
+   * ```ts
+   * bundle.sample(3, 42).replays.map((r) => r.replay_id);
+   * ```
+   * @see mixpanel_headless.types.ReplayBundle.sample
    */
   sample(
     n = 5,
@@ -631,11 +686,12 @@ export class ReplayBundle {
   }
 
   /**
-   * Markdown rollup of the bundle: header totals plus per-session
-   * timelines (Python `summary_markdown`, `types.py`).
+   * Render a Markdown rollup of the bundle: header totals plus
+   * per-session timelines.
    *
    * @returns A markdown string; `"# No replays in bundle\n"` when the
    *   bundle is empty.
+   * @see mixpanel_headless.types.ReplayBundle.summary_markdown
    */
   summaryMarkdown(): string {
     if (this.replays.length === 0) {
@@ -658,21 +714,21 @@ export class ReplayBundle {
     }
     sections.push("");
     for (const r of this.replays) {
-      // Python wraps each per-replay render in `except NotImplementedError`
-      // — a Phase-2-era holdover from the unported `summary_markdown`.
-      // The member is implemented now and cannot raise it, so the
-      // fallback branch is unreachable in both runtimes.
+      // Python wraps each per-replay render in `except NotImplementedError`;
+      // `Replay.summary_markdown` cannot raise it, so that fallback branch
+      // is unreachable in both runtimes and has no twin here.
       sections.push(r.summaryMarkdown(), "\n---\n");
     }
     return sections.join("\n");
   }
 
   /**
-   * Identity copy — mirror of Python `join_mixpanel_events()` (the
-   * Python body ignores `properties` and returns a copy).
+   * Return a copy of this bundle — Python's `join_mixpanel_events()`
+   * body ignores `properties` and returns a copy.
    *
-   * @param properties - Ignored, as in Python.
+   * @param _properties - Ignored, as in Python.
    * @returns A copy of this bundle.
+   * @see mixpanel_headless.types.ReplayBundle.join_mixpanel_events
    */
   joinMixpanelEvents(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for arity parity with Python's `join_mixpanel_events(properties=None)`, whose body ignores it too
@@ -686,12 +742,12 @@ export class ReplayBundle {
   }
 
   /**
-   * Action-count comparison rows against another bundle — mirror of
-   * Python `compare()` (value counts per action label, sorted union
-   * of keys).
+   * Build action-count comparison rows against another bundle: value
+   * counts per action label over the sorted union of labels.
    *
    * @param other - The bundle to compare against.
    * @returns `{action, self_count, other_count, delta}` rows.
+   * @see mixpanel_headless.types.ReplayBundle.compare
    */
   compareRows(other: ReplayBundle): readonly Row[] {
     const countByAction = (bundle: ReplayBundle): Map<string, number> => {
@@ -747,8 +803,9 @@ export class ReplayBundle {
    *
    * @param raw - The payload.
    * @returns The reconstructed instance (guards fire).
-   * @throws ResponseValidationError - On unknown keys or wrong types.
-   * @throws ParamValidationError - When the RB1 guard fires.
+   * @throws {@link ResponseValidationError} - On unknown keys or wrong types.
+   * @throws {@link ParamValidationError} - When the `RB1_PROJECT_ID_MISMATCH`
+   *   guard fires.
    * @internal
    */
   static fromDict(raw: unknown): ReplayBundle {

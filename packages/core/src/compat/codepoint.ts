@@ -1,14 +1,10 @@
 /**
- * Codepoint-based string primitives (rulebook R11.5 / R11.6). Part of the
- * `pythonCompat` module (rulebook §11): ported once, first; no other
- * module re-derives these semantics.
- *
- * The traps these close (semantic-trap watchlist item 9): JS `.length`,
- * `.slice`, and default `Array.prototype.sort` all operate on UTF-16 code
- * UNITS, while Python `len`, slicing, and `sorted()` operate on code
- * POINTS. A UTF-16 `slice` can split a surrogate pair (producing a lone
- * surrogate the vector codec rejects), and unit-order sorting inverts
- * e.g. `"｡"` (U+FF61) vs `"😀"` (U+1F600).
+ * Codepoint-based string primitives: Python `len`, `list(text)`, slicing
+ * and `sorted()` operate on code points, while JS `.length`, `.slice` and
+ * the default `Array.prototype.sort` operate on UTF-16 code units. A
+ * UTF-16 `slice` can split a surrogate pair (producing a lone surrogate
+ * the vector codec rejects), and unit-order sorting inverts e.g. `"｡"`
+ * (U+FF61) against `"😀"` (U+1F600). Implemented once here.
  */
 
 /**
@@ -56,7 +52,7 @@ export function codepoints(text: string): string[] {
  * @param length - The string's code-point length.
  * @returns The clamped non-negative bound, per CPython slice semantics
  *   (negative bounds count from the end; out-of-range bounds clamp).
- * @throws TypeError - When `index` is not an integer (Python raises
+ * @throws {@link TypeError} - When `index` is not an integer (Python raises
  *   `TypeError` for non-int slice indices).
  */
 function normalizeBound(index: number, length: number): number {
@@ -70,7 +66,7 @@ function normalizeBound(index: number, length: number): number {
 }
 
 /**
- * Python `text[start:end]` — codepoint-based slicing (rulebook R11.6).
+ * Python `text[start:end]` — codepoint-based slicing.
  *
  * Implements CPython's two-argument slice semantics exactly: `undefined`
  * bounds are open ends, negative bounds count from the end, out-of-range
@@ -80,10 +76,10 @@ function normalizeBound(index: number, length: number): number {
  * validators) relies on.
  *
  * @param text - The string to slice.
- * @param start - Inclusive start (Python `None` -> omit / `undefined`).
- * @param end - Exclusive end (Python `None` -> omit / `undefined`).
+ * @param start - Inclusive start; omit (`undefined`) for Python `None`.
+ * @param end - Exclusive end; omit (`undefined`) for Python `None`.
  * @returns The sliced string.
- * @throws TypeError - When a bound is a non-integer number.
+ * @throws {@link TypeError} - When a bound is a non-integer number.
  * @example
  * ```typescript
  * cpSlice("a𝒳b", 0, 2); // "a𝒳"  (UTF-16 slice would cut the pair)
@@ -105,13 +101,18 @@ export function cpSlice(text: string, start?: number, end?: number): string {
 /**
  * Compare two strings by code point, exactly like Python `str < str`.
  *
+ * Exported alongside {@link sortedByCodepoint} because `sorted()` sites
+ * with a non-string key (tuple keys, `len()` keys) need the comparator
+ * itself, not the whole-list helper.
+ *
  * @param a - Left operand.
  * @param b - Right operand.
  * @returns Negative when `a < b`, positive when `a > b`, `0` when equal.
- *
- * Exported since B5-S1: `sorted(items, key=...)` sites with a non-string
- * key (tuple keys, `len()` keys) need the comparator itself, not the
- * whole-list helper — and R10.8 forbids re-deriving it locally.
+ * @example
+ * ```ts
+ * compareCodepoints("｡", "😀"); // -1  (JS "｡" < "😀" is false)
+ * [["b", 2], ["a", 1]].sort(([x], [y]) => compareCodepoints(x, y));
+ * ```
  */
 export function compareCodepoints(a: string, b: string): number {
   let i = 0;
@@ -144,6 +145,10 @@ export function compareCodepoints(a: string, b: string): number {
  * @param a - Left operand.
  * @param b - Right operand.
  * @returns Negative when `a < b`, positive when `a > b`, `0` when equal.
+ * @example
+ * ```ts
+ * ["😀", "｡"].sort(compareCodeUnits); // ["😀", "｡"] — the engine's native order
+ * ```
  */
 export function compareCodeUnits(a: string, b: string): number {
   if (a < b) {
@@ -156,11 +161,11 @@ export function compareCodeUnits(a: string, b: string): number {
 }
 
 /**
- * Python `sorted(values)` for strings — codepoint order (rulebook R11.5).
+ * Python `sorted(values)` for strings — codepoint order.
  *
  * JS default `<`/`sort()` compare UTF-16 units, which inverts pairs like
  * `"｡"` (U+FF61) vs `"😀"` (U+1F600); Python compares code points. The
- * sort is stable (ES2019 guarantee) and returns a NEW array.
+ * sort is stable (ES2019 guarantee) and returns a new array.
  *
  * @param values - The strings to sort; not mutated.
  * @returns A new array in Python `sorted()` order.

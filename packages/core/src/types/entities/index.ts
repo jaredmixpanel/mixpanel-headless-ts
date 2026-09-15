@@ -1,8 +1,10 @@
 /**
- * Barrel for the Pydantic entity/param model ports (phase2-design C5,
- * packet P2-7) — the 119 `types.py` entity models; the six auth-family
- * Pydantic models (`ServiceAccount`, `Session`, …) live under `auth/`.
- * `model-base.ts` and `decode-utils.ts` are plumbing and stay out of the barrel.
+ * Barrel for the entity and param model ports — the Pydantic models of
+ * Python's `types.py`. The auth-family models (`ServiceAccount`,
+ * `Session`, …) live under `auth/`; `model-base.ts` and
+ * `decode-utils.ts` are plumbing and stay out of the barrel.
+ *
+ * @see mixpanel_headless.types
  */
 export * from "./accounts.js";
 export * from "./alerts.js";

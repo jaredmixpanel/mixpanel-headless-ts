@@ -1,22 +1,20 @@
 /**
  * CPython `str.isprintable()` classification, pinned to the port's target
- * CPython Unicode database (rulebook R11.1; semantic-trap watchlist
- * item 8's "Cn follows the JS engine" caveat, closed).
+ * CPython Unicode database rather than the JS engine's.
  *
- * The TS-7 differential run surfaced the caveat as a live divergence:
- * V8's Unicode 17 database treats codepoints newly assigned in
- * Unicode 17 (e.g. U+323B0, CJK Extension J) as printable, while the
- * target CPython (3.14 / Unicode 16) classifies them `Cn` and escapes
- * them in `repr()`. `pythonRepr` therefore consults this generated,
- * CPython-derived range table instead of `\p{Cn}`-style engine lookups,
- * making escape decisions engine-independent.
+ * The engine's database can lead CPython's: V8 (Unicode 17) treats
+ * codepoints newly assigned in Unicode 17 (e.g. U+323B0, CJK Extension J)
+ * as printable, while CPython 3.14 (Unicode 16) classifies them `Cn` and
+ * escapes them in `repr()`. The differential fuzz surfaced that as a live
+ * divergence, so `pythonRepr` consults this generated, CPython-derived
+ * range table instead of `\p{Cn}`-style engine lookups.
  */
 
 import { NON_PRINTABLE_RANGES } from "./non-printable.gen.js";
 
 /**
  * Whether CPython `str.isprintable()` reports a codepoint as
- * NON-printable (and `repr()` therefore escapes it).
+ * non-printable (and `repr()` therefore escapes it).
  *
  * Binary search over the generated inclusive range table (categories
  * Cc, Cf, Cs, Co, Cn, Zl, Zp, Zs per the pinned Unicode database, with

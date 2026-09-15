@@ -1,30 +1,17 @@
 /**
- * Shared validation helpers, custom-property scanning, and the
- * difflib-faithful fuzzy matcher.
+ * Shared validation helpers: the module constants, the character /
+ * date / finiteness predicates, the error collector, the
+ * difflib-faithful fuzzy matcher, `data_group_id` validation and the
+ * custom-property scan every Layer-1 validator runs. Not exported from
+ * the package barrel.
  *
- * Internal module — not exported from the package barrel.
+ * Fidelity rules the helpers encode: `pythonStrip` wherever Python
+ * calls `.strip()`; regex `\s` / `\d` classes come from the pinned
+ * CPython tables, never the JS shorthands; `len(str)` bounds count
+ * codepoints; Python floats arrive either as JS numbers or as the rig's
+ * PyFloat carrier and both spellings are classified.
  *
- * Source: `src/mixpanel_headless/_internal/validation.py` (ranges
- * 91-508: custom-property scan, shared tables/helpers, fuzzy helpers,
- * `_validate_data_group_id`). Python revision:
- * `ts-port/phase2-contract-support` HEAD.
- *
- * Fidelity notes (b2-packets.md Cautions):
- * - §3/§4: `pythonStrip` everywhere Python calls `.strip()`;
- *   `_INVISIBLE_RE` is built from the pinned
- *   `compat/whitespace.gen.ts` table (Python str-pattern `\s` ==
- *   `str.isspace()` set), never a JS `\s` class.
- * - §8: Python `float` values reach TS either as non-integral /
- *   non-finite JS numbers or as the conformance rig's PyFloat carrier
- *   duck-shape `{ spelling: string }`; `compat/python-values.ts`
- *   (`isFloatCarrier`, `isPythonFloat`) and {@link isFiniteNumber}
- *   classify both spellings.
- * - §9: `len(str)` bounds count codepoints via `cpLength`.
- * - §6: {@link suggest} is a faithful `difflib.get_close_matches` port
- *   (`compat/difflib.ts`) — candidates from `sortedByCodepoint(valid)`,
- *   n=3, cutoff=0.5, `heapq.nlargest` tie order.
- *
- * @module validation-shared
+ * @see mixpanel_headless._internal.validation
  * @internal
  */
 
@@ -55,9 +42,7 @@ import { GroupBy } from "../types/query-params/group-by.js";
 import { Metric } from "../types/query-params/metric.js";
 import type { RetentionEvent } from "../types/query-params/retention.js";
 
-// =============================================================================
-// Module constants (validation.py:91-92, 338-366, 1162-1176, 1484-1495)
-// =============================================================================
+// --- Module constants ---
 
 /** Port of `_CP_INPUT_KEY_RE` — ASCII-only class. */
 const CP_INPUT_KEY_RE = /^[A-Z]$/;
@@ -80,8 +65,8 @@ export const SESSION_MATH: ReadonlySet<string> = new Set([
 export const FORMULA_POSITION_RE: RegExp = /[A-Z]/g;
 
 /**
- * Codepoint test for the `_CONTROL_CHAR_RE` class (`validation.py`,
- * `[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`).
+ * Codepoint test for the `_CONTROL_CHAR_RE` class
+ * (`[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`).
  *
  * Ported as an explicit codepoint predicate rather than a JS regex: the
  * character class is ASCII-explicit (no `\s`/`\d` shorthand) so the two
@@ -117,10 +102,9 @@ export const MAX_LAST_DAYS = 3650;
 export const MAX_ROLLING = 365;
 
 /**
- * Port of `_MAX_FILTER_VALUES` — server rejects
- * very large filter value lists. Consumed by the V1b bookmark
- * validators (B20B/B21); declared here with the other module
- * constants exactly as in the Python source.
+ * Port of `_MAX_FILTER_VALUES` — the server rejects very large filter
+ * value lists. Consumed by the bookmark validators; declared here with
+ * the other module constants exactly as in the Python source.
  */
 export const MAX_FILTER_VALUES = 1000;
 
@@ -155,9 +139,8 @@ export const MAX_FLOW_STEPS_DIRECTION = 5;
 export const MAX_FLOW_CARDINALITY = 50;
 
 /**
- * Port of `_FLOW_MAX_WINDOW`: maximum
- * conversion window per unit (366-day equivalent for a leap year).
- * ReadonlyMap per R4.8.
+ * Port of `_FLOW_MAX_WINDOW`: maximum conversion window per unit
+ * (366-day equivalent for a leap year).
  */
 export const FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
   ["month", 12],
@@ -165,18 +148,21 @@ export const FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
   ["day", 366],
 ]);
 
-// =============================================================================
-// Character / date / finiteness helpers (validation.py)
-// =============================================================================
+// --- Character / date / finiteness helpers ---
 
 /**
- * Check whether a string contains ASCII control characters.
- *
- * Port of `contains_control_chars`: detects
- * `\x00-\x08`, `\x0b`, `\x0c`, `\x0e-\x1f`, and `\x7f` (DEL).
+ * Check whether a string contains ASCII control characters
+ * (`\x00-\x08`, `\x0b`, `\x0c`, `\x0e-\x1f`, and `\x7f`).
  *
  * @param s - The string to check.
  * @returns True if `s` contains at least one control character.
+ * @example
+ * ```ts
+ * containsControlChars("plain"); // false
+ * containsControlChars("tab\tok"); // false — TAB is not in the class
+ * containsControlChars("nul\u0000"); // true
+ * ```
+ * @see mixpanel_headless._internal.validation.contains_control_chars
  */
 export function containsControlChars(s: string): boolean {
   for (const ch of s) {
@@ -188,15 +174,22 @@ export function containsControlChars(s: string): boolean {
 }
 
 /**
- * Port of `_INVISIBLE_RE.match(s)` truthiness (`validation.py:363`):
- * true when EVERY codepoint of `s` is Python-`\s` whitespace (the
- * pinned `str.isspace()` table) or one of the six invisible literals.
+ * Report whether every codepoint of `s` is Python-`\s` whitespace (the
+ * pinned `str.isspace()` table) or one of the six invisible literals —
+ * the truthiness of `_INVISIBLE_RE.match(s)`.
+ *
+ * @remarks
  * True for the empty string (`[...]*` matches zero chars), exactly as
  * the Python regex. Python's `$`-before-trailing-newline nuance is a
  * no-op here because `\n` is itself in the class.
- *
  * @param s - The string to classify.
  * @returns True when the string is invisible-only.
+ * @example
+ * ```ts
+ * isInvisibleOnly(" \u200b\ufeff"); // true
+ * isInvisibleOnly(""); // true
+ * isInvisibleOnly(" a "); // false
+ * ```
  */
 export function isInvisibleOnly(s: string): boolean {
   for (const ch of s) {
@@ -211,7 +204,7 @@ export function isInvisibleOnly(s: string): boolean {
 /**
  * Unicode decimal-digit (category Nd) test from the pinned CPython
  * table — Python str-pattern `\d` matches exactly this set
- * (`Py_UNICODE_ISDECIMAL`), NOT the ASCII-only JS `\d`.
+ * (`Py_UNICODE_ISDECIMAL`), not the ASCII-only JS `\d`.
  *
  * @param cp - Codepoint to test.
  * @returns True when the codepoint is a Unicode decimal digit.
@@ -226,15 +219,22 @@ function isDecimalDigit(cp: number): boolean {
 }
 
 /**
- * Port of `_DATE_RE.match(s)` truthiness (`validation.py`,
- * pattern `^\d{4}-\d{2}-\d{2}$`) with Python `re` semantics:
+ * Report whether `s` matches `_DATE_RE` (`^\d{4}-\d{2}-\d{2}$`) with
+ * Python `re` semantics.
  *
- * - `\d` matches Unicode decimal digits (category Nd), not just
- *   ASCII — see {@link isDecimalDigit};
- * - `$` also matches just before ONE trailing `\n`.
- *
+ * @remarks
+ * `\d` matches Unicode decimal digits (category Nd), not just ASCII —
+ * see {@link isDecimalDigit}; `$` also matches just before one trailing
+ * `\n`.
  * @param s - Candidate date string.
  * @returns True when the Python regex would match.
+ * @example
+ * ```ts
+ * matchesDateRe("2026-01-15"); // true
+ * matchesDateRe("2026-01-15\n"); // true — Python `$` before a final newline
+ * matchesDateRe("٢٠٢٦-٠١-١٥"); // true — Arabic-Indic digits are `\d`
+ * matchesDateRe("2026-1-15"); // false
+ * ```
  */
 export function matchesDateRe(s: string): boolean {
   const core = s.endsWith("\n") ? s.slice(0, -1) : s;
@@ -255,7 +255,7 @@ export function matchesDateRe(s: string): boolean {
   return true;
 }
 
-/** Days per month in a non-leap year (calendar table, watchlist #5). */
+/** Days per month in a non-leap year. */
 const DAYS_IN_MONTH: readonly number[] = [
   31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
 ];
@@ -263,22 +263,26 @@ const DAYS_IN_MONTH: readonly number[] = [
 /**
  * Check if a YYYY-MM-DD string is a valid calendar date.
  *
- * Port of `_is_valid_date`, which defers to
- * `datetime.date.fromisoformat`. Implemented as a PURE calendar check
- * (watchlist #5 — never `new Date(...)`): Gregorian leap rule, month
- * 1-12, day vs month length, year 1-9999 (`date.MINYEAR`).
- *
- * Contract note: callers only reach this through the
+ * @remarks
+ * Python defers to `datetime.date.fromisoformat`; this is a pure
+ * calendar check (never `new Date(...)`, which would read the local
+ * zone): Gregorian leap rule, month 1–12, day vs month length, year
+ * 1–9999 (`date.MINYEAR`). Callers only reach this through the
  * {@link matchesDateRe} gate, whose accepted set is wider than ASCII
- * (Unicode Nd digits, one trailing newline). CPython's
- * `fromisoformat` C parser accepts ONLY ASCII digits in exactly
- * `YYYY-MM-DD` here, so any gated-but-non-ASCII spelling returns
- * false — matching Python's `ValueError → False` path
- * (`fromisoformat`'s wider grammar — basic format, week dates — can
- * never pass the gate, so it is intentionally not reproduced).
- *
+ * (Unicode Nd digits, one trailing newline). CPython's `fromisoformat`
+ * C parser accepts only ASCII digits in exactly `YYYY-MM-DD` here, so
+ * any gated-but-non-ASCII spelling returns false — matching Python's
+ * `ValueError → False` path. `fromisoformat`'s wider grammar (basic
+ * format, week dates) can never pass the gate and is not reproduced.
  * @param dateStr - Date string (regex-gated by the caller).
  * @returns True if the date is a valid calendar date.
+ * @example
+ * ```ts
+ * isValidDate("2024-02-29"); // true — leap year
+ * isValidDate("2023-02-29"); // false
+ * isValidDate("2026-13-01"); // false
+ * ```
+ * @see mixpanel_headless._internal.validation._is_valid_date
  */
 export function isValidDate(dateStr: string): boolean {
   if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(dateStr)) {
@@ -300,12 +304,17 @@ export function isValidDate(dateStr: string): boolean {
 }
 
 /**
- * Convert a pre-validated run of ASCII digits to a number (no
- * `parseInt`/`Number` per R11.7; input is guaranteed `[0-9]+` by the
- * caller's regex).
+ * Convert a pre-validated run of ASCII digits to a number.
  *
+ * @remarks
+ * No `parseInt`/`Number` — those accept spellings Python's `int()`
+ * would not; the input is guaranteed `[0-9]+` by the caller's regex.
  * @param digits - ASCII digit string.
  * @returns The base-10 integer value.
+ * @example
+ * ```ts
+ * asciiDigitsToInt("0042"); // 42
+ * ```
  */
 export function asciiDigitsToInt(digits: string): number {
   let value = 0;
@@ -318,13 +327,19 @@ export function asciiDigitsToInt(digits: string): number {
 /**
  * Check if a numeric value is finite (not NaN, not Inf).
  *
- * Port of `_is_finite`: `None` → true;
- * `float` → `math.isfinite`; anything else (ints included) → true.
- * PyFloat carriers are classified per Caution §8: the non-finite
- * spellings are the only non-finite carriers.
- *
- * @param value - Numeric value to check (loose input domain, R4.9).
+ * @remarks
+ * `None` → true; `float` → `math.isfinite`; anything else (ints
+ * included) → true. For PyFloat carriers the non-finite spellings are
+ * the only non-finite values.
+ * @param value - Numeric value to check (loose input domain).
  * @returns True if finite or not a float at all.
+ * @example
+ * ```ts
+ * isFiniteNumber(1.5); // true
+ * isFiniteNumber(Number.POSITIVE_INFINITY); // false
+ * isFiniteNumber("not a number"); // true — only floats can be non-finite
+ * ```
+ * @see mixpanel_headless._internal.validation._is_finite
  */
 export function isFiniteNumber(value: unknown): boolean {
   if (value === null || value === undefined) {
@@ -339,13 +354,11 @@ export function isFiniteNumber(value: unknown): boolean {
   return true;
 }
 
-// =============================================================================
-// Error accumulation
-// =============================================================================
+// --- Error accumulation ---
 
 /**
  * Append one `ValidationError` to a validator's list — the only
- * capability a per-rule helper receives, so a rule can ADD errors but
+ * capability a per-rule helper receives, so a rule can add errors but
  * never reorder or drop earlier ones. Emission order is contract: the
  * corpus checks the error sequence, so helpers are called in Python
  * source order and each pushes in Python source order.
@@ -392,6 +405,12 @@ export interface ErrorCollector {
  *
  * @param initial - Errors to start from.
  * @returns The list and its sink.
+ * @example
+ * ```ts
+ * const { errors, push } = errorCollector(validateDataGroupId(dataGroupId));
+ * push("last", "last must be positive", "V3_LAST_POSITIVE");
+ * return errors;
+ * ```
  */
 export function errorCollector(
   initial: readonly ValidationError[] = [],
@@ -412,22 +431,26 @@ export function errorCollector(
   return { errors, push };
 }
 
-// =============================================================================
-// Fuzzy matching helpers (validation.py)
-// =============================================================================
+// --- Fuzzy matching helpers ---
 
 /**
- * Find closest matches for a mistyped enum value.
+ * Find the closest matches for a mistyped enum value.
  *
- * Port of `_suggest`: candidates are
- * `sorted(valid)` (codepoint sort, R11.5), n=3, cutoff=0.5; `None`
+ * @remarks
+ * A faithful `difflib.get_close_matches` port: candidates are
+ * `sorted(valid)` (codepoint order), `heapq.nlargest` tie order; `null`
  * when nothing clears the cutoff.
- *
  * @param value - The invalid value to match against.
  * @param valid - Set of valid values.
- * @param n - Maximum number of suggestions (default 3).
- * @param cutoff - Minimum similarity ratio (default 0.5).
+ * @param n - Maximum number of suggestions.
+ * @param cutoff - Minimum similarity ratio.
  * @returns Frozen array of closest matches, or null if none.
+ * @example
+ * ```ts
+ * suggest("totl", new Set(["total", "unique", "average"])); // ["total"]
+ * suggest("zzz", new Set(["total", "unique"])); // null
+ * ```
+ * @see mixpanel_headless._internal.validation._suggest
  */
 export function suggest(
   value: string,
@@ -456,22 +479,36 @@ export interface EnumErrorArgs {
   readonly valid: ReadonlySet<string>;
   /** Machine-readable error code. */
   readonly code: string;
-  /** Error severity level (default `"error"`). */
+  /**
+   * Error severity level.
+   *
+   * @defaultValue `"error"`
+   */
   readonly severity?: "error" | "warning" | undefined;
 }
 
 /**
  * Build a validation error for an invalid enum value with suggestions.
  *
- * Port of `_enum_error`. Message text is
- * display-only but ported faithfully, including the
+ * @remarks
+ * Message text is display-only but ported faithfully, including the
  * `sorted(valid)[:5]` sample list repr in the no-suggestion branch.
- *
  * @param args - The finding: `path` (JSONPath-like location), `field`
  *   (human-readable name), `value` (the invalid text), `valid` (the
- *   accepted set), `code` and the optional `severity` (default
- *   `"error"`).
+ *   accepted set), `code` and the optional `severity`.
  * @returns ValidationError with fuzzy-matched suggestions.
+ * @example
+ * ```ts
+ * enumError({
+ *   path: "events[0].math",
+ *   field: "math type",
+ *   value: "totl",
+ *   valid: VALID_MATH_INSIGHTS,
+ *   code: "V4_INVALID_MATH",
+ * });
+ * // ValidationError { message: "Invalid math type 'totl'", suggestion: ["total"], … }
+ * ```
+ * @see mixpanel_headless._internal.validation._enum_error
  */
 export function enumError(args: EnumErrorArgs): ValidationError {
   const { path, field, value, valid, code, severity = "error" } = args;
@@ -486,20 +523,24 @@ export function enumError(args: EnumErrorArgs): ValidationError {
   return new ValidationError(path, msg, code, severity, suggestion);
 }
 
-// =============================================================================
-// data_group_id validation (validation.py)
-// =============================================================================
+// --- data_group_id validation ---
 
 /**
  * Validate the `data_group_id` parameter if provided.
  *
- * Port of `_validate_data_group_id` (`validation.py:472-508`). Guard
- * order matters (Caution §8): the bool reject fires BEFORE the int
- * check because Python `bool` IS `int`.
- *
- * @param dataGroupId - Data group ID to validate (loose input, R4.9);
+ * @remarks
+ * Guard order matters: the bool reject fires before the int check
+ * because Python's `bool` is an `int`.
+ * @param dataGroupId - Data group ID to validate (loose input);
  *   `null`/absent skips validation.
  * @returns List with one `ValidationError` if invalid, empty otherwise.
+ * @example
+ * ```ts
+ * validateDataGroupId(42); // []
+ * validateDataGroupId(0); // [ValidationError { code: "DG1_INVALID_DATA_GROUP_ID", … }]
+ * validateDataGroupId(null); // []
+ * ```
+ * @see mixpanel_headless._internal.validation._validate_data_group_id
  */
 export function validateDataGroupId(dataGroupId: unknown): ValidationError[] {
   if (dataGroupId !== null && dataGroupId !== undefined) {
@@ -525,19 +566,23 @@ export function validateDataGroupId(dataGroupId: unknown): ValidationError[] {
   return [];
 }
 
-// =============================================================================
-// Custom property validation + scanning (validation.py)
-// =============================================================================
+// --- Custom property validation + scanning ---
 
 /**
- * Validate a custom property specification (rules CP1-CP6).
+ * Validate a custom property specification (rules CP1–CP6).
  *
- * Port of `_validate_custom_property`.
- * CP5's formula length bound counts CODEPOINTS (`cpLength`, R11.6).
- *
+ * @remarks
+ * CP5's formula length bound counts codepoints (`cpLength`), as
+ * Python's `len(str)` does.
  * @param prop - A `CustomPropertyRef` or `InlineCustomProperty`.
  * @param path - JSONPath-like location for error reporting.
  * @returns List of validation errors; empty means valid.
+ * @example
+ * ```ts
+ * validateCustomProperty(new CustomPropertyRef({ id: 0 }), "where[0]");
+ * // [ValidationError { path: "where[0]", code: "CP1_INVALID_ID", … }]
+ * ```
+ * @see mixpanel_headless._internal.validation._validate_custom_property
  */
 export function validateCustomProperty(
   prop: CustomPropertyRef | InlineCustomProperty,
@@ -641,9 +686,6 @@ function isCustomProperty(
 /**
  * Scan a list of Filter objects for custom property references.
  *
- * Port of `_scan_filters_for_custom_properties`
- * (`validation.py`).
- *
  * @param filters - Filter objects to scan.
  * @param basePath - JSONPath prefix for error reporting (e.g.
  *   `"events[0]"` or `"steps[1]"`).
@@ -667,7 +709,7 @@ function scanFiltersForCustomProperties(
 
 /**
  * Options bag for {@link scanCustomProperties} — mirrors the all-kwonly,
- * all-default-`None` Python signature (R3.9: absent and `null` are
+ * all-default-`None` Python signature (absent and `null` are
  * equivalent).
  */
 export interface ScanCustomPropertiesOptions {
@@ -855,15 +897,24 @@ function scanRetentionEvents(
 }
 
 /**
- * Scan all query positions for custom properties and validate.
+ * Scan all query positions for custom properties and validate each.
  *
- * Port of `_scan_custom_properties`:
- * collects `CustomPropertyRef`/`InlineCustomProperty` values from
- * group_by, where, events, funnel/flow steps and retention events,
- * and runs {@link validateCustomProperty} on each, in source order.
- *
+ * @remarks
+ * Collects `CustomPropertyRef`/`InlineCustomProperty` values from
+ * `group_by`, `where`, `events`, funnel/flow steps and retention
+ * events, and runs {@link validateCustomProperty} on each, in source
+ * order.
  * @param options - The scan positions (all optional).
  * @returns List of validation errors; empty means all valid.
+ * @example
+ * ```ts
+ * const errors = scanCustomProperties({
+ *   where: [Filter.equals(new CustomPropertyRef({ id: 0 }), "x")],
+ *   group_by: null,
+ * });
+ * // [ValidationError { path: "where", code: "CP1_INVALID_ID", … }]
+ * ```
+ * @see mixpanel_headless._internal.validation._scan_custom_properties
  */
 export function scanCustomProperties(
   options: ScanCustomPropertiesOptions,

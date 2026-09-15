@@ -275,6 +275,29 @@ marked `// Divergence:` at the site.
 
 <!-- /lane 5A -->
 
+<!-- lane 5C -->
+
+### Added by the comment pass over types, query, bookmarks, compat, replays and errors
+
+- `InvalidArgumentError` constructed with a `violation` outside the three
+  documented values: Python raises a bare `ValueError`; the port raises
+  `ParamValidationError` / `VALIDATION_ERROR` (the site has no registry code)
+  — `InvalidArgumentError` (`errors.ts`).
+- A `dict(iterable-of-pairs)` whose pair carries a non-string key (int,
+  float, bool, `None`) stores it under its JSON spelling (`"18.0"`,
+  `"true"`, `"null"`); Python keeps the typed key. Only reachable through the
+  pair-list branch of `dict(properties)`, which no Mixpanel response produces
+  — `dictKeyText` (`query/transforms.ts`).
+- `ReplayBundle.failures` is TS-only: Python's `fetch_replays` only logs
+  skipped replay ids (`logger.warning`); the port records `{replay_id, error}`
+  on a prototype getter so a partial bundle is never silently short. It is
+  not an own property, so `toJSON()` and the codec still see the Python shape
+  — `ReplayBundle.failures` (`types/results/replays.ts`).
+- Corrections to entries above (sites now carry `// Divergence:` markers):
+  the `SchemaGraphResult` integer-key bullet no longer has a `TODO(port)`
+  (`types/results/discovery.ts`), and `safeInt` now lives in
+  `types/results/flow-graph.ts`, not `query-engine.ts`.
+
 ## What the rig proves — and does not
 
 **Corpus** (`conformance-runner/`, replayed by `corpus.test.ts` and
