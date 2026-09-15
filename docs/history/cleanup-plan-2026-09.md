@@ -1,7 +1,7 @@
 # mixpanel-headless-ts — Cleanup & Hardening Plan
 
 **Date:** 2026-09-14
-**Status:** Proposed (nothing in this document has been applied yet)
+**Status:** Executed 2026-09-14/15 on branch cleanup/2026-09; see CONTRIBUTING.md for the resulting conventions
 **Goal:** Prepare the repository for review, installation, and contribution by
 outside engineers. The bar is "a thoughtfully, professionally engineered
 codebase that is rigorously maintained for collaborative, team-based
@@ -650,7 +650,7 @@ Banned tokens (comments only; test titles too): `\bB\d+(-[A-Z]\d+|-R\d+|-W\d+|-S
 `\bQA 20\d\d`, `packets?\.md`, `\bpacket\b`, `\bshard\b`, `\barbiter\b`,
 `\bwatchlist\b`, `\bphase-?[1-4]\b`, `reviewB`, `review-resolution`,
 `notes\.md`, `ledger row`, `Caution #?\d+`, `\.py:\d+`, `\(:\d+`, `FB-\d+`,
-`SEM-F\d+`, `CRED-F\d+`. Allowed exceptions: `context/**`, `GATE.md`,
+`SEM-F\d+`, `CRED-F\d+`. Allowed exceptions: `docs/history/**`, `GATE.md`,
 `RUN.md`, `CHANGELOG`, and the Python _symbol_ form `module.Class.method`.
 
 Known false positive: 36 comment lines in `query/validation-bookmark.ts`
@@ -1155,7 +1155,7 @@ npx eslint -c eslint.trial.config.mjs . -f json -o /tmp/lint.json
 node -e 'const r=require("/tmp/lint.json"),b={};for(const f of r)for(const m of f.messages)b[m.ruleId]=(b[m.ruleId]||0)+1;console.table(Object.entries(b).sort((a,c)=>c[1]-a[1]))'
 
 # dead code
-npx knip@latest --no-progress --reporter compact   # add a knip.json ignoring vendor/, context/, corpus/, *.gen.ts
+npx knip@latest --no-progress --reporter compact   # add a knip.json ignoring vendor/, docs/history/, corpus/, *.gen.ts
 
 # comment archaeology (rough grep; the AST-based script in Phase 5 replaces this)
 grep -rnoE "\b(TS-[0-9]+|B[0-9]+(-[A-Z][0-9]+)?|P[0-9]-[0-9]+|R[0-9]+\.[0-9]+|D1[0-9]|AIE-[0-9]+|b[0-9]-packets|QA 20[0-9]{2})\b" \

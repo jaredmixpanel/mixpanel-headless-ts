@@ -21,8 +21,8 @@ export const FROZEN_PATHS = Object.freeze([
     why: "Committed Python-corpus snapshot (scripts/sync-corpus.sh), verbatim bytes.",
   },
   {
-    path: "context/",
-    why: "Port-process docs mirrored verbatim from the Python repo (historical record).",
+    path: "docs/history/",
+    why: "The port's process record (relocated from context/); frozen, not maintained.",
   },
   {
     path: "conformance-runner/src/api-map.gen.ts",

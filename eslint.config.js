@@ -1,7 +1,7 @@
 // ESLint flat config for the mixpanel-headless-ts workspace (ESLint 10,
 // `defineConfig` / `globalIgnores` from "eslint/config").
 //
-// Shape and rule decisions: CLEANUP-PLAN.md §8 (Phase 4). Every rule is
+// Shape and rule decisions: docs/history/cleanup-plan-2026-09.md §8 (Phase 4). Every rule is
 // either enforced (`error`) or `off` with a one-line reason; nothing is ever
 // `warn` (a load-time assertion at the bottom guarantees that). Rules whose
 // fixes are still being hand-applied are configured in full in the main
@@ -158,7 +158,7 @@ const NO_PROCESS_GLOBAL = [
 ];
 
 // ---------------------------------------------------------------------------
-// Lane blocks (Phase 4 hand-fix categories; CLEANUP-PLAN.md §8.4)
+// Lane blocks (Phase 4 hand-fix categories; docs/history/cleanup-plan-2026-09.md §8.4)
 // ---------------------------------------------------------------------------
 
 const UNPARKED = new Set(

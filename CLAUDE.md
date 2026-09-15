@@ -10,17 +10,15 @@ rewrite: a conformance corpus extracted from the Python implementation is replay
 against the TS port, a cross-language differential oracle is fuzzed against the
 Python one, and vendored JSON-schema referees check payload shapes.
 
-The **spec of record lives in-repo under `context/`** (relocated from the Python
-repo, where the port was executed, at the end of Phase 3): the master plan,
-rulebook, api-map, and per-phase design docs / task packets are under
-`context/phase{1,2,3,4}/` (e.g. `context/phase1/design/phase1-design.md` sections
-D11–D16 define this repo; later phases use packet files like
-`context/phase3/design/b9-packets.md`). Commit messages reference those
-packet/requirement IDs (TS-5, P2-4, B9, R9.1, …). Gate-run records are committed
-in `conformance-runner/GATE.md` and `differential/oracle/RUN.md`. The Python repo
-keeps the conformance corpus (`conformance/` — the extraction tooling lives
-there) and the Python-side bug reports; a pointer README remains at its
-`context/`. Remote: `github.com/jaredmixpanel/mixpanel-headless-ts` (private);
+The port's process record (master plan, rulebook, api-map, per-phase design
+docs and task packets) is archived under `docs/history/` — see its README for a
+reading order and a glossary of the identifiers (`R9.1`, `B6-W2`, `P2-4`, `TS-5`,
+`D11–D16`, …) that older commit messages and comments still cite. It is frozen
+and not maintained; the live spec is the code plus `CONTRIBUTING.md` and
+`PORTING.md`. Gate-run records are committed in `conformance-runner/GATE.md`
+and `differential/oracle/RUN.md`. The Python repo keeps the conformance corpus
+(`conformance/` — the extraction tooling lives there) and the Python-side bug
+reports. Remote: `github.com/jaredmixpanel/mixpanel-headless-ts` (private);
 CI (`.github/workflows/ci.yml`) mirrors `npm run check`.
 
 ## Commands
@@ -44,7 +42,7 @@ Install with `npm ci` (lockfile-exact).
 - `npm run knip` — unused files/deps/exports. Unused exports/types are
   _warnings_ until Phase 6's un-export sweep (`knip.jsonc` `rules`).
 - `npm run lint` — `eslint . --max-warnings 0` (typed, ~20 s). `eslint.config.js`
-  is the exhaustive Phase 4 config (CLEANUP-PLAN.md §8): every rule is `error`
+  is the exhaustive Phase 4 config (`docs/history/cleanup-plan-2026-09.md` §8): every rule is `error`
   or `off` with a reason, never `warn` (asserted at load). Rules whose fixes
   are still being hand-applied are configured in full but parked `off` in the
   delimited `// --- Phase 4 lane L<n>` blocks near the end; landing a lane =

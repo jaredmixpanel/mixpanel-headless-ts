@@ -41,7 +41,7 @@ const SKIP_DIRS = new Set([
   "dist",
   "corpus",
   "vendor",
-  "context",
+  "docs",
   "generated",
   "coverage",
 ]);

@@ -1,4 +1,4 @@
-// knip — unused files / dependencies / exports gate (CLEANUP-PLAN §7.5).
+// knip — unused files / dependencies / exports gate (docs/history/cleanup-plan-2026-09.md §7.5).
 // Runs as `npm run knip` inside `npm run check`. Plain `knip`, not `--strict`:
 // knip 6's strict mode is a workspace-isolated, direct-production-deps-only
 // analysis that (a) stops reporting unused files/exports and (b) misattributes
@@ -7,7 +7,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   // No `ignore` block: the generated `*.gen.ts` files are imported (so never
-  // reported) and vendor/, context/ and the corpus hold no analysable source;
+  // reported) and vendor/, docs/history/ and the corpus hold no analysable source;
   // knip flags such entries as redundant configuration hints.
   "rules": {
     // Phase 6 (§2.7 un-export sweep) turns these back to "error". Until

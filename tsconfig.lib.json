@@ -7,7 +7,7 @@
     "composite": true,
     "declaration": true,
     "isolatedDeclarations": true,
-    // `stripInternal` is deliberately OFF (CLEANUP-PLAN §7.4 deviation,
+    // `stripInternal` is deliberately OFF (docs/history/cleanup-plan-2026-09.md §7.4 deviation,
     // measured 2026-09-14): tsc strips any declaration whose LEADING COMMENT
     // contains the substring "@internal" — prose mentions and the 13
     // `@module … @internal` file headers (which sit above the first import

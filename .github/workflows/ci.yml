@@ -3,7 +3,7 @@
 # `npm run check` (package.json) is the source of truth for what the gate runs;
 # this workflow only adds what cannot live in an npm script: a Node matrix, the
 # lockfile-freshness check, and the conformance-report artifact. The intended
-# end state of `check` is listed in CLEANUP-PLAN.md §14.
+# end state of `check` is listed in docs/history/cleanup-plan-2026-09.md §14.
 #
 # Supply-chain rules for this file: SHA-pin every action (Dependabot bumps the
 # SHA and the trailing `# vX.Y.Z` comment together), least-privilege token,
@@ -63,7 +63,7 @@ jobs:
       # The gate: build + typecheck (tsc -b), lint, format, the full vitest run
       # (which already replays the whole conformance corpus via
       # conformance-runner/test/corpus.test.ts), browser-purity smoke, and
-      # whatever else package.json `check` grows (CLEANUP-PLAN.md §14).
+      # whatever else package.json `check` grows (docs/history/cleanup-plan-2026-09.md §14).
       - name: Gate
         run: npm run check
 
