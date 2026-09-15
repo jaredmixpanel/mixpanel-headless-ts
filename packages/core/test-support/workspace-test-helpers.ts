@@ -15,7 +15,15 @@ import type { JsonValue } from "../src/client/json-value.js";
 import { toError } from "../src/invariant.js";
 import { Secret } from "../src/secret.js";
 import { ProfilePageResult } from "../src/types/results/discovery.js";
+import { Workspace } from "../src/workspace.js";
 import type { WorkspaceLogger } from "../src/workspace-members/options.js";
+import {
+  type CannedHandler,
+  CLIENT_SESSION,
+  createMockClient,
+  FACADE_SESSION,
+  type FakeTransport,
+} from "./client-test-helpers.js";
 
 /**
  * The canonical fake Session the query-user test modules declare
@@ -324,4 +332,70 @@ export function pageSideEffectFactory(
       has_more: page < numPages - 1,
     });
   };
+}
+
+/**
+ * A `Workspace` over a real client and a fake transport: the mock client
+ * binds `CLIENT_SESSION`, the facade binds `FACADE_SESSION` (the
+ * `_make_workspace` helper of the `test_workspace_*` modules).
+ *
+ * @param handler - The canned-response handler.
+ * @param logger - Optional facade logger (omitted → the facade default).
+ * @returns The facade plus the transport capture log.
+ */
+export function makeFacadeWorkspace(
+  handler: CannedHandler,
+  logger?: WorkspaceLogger,
+): { ws: Workspace; transport: FakeTransport } {
+  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
+  return {
+    ws: new Workspace({
+      session: FACADE_SESSION,
+      client,
+      ...(logger === undefined ? {} : { logger }),
+    }),
+    transport,
+  };
+}
+
+/**
+ * A `Workspace` over the `MagicMock(spec=MixpanelAPIClient)` twin with
+ * `TEST_SESSION` (the `Workspace(session=_TEST_SESSION, client=mock)`
+ * construction of the query-user modules).
+ *
+ * @param mock - The stub client (a fresh one by default).
+ * @param logger - Optional facade logger (omitted → the facade default).
+ * @returns The facade.
+ */
+export function makeStubWorkspace(
+  mock: MockWorkspaceClient = mockWorkspaceClient(),
+  logger?: WorkspaceLogger,
+): Workspace {
+  return new Workspace({
+    session: TEST_SESSION,
+    client: mock.client,
+    ...(logger === undefined ? {} : { logger }),
+  });
+}
+
+/**
+ * A client stub whose single method resolves `value` and records its
+ * arguments — the member-level delegation probe of the facade suites.
+ *
+ * @param method - The client member the facade is expected to call.
+ * @param value - What the member resolves.
+ * @param calls - Receives each call's argument list.
+ * @returns The stub cast to the client type.
+ */
+export function stubClient(
+  method: string,
+  value: unknown,
+  calls: unknown[][] = [],
+): MixpanelClient {
+  return {
+    [method]: (...args: unknown[]): Promise<unknown> => {
+      calls.push(args);
+      return Promise.resolve(value);
+    },
+  } as unknown as MixpanelClient;
 }

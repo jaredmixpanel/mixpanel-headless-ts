@@ -114,6 +114,9 @@ export interface CannedResponse {
   readonly headers?: Readonly<Record<string, string>>;
 }
 
+/** A canned-response handler (the `httpx.MockTransport` handler twin). */
+export type CannedHandler = (request: CapturedFetchRequest) => CannedResponse;
+
 /** The fake transport: injectable fetch + the capture log. */
 export interface FakeTransport {
   readonly fetch: typeof fetch;
@@ -128,9 +131,7 @@ export interface FakeTransport {
  *   `TypeError` for the fetch-rejection analog of `httpx.ConnectError`).
  * @returns The fake transport.
  */
-export function fakeTransport(
-  handler: (request: CapturedFetchRequest) => CannedResponse,
-): FakeTransport {
+export function fakeTransport(handler: CannedHandler): FakeTransport {
   const captures: CapturedFetchRequest[] = [];
   const fakeFetch = (async (
     input: string | URL | Request,
@@ -187,7 +188,7 @@ export function fakeTransport(
  */
 export function createMockClient(
   session: Session,
-  handler: (request: CapturedFetchRequest) => CannedResponse,
+  handler: CannedHandler,
   extra: Partial<MixpanelClientOptions> = {},
 ): { client: MixpanelClient; transport: FakeTransport; sleeps: number[] } {
   const transport = fakeTransport(handler);
@@ -238,4 +239,46 @@ export async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
     out.push(item);
   }
   return out;
+}
+
+/**
+ * The OAuth-token session the facade suites bind their mock client to
+ * (the `_session()` helper of the `test_workspace_*` modules).
+ */
+export const CLIENT_SESSION: Session = makeSession({
+  projectId: "12345",
+  region: "us",
+  oauthToken: "test-token",
+});
+
+/**
+ * The service-account session the facade suites hand to `Workspace`
+ * (`_TEST_SESSION` of the `test_workspace_*` modules).
+ */
+export const FACADE_SESSION: Session = makeSession({
+  projectId: "12345",
+  region: "us",
+  username: "test_user",
+  secret: "test_secret",
+});
+
+/**
+ * A 200 App-API response wrapping `results` in the `{status: "ok"}`
+ * envelope (the `_ok` helper of the `test_workspace_*` modules).
+ *
+ * @param results - The `results` payload.
+ * @returns The canned response.
+ */
+export function ok(results: unknown): CannedResponse {
+  return { status: 200, json: { status: "ok", results } };
+}
+
+/**
+ * Parse a captured request body as JSON (`json.loads(request.content)`).
+ *
+ * @param bodyText - The captured body text.
+ * @returns The parsed value.
+ */
+export function parseBody(bodyText: string): unknown {
+  return JSON.parse(bodyText) as unknown;
 }

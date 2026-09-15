@@ -7,6 +7,8 @@
 // silently never runs when the body unexpectedly succeeds).
 import { expect } from "vitest";
 
+import { ParamValidationError } from "../src/errors.js";
+
 /**
  * Run `body` and return what it threw.
  *
@@ -44,4 +46,18 @@ export async function expectRejects(
     return error;
   }
   return expect.unreachable(what);
+}
+
+/**
+ * Assert that `thunk` throws a `ParamValidationError` carrying `code`
+ * (the `pytest.raises(ParamValidationError)` + `exc.code` pair the
+ * query-param guard suites repeat).
+ *
+ * @param thunk - The call expected to throw.
+ * @param code - The expected error code.
+ */
+export function expectGuard(thunk: () => unknown, code: string): void {
+  const thrown = expectThrows(thunk, `expected ${code}`);
+  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
+  expect((thrown as ParamValidationError).code).toBe(code);
 }
