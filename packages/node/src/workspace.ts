@@ -3,18 +3,16 @@
  * `Workspace()` construction.
  *
  * Python's constructor wires four on-disk collaborators implicitly:
- * the resolver sources (env / `~/.mp/config.toml` / bridge file, with
- * the bridge-token materialization side effect), the
- * `OnDiskTokenResolver` for oauth_browser bearer refresh, the per-account
- * on-disk `/me` cache (`MeCache`), and filesystem reads for
- * `uploadLookupTable`. The core `Workspace` takes all four as injected
- * seams; this factory is the node-side composition that makes
- * `createNodeWorkspace()` behave like Python's `Workspace()`.
- *
- * Added post-Phase-3 (QA 2026-08-17): the pieces all shipped in B7/B8
- * but nothing composed them, so the documented
+ * the resolver sources (env, `~/.mp/config.toml`, bridge file, with the
+ * bridge-token materialization side effect), the `OnDiskTokenResolver`
+ * for oauth_browser bearer refresh, the per-account on-disk `/me` cache
+ * (`MeCache`), and filesystem reads for `uploadLookupTable`. The core
+ * `Workspace` takes all four as injected seams; this factory is the
+ * node-side composition. Without it the bare
  * `new Workspace({ sources: createNodeWorkspaceSources() })` recipe
- * failed on the first OAuth query with `TokenResolver is required`.
+ * fails on the first OAuth query with `TokenResolver is required`.
+ *
+ * @see mixpanel_headless.workspace.Workspace.__init__
  */
 
 import {
@@ -39,7 +37,7 @@ import { MeCache } from "./me-cache.js";
  * `WorkspaceOptions` plus the node effects seams and client extras.
  */
 export interface NodeWorkspaceOptions extends NodeAuthEffectsOptions {
-  /** Named account from config (resolver axis, `workspace.py`). */
+  /** Named account from config (resolver axis). */
   readonly account?: string | null | undefined;
   /** Project ID override (resolver axis, digit string). */
   readonly project?: string | null | undefined;
@@ -93,10 +91,10 @@ function nodeWorkspaceLogger(
  * @param options - Resolver-axis overrides, node effects seams, and
  *   extra client options.
  * @returns The constructed facade.
- * @throws ConfigError - No resolvable account, or a malformed config /
- *   bridge file.
+ * @throws {@link ConfigError} - No resolvable account, or a malformed
+ *   config or bridge file.
  * @example
- * ```typescript
+ * ```ts
  * import { createNodeWorkspace } from "@mixpanel-headless/node";
  *
  * const ws = createNodeWorkspace();
@@ -120,8 +118,10 @@ export function createNodeWorkspace(
       : { flowSeams: options.flowSeams }),
   };
   const effects = createNodeAuthEffects(effectsOptions);
-  // Startup bridge load WITH the token-materialization side effect
-  // (`workspace.py`; the B8-ARB-A SEM-F1 composition).
+  // Startup bridge load with the token-materialization side effect:
+  // oauth_browser bridge tokens are written to the per-account
+  // `tokens.json` here, and only here, so the on-disk resolver can serve
+  // them without a stale bridge ever clobbering a mid-session refresh.
   const bridge = loadBridgeForStartup();
 
   const workspaceOptions: WorkspaceOptions = {
@@ -138,8 +138,8 @@ export function createNodeWorkspace(
     },
     clientOptions: {
       tokenResolver: effects.tokenResolver,
-      // `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read per request (PR #235);
-      // an explicit `clientOptions.endpointOverrides` wins.
+      // `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read per request; an
+      // explicit `clientOptions.endpointOverrides` wins.
       endpointOverrides: createNodeEndpointOverrides(),
       ...options.clientOptions,
     },

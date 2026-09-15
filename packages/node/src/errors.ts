@@ -16,6 +16,14 @@ import { exceptionMessage } from "@mixpanel-headless/core/internal";
  * @param exc - The caught value.
  * @param details - Optional structured error data (snake_case keys).
  * @returns The error, ready to throw.
+ * @example
+ * ```ts
+ * try {
+ *   readFileSync(path);
+ * } catch (error) {
+ *   throw wrapAsConfigError(`Failed to read config ${path}`, error, { path });
+ * }
+ * ```
  */
 export function wrapAsConfigError(
   prefix: string,
