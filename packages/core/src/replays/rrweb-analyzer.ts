@@ -207,6 +207,11 @@ export interface DOMTrackerOptions {
   readonly logger?: AnalyzerLogger | undefined;
   /** Node-map cap; defaults to {@link DOMTracker.DEFAULT_MAX_NODES}. */
   readonly maxNodes?: number | undefined;
+  /**
+   * Ancestor-traversal bound; defaults to
+   * {@link DOMTracker.DEFAULT_MAX_ANCESTOR_DEPTH}.
+   */
+  readonly maxAncestorDepth?: number | undefined;
 }
 
 /**
@@ -245,8 +250,8 @@ export class DOMTracker {
     "type",
   ];
 
-  /** Ancestor-traversal bound (`MAX_ANCESTOR_DEPTH`). */
-  static readonly MAX_ANCESTOR_DEPTH = 3;
+  /** Default ancestor-traversal bound (Python `MAX_ANCESTOR_DEPTH`). */
+  static readonly DEFAULT_MAX_ANCESTOR_DEPTH = 3;
 
   /** Default node-map cap (Python `MAX_NODES`). */
   static readonly DEFAULT_MAX_NODES = 50000;
@@ -254,8 +259,8 @@ export class DOMTracker {
   /** Node-map cap of this tracker (`MAX_NODES`; a constructor option). */
   readonly maxNodes: number;
 
-  /** Ancestor-traversal bound (per-instance mirror of the class attr). */
-  MAX_ANCESTOR_DEPTH: number = DOMTracker.MAX_ANCESTOR_DEPTH;
+  /** Ancestor-traversal bound of this tracker (`MAX_ANCESTOR_DEPTH`; a constructor option). */
+  readonly maxAncestorDepth: number;
 
   /** The node map (`self.nodes`). */
   readonly nodes: Map<number, TrackedNode> = new Map();
@@ -273,11 +278,13 @@ export class DOMTracker {
    * Initialize an empty node map + description cache (`__init__`,
    * `rrweb_analyzer.py:203-207`).
    *
-   * @param options - Optional debug sink and node-map cap.
+   * @param options - Optional debug sink, node-map cap and ancestor bound.
    */
   constructor(options: DOMTrackerOptions = {}) {
     this.#logger = options.logger;
     this.maxNodes = options.maxNodes ?? DOMTracker.DEFAULT_MAX_NODES;
+    this.maxAncestorDepth =
+      options.maxAncestorDepth ?? DOMTracker.DEFAULT_MAX_ANCESTOR_DEPTH;
   }
 
   /**
@@ -310,6 +317,7 @@ export class DOMTracker {
    * @param parentId - Optional parent rrweb node id for ancestor
    *   traversal.
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   addNode(node: Dict, parentId: number | null = null): void {
     const queue: Array<readonly [Dict, number | null]> = [[node, parentId]];
 
@@ -317,7 +325,6 @@ export class DOMTracker {
     // stands in for `shift()`, which is O(n) per pop and made the walk
     // quadratic on 50k-node snapshots.
     let head = 0;
-  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
     while (head < queue.length) {
       const [currentNode, currentParentId] = defined(
         queue[head],
@@ -365,6 +372,7 @@ export class DOMTracker {
         const sanitizedAttrs = new Map<string, unknown>();
         if (isPythonDict(attributes)) {
           for (const [k, v] of Object.entries(attributes)) {
+            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
             if (pyTruthyValue(DOMTracker.sanitizeValue(v))) {
               sanitizedAttrs.set(k, v);
             }
@@ -372,7 +380,6 @@ export class DOMTracker {
         }
         const descriptiveAttrs = new Map<string, unknown>();
         for (const attr of DOMTracker.DESCRIPTIVE_ATTRS) {
-            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
           if (sanitizedAttrs.has(attr)) {
             descriptiveAttrs.set(attr, sanitizedAttrs.get(attr));
           }
@@ -590,6 +597,7 @@ export class DOMTracker {
    *   meaningful descriptive info (caller falls back to ancestor
    *   traversal).
    */
+  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   buildNodeDescription(nodeId: number): string | null {
     const nodeData = this.nodes.get(nodeId);
     if (nodeData === undefined) {
@@ -597,7 +605,6 @@ export class DOMTracker {
     }
 
     const tag = nodeData.tag ?? "element";
-  // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
     const attrs = nodeData.attributes ?? new Map<string, unknown>();
     const text = nodeData.text ?? "";
     const parts: string[] = [tag];
@@ -657,7 +664,7 @@ export class DOMTracker {
   }
 
   /**
-   * Walk up to {@link MAX_ANCESTOR_DEPTH} parents for descriptive
+   * Walk up to {@link maxAncestorDepth} parents for descriptive
    * context (`_get_ancestor_context`, `rrweb_analyzer.py:453-487`).
    *
    * @param nodeId - The rrweb node id.
@@ -681,7 +688,7 @@ export class DOMTracker {
     while (
       parentId !== null &&
       parentId !== 0 &&
-      depth < this.MAX_ANCESTOR_DEPTH
+      depth < this.maxAncestorDepth
     ) {
       if (visited.has(parentId)) {
         break;
@@ -1163,6 +1170,7 @@ class EventAnalyzer {
             const text = pythonStrip(
               cpSlice(textContent, startOffset, endOffset),
             );
+            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
             if (text !== "") {
               selectedTexts.push(text);
             }
@@ -1170,7 +1178,6 @@ class EventAnalyzer {
         }
       }
 
-            // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
       const description =
         selectedTexts.length > 0
           ? `Selected '${selectedTexts.join(" ... ")}'`

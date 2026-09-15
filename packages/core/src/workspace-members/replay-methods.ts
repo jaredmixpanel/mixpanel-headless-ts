@@ -495,10 +495,10 @@ export async function fetchReplays(
   if (results.size === 0 && firstFailure !== undefined) {
     // Every replay failed — surface the first underlying error rather
     // than a generic wrapper, preserving its type for callers that
-    // branch on it. Python's `failures[0]` is completion-ordered
-    // (`as_completed`); the port keeps INPUT order, which is the
-    // deterministic reading of the same rule (recorded in
-    // `B5-S3-notes.md` §2).
+    // branch on it. `failures` is completion-ordered here (the workers
+    // push as they fail), the same reading as Python's `as_completed`
+    // loop; only the bundle's `failures` list below is re-sorted into
+    // input order.
     throw firstFailure[1].error;
   }
   let ordered = [...results]

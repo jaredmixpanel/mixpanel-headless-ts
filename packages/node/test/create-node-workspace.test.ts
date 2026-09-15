@@ -14,9 +14,9 @@
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Workspace } from "@mixpanel-headless/core";
+import { CreateBookmarkParams, Workspace } from "@mixpanel-headless/core";
 
 import {
   createNodeWorkspace,
@@ -159,5 +159,90 @@ describe("createNodeWorkspace (Python Workspace() zero-config twin)", () => {
     await ws.deleteCohort(2);
 
     expect(seen[0]?.url).toContain("/api/app/projects/67890/cohorts/2");
+  });
+});
+
+/**
+ * Insights params whose only client-side schema finding is the
+ * WARNING-severity `S4_UNKNOWN_CHART_TYPE` (an unknown `sorting` key).
+ */
+const WARNING_ONLY_PARAMS: Readonly<Record<string, unknown>> = {
+  displayOptions: { chartType: "bar" },
+  sections: {
+    show: [{ type: "metric", behavior: { type: "event", name: "Login" } }],
+    time: [],
+  },
+  sorting: { barz: { sortBy: "column", colSortAttrs: [] } },
+};
+
+/** Capture every `process.stderr.write` chunk while `run` executes. */
+async function stderrDuring(run: () => Promise<void>): Promise<string[]> {
+  const lines: string[] = [];
+  const spy = vi
+    .spyOn(process.stderr, "write")
+    .mockImplementation((chunk: string | Uint8Array): boolean => {
+      lines.push(String(chunk));
+      return true;
+    });
+  try {
+    await run();
+  } finally {
+    spy.mockRestore();
+  }
+  return lines;
+}
+
+/**
+ * Trigger the facade's `logger.warning` seam: `create_bookmark` logs the
+ * warning-severity findings BEFORE its wire call, so the 204 stub's
+ * response-shape failure afterwards is irrelevant here and swallowed.
+ */
+async function createWithWarning(ws: Workspace): Promise<void> {
+  await ws
+    .createBookmark(
+      new CreateBookmarkParams({
+        name: "WarnTest",
+        bookmark_type: "insights",
+        params: WARNING_ONLY_PARAMS,
+        dashboard_id: 99,
+      }),
+    )
+    .catch(() => undefined);
+}
+
+describe("createNodeWorkspace logger seam (Python's last-resort handler prints WARNING to stderr)", () => {
+  it("writes facade warnings to stderr when no logger is supplied", async () => {
+    seedOAuthAccount();
+    const { fetchImpl } = capturingFetch();
+    const ws = createNodeWorkspace({ clientOptions: { fetch: fetchImpl } });
+
+    const lines = await stderrDuring(() => createWithWarning(ws));
+
+    expect(lines.some((line) => line.includes("S4_UNKNOWN_CHART_TYPE"))).toBe(
+      true,
+    );
+  });
+
+  it("routes facade warnings to the supplied logger instead of stderr", async () => {
+    seedOAuthAccount();
+    const { fetchImpl } = capturingFetch();
+    const warnings: string[] = [];
+    const ws = createNodeWorkspace({
+      clientOptions: { fetch: fetchImpl },
+      logger: {
+        warning: (message): void => {
+          warnings.push(message);
+        },
+      },
+    });
+
+    const lines = await stderrDuring(() => createWithWarning(ws));
+
+    expect(warnings.some((m) => m.includes("S4_UNKNOWN_CHART_TYPE"))).toBe(
+      true,
+    );
+    expect(lines.some((line) => line.includes("S4_UNKNOWN_CHART_TYPE"))).toBe(
+      false,
+    );
   });
 });

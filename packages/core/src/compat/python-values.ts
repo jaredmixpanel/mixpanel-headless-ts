@@ -232,9 +232,10 @@ export function dictGet(
 /**
  * Display-only `type(x).__name__` analog for ported message text.
  *
- * Class instances report `value.constructor.name`, which is the Python
- * class name because the port keeps Python's class names verbatim
- * (`Filter`, `Metric`, `CohortBreakdown`, …). That relies on the class
+ * Plain objects (including null-prototype ones) are Python dicts and
+ * report `dict`. Class instances report `value.constructor.name`, which
+ * is the Python class name because the port keeps Python's class names
+ * verbatim (`Filter`, `Metric`, `CohortBreakdown`, …). That relies on the class
  * name surviving to runtime: a minifying bundler must keep function
  * names (esbuild `keepNames: true`) or these messages degrade to
  * single-letter type names. The message text itself is never contract.
@@ -261,6 +262,9 @@ export function pythonTypeName(value: unknown): string {
   }
   if (Array.isArray(value)) {
     return "list";
+  }
+  if (isPythonDict(value)) {
+    return "dict";
   }
   if (typeof value === "object") {
     return value.constructor.name;

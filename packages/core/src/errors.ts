@@ -76,6 +76,10 @@ export class MixpanelHeadlessError extends Error {
     options?: ErrorOptions,
   ) {
     super(message, options);
+    // Every subclass keeps its Python class name, so the runtime name is
+    // the constructor's. A minifying bundler must therefore keep function
+    // names (esbuild `keepNames`, as scripts/build-browser-bundle.mjs
+    // does) or the corpus-checked `name` degrades to a single letter.
     this.name = this.constructor.name;
     this.#code = code;
     this.#details = { ...details };
@@ -1193,11 +1197,11 @@ export class ValidationError {
    * @param fix - JSON structure template to correct the error (default
    *   `null`).
    */
+  // eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
   constructor(
     path: string,
     message: string,
     code: string = "VALIDATION_ERROR",
-  // eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
     severity: ValidationSeverity = "error",
     suggestion: readonly string[] | null = null,
     fix: Readonly<Record<string, unknown>> | null = null,
