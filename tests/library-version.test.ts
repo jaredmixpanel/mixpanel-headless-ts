@@ -1,9 +1,10 @@
 /**
  * Locks the User-Agent version literal in `packages/core/src/client/headers.ts`
  * to `packages/core/package.json`: core cannot read files at runtime and
- * Changesets does not rewrite TypeScript constants, so a release bump must
- * touch both. Reads the source text so this repo-level test needs no
- * dependency on the package itself.
+ * Changesets does not rewrite TypeScript constants, so `npm run version`
+ * runs `scripts/sync-library-version.mjs` after `changeset version`; this
+ * test catches any other path that moves one without the other. Reads the
+ * source text so this repo-level test needs no dependency on the package.
  */
 import { readFileSync } from "node:fs";
 
