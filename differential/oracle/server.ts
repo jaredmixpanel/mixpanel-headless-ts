@@ -42,6 +42,7 @@ import {
   createShims,
   encodeExpectValue,
   type InvocationContext,
+  isExpectErrorConvertible,
   JsonNumber,
   type JsonValue,
   resolveApi,
@@ -420,23 +421,6 @@ function readJsonString(path: string, key: string): string {
     // fall through to "unknown"
   }
   return "unknown";
-}
-
-/**
- * Whether a thrown value carries its own vector `expect.error` encoding
- * (the runner's `ExpectErrorConvertible` shape, R5.2/R5.4).
- *
- * @param value - The thrown value.
- * @returns `true` when `toExpectError` is callable.
- */
-function isExpectErrorConvertible(
-  value: unknown,
-): value is { toExpectError: () => JsonValue } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { toExpectError?: unknown }).toExpectError === "function"
-  );
 }
 
 /**

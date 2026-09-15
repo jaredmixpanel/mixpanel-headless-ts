@@ -16,9 +16,10 @@
 
 import { coerceInt } from "../coerce.js";
 import { pythonStrOf } from "../compat/python-str.js";
-import { ParamValidationError, ResponseValidationError } from "../errors.js";
+import { ParamValidationError } from "../errors.js";
 import { Secret } from "../secret.js";
-import { type ParseAccountOptions, requireRecord } from "./account.js";
+import { requireRecord } from "./account.js";
+import { type ParseAccountOptions, parseFail } from "./shared.js";
 
 /**
  * Matches a timezone suffix on an ISO-8601 datetime string: `Z`/`z` or a
@@ -26,30 +27,6 @@ import { type ParseAccountOptions, requireRecord } from "./account.js";
  * `+HH:MM:SS`). A string WITHOUT this suffix is a naive datetime.
  */
 const TZ_AWARE_SUFFIX = /(?:[Zz]|[+-]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/;
-
-/**
- * Throw the boundary-appropriate parse error (R5.5 generic codes).
- *
- * @param message - Human-readable description (out of contract, R5.4).
- * @param options - Parse options carrying the boundary kind.
- * @param details - Optional structured error data.
- * @returns Never returns.
- * @throws ParamValidationError | ResponseValidationError - Always.
- */
-function parseFail(
-  message: string,
-  options: ParseAccountOptions,
-  details?: Readonly<Record<string, unknown>>,
-): never {
-  if (options.boundary === "param") {
-    throw new ParamValidationError(message, "VALIDATION_ERROR", details);
-  }
-  throw new ResponseValidationError(
-    message,
-    "RESPONSE_VALIDATION_ERROR",
-    details,
-  );
-}
 
 /**
  * Reject naive `expires_at` values (port of Python's `_require_tz_aware`

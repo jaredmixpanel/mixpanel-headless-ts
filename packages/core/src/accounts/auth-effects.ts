@@ -490,8 +490,7 @@ export const UNPORTED_AUTH_SEAMS: readonly string[] = [
 ];
 
 /**
- * Build a member that throws the B7 placeholder error (the W1
- * `unportedSeam` pattern).
+ * Build a member that throws the placeholder error for an unwired seam.
  *
  * @param name - The seam name (recorded in `details.seam`).
  * @returns A thunk that always throws.
@@ -499,11 +498,10 @@ export const UNPORTED_AUTH_SEAMS: readonly string[] = [
  */
 function unportedAuthSeam(name: string): (...args: unknown[]) => never {
   return (): never => {
-    // Core-alone posture (b8-packets.md §4.4): the real implementation
-    // of every `UNPORTED_AUTH_SEAMS` member SHIPS in `packages/node`
-    // (`createNodeAuthEffects()`); this default stays so core without
-    // a wired bag still throws the coded error. Marker retired at the
-    // B8 pair-A arbiter (`b8-reviewA-resolution.md` ASR-F2).
+    // Core-alone posture: the real implementation of every
+    // `UNPORTED_AUTH_SEAMS` member SHIPS in `packages/node`
+    // (`createNodeAuthEffects()`); this default stays so core without a
+    // wired bag still throws the coded error.
     throw new MixpanelHeadlessError(
       `Auth effect '${name}' has no implementation in @mixpanel-headless/core ` +
         "alone — pass a wired effect bag (packages/node: createNodeAuthEffects())",
@@ -514,10 +512,41 @@ function unportedAuthSeam(name: string): (...args: unknown[]) => never {
 }
 
 /**
- * The default {@link AuthEffects} — every B8-owned member throws
+ * Property names a generic inspection touches on any object (thenable
+ * probes, `util.inspect`, JSON) — never seams, so the throwing bags
+ * answer `undefined` for them exactly like a plain object would.
+ */
+const NON_SEAM_PROPERTIES: ReadonlySet<string> = new Set([
+  "then",
+  "toJSON",
+  "constructor",
+]);
+
+/**
+ * A bag whose every METHOD throws `UNPORTED_AUTH_SEAM` for
+ * `${prefix}.${name}` when called.
+ *
+ * @param prefix - The seam-name prefix (`config`, `tokenStore`, ...).
+ * @returns The throwing bag, typed as the seam interface it stands in for.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- T is the seam interface the call site names; one Proxy handler stands in for every member (see doc)
+function unportedMethodBag<T extends object>(prefix: string): T {
+  // The Proxy answers every member name the interface declares (and only
+  // string keys), so the cast is the whole point: one handler stands in
+  // for each seam interface instead of a hand-enumerated stub per member.
+  return new Proxy(Object.freeze({}), {
+    get: (_target, property): unknown =>
+      typeof property === "string" && !NON_SEAM_PROPERTIES.has(property)
+        ? unportedAuthSeam(`${prefix}.${property}`)
+        : undefined,
+  }) as T;
+}
+
+/**
+ * The default {@link AuthEffects} — every node-owned member throws
  * `UNPORTED_AUTH_SEAM` with `{seam: name}`; `narrate` is a silent
- * no-op; `fetchImpl` / `now` are the ambient web-standard globals
- * (CORE members per packet §3.2 — no stub).
+ * no-op; `fetchImpl` / `now` are the ambient web-standard globals (CORE
+ * members — no stub).
  *
  * @returns The stubbed bag.
  * @example
@@ -527,72 +556,26 @@ function unportedAuthSeam(name: string): (...args: unknown[]) => never {
  */
 export function defaultAuthEffects(): AuthEffects {
   return {
-    config: {
-      getAccount: unportedAuthSeam("config.getAccount"),
-      getActive: unportedAuthSeam("config.getActive"),
-      getTarget: unportedAuthSeam("config.getTarget"),
-      getCustomHeader: unportedAuthSeam("config.getCustomHeader"),
-      addAccount: unportedAuthSeam("config.addAccount"),
-      updateAccount: unportedAuthSeam("config.updateAccount"),
-      removeAccount: unportedAuthSeam("config.removeAccount"),
-      listAccounts: unportedAuthSeam("config.listAccounts"),
-      setActive: unportedAuthSeam("config.setActive"),
-      applySession: unportedAuthSeam("config.applySession"),
-      applyTarget: unportedAuthSeam("config.applyTarget"),
-      addTarget: unportedAuthSeam("config.addTarget"),
-      removeTarget: unportedAuthSeam("config.removeTarget"),
-      listTargets: unportedAuthSeam("config.listTargets"),
-    },
-    env: {
-      get: unportedAuthSeam("env.get"),
-      /** @returns Never — unwired env read. */
-      get MP_USERNAME(): string | undefined {
-        return unportedAuthSeam("env.MP_USERNAME")();
+    config: unportedMethodBag<AuthEffects["config"]>("config"),
+    // `env.get` is a method; the `MP_*` members are property READS in the
+    // resolver, so they throw on access rather than on call.
+    env: new Proxy(Object.freeze({}), {
+      get: (_target, property): unknown => {
+        if (property === "get") {
+          return unportedAuthSeam("env.get");
+        }
+        if (typeof property === "string" && property.startsWith("MP_")) {
+          return unportedAuthSeam(`env.${property}`)();
+        }
+        return undefined;
       },
-      /** @returns Never — unwired env read. */
-      get MP_SECRET(): string | undefined {
-        return unportedAuthSeam("env.MP_SECRET")();
-      },
-      /** @returns Never — unwired env read. */
-      get MP_PROJECT_ID(): string | undefined {
-        return unportedAuthSeam("env.MP_PROJECT_ID")();
-      },
-      /** @returns Never — unwired env read. */
-      get MP_REGION(): string | undefined {
-        return unportedAuthSeam("env.MP_REGION")();
-      },
-      /** @returns Never — unwired env read. */
-      get MP_OAUTH_TOKEN(): string | undefined {
-        return unportedAuthSeam("env.MP_OAUTH_TOKEN")();
-      },
-      /** @returns Never — unwired env read. */
-      get MP_WORKSPACE_ID(): string | undefined {
-        return unportedAuthSeam("env.MP_WORKSPACE_ID")();
-      },
-    },
-    tokenStore: {
-      readTokens: unportedAuthSeam("tokenStore.readTokens"),
-      writeTokens: unportedAuthSeam("tokenStore.writeTokens"),
-      removeTokens: unportedAuthSeam("tokenStore.removeTokens"),
-      removeAccountDir: unportedAuthSeam("tokenStore.removeAccountDir"),
-      clientInfoPath: unportedAuthSeam("tokenStore.clientInfoPath"),
-      accountDirExists: unportedAuthSeam("tokenStore.accountDirExists"),
-    },
-    tokenResolver: {
-      getBrowserToken: unportedAuthSeam("tokenResolver.getBrowserToken"),
-      getStaticToken: unportedAuthSeam("tokenResolver.getStaticToken"),
-    },
-    oauthFlow: {
-      login: unportedAuthSeam("oauthFlow.login"),
-    },
-    bridge: {
-      load: unportedAuthSeam("bridge.load"),
-      export: unportedAuthSeam("bridge.export"),
-      remove: unportedAuthSeam("bridge.remove"),
-    },
-    meCache: {
-      put: unportedAuthSeam("meCache.put"),
-    },
+    }) as AuthEffects["env"],
+    tokenStore: unportedMethodBag<AuthEffects["tokenStore"]>("tokenStore"),
+    tokenResolver:
+      unportedMethodBag<AuthEffects["tokenResolver"]>("tokenResolver"),
+    oauthFlow: unportedMethodBag<AuthEffects["oauthFlow"]>("oauthFlow"),
+    bridge: unportedMethodBag<AuthEffects["bridge"]>("bridge"),
+    meCache: unportedMethodBag<AuthEffects["meCache"]>("meCache"),
     persistActive: unportedAuthSeam("persistActive"),
     readSecretStdin: unportedAuthSeam("readSecretStdin"),
     narrate: (): void => {

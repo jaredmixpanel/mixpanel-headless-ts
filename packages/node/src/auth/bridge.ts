@@ -39,6 +39,7 @@ import {
   sortedByCodepoint,
 } from "@mixpanel-headless/core";
 
+import { errorMessage, wrapAsConfigError } from "../errors.js";
 import {
   atomicWriteBytes,
   CredentialPathError,
@@ -237,11 +238,10 @@ export function loadBridge(path?: string | null): BridgeFile | null {
       if (!(error instanceof MixpanelHeadlessError) && !isErrnoError(error)) {
         throw error;
       }
-      const rendered = error instanceof Error ? error.message : String(error);
-      throw new ConfigError(
-        `Could not read bridge file at ${candidate}: ${rendered}`,
+      throw wrapAsConfigError(
+        `Could not read bridge file at ${candidate}`,
+        error,
         { path: candidate },
-        { cause: error },
       );
     }
     if (!existsSync(candidate)) {
@@ -262,12 +262,10 @@ export function loadBridge(path?: string | null): BridgeFile | null {
       ) {
         throw error;
       }
-      throw new ConfigError(
-        `Could not read bridge file at ${candidate}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+      throw wrapAsConfigError(
+        `Could not read bridge file at ${candidate}`,
+        error,
         { path: candidate },
-        { cause: error },
       );
     }
     try {
@@ -306,11 +304,8 @@ function readBrowserTokens(name: string): OAuthTokens {
     if (!(error instanceof MixpanelHeadlessError) && !isErrnoError(error)) {
       throw error;
     }
-    const rendered = error instanceof Error ? error.message : String(error);
     throw new OAuthError(
-      `Could not read OAuth tokens for account '${name}' from ${path}: ${
-        rendered
-      }`,
+      `Could not read OAuth tokens for account '${name}' from ${path}: ${errorMessage(error)}`,
       "OAUTH_TOKEN_ERROR",
       { account_name: name, path },
       { cause: error },
@@ -339,9 +334,7 @@ function readBrowserTokens(name: string): OAuthTokens {
       throw error;
     }
     throw new OAuthError(
-      `Could not read OAuth tokens for account '${name}' from ${path}: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      `Could not read OAuth tokens for account '${name}' from ${path}: ${errorMessage(error)}`,
       "OAUTH_TOKEN_ERROR",
       { account_name: name, path },
       { cause: error },
@@ -380,6 +373,7 @@ function readBrowserTokens(name: string): OAuthTokens {
     access_token: new Secret(accessToken),
     refresh_token: refreshToken,
     expires_at: expiresRaw,
+    // TODO(Ω): replace the `as PythonValue` casts with core `isPythonValue` once internal.ts exports it (frozen during Phase 6).
     // JSON-decoded values are inside the PythonValue domain by
     // construction (the cast is a typing formality).
     scope: pythonStr((record["scope"] ?? "") as PythonValue),

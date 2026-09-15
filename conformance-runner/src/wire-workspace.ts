@@ -92,6 +92,7 @@ import {
   PyFloat,
   UnencodableValueError,
 } from "./codecs.js";
+import { isPlainObject } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
@@ -181,17 +182,6 @@ export function workspaceFromSession(context: InvocationContext): Workspace {
 const RICH_MODEL_TAGS: ReadonlySet<string> = new Set(
   CONTRACT_TAG_CODECS.keys(),
 );
-
-/**
- * Whether a value is a plain-JSON-style dict (no class prototype).
- *
- * @param value - The candidate.
- * @returns True for `Object.prototype`/null-prototype objects.
- */
-function isPlainObject(value: object): value is Record<string, unknown> {
-  const proto: unknown = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-}
 
 /**
  * Re-encode one already-encoded codec tree in Python's EXPECT encoding

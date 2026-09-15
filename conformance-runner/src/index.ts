@@ -14,6 +14,7 @@ export * from "./bindings.js";
 export * from "./canonical.js";
 export * from "./codecs.js";
 export * from "./interactions.js";
+export * from "./internal/guards.js";
 export * from "./json-value.js";
 export * from "./loader.js";
 export * from "./lossless-json.js";

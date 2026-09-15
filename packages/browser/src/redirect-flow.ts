@@ -178,6 +178,7 @@ interface PendingLoginRecord {
  * @returns The region's OAuth base URL (trailing slash).
  * @throws OAuthError - `OAUTH_CONFIG_ERROR` for unknown regions.
  */
+// TODO(Ω): delete in favour of core `requireOAuthBaseUrl` once internal.ts exports it (frozen during Phase 6).
 function requireBaseUrl(region: string): string {
   if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
     throw new OAuthError(

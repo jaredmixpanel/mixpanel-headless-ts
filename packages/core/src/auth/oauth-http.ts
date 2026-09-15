@@ -27,7 +27,7 @@ import { toNativeJson } from "../client/json-value.js";
 import { parseLossless } from "../client/lossless-json.js";
 import { createRequestExecutor, urlEncodePairs } from "../client/transport.js";
 import { cpLength } from "../compat/codepoint.js";
-import { pythonStr } from "../compat/python-str.js";
+import { isPythonValue, pythonStr } from "../compat/python-str.js";
 import { MixpanelHeadlessError, OAuthError } from "../errors.js";
 import { DEFAULT_SCOPE, OAUTH_BASE_URLS } from "./oauth-constants.js";
 import {
@@ -472,11 +472,13 @@ export async function registerClient(
   let clientId: string;
   try {
     const data = toNativeJson(parseLossless(response.text));
-    if (!isPlainRecord(data) || !("client_id" in data)) {
-      // The `KeyError` / `TypeError` branch of `str(data["client_id"])`.
+    const rawClientId = isPlainRecord(data) ? data["client_id"] : undefined;
+    if (rawClientId === undefined || !isPythonValue(rawClientId)) {
+      // The `KeyError` / `TypeError` branch of `str(data["client_id"])`
+      // (native JSON is always a PythonValue; the guard types the read).
       throw new Error("'client_id'");
     }
-    clientId = pythonStr(data["client_id"] as never);
+    clientId = pythonStr(rawClientId);
   } catch (error) {
     throw new OAuthError(
       `Invalid registration response: ${

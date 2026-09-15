@@ -23,17 +23,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  CallbackResult,
   cpLength,
   type OAuthClientInfo,
   OAuthError,
+  parsePastedRedirect,
 } from "@mixpanel-headless/core";
 
-import { CallbackResult } from "../src/auth/callback-server.js";
-import {
-  browserLaunchArgv,
-  OAuthFlow,
-  parsePastedRedirect,
-} from "../src/auth/flow.js";
+import { browserLaunchArgv, OAuthFlow } from "../src/auth/flow.js";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 

@@ -11,6 +11,8 @@
  * green unchanged — the zero-behavior-change proof).
  */
 
+import { OAuthError } from "../errors.js";
+
 /**
  * OAuth base URLs keyed by region, trailing slash included
  * (`OAUTH_BASE_URLS`, `client_registration.py:39-44`).
@@ -20,6 +22,31 @@ export const OAUTH_BASE_URLS: Readonly<Record<string, string>> = {
   eu: "https://eu.mixpanel.com/oauth/",
   in: "https://in.mixpanel.com/oauth/",
 };
+
+/**
+ * Validate a region against {@link OAUTH_BASE_URLS} and return its base
+ * URL — the `OAuthFlow.__init__` gate (`flow.py:160-165`) shared by the
+ * node flow constructor and the browser redirect flow (same code, same
+ * message shape).
+ *
+ * @param region - The caller-supplied region.
+ * @returns The region's OAuth base URL (trailing slash).
+ * @throws OAuthError - `OAUTH_CONFIG_ERROR` for unknown regions.
+ */
+export function requireOAuthBaseUrl(region: string): string {
+  const baseUrl = OAUTH_BASE_URLS[region];
+  if (baseUrl === undefined) {
+    throw new OAuthError(
+      `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(
+        OAUTH_BASE_URLS,
+      )
+        .sort()
+        .join(", ")}`,
+      "OAUTH_CONFIG_ERROR",
+    );
+  }
+  return baseUrl;
+}
 
 /**
  * Scopes sent in the DCR request body for server-side validation

@@ -22,11 +22,7 @@
  */
 
 import { coerceInt, coerceStr } from "../coerce.js";
-import {
-  ParamTypeError,
-  ParamValidationError,
-  ResponseValidationError,
-} from "../errors.js";
+import { ParamTypeError } from "../errors.js";
 import {
   type Account,
   accountAuthHeader,
@@ -34,11 +30,11 @@ import {
   type AccountName,
   forbidExtraKeys,
   parseAccount,
-  type ParseAccountOptions,
   type ProjectId,
   requireRecord,
   type WorkspaceId,
 } from "./account.js";
+import { type ParseAccountOptions, parseFail } from "./shared.js";
 
 /**
  * Mixpanel project reference (Python `Project`).
@@ -133,31 +129,6 @@ function coerceOptions(
   field: string,
 ): { kind: "param" | "response"; field: string } {
   return { kind: options.boundary ?? "response", field };
-}
-
-/**
- * Throw the boundary-appropriate parse error (shared with account.ts via
- * the coerce module's convention).
- *
- * @param message - Human-readable description (out of contract, R5.4).
- * @param options - Parse options carrying the boundary kind.
- * @param details - Optional structured error data.
- * @returns Never returns.
- * @throws ParamValidationError | ResponseValidationError - Always.
- */
-function parseFail(
-  message: string,
-  options: ParseAccountOptions,
-  details?: Readonly<Record<string, unknown>>,
-): never {
-  if (options.boundary === "param") {
-    throw new ParamValidationError(message, "VALIDATION_ERROR", details);
-  }
-  throw new ResponseValidationError(
-    message,
-    "RESPONSE_VALIDATION_ERROR",
-    details,
-  );
 }
 
 /**

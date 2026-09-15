@@ -33,7 +33,6 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import {
-  ConfigError,
   type MeCacheEffects,
   type MeCacheStore,
   MeResponse,
@@ -43,6 +42,7 @@ import {
 } from "@mixpanel-headless/core";
 
 import { accountDir, type StorageLogger } from "./auth/storage.js";
+import { errorMessage, wrapAsConfigError } from "./errors.js";
 import {
   atomicWriteBytes,
   CredentialPathError,
@@ -189,7 +189,7 @@ export class MeCache implements MeCacheStore {
         throw error;
       }
       this.#logger.debug?.(
-        `Corrupted cache file me.json: ${error instanceof Error ? error.message : String(error)}`,
+        `Corrupted cache file me.json: ${errorMessage(error)}`,
       );
       return null;
     }
@@ -240,12 +240,10 @@ export class MeCache implements MeCacheStore {
     try {
       this.#chmod(this.#cacheDir, 0o700);
     } catch (error) {
-      throw new ConfigError(
-        `Cannot enforce 0o700 on cache directory ${this.#cacheDir}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+      throw wrapAsConfigError(
+        `Cannot enforce 0o700 on cache directory ${this.#cacheDir}`,
+        error,
         { path: this.#cacheDir },
-        { cause: error },
       );
     }
 

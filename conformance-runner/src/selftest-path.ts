@@ -45,18 +45,18 @@ export function resolveSelftestPath(): string {
   if (override !== undefined && override !== "") {
     return resolve(override);
   }
-  const candidates: string[] = [];
+  const fallback = resolve(PACKAGE_DIR, "corpus", SELFTEST_FILENAME);
   const configured = readConfiguredVectorsPath();
-  if (configured !== undefined) {
-    candidates.push(resolve(PACKAGE_DIR, configured, SELFTEST_FILENAME));
-  }
-  candidates.push(resolve(PACKAGE_DIR, "corpus", SELFTEST_FILENAME));
+  const candidates =
+    configured === undefined
+      ? [fallback]
+      : [resolve(PACKAGE_DIR, configured, SELFTEST_FILENAME), fallback];
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       return candidate;
     }
   }
-  return candidates.at(-1) as string;
+  return fallback;
 }
 
 /**

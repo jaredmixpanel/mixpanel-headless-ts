@@ -35,6 +35,7 @@
 
 import { codepoints } from "@mixpanel-headless/core";
 
+import { isPlainObject } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 
 /** Error raised when a value cannot be canonicalized (illegal per D6). */
@@ -497,25 +498,6 @@ function compareCodePoints(a: string, b: string): number {
     }
   }
   return aPoints.length - bPoints.length;
-}
-
-/**
- * Whether a value is a plain object (JSON object shape).
- *
- * Class instances (`Date`, `Map`, ...) are NOT plain objects: their data
- * does not live in enumerable own properties, so serializing them as JSON
- * objects would silently drop it — they are rejected instead.
- *
- * @param value - The candidate value.
- * @returns `true` for non-null, non-array objects whose prototype is
- *   `Object.prototype` or `null` (JSON object shape).
- */
-function isPlainObject(value: unknown): value is Record<string, JsonValue> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const proto: unknown = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
 }
 
 /**

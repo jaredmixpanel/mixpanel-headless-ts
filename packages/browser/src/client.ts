@@ -37,6 +37,7 @@ import {
   type Session,
   type TokenResolver,
   Workspace,
+  type WorkspaceLogger,
 } from "@mixpanel-headless/core";
 
 import { InMemoryCredentialStore } from "./credential-store.js";
@@ -470,8 +471,25 @@ function assembleWorkspace(
     tokenResolver,
     fetch: guardBrowserFetch(baseFetch, () => client.core.endpoints()),
   });
-  return new Workspace({ session, client: guardClientUse(client) });
+  return new Workspace({
+    session,
+    client: guardClientUse(client),
+    logger: BROWSER_WORKSPACE_LOGGER,
+  });
 }
+
+/**
+ * The facade's log seam in a browser: warnings surface on the console
+ * the way Python's unconfigured `logging` prints WARNING and above;
+ * debug/info are dropped.
+ */
+const BROWSER_WORKSPACE_LOGGER: WorkspaceLogger = {
+  debug: (): void => undefined,
+  warning: (message): void => {
+    // eslint-disable-next-line no-console -- the browser has no stderr; console.warn is the WARNING-level sink
+    console.warn(message);
+  },
+};
 
 /**
  * Build a browser `Session` around a bearer token — the shortest path

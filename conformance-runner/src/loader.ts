@@ -22,6 +22,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
+import { boundJsonReaders } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import { parseLossless } from "./lossless-json.js";
 import type {
@@ -46,6 +47,15 @@ export class CorpusIntegrityError extends Error {
     this.name = "CorpusIntegrityError";
   }
 }
+
+/**
+ * The object/string readers, raising {@link CorpusIntegrityError}; every
+ * manifest / vector string field must be non-empty.
+ */
+const { asObject, requireString, optionalString } = boundJsonReaders(
+  (message) => new CorpusIntegrityError(message),
+  { nonEmpty: true },
+);
 
 /** The pinned corpus configuration (`corpus.config.json`, design D12). */
 export interface CorpusConfig {
@@ -96,73 +106,6 @@ export function loadCorpusConfig(packageDir: string): CorpusConfig {
     sourceCommit: record["sourceCommit"] as string,
     recordEpoch: record["recordEpoch"] as string,
   };
-}
-
-/**
- * Assert a loaded JSON value is a plain object.
- *
- * @param value - The value to narrow.
- * @param context - Human-readable location for the error message.
- * @returns The value as a string-keyed record.
- * @throws CorpusIntegrityError - When the value is not an object.
- */
-function asObject(
-  value: JsonValue | undefined,
-  context: string,
-): Record<string, JsonValue> {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value) ||
-    value instanceof JsonNumber
-  ) {
-    throw new CorpusIntegrityError(`${context}: expected a JSON object`);
-  }
-  return value;
-}
-
-/**
- * Assert an object field is a non-empty string.
- *
- * @param record - The containing object.
- * @param key - The field name.
- * @param context - Human-readable location for the error message.
- * @returns The string value.
- * @throws CorpusIntegrityError - When absent or not a string.
- */
-function requireString(
-  record: Record<string, JsonValue>,
-  key: string,
-  context: string,
-): string {
-  const value = record[key];
-  if (typeof value !== "string" || value === "") {
-    throw new CorpusIntegrityError(
-      `${context}: missing string field ${JSON.stringify(key)}`,
-    );
-  }
-  return value;
-}
-
-/**
- * Read an optional object field, asserting it is a non-empty string when
- * present.
- *
- * @param record - The containing object.
- * @param key - The field name.
- * @param context - Human-readable location for the error message.
- * @returns The string value, or `undefined` when the field is absent.
- * @throws CorpusIntegrityError - When present but not a non-empty string.
- */
-function optionalString(
-  record: Record<string, JsonValue>,
-  key: string,
-  context: string,
-): string | undefined {
-  if (!Object.hasOwn(record, key)) {
-    return undefined;
-  }
-  return requireString(record, key, context);
 }
 
 /**

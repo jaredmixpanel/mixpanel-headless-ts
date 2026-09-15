@@ -449,6 +449,7 @@ export class OAuthStorage {
         throw new ParamValidationError("missing scope/token_type");
       }
       return new OAuthTokens({
+        // TODO(Ω): replace the `as PythonValue` casts with core `isPythonValue` once internal.ts exports it (frozen during Phase 6).
         // JSON-decoded values are PythonValue by construction (the
         // `str()` coercion mirror of `storage.py:511-517`).
         access_token: new Secret(

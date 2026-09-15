@@ -30,11 +30,11 @@ import {
   type WalkCdnOptions,
 } from "@mixpanel-headless/core/internal";
 
-import { type CodecRegistry, PyFloat } from "./codecs.js";
-import { JsonNumber, type JsonValue } from "./json-value.js";
-import type { ImplementationRegistry, InvocationContext } from "./runner.js";
-import { requireWireKwarg, WireCoreError } from "./wire-client.js";
-import { clientForContext, encodeFacadeValue } from "./wire-workspace.js";
+import { type CodecRegistry, PyFloat } from "../codecs.js";
+import { JsonNumber, type JsonValue } from "../json-value.js";
+import type { ImplementationRegistry, InvocationContext } from "../runner.js";
+import { requireWireKwarg, WireCoreError } from "../wire-client.js";
+import { clientForContext, encodeFacadeValue } from "../wire-workspace.js";
 
 /**
  * A replays-path core error with the recorder's float-detail spelling:

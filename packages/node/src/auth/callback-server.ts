@@ -25,8 +25,7 @@
 import { createServer, type Server, type ServerResponse } from "node:http";
 
 import { CallbackResult, OAuthError } from "@mixpanel-headless/core";
-
-import { parseQs } from "./query-params.js";
+import { parseQs } from "@mixpanel-headless/core/internal";
 
 /** Ports to attempt binding to, in order (`callback_server.py:32`). */
 export const CALLBACK_PORTS: readonly number[] = [19284, 19285, 19286, 19287];
@@ -76,12 +75,6 @@ function htmlEscape(text: string): string {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#x27;");
 }
-
-// `CallbackResult` moved to core `redirect-parse.ts` at B9-R2 with the
-// `parsePastedRedirect` hoist (b9-packets.md §3.1 row 3 — it is the
-// parser's return type and is node:*-free; hoist note recorded in
-// B9-R2-notes.md). Re-exported here so every existing import path
-// holds (class body verbatim; the untouched B8 suites prove it).
 
 /** Options bag of {@link startCallbackServer} (`callback_server.py:79-83`). */
 export interface StartCallbackServerOptions {
@@ -446,5 +439,3 @@ export async function startCallbackServer(
     { timeout_seconds: timeoutSeconds },
   );
 }
-
-export { CallbackResult } from "@mixpanel-headless/core";

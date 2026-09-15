@@ -28,6 +28,7 @@ import {
   type TokenStore,
 } from "@mixpanel-headless/core";
 
+import { errorMessage } from "../errors.js";
 import { atomicWriteBytes, readCredentialText } from "../io-utils.js";
 import { coerceLaxExpiresAt } from "./pydantic-datetime.js";
 import {
@@ -77,7 +78,7 @@ export function createNodeTokenStore(
       } catch (error) {
         logger.warning(
           `Failed to read tokens for account '${name}' from ${path}: ` +
-            `${error instanceof Error ? error.message : String(error)} — ignoring.`,
+            `${errorMessage(error)} — ignoring.`,
         );
         return null;
       }
@@ -106,7 +107,7 @@ export function createNodeTokenStore(
       } catch (error) {
         logger.warning(
           `Failed to clean up ${dir} containing OAuth tokens: ` +
-            `${error instanceof Error ? error.message : String(error)}. ` +
+            `${errorMessage(error)}. ` +
             `Run \`rm -rf ${dir}\` manually to remove them.`,
         );
       }

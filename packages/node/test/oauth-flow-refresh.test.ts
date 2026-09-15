@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   cpLength,
+  OAUTH_BASE_URLS,
   type OAuthClientInfo,
   OAuthError,
   OAuthTokens,
@@ -26,7 +27,6 @@ import {
 
 import { expectThrows } from "../../core/test-support/raises.js";
 import { OAuthFlow } from "../src/auth/flow.js";
-import { OAUTH_BASE_URLS } from "../src/auth/oauth-constants.js";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 

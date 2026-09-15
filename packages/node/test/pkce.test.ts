@@ -20,7 +20,7 @@ import { createHash } from "node:crypto";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { PkceChallenge } from "../src/auth/pkce.js";
+import { PkceChallenge } from "@mixpanel-headless/core";
 
 /** Base64url alphabet: A-Z, a-z, 0-9, -, _ (no padding =). */
 const BASE64URL_NO_PAD_PATTERN = /^[A-Za-z0-9_-]+$/;
