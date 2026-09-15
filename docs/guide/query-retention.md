@@ -721,10 +721,10 @@ console.log(JSON.stringify(result.params, null, 2));
 
 | Rule                          | Error code                     | Error message                                                        |
 | ----------------------------- | ------------------------------ | -------------------------------------------------------------------- |
-| Empty born event name         | `R1_EMPTY_BORN_EVENT`          | Born event name must be a non-empty string                           |
-| Control chars in born event   | `R1_CONTROL_CHAR_BORN_EVENT`   | Born event name contains control characters                          |
-| Empty return event name       | `R2_EMPTY_RETURN_EVENT`        | Return event name must be a non-empty string                         |
-| Control chars in return event | `R2_CONTROL_CHAR_RETURN_EVENT` | Return event name contains control characters                        |
+| Empty born event name         | `R1_EMPTY_BORN_EVENT`          | born_event must be a non-empty string                                |
+| Control chars in born event   | `R1_CONTROL_CHAR_BORN_EVENT`   | born_event contains control characters                               |
+| Empty return event name       | `R2_EMPTY_RETURN_EVENT`        | return_event must be a non-empty string                              |
+| Control chars in return event | `R2_CONTROL_CHAR_RETURN_EVENT` | return_event contains control characters                             |
 | Non-positive bucket sizes     | `R5_BUCKET_SIZES_POSITIVE`     | Each bucket size must be a positive integer                          |
 | Float bucket sizes            | `R5_BUCKET_SIZES_INTEGER`      | Bucket sizes must be integers, not floats                            |
 | Too many bucket sizes         | `R5_BUCKET_SIZES_TOO_MANY`     | Maximum 730 bucket sizes                                             |
@@ -752,7 +752,7 @@ try {
     for (const finding of error.errors) {
       console.log(`[${finding.code}] ${finding.path}: ${finding.message}`);
     }
-    // [R1_EMPTY_BORN_EVENT] born_event: Born event name must be a non-empty string
+    // [R1_EMPTY_BORN_EVENT] born_event: born_event must be a non-empty string
     // [R6_BUCKET_SIZES_ASCENDING] bucket_sizes: Bucket sizes must be in strictly ascending order
   } else {
     throw error;

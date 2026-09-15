@@ -861,22 +861,22 @@ console.log(JSON.stringify(result.params, null, 2));
 
 `queryFlow()` validates all parameter combinations **before** making an API call and throws `BookmarkValidationError` with descriptive messages:
 
-| Rule                               | Error code                            | Error message                                                  |
-| ---------------------------------- | ------------------------------------- | -------------------------------------------------------------- |
-| No steps provided                  | `FL1_EMPTY_STEPS`                     | At least one step event is required                            |
-| Empty step event name              | `FL2_EMPTY_STEP_EVENT`                | Step event name must be a non-empty string                     |
-| Control chars in event name        | `FL2_CONTROL_CHAR_STEP_EVENT`         | Step event name contains control characters                    |
-| Forward out of range               | `FL3_FORWARD_RANGE`                   | forward must be between 0 and 5                                |
-| Reverse out of range               | `FL4_REVERSE_RANGE`                   | reverse must be between 0 and 5                                |
-| Both directions zero               | `FL5_NO_DIRECTION`                    | At least one of forward or reverse must be nonzero             |
-| Cardinality out of range           | `FL6_CARDINALITY_RANGE`               | cardinality must be between 1 and 50                           |
-| Non-positive conversion window     | `FL7_CONVERSION_WINDOW_POSITIVE`      | conversion_window must be a positive integer                   |
-| Window exceeds max for unit        | `FL7_CONVERSION_WINDOW_MAX`           | conversion_window exceeds maximum for unit                     |
-| Invalid count type                 | `FL_INVALID_COUNT_TYPE`               | Must be one of: unique, total, session                         |
-| Invalid mode                       | `FL_INVALID_MODE`                     | Must be one of: sankey, paths, tree                            |
-| Invalid window unit                | `FL_INVALID_WINDOW_UNIT`              | Must be one of: day, week, month, session                      |
-| Session count without session unit | `FL9_SESSION_REQUIRES_SESSION_WINDOW` | count_type='session' requires conversion_window_unit='session' |
-| Session unit without window of 1   | `FL10_SESSION_WINDOW_REQUIRES_ONE`    | conversion_window_unit='session' requires conversion_window=1  |
+| Rule                               | Error code                            | Error message                                                        |
+| ---------------------------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| No steps provided                  | `FL1_EMPTY_STEPS`                     | At least one step event is required                                  |
+| Empty step event name              | `FL2_EMPTY_STEP_EVENT`                | Step event name must be a non-empty string                           |
+| Control chars in event name        | `FL2_CONTROL_CHAR_STEP_EVENT`         | Step event name contains control characters                          |
+| Forward out of range               | `FL3_FORWARD_RANGE`                   | forward must be between 0 and 5                                      |
+| Reverse out of range               | `FL4_REVERSE_RANGE`                   | reverse must be between 0 and 5                                      |
+| Both directions zero               | `FL5_NO_DIRECTION`                    | At least one of forward or reverse must be > 0; both are currently 0 |
+| Cardinality out of range           | `FL6_CARDINALITY_RANGE`               | cardinality must be between 1 and 50                                 |
+| Non-positive conversion window     | `FL7_CONVERSION_WINDOW_POSITIVE`      | conversion_window must be a positive integer                         |
+| Window exceeds max for unit        | `FL7_CONVERSION_WINDOW_MAX`           | conversion_window exceeds maximum for unit                           |
+| Invalid count type                 | `FL_INVALID_COUNT_TYPE`               | Must be one of: unique, total, session                               |
+| Invalid mode                       | `FL_INVALID_MODE`                     | Must be one of: sankey, paths, tree                                  |
+| Invalid window unit                | `FL_INVALID_WINDOW_UNIT`              | Must be one of: day, week, month, session                            |
+| Session count without session unit | `FL9_SESSION_REQUIRES_SESSION_WINDOW` | count_type='session' requires conversion_window_unit='session'       |
+| Session unit without window of 1   | `FL10_SESSION_WINDOW_REQUIRES_ONE`    | conversion_window_unit='session' requires conversion_window=1        |
 
 Errors are collected — all validation issues are reported at once, not just the first:
 
@@ -893,9 +893,9 @@ try {
     for (const finding of error.errors) {
       console.log(`[${finding.code}] ${finding.path}: ${finding.message}`);
     }
-    // [FL2_EMPTY_STEP_EVENT] steps[0].event: Step event name must be a non-empty string
-    // [FL3_FORWARD_RANGE] forward: forward must be between 0 and 5
-    // [FL4_REVERSE_RANGE] reverse: reverse must be between 0 and 5
+    // [FL2_EMPTY_STEP_EVENT] steps[0]: Step event name must be a non-empty string
+    // [FL3_FORWARD_RANGE] forward: forward must be between 0 and 5 (got 10)
+    // [FL4_REVERSE_RANGE] reverse: reverse must be between 0 and 5 (got -1)
   } else {
     throw error;
   }

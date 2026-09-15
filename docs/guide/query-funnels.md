@@ -850,7 +850,7 @@ try {
     for (const finding of error.errors) {
       console.log(`[${finding.code}] ${finding.path}: ${finding.message}`);
     }
-    // [F1_MIN_STEPS] steps: At least 2 steps are required
+    // [F1_MIN_STEPS] steps: At least 2 steps are required (got 1)
     // [F3_CONVERSION_WINDOW_POSITIVE] conversion_window: conversion_window must be a positive integer
   } else {
     throw error;
