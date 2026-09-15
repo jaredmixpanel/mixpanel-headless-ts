@@ -55,12 +55,18 @@
     "generate:canonical-fixtures": "uv run --python 3.14.6 --no-project python scripts/generate-canonical-fixtures.py && prettier --write packages/core/test/compat/fixtures/canonical-fixtures.json",
     "generate:all": "npm run generate:error-codes && npm run generate:api-map && npm run generate:bridge-allowlist",
     "audit:comments": "node scripts/audit/comment-archaeology.mjs",
-    "audit:comments:fix": "node scripts/audit/comment-archaeology.mjs --fix"
+    "audit:comments:fix": "node scripts/audit/comment-archaeology.mjs --fix",
+    "docs:api": "typedoc",
+    "docs:api:check": "typedoc --emit none --treatWarningsAsErrors",
+    "docs:dev": "npm run build && npm run docs:api && vitepress dev docs",
+    "docs:build": "npm run build && npm run docs:api && vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@changesets/cli": "^3.0.2",
     "@eslint/js": "^10.0.1",
+    "@shikijs/vitepress-twoslash": "^4.4.3",
     "@types/node": "^22.20.1",
     "@vitest/coverage-v8": "^5.0.0",
     "@vitest/eslint-plugin": "^1.6.27",
@@ -82,9 +88,17 @@
     "lefthook": "^2.1.12",
     "prettier": "^3.0.0",
     "publint": "^0.3.24",
+    "typedoc": "~0.28.20",
+    "typedoc-plugin-markdown": "^4.13.0",
+    "typedoc-plugin-mdn-links": "^5.1.1",
+    "typedoc-vitepress-theme": "^1.1.4",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.70.0",
-    "vitest": "^5.0.0"
+    "vitepress": "~1.6.4",
+    "vitepress-plugin-llms": "^1.13.5",
+    "vitepress-plugin-tabs": "^0.9.1",
+    "vitest": "^5.0.0",
+    "vue": "^3.5.13"
   },
   "allowScripts": {
     "esbuild": true,
