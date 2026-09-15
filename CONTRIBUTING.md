@@ -342,13 +342,21 @@ Commands (all root npm scripts; `scripts/README.md` lists them too):
   per hover, which needed 6 GB of V8 heap (8.1 GB RSS) for half as many
   blocks and fails under Node's default ~4 GB; the static renderer builds
   the whole site in the default heap at 3.5 GB RSS in 42 s. Standard GitHub
-  runners for a private repository have 7 GB, so the static renderer is the
+  runners for a private repository have 8 GB, so the static renderer is the
   one that fits; floating-vue (hover UI with smarter placement) is the
   alternative once the repository is public and 16 GB runners apply. The
   static popups get `position: fixed` in `mixpanel.css` so the code block's
   horizontal scroll cannot clip them. Twoslash results are cached under
   `docs/.vitepress/cache/twoslash/` (keyed by snippet text, so wipe it after
   changing the compiler options); that makes rebuilds faster, not smaller.
+- Size follow-ups, accepted and not fixed here: the local search index skips
+  `reference/**` (`search.options._render`; the 807 generated pages had
+  grown it to 5.7 MB, it is 1.25 MB without them), and `dist/reference` is
+  still ~343 MB because VitePress renders the whole sidebar tree, collapsed
+  groups included, into every page and core's ~800-item tree cannot be split
+  by path (core is grouped by `@group` across the kind directories). The
+  fix is either per-group output directories from TypeDoc or a sidebar item
+  that renders collapsed children lazily.
 - `npm run docs:api` regenerates the reference; `npm run docs:api:check`
   validates it without writing (`--emit none --treatWarningsAsErrors`, with
   `notExported`, `invalidLink`, `notDocumented` and `rewrittenLink` on).
