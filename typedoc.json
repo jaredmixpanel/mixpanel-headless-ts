@@ -19,7 +19,8 @@
     "typedoc-vitepress-theme",
     "typedoc-plugin-mdn-links",
     "./scripts/lib/typedoc-link-fallbacks.mjs",
-    "./scripts/lib/typedoc-barrel-groups.mjs"
+    "./scripts/lib/typedoc-barrel-groups.mjs",
+    "./scripts/lib/typedoc-python-see-links.mjs"
   ],
   "out": "docs/reference",
   "docsRoot": "docs",
