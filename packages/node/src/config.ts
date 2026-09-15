@@ -38,7 +38,7 @@
 
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import { parse, stringify, TomlError } from "smol-toml";
 
@@ -268,6 +268,11 @@ export interface ConfigManagerOptions {
    * Path to the TOML config file. Defaults to `$MP_CONFIG_PATH` when
    * set (read at construction, `config.py:150-151`), else
    * `~/.mp/config.toml`.
+   *
+   * A custom location's PARENT directory is the caller's responsibility:
+   * it is created `0o700` if absent but an existing directory's mode is
+   * never changed (the config file itself is always written `0o600`).
+   * Only the default `~/.mp` is tightened to `0o700` on every write.
    */
   readonly configPath?: string | undefined;
   /**
@@ -402,11 +407,15 @@ export class ConfigManager {
    * @param raw - Document to serialize as TOML.
    */
   writeRaw(raw: RawConfig): void {
-    mkdirSync(dirname(this.#path), { recursive: true, mode: 0o700 });
-    try {
-      chmodSync(dirname(this.#path), 0o700);
-    } catch {
-      // suppress(OSError) — best-effort tighten (`config.py:203-204`).
+    const dir = dirname(this.#path);
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    // Divergence: Python chmods the config file's parent to 0o700 on every write whatever the path (`config.py:202-205`); TS tightens only the default `~/.mp` — a custom `configPath`/`MP_CONFIG_PATH` parent (a repo `config/`, `/tmp`) is left alone.
+    if (resolve(dir) === resolve(dirname(defaultConfigPath()))) {
+      try {
+        chmodSync(dir, 0o700);
+      } catch {
+        // suppress(OSError) — best-effort tighten (`config.py:203-204`).
+      }
     }
     const text = stringify(raw);
     // tomli_w.dumps always terminates tables with a newline; smol-toml
