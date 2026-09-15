@@ -337,10 +337,13 @@ Commands (all root npm scripts; `scripts/README.md` lists them too):
   TypeScript work — a build that serves every block from the cache still
   fails at 4 GB — but the hover markup: the floating-vue renderer emits a
   Vue component per hover, so the big guide pages compile to ~3 MB render
-  functions whose client, server and lean variants Vite holds at once. The
-  static `rendererRich` from `@shikijs/twoslash` builds the same site in the
-  default heap (3.7 GB RSS, 2.6× faster) at the price of CSS-only hover
-  popups. Twoslash results are cached under
+  functions whose client, server and lean variants Vite holds at once. If CI ever
+  gets tight, the lever is `renderer: rendererRich()` from `@shikijs/twoslash`
+  (static CSS hover popups instead of floating-vue): measured on the same
+  site it builds inside the default heap at 3.7 GB RSS in 41 s, versus
+  108 s at a 6 GB cap; the trade-off is that CSS popups can be clipped by
+  the code block's horizontal scroll on the wide option-bag hovers, which is
+  why floating-vue stays the default. Twoslash results are cached under
   `docs/.vitepress/cache/twoslash/` (keyed by snippet text, so wipe it after
   changing the compiler options); that makes rebuilds faster, not smaller.
 - `npm run docs:api` regenerates the reference; `npm run docs:api:check`
