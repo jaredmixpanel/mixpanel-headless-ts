@@ -168,6 +168,9 @@ export interface ContractTagCodec {
 /**
  * Extract the ISO text from a decoded datetime child.
  *
+ * TODO(Ω): verbatim twin of core `types/entities/decode-utils.ts#requireIsoText`
+ * (different error class only); import it once `internal.ts` exports it.
+ *
  * The runner decodes `$type: datetime` payloads to its lossless
  * `PyDatetime` wrapper (an object with a string `iso` field); this module
  * cannot import that class, so it duck-types the shape. A raw string
@@ -668,6 +671,8 @@ const GROUP_BY_SPEC: DataclassCodecSpec = {
     const floatFields = new Set<string>();
     for (const field of GROUP_BY_BUCKET_FIELDS) {
       const value = unwrapped[field];
+      // TODO(Ω): `isFloatCarrier` (core) once `internal.ts` exports it — its
+      // extra `!isPythonDict` guard is equivalent here (PyFloat is a class).
       if (
         typeof value === "object" &&
         value !== null &&
@@ -766,6 +771,7 @@ const signedReplayCodec: ContractTagCodec = {
       }
     }
     const signedAt = bag["signed_at"];
+    // TODO(Ω): `isFloatCarrier` (core) once `internal.ts` exports it.
     if (
       typeof signedAt === "object" &&
       signedAt !== null &&
@@ -919,7 +925,7 @@ function entityModelCodec(cls: EntityModelStatics): ContractTagCodec {
         );
       }
     },
-    matches: (value) => value instanceof (cls as unknown as typeof EntityModel),
+    matches: (value) => value instanceof cls,
     encode: (instance, encodeChild) => {
       const model = instance as EntityModel;
       const self = model as unknown as Readonly<Record<string, unknown>>;

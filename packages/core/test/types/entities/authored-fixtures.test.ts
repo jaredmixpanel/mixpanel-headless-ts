@@ -223,7 +223,7 @@ describe("C8(b) authored entity fixtures", () => {
 
     it("round-trips the authored payload identically", () => {
       const instance = cls.fromDict(payload);
-      expect(instance).toBeInstanceOf(cls as unknown as CallableFunction);
+      expect(instance).toBeInstanceOf(cls);
       expect(instance).toBeInstanceOf(EntityModel);
       expect(instance.toVectorPayload()).toStrictEqual(payload);
     });
