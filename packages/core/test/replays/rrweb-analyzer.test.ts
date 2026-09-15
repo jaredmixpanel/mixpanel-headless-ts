@@ -22,7 +22,7 @@
 // "code over message" has no code to prefer here).
 import { describe, expect, it } from "vitest";
 
-import { ValueError } from "../../src/query/python-builtins.js";
+import { ValueError } from "../../src/compat/python-builtins.js";
 import { selectorLabelFn } from "../../src/replays/replay-labels.js";
 import {
   analyzeEvents,

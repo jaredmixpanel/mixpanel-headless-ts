@@ -21,8 +21,8 @@
  */
 
 import { pythonRepr, pythonStrip } from "../../compat/index.js";
+import { ValueError } from "../../compat/python-builtins.js";
 import { ParamTypeError, ParamValidationError } from "../../errors.js";
-import { ValueError } from "../../query/python-builtins.js";
 import {
   type CustomPropertyType,
   FILTER_OPERATOR_VALUES,

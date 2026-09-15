@@ -32,8 +32,8 @@ import {
   coerceInt64,
   coerceStr,
 } from "../coerce.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import { ResponseValidationError } from "../errors.js";
-import { isPythonDict } from "../query/validation-shared.js";
 import type {
   EntityFieldKind,
   EntityFieldSpec,

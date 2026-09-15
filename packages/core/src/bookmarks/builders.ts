@@ -37,8 +37,9 @@
  */
 
 import { pythonRepr } from "../compat/index.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import { ParamTypeError, ParamValidationError } from "../errors.js";
-import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
+import { pythonTypeName } from "../query/validation-shared.js";
 import {
   CohortBreakdown,
   CustomPropertyRef,

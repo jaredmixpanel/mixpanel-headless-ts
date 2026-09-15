@@ -8,6 +8,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import { buildFilterEntry } from "../../../src/bookmarks/builders.js";
+import { ValueError } from "../../../src/compat/python-builtins.js";
 import {
   CODED_GUARD_REGISTRY,
   CODED_GUARD_TWIN_CODES,
@@ -15,7 +16,6 @@ import {
   ParamTypeError,
   ParamValidationError,
 } from "../../../src/errors.js";
-import { ValueError } from "../../../src/query/python-builtins.js";
 import { FILTER_OPERATOR_VALUES } from "../../../src/types/literals.js";
 import {
   CustomPropertyRef,

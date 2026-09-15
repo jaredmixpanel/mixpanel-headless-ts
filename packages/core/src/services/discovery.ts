@@ -43,11 +43,10 @@ import {
   sortedByCodepoint,
 } from "../compat/codepoint.js";
 import { pythonStr, type PythonValue } from "../compat/index.js";
-import { setOwn } from "../compat/python-dict.js";
+import { KeyError, ValueError } from "../compat/python-builtins.js";
+import { isPythonDict, setOwn } from "../compat/python-dict.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { EventNotFoundError, QueryError } from "../errors.js";
-import { KeyError, ValueError } from "../query/python-builtins.js";
-import { isPythonDict } from "../query/validation-shared.js";
 import type { BookmarkType, CustomPropertyType } from "../types/literals.js";
 import {
   BookmarkInfo,

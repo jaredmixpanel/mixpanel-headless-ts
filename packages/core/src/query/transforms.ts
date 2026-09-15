@@ -43,7 +43,7 @@
  */
 
 import { pythonFloatStr, pythonStrOf, zfill } from "../compat/index.js";
-import { OverflowError, ValueError } from "./python-builtins.js";
+import { OverflowError, ValueError } from "../compat/python-builtins.js";
 import {
   floatCarrierValue,
   isFloatCarrier,

@@ -59,6 +59,8 @@ import {
 } from "./bookmarks/builders.js";
 import { toNativeJson } from "./client/json-value.js";
 import { parseLossless } from "./client/lossless-json.js";
+import { ValueError } from "./compat/python-builtins.js";
+import { isPythonDict } from "./compat/python-dict.js";
 import { pythonJsonDumps } from "./compat/python-json-dumps.js";
 import { pythonRepr } from "./compat/python-str.js";
 import {
@@ -67,7 +69,6 @@ import {
   ValidationError,
 } from "./errors.js";
 import { defined } from "./invariant.js";
-import { ValueError } from "./query/python-builtins.js";
 import { buildSegfilterEntry } from "./query/segfilter.js";
 import {
   extractCohortFilter,
@@ -89,7 +90,6 @@ import {
 } from "./query/validation-bookmark.js";
 import {
   containsControlChars,
-  isPythonDict,
   pythonTypeName,
   scanCustomProperties,
 } from "./query/validation-shared.js";

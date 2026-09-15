@@ -19,7 +19,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { AttributeError } from "../../src/query/python-builtins.js";
+import { AttributeError } from "../../src/compat/python-builtins.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import {
   extractFunnelStepsFromSeries,

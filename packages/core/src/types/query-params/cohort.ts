@@ -21,8 +21,8 @@
  */
 
 import { pythonStrip } from "../../compat/index.js";
+import { KeyError } from "../../compat/python-builtins.js";
 import { ParamValidationError } from "../../errors.js";
-import { KeyError } from "../../query/python-builtins.js";
 import type { CohortAggregationType } from "../literals.js";
 import { CustomPropertyRef, Filter, InlineCustomProperty } from "./filter.js";
 import {
@@ -54,7 +54,7 @@ export const PROPERTY_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
 // (types.py ~8959) on an operator outside the map — a real divergence
 // found by the P2-9 gate (the pre-fix port silently constructed with an
 // `undefined` selector operator). FOLDED into the canonical
-// `query/python-builtins.ts` twin at the B6 gate per that module's own
+// `compat/python-builtins.ts` twin at the B6 gate per that module's own
 // R10.4 watch note: the former file-local duplicate collided with the
 // canonical class in the bundled oracle (esbuild renamed one binding to
 // `KeyError2`, and the bridge compares `constructor.name` —

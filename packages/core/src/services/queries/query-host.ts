@@ -17,8 +17,8 @@ import type { ClientCore } from "../../client/core.js";
 import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { pythonInt, pythonJsonDumps } from "../../compat/index.js";
+import { ValueError } from "../../compat/python-builtins.js";
 import { QueryError } from "../../errors.js";
-import { ValueError } from "../../query/python-builtins.js";
 import {
   addDays,
   type CivilDate,

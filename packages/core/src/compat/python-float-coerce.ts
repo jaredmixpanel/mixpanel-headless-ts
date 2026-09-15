@@ -24,7 +24,7 @@
 // Import-free leaf module (its only exports are the minted builtin
 // twins), so this compat module may import it without a layering cycle;
 // the OverflowError twin exists ONCE there (R10.8).
-import { OverflowError } from "../query/python-builtins.js";
+import { OverflowError } from "./python-builtins.js";
 import { isPythonDict } from "./python-dict.js";
 import { pythonFloat } from "./python-float.js";
 

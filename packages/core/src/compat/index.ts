@@ -13,6 +13,13 @@ export {
   cpSlice,
   sortedByCodepoint,
 } from "./codepoint.js";
+export {
+  AttributeError,
+  KeyError,
+  OverflowError,
+  RuntimeError,
+  ValueError,
+} from "./python-builtins.js";
 export { isPythonDict, setOwn } from "./python-dict.js";
 export { pythonFloat } from "./python-float.js";
 export { pythonFloatCoerce } from "./python-float-coerce.js";

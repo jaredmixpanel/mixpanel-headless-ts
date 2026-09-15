@@ -42,9 +42,9 @@
  */
 
 import { pythonRepr, sortedByCodepoint, zfill } from "../compat/index.js";
+import { AttributeError, ValueError } from "../compat/python-builtins.js";
 import { ParamValidationError } from "../errors.js";
 import type { Filter } from "../types/index.js";
-import { AttributeError, ValueError } from "./python-builtins.js";
 import {
   pythonIterableElements,
   pythonStrValue,

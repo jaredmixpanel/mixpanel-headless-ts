@@ -48,6 +48,7 @@ import { MixpanelHttpError } from "../client/internals.js";
 import { toNativeJson } from "../client/json-value.js";
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import { rawFetch } from "../client/transport.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
 import { pythonStrOf } from "../compat/python-str.js";
 import { zfill } from "../compat/zfill.js";
@@ -57,7 +58,6 @@ import {
   SignedURLExpiredError,
   UnsupportedReplayFormatError,
 } from "../errors.js";
-import { isPythonDict } from "../query/validation-shared.js";
 import { Filter } from "../types/query-params/filter.js";
 import {
   ReplayEvent,

@@ -67,12 +67,12 @@ import {
   pythonRepr,
   type PythonValue,
 } from "../compat/index.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import { ParamValidationError } from "../errors.js";
 import type { Filter } from "../types/index.js";
 import {
   floatCarrierValue,
   isFloatCarrier,
-  isPythonDict,
   pythonStrValue,
   pythonTypeName,
 } from "./validation-shared.js";
@@ -509,4 +509,4 @@ export function extractCohortFilter(
   return [remaining, cohort];
 }
 
-export { isPythonDict } from "./validation-shared.js";
+export { isPythonDict } from "../compat/python-dict.js";

@@ -35,13 +35,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  RuntimeError as PyRuntimeError,
+  ValueError as PyValueError,
+} from "../../src/compat/python-builtins.js";
+import {
   type BookmarkValidationError,
   ParamValidationError,
 } from "../../src/errors.js";
-import {
-  RuntimeError as PyRuntimeError,
-  ValueError as PyValueError,
-} from "../../src/query/python-builtins.js";
 import {
   CohortCriteria,
   CohortDefinition,

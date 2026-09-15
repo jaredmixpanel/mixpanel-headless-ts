@@ -21,12 +21,12 @@
 //   no TS analog (recorded in `B5-S2-notes.md` §2).
 // - `.df` asserts translate to `toRows()` / `rowColumns()` (C6).
 // - `pytest.raises(ValueError, match=...)` is the shared
-//   `query/python-builtins.ts` `ValueError` twin.
+//   `compat/python-builtins.ts` `ValueError` twin.
 
 import { describe, expect, it } from "vitest";
 
+import { ValueError } from "../../src/compat/python-builtins.js";
 import { AuthenticationError, QueryError } from "../../src/errors.js";
-import { ValueError } from "../../src/query/python-builtins.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import {
   ActivityFeedResult,

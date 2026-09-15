@@ -33,12 +33,12 @@
 
 import { describe, expect, it } from "vitest";
 
+import { ValueError } from "../../src/compat/python-builtins.js";
 import {
   AuthenticationError,
   EventNotFoundError,
   QueryError,
 } from "../../src/errors.js";
-import { ValueError } from "../../src/query/python-builtins.js";
 import {
   DiscoveryService,
   inferScalarType,

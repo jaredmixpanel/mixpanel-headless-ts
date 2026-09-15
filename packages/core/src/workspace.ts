@@ -28,6 +28,7 @@ import { jsonValuePythonStr } from "./client/internals.js";
 import { type JsonValue, toNativeJson } from "./client/json-value.js";
 import type { MeResponse } from "./client/me.js";
 import { validateResponseModel } from "./client/response-validation.js";
+import { KeyError } from "./compat/python-builtins.js";
 import { pythonInt, pythonIntCoerce } from "./compat/python-int.js";
 import { pythonRepr } from "./compat/python-str.js";
 import { zfill } from "./compat/zfill.js";
@@ -46,7 +47,6 @@ import {
   WorkspaceScopeError,
 } from "./errors.js";
 import { toError } from "./invariant.js";
-import { KeyError } from "./query/python-builtins.js";
 import { transformProfile } from "./query/transforms.js";
 import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 import {

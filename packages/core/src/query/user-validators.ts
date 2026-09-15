@@ -33,13 +33,13 @@
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
 import { pythonRepr, pythonStrip, zfill } from "../compat/index.js";
-import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
-import { ParamValidationError, ValidationError } from "../errors.js";
-import { CohortDefinition, Filter } from "../types/index.js";
 import {
   RuntimeError as PyRuntimeError,
   ValueError as PyValueError,
-} from "./python-builtins.js";
+} from "../compat/python-builtins.js";
+import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
+import { ParamValidationError, ValidationError } from "../errors.js";
+import { CohortDefinition, Filter } from "../types/index.js";
 import { isCohortFilter, isPythonDict } from "./user-builders.js";
 import {
   isValidDate,
@@ -747,7 +747,7 @@ export function validateUserArgs(
       // Python catches `(ValueError, TypeError, RuntimeError)`, so the
       // TS catch names all three arms plus the dual-inheriting
       // `ParamValidationError` (`exceptions.py:97`): `ValueError` /
-      // `RuntimeError` are the `query/python-builtins.ts` twins and
+      // `RuntimeError` are the `compat/python-builtins.ts` twins and
       // `TypeError` is native. Everything else propagates exactly as
       // Python lets `KeyError` / `AttributeError` / `RecursionError`
       // propagate.

@@ -39,6 +39,8 @@
  */
 
 import { codepoints, cpLength, cpSlice } from "../compat/codepoint.js";
+import { ValueError } from "../compat/python-builtins.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
 import {
   pythonStr,
@@ -46,8 +48,6 @@ import {
   type PythonValue,
 } from "../compat/python-str.js";
 import { pythonStrip } from "../compat/python-strip.js";
-import { ValueError } from "../query/python-builtins.js";
-import { isPythonDict } from "../query/validation-shared.js";
 import {
   type ReplayActionLabel,
   UserAction,

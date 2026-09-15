@@ -1300,7 +1300,7 @@ function toBuilderExpectOutput(value: JsonValue): JsonValue {
  * `validate_with_pydantic`.
  *
  * The K3 builtin-exception twins (`ValueError`/`OverflowError`/
- * `AttributeError`, `query/python-builtins.ts`) are NOT
+ * `AttributeError`, `compat/python-builtins.ts`) are NOT
  * `MixpanelHeadlessError` descendants, so {@link runGuarded} rethrows
  * them raw; the oracle's `errorPayload` encodes their
  * `constructor.name`, matching oracle-py's bare-class encoding

@@ -25,9 +25,9 @@
 
 import type { MixpanelClient } from "../client/client.js";
 import { type JsonValue, toNativeJson } from "../client/json-value.js";
+import { ValueError } from "../compat/python-builtins.js";
 import { isPythonValue, pythonRepr } from "../compat/python-str.js";
 import { normalizeOnExpression } from "../query/expressions.js";
-import { ValueError } from "../query/python-builtins.js";
 import type { CountType, HourDayUnit, TimeUnit } from "../types/literals.js";
 import {
   type ActivityFeedResult,

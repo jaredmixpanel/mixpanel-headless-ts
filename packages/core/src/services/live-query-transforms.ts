@@ -36,14 +36,15 @@ import {
   cpSlice,
   sortedByCodepoint,
 } from "../compat/codepoint.js";
+import { AttributeError, ValueError } from "../compat/python-builtins.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr, pythonStr } from "../compat/python-str.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { QueryError } from "../errors.js";
 import { defined } from "../invariant.js";
-import { AttributeError, ValueError } from "../query/python-builtins.js";
 import { fromTimestampUtcIso, timestampNumber } from "../query/transforms.js";
-import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
+import { pythonTypeName } from "../query/validation-shared.js";
 import type { HourDayUnit, TimeUnit } from "../types/literals.js";
 import {
   ActivityFeedResult,

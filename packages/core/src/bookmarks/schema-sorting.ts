@@ -61,19 +61,19 @@
  */
 
 import { codepoints } from "../compat/codepoint.js";
-import { PYTHON_NUMERIC_WHITESPACE } from "../compat/whitespace.gen.js";
-import { ValidationError } from "../errors.js";
-import { defined } from "../invariant.js";
 // R10.8: the PyFloat-carrier duck check has exactly one implementation in
 // the port (landed by B2 shard V1a). Importing it here keeps the sorting
 // slice carrier-aware WITHOUT asking the (b′) binding to unwrap floats on
 // the `params.sorting` path only — see the module note on float carriers
 // below. `query/validation-shared.ts` imports nothing from `bookmarks/`,
 // so this direction is acyclic.
+import { isPythonDict } from "../compat/python-dict.js";
+import { PYTHON_NUMERIC_WHITESPACE } from "../compat/whitespace.gen.js";
+import { ValidationError } from "../errors.js";
+import { defined } from "../invariant.js";
 import {
   floatCarrierValue,
   isFloatCarrier,
-  isPythonDict,
 } from "../query/validation-shared.js";
 
 // =============================================================================

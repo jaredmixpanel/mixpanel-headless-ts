@@ -19,8 +19,8 @@
 
 import { describe, expect, it } from "vitest";
 
+import { AttributeError } from "../../src/compat/python-builtins.js";
 import { QueryError } from "../../src/errors.js";
-import { AttributeError } from "../../src/query/python-builtins.js";
 import {
   extractFunnelStepsFromSeries,
   transformFunnel,

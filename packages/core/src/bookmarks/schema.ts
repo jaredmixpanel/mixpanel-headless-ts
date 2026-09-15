@@ -57,7 +57,7 @@
  * @internal
  */
 
-import { isPythonDict } from "../query/validation-shared.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import {
   type FieldType,
   INSIGHTS_BOOKMARK_SORT_CONFIG,

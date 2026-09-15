@@ -14,8 +14,8 @@
  */
 
 import { pythonInt } from "../compat/index.js";
+import { isPythonDict } from "../compat/python-dict.js";
 import { MixpanelHeadlessError } from "../errors.js";
-import { isPythonDict } from "../query/validation-shared.js";
 import type { PublicWorkspace } from "../types/entities/common.js";
 import {
   type EntityFieldSpec,

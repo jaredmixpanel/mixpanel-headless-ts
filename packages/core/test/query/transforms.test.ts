@@ -32,7 +32,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { OverflowError, ValueError } from "../../src/query/python-builtins.js";
+import { OverflowError, ValueError } from "../../src/compat/python-builtins.js";
 import {
   RESERVED_EVENT_KEYS,
   RESERVED_PROFILE_KEYS,
