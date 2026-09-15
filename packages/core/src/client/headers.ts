@@ -40,7 +40,14 @@ const LIBRARY_VERSION = "0.0.0";
 /** How this process entered the library (Python `_EntryPoint`). */
 export type EntryPoint = "lib" | "cli";
 
-/** Module-level entry-point state (Python `_entry_point`, default "lib"). */
+/**
+ * Module-level entry-point state (Python `_entry_point`, default "lib").
+ *
+ * Deliberately PROCESS-GLOBAL, not a client option: it answers "how was
+ * this process launched", one fact per realm that every client's
+ * User-Agent shares, exactly like Python's module attribute. A per-client
+ * setting would let two clients in one CLI process disagree about it.
+ */
 let entryPoint: EntryPoint = "lib";
 
 /**

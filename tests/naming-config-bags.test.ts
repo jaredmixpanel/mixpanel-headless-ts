@@ -45,7 +45,7 @@ const CONFIG_BAGS: readonly Bag[] = [
   ["packages/core/src/auth/token.ts", "TokenClockOptions"],
   ["packages/core/src/auth/oauth-http.ts", "RegisterClientOptions"],
   ["packages/core/src/auth/region-probe.ts", "ProbeRegionOptions"],
-  ["packages/core/src/auth/account.ts", "ParseAccountOptions"],
+  ["packages/core/src/auth/shared.ts", "ParseAccountOptions"],
   ["packages/core/src/auth/account.ts", "AccountAuthHeaderOptions"],
   ["packages/core/src/accounts/accounts-ops.ts", "FetchMeOptions"],
   ["packages/core/src/errors.ts", "APIErrorOptions"],

@@ -28,18 +28,14 @@
  */
 
 import { cpLength } from "../compat/codepoint.js";
-import {
-  MixpanelHeadlessError,
-  ParamTypeError,
-  ParamValidationError,
-  ResponseValidationError,
-} from "../errors.js";
+import { MixpanelHeadlessError, ParamTypeError } from "../errors.js";
 import { Secret } from "../secret.js";
 import {
   ACCOUNT_TYPE_VALUES,
   type Region,
   REGION_VALUES,
 } from "../types/literals.js";
+import { type ParseAccountOptions, parseFail } from "./shared.js";
 
 // ── Phantom-typed identifiers (Python NewType) ──────────────────────────
 //
@@ -167,17 +163,8 @@ export interface OAuthTokenAccount {
  */
 export type Account = ServiceAccount | OAuthBrowserAccount | OAuthTokenAccount;
 
-/** Options accepted by every auth parse factory. */
-export interface ParseAccountOptions {
-  /**
-   * Error boundary: `'param'` throws {@link ParamValidationError}
-   * (`VALIDATION_ERROR`); `'response'` (default — the config/vector-decode
-   * seam) throws {@link ResponseValidationError}
-   * (`RESPONSE_VALIDATION_ERROR`). Mirrors the shared `coerce.ts`
-   * convention (R4.12/R5.5).
-   */
-  readonly boundary?: "param" | "response" | undefined;
-}
+// TODO(Ω): shim — `ParseAccountOptions` moved to ./shared.ts; repoint index.ts and delete.
+export type { ParseAccountOptions } from "./shared.js";
 
 /** Account `name` constraint: Python `pattern=r"^[a-zA-Z0-9_-]+$"`. */
 const NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
@@ -189,31 +176,6 @@ const NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
  * ASCII-only).
  */
 const PROJECT_ID_PATTERN = /^\p{Nd}+$/u;
-
-/**
- * Throw the boundary-appropriate parse error (R5.5 generic codes).
- *
- * @param message - Human-readable description (out of contract, R5.4).
- * @param options - Parse options carrying the boundary kind.
- * @param details - Optional structured error data (snake_case keys).
- * @returns Never returns.
- * @throws ParamValidationError - When `options.boundary === 'param'`.
- * @throws ResponseValidationError - Otherwise (default boundary).
- */
-function parseFail(
-  message: string,
-  options: ParseAccountOptions,
-  details?: Readonly<Record<string, unknown>>,
-): never {
-  if (options.boundary === "param") {
-    throw new ParamValidationError(message, "VALIDATION_ERROR", details);
-  }
-  throw new ResponseValidationError(
-    message,
-    "RESPONSE_VALIDATION_ERROR",
-    details,
-  );
-}
 
 /**
  * Narrow a raw value to a plain (non-array) object usable as model input.
