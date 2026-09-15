@@ -682,6 +682,9 @@ export class ReplayBundle {
     };
     const a = countByAction(this);
     const b = countByAction(other);
+    // Python `sorted()` orders by code point; the engine's code-unit
+    // order is kept for the same reason as `query-engine.ts#sortedKeys`
+    // (action labels are ASCII, so the two never differ here).
     const keys = [...new Set([...a.keys(), ...b.keys()])].sort(
       compareCodeUnits,
     );

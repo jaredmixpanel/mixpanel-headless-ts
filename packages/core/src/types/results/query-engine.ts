@@ -15,6 +15,7 @@
  */
 
 import { compareCodeUnits, pythonFloatCoerce } from "../../compat/index.js";
+import { setOwn } from "../../compat/python-dict.js";
 import type { FlowChartType } from "../literals.js";
 import {
   buildFlowGraph,
@@ -77,7 +78,13 @@ export function normalizeDateKey(dateKey: string): string {
 }
 
 /**
- * Python `sorted()` over string keys (codepoint-ordered `<`).
+ * Python `sorted()` over string keys.
+ *
+ * Python orders by code point; this keeps the engine's UTF-16 code-unit
+ * order, which differs only when a surrogate pair meets a BMP character
+ * above U+D7FF. No corpus key exercises that case, so the switch to
+ * `compareCodepoints` is a behaviour change to make together with a
+ * vector that proves it, not silently here.
  *
  * @param keys - Keys to sort.
  * @returns A new sorted array.
@@ -1294,7 +1301,7 @@ export class UserQueryResult {
       if (isPlainRecord(props)) {
         for (const [key, val] of Object.entries(props)) {
           const cleanKey = key.startsWith("$") ? key.slice(1) : key;
-          row[cleanKey] = val;
+          setOwn(row, cleanKey, val);
         }
       }
       return row;

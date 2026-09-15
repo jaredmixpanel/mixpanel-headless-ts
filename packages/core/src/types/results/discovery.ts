@@ -8,7 +8,9 @@
  * Python defines `to_dict()`, strict `@internal` `fromDict()`).
  */
 
-import { pythonStr, type PythonValue } from "../../compat/index.js";
+import { pythonStrOf } from "../../compat/index.js";
+import { setOwn } from "../../compat/python-dict.js";
+import { defined } from "../../invariant.js";
 import type { BookmarkType, CustomPropertyType } from "../literals.js";
 import {
   decodeFail,
@@ -1188,7 +1190,7 @@ export class SchemaGraphResult {
     for (const event of this.events) {
       const name = event["name"];
       if (pyTruthy(name)) {
-        eventToProperties[pyStr(name)] = [];
+        setOwn(eventToProperties, pythonStrOf(name), []);
       } else {
         eventsWithoutName += 1;
       }
@@ -1210,14 +1212,21 @@ export class SchemaGraphResult {
       const attached: string[] = [];
       for (const entry of rawEntries) {
         if (isPlainRecord(entry) && pyTruthy(entry["name"])) {
-          attached.push(pyStr(entry["name"]));
+          attached.push(pythonStrOf(entry["name"]));
         }
       }
       propertyEventEntriesDropped += rawEntries.length - attached.length;
-      propertyToEvents[pyStr(propName)] = attached;
+      setOwn(propertyToEvents, pythonStrOf(propName), attached);
       relationshipEdges += attached.length;
+      // Python `setdefault(event_name, []).append(...)`; `setOwn` keeps a
+      // `"__proto__"`-named event from resolving to `Object.prototype`.
       for (const eventName of attached) {
-        (eventToProperties[eventName] ??= []).push(pyStr(propName));
+        if (!Object.hasOwn(eventToProperties, eventName)) {
+          setOwn(eventToProperties, eventName, []);
+        }
+        defined(eventToProperties[eventName], "eventToProperties entry").push(
+          pythonStrOf(propName),
+        );
       }
     }
     // TODO(port): these two plain objects hold Python DICTS whose
@@ -1338,8 +1347,8 @@ export class SchemaGraphResult {
           continue;
         }
         rows.push({
-          event: pyStr(eventName),
-          property: pyStr(name),
+          event: pythonStrOf(eventName),
+          property: pythonStrOf(name),
           density_local: density,
         });
       }
@@ -1405,8 +1414,11 @@ export class SchemaGraphResult {
     const orphans: string[] = [];
     for (const prop of this.properties) {
       const name = prop["name"];
-      if (pyTruthy(name) && !pyTruthy(this.property_to_events[pyStr(name)])) {
-        orphans.push(pyStr(name));
+      if (
+        pyTruthy(name) &&
+        !pyTruthy(this.property_to_events[pythonStrOf(name)])
+      ) {
+        orphans.push(pythonStrOf(name));
       }
     }
     return orphans;
@@ -1490,7 +1502,7 @@ export class SchemaGraphResult {
     for (const event of this.events) {
       const seeded = event["name"];
       if (pyTruthy(seeded)) {
-        addNode(pyStr(seeded), "event");
+        addNode(pythonStrOf(seeded), "event");
       }
     }
     for (const prop of this.properties) {
@@ -1502,14 +1514,14 @@ export class SchemaGraphResult {
         ? (seededEntries as readonly unknown[])
         : []) {
         if (isPlainRecord(entry) && pyTruthy(entry["name"])) {
-          addNode(pyStr(entry["name"]), "event");
+          addNode(pythonStrOf(entry["name"]), "event");
         }
       }
     }
     for (const event of this.events) {
       const name = event["name"];
       if (pyTruthy(name)) {
-        addNode(pyStr(name), "event");
+        addNode(pythonStrOf(name), "event");
       }
     }
     for (const prop of this.properties) {
@@ -1517,7 +1529,7 @@ export class SchemaGraphResult {
       if (!pyTruthy(propName)) {
         continue;
       }
-      addNode(pyStr(propName), "property");
+      addNode(pythonStrOf(propName), "property");
       const density = Object.hasOwn(prop, "densityLocal")
         ? prop["densityLocal"]
         : null;
@@ -1529,8 +1541,8 @@ export class SchemaGraphResult {
         if (!isPlainRecord(entry) || !pyTruthy(entry["name"])) {
           continue;
         }
-        addNode(pyStr(entry["name"]), "event");
-        addEdge(pyStr(entry["name"]), pyStr(propName), density);
+        addNode(pythonStrOf(entry["name"]), "event");
+        addEdge(pythonStrOf(entry["name"]), pythonStrOf(propName), density);
       }
     }
     const edges: SchemaGraphEdge[] = [];
@@ -1629,17 +1641,6 @@ export class SchemaGraphResult {
 }
 
 /**
- * Python `str(x)` for graph node names (identity for strings; the
- * compat port for scalar non-strings).
- *
- * @param value - A payload value that passed a truthiness check.
- * @returns The Python string form.
- */
-function pyStr(value: unknown): string {
-  return typeof value === "string" ? value : pythonStr(value as PythonValue);
-}
-
-/**
  * Project one raw lexicon property dict into the `properties_df` row
  * shape — mirror of Python `SchemaGraphResult._property_row`.
  *
@@ -1654,7 +1655,7 @@ function propertyRow(
 ): Row {
   const resource = prop["resourceType"];
   const resourceType = pyTruthy(resource)
-    ? pyStr(resource).toLowerCase()
+    ? pythonStrOf(resource).toLowerCase()
     : defaultResource;
   return {
     name: prop["name"] ?? null,

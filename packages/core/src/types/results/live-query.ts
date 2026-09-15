@@ -19,6 +19,7 @@
  *   vectors carry it (`_df_cache: null` included, datetimes re-tagged).
  */
 
+import { setOwn } from "../../compat/python-dict.js";
 import type {
   CountType,
   HourDayUnit,
@@ -1206,7 +1207,7 @@ export class ActivityFeedResult {
       };
       for (const [key, value] of Object.entries(userEvent.properties)) {
         if (key !== "$distinct_id") {
-          row[key] = value;
+          setOwn(row, key, value);
         }
       }
       return row;
@@ -2248,7 +2249,7 @@ function decodeNumberRecord(
     if (value === undefined) {
       decodeFail(cls, `${field}[${JSON.stringify(key)}]`, "number", item);
     }
-    out[key] = value;
+    setOwn(out, key, value);
   }
   return out;
 }
