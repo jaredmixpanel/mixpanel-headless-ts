@@ -238,3 +238,53 @@ html.dark {
 .vp-doc .twoslash .twoslash-popup-docs-tag-name {
   color: var(--vp-c-brand-1);
 }
+
+/* --- Home: the playground card --------------------------------------------- */
+/*
+ * The one feature card that leads somewhere interactive gets a quiet brand
+ * tint, a hairline in the brand colour and a small label, so it reads as
+ * the "try it" door among prose links without shouting. Matched by its
+ * link rather than a class: VitePress renders the home features from
+ * frontmatter and offers no per-card hook.
+ */
+.VPFeatures .VPFeature[href$="/demo/"] {
+  position: relative;
+  border-color: color-mix(in srgb, var(--vp-c-brand-1) 45%, transparent);
+  background:
+    linear-gradient(135deg, var(--vp-c-brand-soft) 0%, transparent 60%),
+    var(--vp-c-bg-soft);
+  transition:
+    border-color 0.25s,
+    box-shadow 0.25s;
+}
+
+.VPFeatures .VPFeature[href$="/demo/"]:hover {
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 0 0 4px var(--vp-c-brand-soft);
+}
+
+.VPFeatures .VPFeature[href$="/demo/"]::before {
+  content: "Interactive";
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vp-c-brand-1);
+  color: var(--vp-c-white);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+html.dark .VPFeatures .VPFeature[href$="/demo/"]::before {
+  background: var(--vp-c-brand-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .VPFeatures .VPFeature[href$="/demo/"] {
+    transition: none;
+  }
+}
