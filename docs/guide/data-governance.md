@@ -21,6 +21,8 @@ The request and response models follow the same conventions as the other App API
 
 ## Lexicon — event definitions
 
+Reference: [`EventDefinition`](/reference/core/classes/EventDefinition), [`UpdateEventDefinitionParams`](/reference/core/classes/UpdateEventDefinitionParams), [`BulkUpdateEventsParams`](/reference/core/classes/BulkUpdateEventsParams), [`BulkEventUpdate`](/reference/core/classes/BulkEventUpdate), [`Workspace.getEventDefinitions`](/reference/core/classes/Workspace#geteventdefinitions).
+
 ### Get event definitions
 
 `names` is required; the call returns one `EventDefinition` per matched name.
@@ -107,6 +109,8 @@ for (const d of results) {
 
 ## Lexicon — property definitions
 
+Reference: [`PropertyDefinition`](/reference/core/classes/PropertyDefinition), [`UpdatePropertyDefinitionParams`](/reference/core/classes/UpdatePropertyDefinitionParams), [`BulkUpdatePropertiesParams`](/reference/core/classes/BulkUpdatePropertiesParams), [`BulkPropertyUpdate`](/reference/core/classes/BulkPropertyUpdate), [`Workspace.getPropertyDefinitions`](/reference/core/classes/Workspace#getpropertydefinitions).
+
 ### Get property definitions
 
 ```ts twoslash
@@ -178,6 +182,8 @@ console.log(results.length);
 ---
 
 ## Lexicon — tags
+
+Reference: [`LexiconTag`](/reference/core/classes/LexiconTag), [`CreateTagParams`](/reference/core/classes/CreateTagParams), [`UpdateTagParams`](/reference/core/classes/UpdateTagParams).
 
 Organize event and property definitions with tags.
 
@@ -307,6 +313,8 @@ console.log(events);
 
 ## Drop filters
 
+Reference: [`DropFilter`](/reference/core/classes/DropFilter), [`CreateDropFilterParams`](/reference/core/classes/CreateDropFilterParams), [`UpdateDropFilterParams`](/reference/core/classes/UpdateDropFilterParams), [`DropFilterLimitsResponse`](/reference/core/classes/DropFilterLimitsResponse).
+
 Drop filters suppress events at ingestion time, preventing them from being stored or counted. Every mutation returns the **full list** of drop filters after the change.
 
 ### List drop filters
@@ -386,6 +394,8 @@ console.log(`Drop filter limit: ${String(limits.filter_limit)}`);
 ---
 
 ## Custom properties
+
+Reference: [`CustomProperty`](/reference/core/classes/CustomProperty), [`CreateCustomPropertyParams`](/reference/core/classes/CreateCustomPropertyParams), [`UpdateCustomPropertyParams`](/reference/core/classes/UpdateCustomPropertyParams), [`ComposedPropertyValue`](/reference/core/classes/ComposedPropertyValue), [`CustomPropertyResourceType`](/reference/core/variables/CustomPropertyResourceType).
 
 Custom properties are computed properties defined by formulas or behaviors. They calculate values dynamically from existing event or profile properties. Custom properties use **string IDs**.
 
@@ -507,6 +517,8 @@ console.log(result); // Raw validation result record
 
 ## Custom events
 
+Reference: [`CustomEvent`](/reference/core/classes/CustomEvent), [`CreateCustomEventParams`](/reference/core/classes/CreateCustomEventParams), [`EventDefinition`](/reference/core/classes/EventDefinition), [`Workspace.createCustomEvent`](/reference/core/classes/Workspace#createcustomevent).
+
 Custom events are composite aliases that group one or more underlying events under a single display name. They appear alongside regular events in queries and dashboards but resolve to the union of their underlying events at query time.
 
 The `/custom_events/` endpoint (used by `createCustomEvent`) returns the typed `CustomEvent` model — distinct from `EventDefinition`, which is the Lexicon (governance) view returned by `listCustomEvents`, `updateCustomEvent`, and the rest of the `/data-definitions/events/` family.
@@ -593,6 +605,8 @@ await ws.deleteCustomEvent(2044168);
 ---
 
 ## Lookup tables
+
+Reference: [`LookupTable`](/reference/core/classes/LookupTable), [`UploadLookupTableParams`](/reference/core/classes/UploadLookupTableParams), [`UpdateLookupTableParams`](/reference/core/classes/UpdateLookupTableParams), [`MarkLookupTableReadyParams`](/reference/core/classes/MarkLookupTableReadyParams), [`Workspace.uploadLookupTable`](/reference/core/classes/Workspace#uploadlookuptable).
 
 Lookup tables are CSV-based reference data used to enrich event and profile properties. Upload a CSV, and Mixpanel maps its columns to properties for real-time enrichment.
 
@@ -754,6 +768,8 @@ console.log(table.id);
 
 ## Schema registry
 
+Reference: [`SchemaEntry`](/reference/core/classes/SchemaEntry), [`BulkCreateSchemasParams`](/reference/core/classes/BulkCreateSchemasParams), [`BulkCreateSchemasResponse`](/reference/core/classes/BulkCreateSchemasResponse), [`BulkPatchResult`](/reference/core/classes/BulkPatchResult), [`DeleteSchemasResponse`](/reference/core/classes/DeleteSchemasResponse), [`Workspace.listSchemaRegistry`](/reference/core/classes/Workspace#listschemaregistry).
+
 Manage JSON Schema Draft 7 definitions in Mixpanel's schema registry. Schemas define the expected structure of events, custom events, and profiles.
 
 ### List schema entries
@@ -889,6 +905,8 @@ console.log(all.delete_count);
 
 ## Schema enforcement
 
+Reference: [`SchemaEnforcementConfig`](/reference/core/classes/SchemaEnforcementConfig), [`InitSchemaEnforcementParams`](/reference/core/classes/InitSchemaEnforcementParams), [`UpdateSchemaEnforcementParams`](/reference/core/classes/UpdateSchemaEnforcementParams), [`ReplaceSchemaEnforcementParams`](/reference/core/classes/ReplaceSchemaEnforcementParams).
+
 Configure how Mixpanel handles events that don't match defined schemas. Enforcement actions include "Warn and Accept", "Warn and Hide", and "Warn and Drop". The init/update/replace/delete calls return the raw API response.
 
 ### Get enforcement settings
@@ -981,6 +999,8 @@ console.log(result);
 
 ## Data auditing
 
+Reference: [`AuditResponse`](/reference/core/classes/AuditResponse), [`AuditViolation`](/reference/core/classes/AuditViolation), [`Workspace.runAudit`](/reference/core/classes/Workspace#runaudit).
+
 Audit your project's data against defined schemas to find violations such as unexpected events, missing properties, or type mismatches. Each `AuditViolation` carries the `violation` kind, the offending `name`, a `count`, and — for property violations — the parent `event` and any `property_type_error`.
 
 ### Run full audit
@@ -1022,6 +1042,8 @@ When the audit metadata carries `computed_at: null`, the port raises `ResponseVa
 ---
 
 ## Data volume anomalies
+
+Reference: [`DataVolumeAnomaly`](/reference/core/classes/DataVolumeAnomaly), [`UpdateAnomalyParams`](/reference/core/classes/UpdateAnomalyParams), [`BulkUpdateAnomalyParams`](/reference/core/classes/BulkUpdateAnomalyParams), [`BulkAnomalyEntry`](/reference/core/classes/BulkAnomalyEntry).
 
 Monitor and manage anomalies detected in data volume patterns. Anomalies indicate unexpected spikes or drops that may signal tracking issues or data pipeline problems.
 
@@ -1091,6 +1113,8 @@ console.log(result);
 ---
 
 ## Event deletion requests
+
+Reference: [`EventDeletionRequest`](/reference/core/classes/EventDeletionRequest), [`CreateDeletionRequestParams`](/reference/core/classes/CreateDeletionRequestParams), [`PreviewDeletionFiltersParams`](/reference/core/classes/PreviewDeletionFiltersParams).
 
 Submit and manage requests to delete event data by event name, date range, and optional property filters.
 

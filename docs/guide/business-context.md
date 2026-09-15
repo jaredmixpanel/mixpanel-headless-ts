@@ -22,9 +22,11 @@ Business Context requires **authentication**. Project-level reads work with any 
 | `organization` | The Mixpanel organization | Every project in the org |
 | `project`      | A single project          | That project only        |
 
-Both scopes go through the same four methods, gated by a `level: "organization" | "project"` option (the `BusinessContextLevel` type). `level` defaults to `"project"`.
+Both scopes go through the same four methods, gated by a `level: "organization" | "project"` option (the [`BusinessContextLevel`](/reference/core/type-aliases/BusinessContextLevel) type). `level` defaults to `"project"`.
 
 ## Quick reference
+
+Reference: [`Workspace.getBusinessContext`](/reference/core/classes/Workspace#getbusinesscontext), [`Workspace.setBusinessContext`](/reference/core/classes/Workspace#setbusinesscontext), [`Workspace.clearBusinessContext`](/reference/core/classes/Workspace#clearbusinesscontext), [`Workspace.getBusinessContextChain`](/reference/core/classes/Workspace#getbusinesscontextchain), [`BusinessContextScopeOptions`](/reference/core/interfaces/BusinessContextScopeOptions).
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -235,7 +237,7 @@ for (const project of await ws.projects()) {
 
 ## Result types
 
-`getBusinessContext`, `setBusinessContext` and `clearBusinessContext` return `BusinessContext` — a read-only model with the markdown content plus the scope-appropriate identifier:
+`getBusinessContext`, `setBusinessContext` and `clearBusinessContext` return [`BusinessContext`](/reference/core/classes/BusinessContext) — a read-only model with the markdown content plus the scope-appropriate identifier:
 
 | Field             | Project scope           | Org scope               |
 | ----------------- | ----------------------- | ----------------------- |
@@ -257,17 +259,17 @@ console.log(ctx.modelDumpExcludeNone());
 // { level: "project", content: "", is_empty: true, character_count: 0 }
 ```
 
-`getBusinessContextChain()` returns `BusinessContextChain`, which is just `{ organization: BusinessContext, project: BusinessContext }`.
+`getBusinessContextChain()` returns [`BusinessContextChain`](/reference/core/classes/BusinessContextChain), which is just `{ organization: BusinessContext, project: BusinessContext }`.
 
 ## Error handling
 
-| Error class                      | Thrown when                                                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `BusinessContextValidationError` | Client-side: content > 50,000 chars (no HTTP call made); `code: "BUSINESS_CONTEXT_TOO_LONG"`                             |
-| `QueryError`                     | Server-side 400 (malformed body, server-side oversize), 403 (missing `edit_project_info`), 404 (org/project not visible) |
-| `AuthenticationError`            | 401 — credentials are invalid                                                                                            |
-| `WorkspaceScopeError`            | `level: "organization"` and the org ID could not be auto-resolved (`code: "ORGANIZATION_AMBIGUOUS"`)                     |
-| `ServerError`                    | 5xx                                                                                                                      |
+| Error class                                                                                | Thrown when                                                                                                              |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| [`BusinessContextValidationError`](/reference/core/classes/BusinessContextValidationError) | Client-side: content > 50,000 chars (no HTTP call made); `code: "BUSINESS_CONTEXT_TOO_LONG"`                             |
+| [`QueryError`](/reference/core/classes/QueryError)                                         | Server-side 400 (malformed body, server-side oversize), 403 (missing `edit_project_info`), 404 (org/project not visible) |
+| [`AuthenticationError`](/reference/core/classes/AuthenticationError)                       | 401 — credentials are invalid                                                                                            |
+| [`WorkspaceScopeError`](/reference/core/classes/WorkspaceScopeError)                       | `level: "organization"` and the org ID could not be auto-resolved (`code: "ORGANIZATION_AMBIGUOUS"`)                     |
+| [`ServerError`](/reference/core/classes/ServerError)                                       | 5xx                                                                                                                      |
 
 Every error carries a stable `code` and a `details` record; API errors add `statusCode`. See [Error handling](/guide/error-handling) for the full hierarchy.
 

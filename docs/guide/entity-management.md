@@ -20,7 +20,7 @@ See [Accounts, sessions and targets](/guide/accounts-sessions-targets) for the f
 
 ## How the models work
 
-Every App API request and response is a typed model class exported from `@mixpanel-headless/core`. The conventions are the same across all the entities on this page:
+Every App API request and response is a typed model class exported from `@mixpanel-headless/core`; the methods live on [`Workspace`](/reference/core/classes/Workspace), which [`createNodeWorkspace`](/reference/node/functions/createNodeWorkspace) builds from your environment. The conventions are the same across all the entities on this page:
 
 - **Request models** are constructed with `new CreateXParams({ ... })` / `new UpdateXParams({ ... })`. The constructor validates required fields, coerces scalars and rejects unknown keys the way the Python Pydantic models do, so a bad request fails before any network call.
 - **Field names stay `snake_case`** — they mirror the Python models and the wire (`bookmark_type`, `is_enabled`, `data_group_id`). Method names are `camelCase`.
@@ -44,6 +44,8 @@ console.log(params.modelDumpExcludeNone());
 ```
 
 ## Dashboards
+
+Reference: [`Dashboard`](/reference/core/classes/Dashboard), [`CreateDashboardParams`](/reference/core/classes/CreateDashboardParams), [`UpdateDashboardParams`](/reference/core/classes/UpdateDashboardParams), [`Workspace.listDashboards`](/reference/core/classes/Workspace#listdashboards).
 
 ### List dashboards
 
@@ -221,6 +223,8 @@ await ws.updateTextCard(
 
 ## Reports (bookmarks)
 
+Reference: [`Bookmark`](/reference/core/classes/Bookmark), [`CreateBookmarkParams`](/reference/core/classes/CreateBookmarkParams), [`UpdateBookmarkParams`](/reference/core/classes/UpdateBookmarkParams), [`BulkUpdateBookmarkEntry`](/reference/core/classes/BulkUpdateBookmarkEntry), [`Workspace.listBookmarksV2`](/reference/core/classes/Workspace#listbookmarksv2).
+
 Reports in Mixpanel are stored as "bookmarks". Each bookmark has a type (`insights`, `funnels`, `flows`, `retention`, `user`) and a `params` JSON object defining the query.
 
 ### List reports
@@ -338,6 +342,8 @@ console.log(dashboardIds);
 
 ## Cohorts
 
+Reference: [`Cohort`](/reference/core/classes/Cohort), [`CreateCohortParams`](/reference/core/classes/CreateCohortParams), [`UpdateCohortParams`](/reference/core/classes/UpdateCohortParams), [`BulkUpdateCohortEntry`](/reference/core/classes/BulkUpdateCohortEntry), [`Workspace.listCohortsFull`](/reference/core/classes/Workspace#listcohortsfull).
+
 ### List cohorts
 
 `listCohortsFull` returns full `Cohort` models from the App API. (The discovery helper `ws.cohorts()` returns lightweight `SavedCohort` summaries.)
@@ -418,6 +424,8 @@ await ws.bulkUpdateCohorts([
 ---
 
 ## Feature flags
+
+Reference: [`FeatureFlag`](/reference/core/classes/FeatureFlag), [`CreateFeatureFlagParams`](/reference/core/classes/CreateFeatureFlagParams), [`UpdateFeatureFlagParams`](/reference/core/classes/UpdateFeatureFlagParams), [`FeatureFlagStatus`](/reference/core/variables/FeatureFlagStatus), [`Workspace.listFeatureFlags`](/reference/core/classes/Workspace#listfeatureflags).
 
 Feature flags are **project-scoped** — no workspace ID required. They use **UUID string IDs** (not integer IDs like dashboards/reports/cohorts).
 
@@ -540,6 +548,8 @@ console.log(
 ---
 
 ## Experiments
+
+Reference: [`Experiment`](/reference/core/classes/Experiment), [`CreateExperimentParams`](/reference/core/classes/CreateExperimentParams), [`UpdateExperimentParams`](/reference/core/classes/UpdateExperimentParams), [`Workspace.listExperiments`](/reference/core/classes/Workspace#listexperiments).
 
 Experiments are **project-scoped** — no workspace ID required. They have a distinct lifecycle with managed state transitions:
 
@@ -689,6 +699,8 @@ console.log(erf.length);
 ---
 
 ## Alerts
+
+Reference: [`CustomAlert`](/reference/core/classes/CustomAlert), [`CreateAlertParams`](/reference/core/classes/CreateAlertParams), [`UpdateAlertParams`](/reference/core/classes/UpdateAlertParams), [`AlertFrequencyPreset`](/reference/core/variables/AlertFrequencyPreset), [`Workspace.listAlerts`](/reference/core/classes/Workspace#listalerts).
 
 Custom alerts monitor saved reports and notify when conditions are met. Alerts are **workspace-scoped** and linked to bookmarks (saved reports).
 
@@ -846,6 +858,8 @@ if (result.invalid_count > 0) {
 
 ## Annotations
 
+Reference: [`Annotation`](/reference/core/classes/Annotation), [`CreateAnnotationParams`](/reference/core/classes/CreateAnnotationParams), [`UpdateAnnotationParams`](/reference/core/classes/UpdateAnnotationParams), [`Workspace.listAnnotations`](/reference/core/classes/Workspace#listannotations).
+
 Timeline annotations mark important events (releases, incidents, campaigns) on your Mixpanel charts.
 
 ### List annotations
@@ -950,6 +964,8 @@ console.log(tag.id);
 ---
 
 ## Webhooks
+
+Reference: [`ProjectWebhook`](/reference/core/classes/ProjectWebhook), [`CreateWebhookParams`](/reference/core/classes/CreateWebhookParams), [`UpdateWebhookParams`](/reference/core/classes/UpdateWebhookParams), [`WebhookAuthType`](/reference/core/variables/WebhookAuthType), [`Workspace.listWebhooks`](/reference/core/classes/Workspace#listwebhooks).
 
 Project webhooks receive HTTP notifications when events occur in your Mixpanel project. Webhooks use UUID string IDs.
 
