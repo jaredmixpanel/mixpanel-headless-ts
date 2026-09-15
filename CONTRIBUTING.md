@@ -308,6 +308,13 @@ in node or browser docs resolves to core's one export of that name, and
 typedoc-plugin-mdn-links. Neither the TSDoc grammar the linter enforces nor
 TypeDoc's accepts the other's cross-package or global-scope spelling, so the
 sources keep the plain `{@link Name}` form.
+Two sibling plugins shape the core reference: `typedoc-barrel-groups.mjs`
+groups and orders it by the `// --- … ---` sections of
+`packages/core/src/index.ts` (so a new section divider is also a new
+reference group), and `typedoc-python-see-links.mjs` links every
+`@see mixpanel_headless.…` tag to the Python site (its directive table
+mirrors the Python repo's `docs/api/*.md`; refresh it when those pages
+change).
 
 | Path                                                                                       | What it is                                                                                                                                                                 |
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
