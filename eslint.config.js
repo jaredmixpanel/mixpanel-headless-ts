@@ -885,9 +885,20 @@ const config = defineConfig([
     rules: {
       "jsdoc/require-hyphen-before-param-description": ["error", "always"],
       "jsdoc/tag-lines": ["error", "never", { startLines: 1 }],
-      // Phase 9 (§13.1) gives every script a shebang + exec bit; until
-      // then the rule strips the shebangs that already exist.
-      "n/hashbang": "off",
+      // Every CLI under scripts/ carries `#!/usr/bin/env node` and an exec
+      // bit; library modules (scripts/lib/, *-lib.mjs, this config) carry
+      // none. The rule enforces both directions.
+      "n/hashbang": [
+        "error",
+        {
+          additionalExecutables: [
+            "scripts/*.mjs",
+            "scripts/audit/comment-archaeology.mjs",
+            "scripts/codemods/*.mjs",
+          ],
+          executableMap: { ".mjs": "node" },
+        },
+      ],
       // Scripts are CLIs: a non-zero `process.exit` is their contract.
       "n/no-process-exit": "off",
       "unicorn/no-process-exit": "off",

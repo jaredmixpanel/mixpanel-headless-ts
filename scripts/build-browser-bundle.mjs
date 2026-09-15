@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+/* eslint-disable unicorn/no-exports-in-scripts -- dual-use module: a CLI (`npm run build:browser`) whose recipe is also imported by scripts/browser-smoke.mjs and tests/browser-bundle.test.ts. */
 // Pinned, reproducible browser-bundle build (heads spec 04 §3 —
 // "Vendoring the headless bundle").
 //

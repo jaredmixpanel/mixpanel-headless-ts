@@ -1,5 +1,5 @@
 // GENERATED FROM conformance-runner/corpus/contract/error-codes.json @ 0dde50608a6af026e94cdb75bacbcebe5ce105db — DO NOT EDIT
-// Regenerate with: node scripts/gen-error-codes.mjs
+// Regenerate with: npm run generate:error-codes
 //
 // Mirror of the Python-side error-code contract artifact (phase2-design C3):
 // exception class parent edges, per-class default codes, and the coded-guard

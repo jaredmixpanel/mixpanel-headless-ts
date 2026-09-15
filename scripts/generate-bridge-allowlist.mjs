@@ -1,7 +1,9 @@
+#!/usr/bin/env node
 // generate-bridge-allowlist.mjs — write conformance-runner/bridge-allowlist.gen.json,
 // the route/classification table the Mixpanel Desktop bridge handler matches
-// every page-originated request against (heads platform spec of record,
-// docs/specs/heads/01-lease-and-bridge.md §5.3, task H2).
+// every page-originated request against. External spec: heads platform spec
+// of record, `docs/specs/heads/01-lease-and-bridge.md` §5.3 in the
+// mixpanel-desktop-app repository (not in this repo).
 //
 // Inputs (all committed, all pinned):
 //   1. conformance-runner/corpus/**/*.jsonl — the extracted wire vectors. Every
@@ -717,6 +719,8 @@ const headlessCommit =
 const output = {
   note:
     "GENERATED FILE — DO NOT EDIT. Regenerate with `npm run generate:bridge-allowlist`. " +
+    "External spec: docs/specs/heads/01-lease-and-bridge.md §5.3 in the mixpanel-desktop-app " +
+    "repository. " +
     "`generatedAt` and `headlessCommit` are informational provenance only: they move on every " +
     "run, are excluded from the freshness comparison, and nothing may make a policy decision " +
     "from them. The load-bearing stamps are `corpusCommit`, `rulesSha256`, `verbsSha256` and " +

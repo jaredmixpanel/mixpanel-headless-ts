@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Codemod: replace cross-workspace RELATIVE imports with the packages' bare
 // specifiers (docs/history/cleanup-plan-2026-09.md §7.3).
 //

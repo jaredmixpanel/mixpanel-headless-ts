@@ -8,7 +8,7 @@
 //    artifact's sets.
 // 3. Per-class default codes match (each class instantiated with minimal
 //    args; `.code` compared against the artifact's `default_codes`).
-// 4. errors-codes.gen.ts is FRESH: `node scripts/gen-error-codes.mjs
+// 4. errors-codes.gen.ts is FRESH: `node scripts/generate-error-codes.mjs
 //    --check` regenerates from the artifact and diffs byte-for-byte
 //    (hand-edit tripwire, phase2-design C5 item 4).
 import { execFileSync } from "node:child_process";
@@ -193,7 +193,7 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
     expect(() =>
       execFileSync(
         process.execPath,
-        [resolve(REPO_ROOT, "scripts/gen-error-codes.mjs"), "--check"],
+        [resolve(REPO_ROOT, "scripts/generate-error-codes.mjs"), "--check"],
         { stdio: "pipe" },
       ),
     ).not.toThrow();

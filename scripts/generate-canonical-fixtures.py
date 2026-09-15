@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Generate packages/core/test/compat/fixtures/canonical-fixtures.json.
 
 CPython itself is the oracle for the heads-platform **canonical form**

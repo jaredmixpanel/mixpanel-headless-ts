@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Generate packages/core/src/compat/whitespace.gen.ts (R11.3 / pythonStrip).
 
 Emits two pinned codepoint tables, generated from CPython itself (the
@@ -83,6 +84,7 @@ def main() -> int:
     lines = [
         "// GENERATED FILE — do not edit by hand.",
         "// Source: scripts/generate-whitespace.py (CPython is the oracle).",
+        "// Regenerate with: npm run generate:compat-tables",
         f"// Provenance: CPython {py_version}, Unicode database "
         f"{unicodedata.unidata_version}, "
         f"{len(str_ws)} str / {len(numeric_ws)} numeric codepoints.",

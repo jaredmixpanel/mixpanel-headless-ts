@@ -36,7 +36,7 @@
     "fmt:check": "prettier --check .",
     "test": "vitest run",
     "referee:bookmark": "vitest run differential/test/bookmark-schema-referee.test.ts differential/test/bookmark-referee-feed.test.ts",
-    "generate:error-codes": "node scripts/gen-error-codes.mjs",
+    "generate:error-codes": "node scripts/generate-error-codes.mjs",
     "vendor:drift": "bash scripts/check-vendor-drift.sh",
     "build:browser": "node scripts/build-browser-bundle.mjs",
     "smoke:browser": "node scripts/browser-smoke.mjs",
@@ -46,6 +46,8 @@
     "oracle": "node scripts/run-oracle.mjs",
     "generate:api-map": "node scripts/generate-api-map.mjs",
     "generate:bridge-allowlist": "node scripts/generate-bridge-allowlist.mjs",
+    "generate:compat-tables": "uv run --no-project python scripts/generate-non-printable.py && uv run --no-project python scripts/generate-decimal-digits.py && uv run --no-project python scripts/generate-whitespace.py",
+    "generate:all": "npm run generate:error-codes && npm run generate:api-map && npm run generate:bridge-allowlist",
     "audit:comments": "node scripts/audit/comment-archaeology.mjs",
     "audit:comments:fix": "node scripts/audit/comment-archaeology.mjs --fix"
   },
