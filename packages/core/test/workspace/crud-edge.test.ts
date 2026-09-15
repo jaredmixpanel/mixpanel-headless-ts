@@ -103,8 +103,9 @@ async function assertCoded(call: Promise<unknown>): Promise<void> {
 // TestRequestBodySerialization (test_workspace_crud_edge.py)
 // =============================================================================
 
-describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => {
-  it("create_bookmark serializes bookmark_type as 'type' (:95)", async () => {
+describe("Request body serialization", () => {
+  // python: TestRequestBodySerialization
+  it("create_bookmark serializes bookmark_type as 'type'", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("bookmarks")) {
@@ -132,7 +133,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
     expect(body["type"]).toBe("funnels");
   });
 
-  it("create_cohort flattens definition into the body (:141)", async () => {
+  it("create_cohort flattens definition into the body", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("cohorts")) {
@@ -154,7 +155,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
     expect(Object.hasOwn(body, "definition")).toBe(false);
   });
 
-  it("finalize_blueprint serializes card_type as 'type' (:170)", async () => {
+  it("finalize_blueprint serializes card_type as 'type'", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("blueprints")) {
@@ -176,7 +177,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
     expect(Object.hasOwn(body.cards[0] ?? {}, "card_type")).toBe(false);
   });
 
-  it("create_rca_dashboard serializes source_type as 'type' (:199)", async () => {
+  it("create_rca_dashboard serializes source_type as 'type'", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("rca")) {
@@ -200,7 +201,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
     expect(Object.hasOwn(body.rca_source_data, "source_type")).toBe(false);
   });
 
-  it("update_report_link serializes link_type as 'type' (:228)", async () => {
+  it("update_report_link serializes link_type as 'type'", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH" && request.url.includes("report-links")) {
@@ -226,20 +227,21 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
 // TestEmptyResponseHandling (test_workspace_crud_edge.py)
 // =============================================================================
 
-describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
-  it("create_dashboard raises ResponseValidationError on {} (:250)", async () => {
+describe("Empty response handling", () => {
+  // python: TestEmptyResponseHandling
+  it("create_dashboard raises ResponseValidationError on {}", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await assertCoded(
       ws.createDashboard(new CreateDashboardParams({ title: "X" })),
     );
   });
 
-  it("get_bookmark raises ResponseValidationError on {} (:268)", async () => {
+  it("get_bookmark raises ResponseValidationError on {}", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await assertCoded(ws.getBookmark(1));
   });
 
-  it("list_dashboards returns [] on an empty results list (:286)", async () => {
+  it("list_dashboards returns [] on an empty results list", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listDashboards()).resolves.toStrictEqual([]);
   });
@@ -249,8 +251,9 @@ describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
 // TestWorkspaceMethodDelegation (test_workspace_crud_edge.py)
 // =============================================================================
 
-describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () => {
-  it("bulk_update_bookmarks sends entries with no None fields (:301)", async () => {
+describe("Workspace method delegation", () => {
+  // python: TestWorkspaceMethodDelegation
+  it("bulk_update_bookmarks sends entries with no None fields", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (
@@ -272,7 +275,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
     });
   });
 
-  it("bulk_update_cohorts flattens definition into each entry (:318)", async () => {
+  it("bulk_update_cohorts flattens definition into each entry", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (
@@ -298,7 +301,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
     expect(Object.hasOwn(entry, "definition")).toBe(false);
   });
 
-  it("update_dashboard sends only non-None fields (:342)", async () => {
+  it("update_dashboard sends only non-None fields", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH" && request.url.includes("dashboards")) {
@@ -313,7 +316,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
     expect(captured["body"]).toStrictEqual({ title: "New" });
   });
 
-  it("list_bookmarks_v2 with no args sends no type/ids params (:365)", async () => {
+  it("list_bookmarks_v2 with no args sends no type/ids params", async () => {
     const captured: Record<string, unknown> = {};
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.url.includes("/bookmarks")) {
@@ -334,55 +337,56 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
 // TestCodedResponseValidationCodes (test_workspace_crud_edge.py)
 // =============================================================================
 
-describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", () => {
-  it("dashboards family (list member): invalid item is wrapped (:431)", async () => {
+describe("Coded response validation codes", () => {
+  // python: TestCodedResponseValidationCodes
+  it("dashboards family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listDashboards());
   });
 
-  it("bookmarks family (list member): invalid item is wrapped (:438)", async () => {
+  it("bookmarks family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listBookmarksV2());
   });
 
-  it("cohorts family (single member): {} response is wrapped (:445)", async () => {
+  it("cohorts family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getCohort(1));
   });
 
-  it("cohorts family (list member): invalid item is wrapped (:452)", async () => {
+  it("cohorts family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listCohortsFull());
   });
 
   // ---- W4–W8 members (todo conversion executed at B6-ARB, Finding A) ----
   // The two flags cases pin `workspace_id=777` exactly as Python does
   // (:461, :468) — feature flags are workspace-scoped.
-  it("flags family (single member): {} response is wrapped (:459)", async () => {
+  it("flags family (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}, { workspaceId: 777 }).getFeatureFlag("f1"),
     );
   });
 
-  it("flags family (list member): invalid item is wrapped (:466)", async () => {
+  it("flags family (list member): invalid item is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace([{}], { workspaceId: 777 }).listFeatureFlags(),
     );
   });
 
-  it("experiments family (single member): {} response is wrapped (:473)", async () => {
+  it("experiments family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getExperiment("e1"));
   });
 
-  it("experiments family (list member): invalid item is wrapped (:480)", async () => {
+  it("experiments family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listExperiments());
   });
 
-  it("annotations family (single member): {} response is wrapped (:487)", async () => {
+  it("annotations family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getAnnotation(1));
   });
 
-  it("annotations family (list member): invalid item is wrapped (:494)", async () => {
+  it("annotations family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listAnnotations());
   });
 
-  it("webhooks family (single member): {} response is wrapped (:501)", async () => {
+  it("webhooks family (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}).createWebhook(
         new CreateWebhookParams({ name: "W", url: "https://x.test/h" }),
@@ -390,31 +394,31 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     );
   });
 
-  it("webhooks family (list member): invalid item is wrapped (:508)", async () => {
+  it("webhooks family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listWebhooks());
   });
 
-  it("alerts family (single member): {} response is wrapped (:515)", async () => {
+  it("alerts family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getAlert(1));
   });
 
-  it("alerts family (list member): invalid item is wrapped (:522)", async () => {
+  it("alerts family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listAlerts());
   });
 
-  it("lexicon definitions (events): invalid item is wrapped (:529)", async () => {
+  it("lexicon definitions (events): invalid item is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace([{}]).getEventDefinitions({ names: ["x"] }),
     );
   });
 
-  it("lexicon definitions (properties): invalid item is wrapped (:536)", async () => {
+  it("lexicon definitions (properties): invalid item is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace([{}]).getPropertyDefinitions({ names: ["p"] }),
     );
   });
 
-  it("lexicon tags (single member): {} response is wrapped (:543)", async () => {
+  it("lexicon tags (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}).createLexiconTag(
         new CreateTagParams({ name: "T" }),
@@ -422,27 +426,27 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     );
   });
 
-  it("lexicon tags (list member): invalid item is wrapped (:550)", async () => {
+  it("lexicon tags (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listLexiconTags());
   });
 
-  it("drop filters (single member): {} response is wrapped (:557)", async () => {
+  it("drop filters (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getDropFilterLimits());
   });
 
-  it("drop filters (list member): invalid item is wrapped (:564)", async () => {
+  it("drop filters (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listDropFilters());
   });
 
-  it("custom properties (single member): {} response is wrapped (:571)", async () => {
+  it("custom properties (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).getCustomProperty("cp1"));
   });
 
-  it("custom properties (list member): invalid item is wrapped (:578)", async () => {
+  it("custom properties (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listCustomProperties());
   });
 
-  it("lookup tables (single member): type-invalid url is wrapped (:585)", async () => {
+  it("lookup tables (single member): type-invalid url is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({
         url: 123,
@@ -452,11 +456,11 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     );
   });
 
-  it("lookup tables (list member): invalid item is wrapped (:592)", async () => {
+  it("lookup tables (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listLookupTables());
   });
 
-  it("custom events (single member): {} response is wrapped (:599)", async () => {
+  it("custom events (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}).createCustomEvent(
         new CreateCustomEventParams({ name: "CE", alternatives: ["A"] }),
@@ -464,23 +468,23 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     );
   });
 
-  it("custom events (list member): invalid item is wrapped (:608)", async () => {
+  it("custom events (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listCustomEvents());
   });
 
-  it("schemas family (single member): {} response is wrapped (:615)", async () => {
+  it("schemas family (single member): {} response is wrapped", async () => {
     await assertCoded(makeResultsWorkspace({}).deleteSchemas());
   });
 
-  it("schemas family (list member): invalid item is wrapped (:622)", async () => {
+  it("schemas family (list member): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listSchemaRegistry());
   });
 
-  it("governance monitoring (cancel): invalid entry is wrapped (:629)", async () => {
+  it("governance monitoring (cancel): invalid entry is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).cancelDeletionRequest(42));
   });
 
-  it("governance monitoring (list): invalid item is wrapped (:636)", async () => {
+  it("governance monitoring (list): invalid item is wrapped", async () => {
     await assertCoded(makeResultsWorkspace([{}]).listDeletionRequests());
   });
 });

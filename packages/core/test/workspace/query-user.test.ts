@@ -95,7 +95,8 @@ const RAW_PROFILE_3 = makeRawProfile("user_003", undefined, {
 // Default limit=1
 // ===========================================================================
 
-describe("TestQueryUserDefaultLimit", () => {
+describe("Query user default limit", () => {
+  // python: TestQueryUserDefaultLimit
   it("returns exactly one profile", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -151,7 +152,8 @@ describe("TestQueryUserDefaultLimit", () => {
 // Explicit limit + pagination
 // ===========================================================================
 
-describe("TestQueryUserExplicitLimit", () => {
+describe("Query user explicit limit", () => {
+  // python: TestQueryUserExplicitLimit
   it("truncates to the requested count", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -260,7 +262,8 @@ describe("TestQueryUserExplicitLimit", () => {
 // Property selection
 // ===========================================================================
 
-describe("TestQueryUserPropertySelection", () => {
+describe("Query user property selection", () => {
+  // python: TestQueryUserPropertySelection
   it("forwards properties as output_properties", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
@@ -294,7 +297,8 @@ describe("TestQueryUserPropertySelection", () => {
 // Sorting
 // ===========================================================================
 
-describe("TestQueryUserSorting", () => {
+describe("Query user sorting", () => {
+  // python: TestQueryUserSorting
   it("sort_by is translated to sort_key", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
@@ -367,7 +371,8 @@ describe("TestQueryUserSorting", () => {
 // Search
 // ===========================================================================
 
-describe("TestQueryUserSearch", () => {
+describe("Query user search", () => {
+  // python: TestQueryUserSearch
   it("search is forwarded", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
@@ -394,7 +399,8 @@ describe("TestQueryUserSearch", () => {
 // distinct_id / distinct_ids
 // ===========================================================================
 
-describe("TestQueryUserDistinctId", () => {
+describe("Query user distinct ID", () => {
+  // python: TestQueryUserDistinctId
   it("distinct_id reaches the API", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -416,7 +422,8 @@ describe("TestQueryUserDistinctId", () => {
   });
 });
 
-describe("TestQueryUserDistinctIds", () => {
+describe("Query user distinct IDs", () => {
+  // python: TestQueryUserDistinctIds
   it("distinct_ids returns profiles for each requested id", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -444,7 +451,8 @@ describe("TestQueryUserDistinctIds", () => {
 // group_id
 // ===========================================================================
 
-describe("TestQueryUserGroupId", () => {
+describe("Query user group ID", () => {
+  // python: TestQueryUserGroupId
   it("group_id is forwarded", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -468,7 +476,8 @@ describe("TestQueryUserGroupId", () => {
 // as_of
 // ===========================================================================
 
-describe("TestQueryUserAsOf", () => {
+describe("Query user as of", () => {
+  // python: TestQueryUserAsOf
   it("a Unix int as_of is forwarded as as_of_timestamp", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
@@ -502,7 +511,8 @@ describe("TestQueryUserAsOf", () => {
 // result.total == len(profiles)
 // ===========================================================================
 
-describe("TestQueryUserTotalCount", () => {
+describe("Query user total count", () => {
+  // python: TestQueryUserTotalCount
   it("total equals len(profiles) with limit=1", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -561,7 +571,8 @@ describe("TestQueryUserTotalCount", () => {
 // Frame column schema
 // ===========================================================================
 
-describe("TestQueryUserDataFrame", () => {
+describe("Query user data frame", () => {
+  // python: TestQueryUserDataFrame
   it("the first column is distinct_id", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
@@ -660,7 +671,8 @@ describe("TestQueryUserDataFrame", () => {
 // Empty result
 // ===========================================================================
 
-describe("TestQueryUserEmptyResult", () => {
+describe("Query user empty result", () => {
+  // python: TestQueryUserEmptyResult
   /** The empty page every case in this class returns. */
   function emptyPage(): ProfilePageResult {
     return makePageResult([], {
@@ -711,7 +723,8 @@ describe("TestQueryUserEmptyResult", () => {
 // Credentials
 // ===========================================================================
 
-describe("TestQueryUserConfigError", () => {
+describe("Query user config error", () => {
+  // python: TestQueryUserConfigError
   it("does not raise with valid credentials", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
@@ -728,7 +741,8 @@ describe("TestQueryUserConfigError", () => {
 // Result metadata
 // ===========================================================================
 
-describe("TestQueryUserResultMetadata", () => {
+describe("Query user result metadata", () => {
+  // python: TestQueryUserResultMetadata
   /** Build a facade whose page call returns one profile. */
   function oneProfileWs(): Workspace {
     const mock = mockWorkspaceClient();
@@ -774,7 +788,8 @@ describe("TestQueryUserResultMetadata", () => {
 // Profile normalization
 // ===========================================================================
 
-describe("TestQueryUserProfileNormalization", () => {
+describe("Query user profile normalization", () => {
+  // python: TestQueryUserProfileNormalization
   /** Build a facade whose page call returns RAW_PROFILE_1. */
   function oneProfileWs(): Workspace {
     const mock = mockWorkspaceClient();
@@ -815,7 +830,8 @@ describe("TestQueryUserProfileNormalization", () => {
 // Pagination session_id forwarding
 // ===========================================================================
 
-describe("TestQueryUserPaginationSessionId", () => {
+describe("Query user pagination session ID", () => {
+  // python: TestQueryUserPaginationSessionId
   /** Install the two-page side effect both cases in this class share. */
   function twoPages(mock: MockWorkspaceClient, sessionId: string): void {
     sideEffect(mock, [
@@ -861,7 +877,8 @@ describe("TestQueryUserPaginationSessionId", () => {
 // PR #118 review fixes
 // ===========================================================================
 
-describe("TestQueryUserValueErrorWrapping", () => {
+describe("Query user value error wrapping", () => {
+  // python: TestQueryUserValueErrorWrapping
   it("an unsupported filter operator raises BookmarkValidationError", async () => {
     // Python PR #236: the constructor rejects unknown operators, so the
     // ES13 builder guard is driven through the unchecked rebuild (Python
@@ -879,7 +896,8 @@ describe("TestQueryUserValueErrorWrapping", () => {
   });
 });
 
-describe("TestQueryUserAggregatePropertyEscaping", () => {
+describe("Query user aggregate property escaping", () => {
+  // python: TestQueryUserAggregatePropertyEscaping
   it("a double quote in aggregate_property is escaped in the action", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({ results: 42 });

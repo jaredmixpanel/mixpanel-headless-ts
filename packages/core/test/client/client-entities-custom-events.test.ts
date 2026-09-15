@@ -37,8 +37,10 @@ function parseQs(bodyText: string): Record<string, string[]> {
 // Custom Events — create / update / delete
 // ---------------------------------------------------------------------------
 
-describe("TestCreateCustomEvent", () => {
-  it("test_posts_form_encoded_body", async () => {
+describe("Create custom event", () => {
+  // python: TestCreateCustomEvent
+  it("posts form encoded body", async () => {
+    // python: test_posts_form_encoded_body
     const captured: Array<{
       method: string;
       url: string;
@@ -84,7 +86,8 @@ describe("TestCreateCustomEvent", () => {
     expect(result["name"]).toBe("Page View");
   });
 
-  it("test_unwraps_custom_event_envelope", async () => {
+  it("unwraps custom event envelope", async () => {
+    // python: test_unwraps_custom_event_envelope
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { custom_event: { id: 1, name: "X", alternatives: [] } },
@@ -95,7 +98,8 @@ describe("TestCreateCustomEvent", () => {
     expect(result).toStrictEqual({ id: 1, name: "X", alternatives: [] });
   });
 
-  it("test_unwraps_results_then_custom_event_envelope", async () => {
+  it("unwraps results then custom event envelope", async () => {
+    // python: test_unwraps_results_then_custom_event_envelope
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -109,7 +113,8 @@ describe("TestCreateCustomEvent", () => {
     expect(result["name"]).toBe("Y");
   });
 
-  it("test_uses_maybe_scoped_path_project_default", async () => {
+  it("uses maybe scoped path project default", async () => {
+    // python: test_uses_maybe_scoped_path_project_default
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -122,7 +127,8 @@ describe("TestCreateCustomEvent", () => {
     expect(capturedUrls[0]).toContain("/projects/12345/custom_events/");
   });
 
-  it("test_workspace_scoped_path_when_workspace_id_set", async () => {
+  it("workspace scoped path when workspace ID set", async () => {
+    // python: test_workspace_scoped_path_when_workspace_id_set
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -136,7 +142,8 @@ describe("TestCreateCustomEvent", () => {
     expect(capturedUrls[0]).toContain("/workspaces/77/custom_events/");
   });
 
-  it("test_400_raises_query_error", async () => {
+  it("400 raises query error", async () => {
+    // python: test_400_raises_query_error
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 400,
       json: { error: "duplicate name" },
@@ -146,7 +153,8 @@ describe("TestCreateCustomEvent", () => {
     ).rejects.toBeInstanceOf(QueryError);
   });
 
-  it("test_422_raises_query_error_with_form_body_in_context", async () => {
+  it("422 raises query error with form body in context", async () => {
+    // python: test_422_raises_query_error_with_form_body_in_context
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 422,
       json: { error: "alternative not found" },
@@ -169,7 +177,8 @@ describe("TestCreateCustomEvent", () => {
     });
   });
 
-  it("test_non_dict_response_raises_mixpanel_headless_error", async () => {
+  it("non dict response raises mixpanel headless error", async () => {
+    // python: test_non_dict_response_raises_mixpanel_headless_error
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: [1, 2, 3],
@@ -179,7 +188,8 @@ describe("TestCreateCustomEvent", () => {
     ).rejects.toBeInstanceOf(MixpanelHeadlessError);
   });
 
-  it("test_non_json_response_raises_mixpanel_headless_error", async () => {
+  it("non JSON response raises mixpanel headless error", async () => {
+    // python: test_non_json_response_raises_mixpanel_headless_error
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       text: "not json at all",
@@ -197,7 +207,8 @@ describe("TestCreateCustomEvent", () => {
     expect(message).toContain("/custom_events/");
   });
 
-  it("test_retries_on_429", async () => {
+  it("retries on 429", async () => {
+    // python: test_retries_on_429
     const attempts: number[] = [];
     const { client } = createMockClient(oauthCredentials(), () => {
       attempts.push(1);
@@ -220,7 +231,8 @@ describe("TestCreateCustomEvent", () => {
     expect(result["id"]).toBe(1);
   });
 
-  it("test_wraps_httpx_transport_error", async () => {
+  it("wraps httpx transport error", async () => {
+    // python: test_wraps_httpx_transport_error
     const { client } = createMockClient(oauthCredentials(), () => {
       throw new TypeError("connection refused");
     });
@@ -230,8 +242,10 @@ describe("TestCreateCustomEvent", () => {
   });
 });
 
-describe("TestUpdateCustomEvent", () => {
-  it("test_patch_body_uses_custom_event_id_not_name", async () => {
+describe("Update custom event", () => {
+  // python: TestUpdateCustomEvent
+  it("patch body uses custom event ID not name", async () => {
+    // python: test_patch_body_uses_custom_event_id_not_name
     const capturedBodies: Array<Record<string, unknown>> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedBodies.push(
@@ -247,7 +261,8 @@ describe("TestUpdateCustomEvent", () => {
     expect(Object.keys(capturedBodies[0] ?? {})).not.toContain("name");
   });
 
-  it("test_422_raises_query_error", async () => {
+  it("422 raises query error", async () => {
+    // python: test_422_raises_query_error
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 422,
       json: { error: "unknown customEventId" },
@@ -257,7 +272,8 @@ describe("TestUpdateCustomEvent", () => {
     ).rejects.toBeInstanceOf(QueryError);
   });
 
-  it("test_returns_target_mismatch_when_response_id_differs", async () => {
+  it("returns target mismatch when response ID differs", async () => {
+    // python: test_returns_target_mismatch_when_response_id_differs
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -279,7 +295,8 @@ describe("TestUpdateCustomEvent", () => {
     expect((caught as MixpanelHeadlessError).message).toContain("2044168");
   });
 
-  it("test_returns_dict_when_response_id_matches", async () => {
+  it("returns dict when response ID matches", async () => {
+    // python: test_returns_dict_when_response_id_matches
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -294,8 +311,10 @@ describe("TestUpdateCustomEvent", () => {
   });
 });
 
-describe("TestDeleteCustomEvent", () => {
-  it("test_body_uses_custom_event_id_not_name", async () => {
+describe("Delete custom event", () => {
+  // python: TestDeleteCustomEvent
+  it("body uses custom event ID not name", async () => {
+    // python: test_body_uses_custom_event_id_not_name
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -310,7 +329,8 @@ describe("TestDeleteCustomEvent", () => {
     expect(Object.keys(captured[0]?.[1] ?? {})).not.toContain("name");
   });
 
-  it("test_uses_maybe_scoped_path_project_default", async () => {
+  it("uses maybe scoped path project default", async () => {
+    // python: test_uses_maybe_scoped_path_project_default
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -322,7 +342,8 @@ describe("TestDeleteCustomEvent", () => {
     );
   });
 
-  it("test_workspace_scoped_path_when_workspace_id_set", async () => {
+  it("workspace scoped path when workspace ID set", async () => {
+    // python: test_workspace_scoped_path_when_workspace_id_set
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -335,7 +356,8 @@ describe("TestDeleteCustomEvent", () => {
     );
   });
 
-  it("test_404_raises_query_error", async () => {
+  it("404 raises query error", async () => {
+    // python: test_404_raises_query_error
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 404,
       json: { error: "not found" },

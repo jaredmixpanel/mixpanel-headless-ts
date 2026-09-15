@@ -48,7 +48,8 @@ import { build, measurementOf, section } from "./query-params-fixtures.js";
 // T057: date filter bookmark params
 // ===========================================================================
 
-describe("TestDateFilterParams", () => {
+describe("Date filter params", () => {
+  // python: TestDateFilterParams
   it("an absolute date filter omits filterDateUnit", () => {
     const entry = buildFilterEntry(Filter.on("created", "2024-06-15"));
     expect(entry["filterType"]).toBe("datetime");
@@ -111,7 +112,8 @@ describe("TestDateFilterParams", () => {
 // T060: multiple formulas via the events list
 // ===========================================================================
 
-describe("TestMultiFormulaParams", () => {
+describe("Multi formula params", () => {
+  // python: TestMultiFormulaParams
   it("two Formulas in the events list produce two entries", async () => {
     const params = await makeStubWorkspace().buildParams([
       new Metric({ event: "Signup", math: "unique" }),
@@ -161,7 +163,8 @@ describe("TestMultiFormulaParams", () => {
 // T065: custom percentile
 // ===========================================================================
 
-describe("TestPercentileParams", () => {
+describe("Percentile params", () => {
+  // python: TestPercentileParams
   it("math='percentile' maps to 'custom_percentile'", async () => {
     const params = await makeStubWorkspace().buildParams("Login", {
       math: "percentile",
@@ -202,7 +205,8 @@ describe("TestPercentileParams", () => {
 // T069: histogram
 // ===========================================================================
 
-describe("TestHistogramParams", () => {
+describe("Histogram params", () => {
+  // python: TestHistogramParams
   it("math='histogram' maps directly", async () => {
     const params = await makeStubWorkspace().buildParams("Purchase", {
       math: "histogram",
@@ -234,7 +238,8 @@ describe("TestHistogramParams", () => {
 // T005: new math types in build_params
 // ===========================================================================
 
-describe("TestNewMathTypesInBuildParams", () => {
+describe("New math types in build params", () => {
+  // python: TestNewMathTypesInBuildParams
   it("math='cumulative_unique' reaches the measurement", async () => {
     const params = await makeStubWorkspace().buildParams("Login", {
       math: "cumulative_unique",
@@ -272,7 +277,8 @@ describe("TestNewMathTypesInBuildParams", () => {
 // T009: Metric.segment_method
 // ===========================================================================
 
-describe("TestSegmentMethodInBuildParams", () => {
+describe("Segment method in build params", () => {
+  // python: TestSegmentMethodInBuildParams
   it("segment_method='first' produces segmentMethod='first'", async () => {
     const params = await makeStubWorkspace().buildParams(
       new Metric({ event: "Login", segment_method: "first" }),
@@ -304,7 +310,8 @@ describe("TestSegmentMethodInBuildParams", () => {
 // T023: FrequencyBreakdown in group_by
 // ===========================================================================
 
-describe("TestFrequencyBreakdownInBuildParams", () => {
+describe("Frequency breakdown in build params", () => {
+  // python: TestFrequencyBreakdownInBuildParams
   it("produces a frequency group entry", async () => {
     const params = await makeStubWorkspace().buildParams("Login", {
       group_by: new FrequencyBreakdown({ event: "Purchase" }),
@@ -355,7 +362,8 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
 // T023: FrequencyFilter in where
 // ===========================================================================
 
-describe("TestFrequencyFilterInBuildParams", () => {
+describe("Frequency filter in build params", () => {
+  // python: TestFrequencyFilterInBuildParams
   it("produces a frequency filter entry", async () => {
     const params = await makeStubWorkspace().buildParams("Login", {
       where: new FrequencyFilter({ event: "Login", value: 5 }),
@@ -397,7 +405,8 @@ describe("TestFrequencyFilterInBuildParams", () => {
 // T032: data_group_id
 // ===========================================================================
 
-describe("TestDataGroupIdInsights", () => {
+describe("Data group ID insights", () => {
+  // python: TestDataGroupIdInsights
   it('build_params with data_group_id=5 emits globalDataGroupId: "5"', async () => {
     const params = await makeStubWorkspace().buildParams("Login", {
       data_group_id: 5,

@@ -59,7 +59,8 @@ function makeStatsResponse(
 // Count aggregate returns a scalar value
 // ===========================================================================
 
-describe("TestAggregateCount", () => {
+describe("Aggregate count", () => {
+  // python: TestAggregateCount
   it("count returns an integer via result.value", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(42));
@@ -142,7 +143,8 @@ describe("TestAggregateCount", () => {
 // Property-based aggregations
 // ===========================================================================
 
-describe("TestAggregateWithProperty", () => {
+describe("Aggregate with property", () => {
+  // python: TestAggregateWithProperty
   it("extremes returns the dict and uses the correct action", async () => {
     const mock = mockWorkspaceClient();
     const extremesResult = { max: 99999.99, min: 10.0, nth_percentile: 500.0 };
@@ -262,7 +264,8 @@ describe("TestAggregateWithProperty", () => {
 // Segmented aggregate
 // ===========================================================================
 
-describe("TestAggregateSegmented", () => {
+describe("Aggregate segmented", () => {
+  // python: TestAggregateSegmented
   it("stores a dict in aggregate_data", async () => {
     const mock = mockWorkspaceClient();
     const segmented = { "123": 145.0, "456": 320.5 };
@@ -352,7 +355,8 @@ describe("TestAggregateSegmented", () => {
 // U14: aggregate_property required for non-count
 // ===========================================================================
 
-describe("TestValidationU14AggregatePropertyRequired", () => {
+describe("Validation U14 aggregate property required", () => {
+  // python: TestValidationU14AggregatePropertyRequired
   for (const aggFunc of ["extremes", "percentile", "numeric_summary"]) {
     it(`non-count aggregate '${aggFunc}' without a property raises U14`, async () => {
       const ws = makeStubWorkspace(mockWorkspaceClient());
@@ -383,7 +387,8 @@ describe("TestValidationU14AggregatePropertyRequired", () => {
 // U15: aggregate_property prohibited for count
 // ===========================================================================
 
-describe("TestValidationU15AggregatePropertyProhibited", () => {
+describe("Validation U15 aggregate property prohibited", () => {
+  // python: TestValidationU15AggregatePropertyProhibited
   it("count with aggregate_property raises U15", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -419,7 +424,8 @@ describe("TestValidationU15AggregatePropertyProhibited", () => {
 // U16: segment_by requires mode="aggregate"
 // ===========================================================================
 
-describe("TestValidationU16SegmentByRequiresAggregate", () => {
+describe("Validation U16 segment by requires aggregate", () => {
+  // python: TestValidationU16SegmentByRequiresAggregate
   it("segment_by with mode='profiles' raises U16", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -447,7 +453,8 @@ describe("TestValidationU16SegmentByRequiresAggregate", () => {
 // U18-U22: profile-only params rejected in aggregate mode
 // ===========================================================================
 
-describe("TestValidationU18ParallelProfilesOnly", () => {
+describe("Validation U18 parallel profiles only", () => {
+  // python: TestValidationU18ParallelProfilesOnly
   it("parallel=true with mode='aggregate' raises U18", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -462,7 +469,8 @@ describe("TestValidationU18ParallelProfilesOnly", () => {
   });
 });
 
-describe("TestValidationU19SortByProfilesOnly", () => {
+describe("Validation U19 sort by profiles only", () => {
+  // python: TestValidationU19SortByProfilesOnly
   it("sort_by with mode='aggregate' raises U19", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -477,7 +485,8 @@ describe("TestValidationU19SortByProfilesOnly", () => {
   });
 });
 
-describe("TestValidationU20SearchProfilesOnly", () => {
+describe("Validation U20 search profiles only", () => {
+  // python: TestValidationU20SearchProfilesOnly
   it("search with mode='aggregate' raises U20", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -492,7 +501,8 @@ describe("TestValidationU20SearchProfilesOnly", () => {
   });
 });
 
-describe("TestValidationU21DistinctIdProfilesOnly", () => {
+describe("Validation U21 distinct ID profiles only", () => {
+  // python: TestValidationU21DistinctIdProfilesOnly
   it("distinct_id with mode='aggregate' raises U21", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -520,7 +530,8 @@ describe("TestValidationU21DistinctIdProfilesOnly", () => {
   });
 });
 
-describe("TestValidationU22PropertiesProfilesOnly", () => {
+describe("Validation U22 properties profiles only", () => {
+  // python: TestValidationU22PropertiesProfilesOnly
   it("properties with mode='aggregate' raises U22", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -539,7 +550,8 @@ describe("TestValidationU22PropertiesProfilesOnly", () => {
 // Multiple validation errors reported together
 // ===========================================================================
 
-describe("TestValidationMultipleErrors", () => {
+describe("Validation multiple errors", () => {
+  // python: TestValidationMultipleErrors
   it("multiple profile-only params produce multiple errors", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -580,7 +592,8 @@ describe("TestValidationMultipleErrors", () => {
 // engage_stats() call parameters
 // ===========================================================================
 
-describe("TestEngageStatsCallParameters", () => {
+describe("Engage stats call parameters", () => {
+  // python: TestEngageStatsCallParameters
   it("count passes action='count()'", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(10));
@@ -703,7 +716,8 @@ describe("TestEngageStatsCallParameters", () => {
 // Aggregate result metadata and structure
 // ===========================================================================
 
-describe("TestAggregateResultMetadata", () => {
+describe("Aggregate result metadata", () => {
+  // python: TestAggregateResultMetadata
   it("returns a UserQueryResult", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(42));

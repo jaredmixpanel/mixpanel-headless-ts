@@ -48,7 +48,8 @@ import {
 // TIER 4: structural / behavioural correctness
 // ===========================================================================
 
-describe("TestParallelPageOrderingPreserved", () => {
+describe("Parallel page ordering preserved", () => {
+  // python: TestParallelPageOrderingPreserved
   it("assembles profiles in page order across futures", async () => {
     const total = 500;
     const pageSize = 100;
@@ -85,7 +86,8 @@ describe("TestParallelPageOrderingPreserved", () => {
   });
 });
 
-describe("TestParallelLimit1FallsBackToSequential", () => {
+describe("Parallel limit 1 falls back to sequential", () => {
+  // python: TestParallelLimit1FallsBackToSequential
   it("limit=1 with parallel=true uses the sequential path", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() =>
@@ -112,7 +114,8 @@ describe("TestParallelLimit1FallsBackToSequential", () => {
   });
 });
 
-describe("TestParallelPageSizeZeroFallback", () => {
+describe("Parallel page size zero fallback", () => {
+  // python: TestParallelPageSizeZeroFallback
   it("page_size=0 from the API falls back to 1000", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() =>
@@ -136,7 +139,8 @@ describe("TestParallelPageSizeZeroFallback", () => {
   });
 });
 
-describe("TestParallelPageSizeNoneFallback", () => {
+describe("Parallel page size none fallback", () => {
+  // python: TestParallelPageSizeNoneFallback
   it("page_size=null from the API falls back to 1000", async () => {
     const mock = mockWorkspaceClient();
     const pageResult = makePageResult(makeProfilesBatch(0, 3), {
@@ -161,7 +165,8 @@ describe("TestParallelPageSizeNoneFallback", () => {
   });
 });
 
-describe("TestAggregateComputedAtFromAPI", () => {
+describe("Aggregate computed at from API", () => {
+  // python: TestAggregateComputedAtFromAPI
   it("uses the API's computed_at when present", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({
@@ -178,7 +183,8 @@ describe("TestAggregateComputedAtFromAPI", () => {
   });
 });
 
-describe("TestAggregateComputedAtFallback", () => {
+describe("Aggregate computed at fallback", () => {
+  // python: TestAggregateComputedAtFallback
   it("falls back to a local ISO timestamp when the API omits it", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({ results: 42, status: "ok" }); // no computed_at
@@ -198,7 +204,8 @@ describe("TestAggregateComputedAtFallback", () => {
 // TIER 5: edge cases
 // ===========================================================================
 
-describe("TestDfProfilesVaryingPropertySetsUnionColumns", () => {
+describe("Df profiles varying property sets union columns", () => {
+  // python: TestDfProfilesVaryingPropertySetsUnionColumns
   it("profiles with different property sets produce the union of columns", () => {
     const profiles = [
       {
@@ -254,7 +261,8 @@ describe("TestDfProfilesVaryingPropertySetsUnionColumns", () => {
   });
 });
 
-describe("TestDfPropertyNamedDistinctIdCollision", () => {
+describe("Df property named distinct ID collision", () => {
+  // python: TestDfPropertyNamedDistinctIdCollision
   it("a property named 'distinct_id' overwrites the top-level value", () => {
     const profiles = [
       {

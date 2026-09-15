@@ -62,7 +62,8 @@ function firstUrl(transport: FakeTransport): string {
   return transport.captures[0]!.url;
 }
 
-describe("TestLiveQueryService", () => {
+describe("Live query service", () => {
+  // python: TestLiveQueryService
   it("accepts an API client", () => {
     const { client } = createMockClient(makeSession(), successHandler);
     const live = new LiveQueryService(client);
@@ -74,7 +75,8 @@ describe("TestLiveQueryService", () => {
 // User Story 1: Segmentation Tests
 // ===========================================================================
 
-describe("TestSegmentation", () => {
+describe("Segmentation", () => {
+  // python: TestSegmentation
   it("returns SegmentationResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -219,7 +221,8 @@ describe("TestSegmentation", () => {
 // User Story 2: Funnel Tests
 // ===========================================================================
 
-describe("TestFunnel", () => {
+describe("Funnel", () => {
+  // python: TestFunnel
   it("returns FunnelResult with correct step data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -380,7 +383,8 @@ describe("TestFunnel", () => {
 // Funnel Helper Tests
 // ===========================================================================
 
-describe("TestExtractStepsFromDateData", () => {
+describe("Extract steps from date data", () => {
+  // python: TestExtractStepsFromDateData
   it("non-segmented format with 'steps' returns the step list", () => {
     const dateData = {
       steps: [
@@ -460,7 +464,8 @@ describe("TestExtractStepsFromDateData", () => {
 // User Story 3: Retention Tests
 // ===========================================================================
 
-describe("TestRetention", () => {
+describe("Retention", () => {
+  // python: TestRetention
   it("returns RetentionResult with cohort data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -587,7 +592,8 @@ describe("TestRetention", () => {
 // User Story 5: Event Counts Tests
 // ===========================================================================
 
-describe("TestEventCounts", () => {
+describe("Event counts", () => {
+  // python: TestEventCounts
   it("returns EventCountsResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -699,7 +705,8 @@ describe("TestEventCounts", () => {
 // User Story 6: Property Counts Tests
 // ===========================================================================
 
-describe("TestPropertyCounts", () => {
+describe("Property counts", () => {
+  // python: TestPropertyCounts
   it("returns PropertyCountsResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,

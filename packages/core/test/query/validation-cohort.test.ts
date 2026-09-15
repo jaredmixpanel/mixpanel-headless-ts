@@ -21,8 +21,10 @@ import { codes } from "../../test-support/error-codes.js";
 // CB3: no mixing CohortBreakdown with GroupBy in retention (T022)
 // =============================================================================
 
-describe("TestRetentionCohortMixValidation", () => {
-  it("test_cohort_breakdown_alone_no_cb3_error", () => {
+describe("Retention cohort mix validation", () => {
+  // python: TestRetentionCohortMixValidation
+  it("cohort breakdown alone no CB3 error", () => {
+    // python: test_cohort_breakdown_alone_no_cb3_error
     const errors = validateRetentionArgs({
       born_event: "Signup",
       return_event: "Login",
@@ -31,7 +33,8 @@ describe("TestRetentionCohortMixValidation", () => {
     expect(codes(errors)).not.toContain("CB3_RETENTION_MIXED_BREAKDOWN");
   });
 
-  it("test_string_group_by_alone_no_cb3_error", () => {
+  it("string group by alone no CB3 error", () => {
+    // python: test_string_group_by_alone_no_cb3_error
     const errors = validateRetentionArgs({
       born_event: "Signup",
       return_event: "Login",
@@ -40,7 +43,8 @@ describe("TestRetentionCohortMixValidation", () => {
     expect(codes(errors)).not.toContain("CB3_RETENTION_MIXED_BREAKDOWN");
   });
 
-  it("test_mixed_cohort_and_groupby_returns_cb3_error", () => {
+  it("mixed cohort and groupby returns CB3 error", () => {
+    // python: test_mixed_cohort_and_groupby_returns_cb3_error
     const errors = validateRetentionArgs({
       born_event: "Signup",
       return_event: "Login",
@@ -52,7 +56,8 @@ describe("TestRetentionCohortMixValidation", () => {
     expect(codes(errors)).toContain("CB3_RETENTION_MIXED_BREAKDOWN");
   });
 
-  it("test_mixed_cohort_and_string_returns_cb3_error", () => {
+  it("mixed cohort and string returns CB3 error", () => {
+    // python: test_mixed_cohort_and_string_returns_cb3_error
     const errors = validateRetentionArgs({
       born_event: "Signup",
       return_event: "Login",
@@ -61,7 +66,8 @@ describe("TestRetentionCohortMixValidation", () => {
     expect(codes(errors)).toContain("CB3_RETENTION_MIXED_BREAKDOWN");
   });
 
-  it("test_cb3_error_message_mentions_mixing", () => {
+  it("CB3 error message mentions mixing", () => {
+    // python: test_cb3_error_message_mentions_mixing
     const errors = validateRetentionArgs({
       born_event: "Signup",
       return_event: "Login",
@@ -77,7 +83,8 @@ describe("TestRetentionCohortMixValidation", () => {
     ).toBe(true);
   });
 
-  it("test_multiple_cohort_breakdowns_no_cb3_error", () => {
+  it("multiple cohort breakdowns no CB3 error", () => {
+    // python: test_multiple_cohort_breakdowns_no_cb3_error
     const errors = validateRetentionArgs({
       born_event: "Signup",
       return_event: "Login",
@@ -89,7 +96,8 @@ describe("TestRetentionCohortMixValidation", () => {
     expect(codes(errors)).not.toContain("CB3_RETENTION_MIXED_BREAKDOWN");
   });
 
-  it("test_none_group_by_no_cb3_error", () => {
+  it("null group by no CB3 error", () => {
+    // python: test_none_group_by_no_cb3_error
     const errors = validateRetentionArgs({
       born_event: "Signup",
       return_event: "Login",

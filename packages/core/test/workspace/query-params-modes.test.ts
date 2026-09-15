@@ -51,7 +51,8 @@ import {
 // T041: analysis mode params
 // ===========================================================================
 
-describe("TestAnalysisModeParams", () => {
+describe("Analysis mode params", () => {
+  // python: TestAnalysisModeParams
   it("rolling=7 produces analysis='rolling' + rollingWindowSize", () => {
     const params = build({ events: ["Signup"], math: "unique", rolling: 7 });
     expect(displayOf(params)["analysis"]).toBe("rolling");
@@ -76,7 +77,8 @@ describe("TestAnalysisModeParams", () => {
 // T044: mode -> chartType
 // ===========================================================================
 
-describe("TestModeParams", () => {
+describe("Mode params", () => {
+  // python: TestModeParams
   it("mode='timeseries' maps to 'line'", () => {
     expect(displayOf(build({ mode: "timeseries" }))["chartType"]).toBe("line");
   });
@@ -94,7 +96,8 @@ describe("TestModeParams", () => {
 // Per-metric filters
 // ===========================================================================
 
-describe("TestPerMetricFilters", () => {
+describe("Per metric filters", () => {
+  // python: TestPerMetricFilters
   it("Metric.filters land in behavior.filters", () => {
     const params = build({
       events: [
@@ -142,7 +145,8 @@ describe("TestPerMetricFilters", () => {
 // group_by element type validation
 // ===========================================================================
 
-describe("TestGroupByTypeError", () => {
+describe("Group by type error", () => {
+  // python: TestGroupByTypeError
   it("a non-str, non-GroupBy element raises", () => {
     const error = expectThrows(
       () => build({ group_by: [42] as never }),
@@ -159,7 +163,8 @@ describe("TestGroupByTypeError", () => {
 // filters_combinator
 // ===========================================================================
 
-describe("TestFiltersCombinatorParams", () => {
+describe("Filters combinator params", () => {
+  // python: TestFiltersCombinatorParams
   it("the default combinator is 'all'", () => {
     const params = build({ events: [new Metric({ event: "Login" })] });
     expect(behaviorOf(params)["filtersDeterminer"]).toBe("all");
@@ -187,7 +192,8 @@ describe("TestFiltersCombinatorParams", () => {
 // Formula objects passed via `formulas`
 // ===========================================================================
 
-describe("TestFormulaObjectParams", () => {
+describe("Formula object params", () => {
+  // python: TestFormulaObjectParams
   it("a single Formula produces a formula show clause", () => {
     const params = build({
       events: [
@@ -241,7 +247,8 @@ describe("TestFormulaObjectParams", () => {
 // T054: build_params() public helper
 // ===========================================================================
 
-describe("TestBuildParams", () => {
+describe("Build params", () => {
+  // python: TestBuildParams
   it("returns a dict with sections and displayOptions", async () => {
     const result = await makeStubWorkspace().buildParams("Login");
     expect(typeof result).toBe("object");

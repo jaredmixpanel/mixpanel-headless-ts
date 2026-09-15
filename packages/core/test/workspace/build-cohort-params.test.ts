@@ -100,7 +100,8 @@ function malformedCohortFilter(value: unknown): Filter {
 // T003: build_filter_entry — cohort filter JSON
 // ===========================================================================
 
-describe("TestBuildFilterEntryCohort", () => {
+describe("Build filter entry cohort", () => {
+  // python: TestBuildFilterEntryCohort
   it("the filter entry has resourceType='events'", async () => {
     const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
@@ -180,7 +181,8 @@ describe("TestBuildFilterEntryCohort", () => {
 // T005: mixed cohort + property filters
 // ===========================================================================
 
-describe("TestBuildFilterSectionMixed", () => {
+describe("Build filter section mixed", () => {
+  // python: TestBuildFilterSectionMixed
   it("a mix produces two filter entries", async () => {
     const result = await makeStubWorkspace().buildParams("Login", {
       where: [Filter.inCohort(123, "PU"), Filter.equals("country", "US")],
@@ -202,7 +204,8 @@ describe("TestBuildFilterSectionMixed", () => {
 // T006: flow cohort filter (filter_by_cohort)
 // ===========================================================================
 
-describe("TestBuildFlowCohortFilter", () => {
+describe("Build flow cohort filter", () => {
+  // python: TestBuildFlowCohortFilter
   it("build_flow_params produces a filter_by_cohort key", async () => {
     const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
@@ -252,7 +255,8 @@ describe("TestBuildFlowCohortFilter", () => {
 // T020: CohortBreakdown in sections.group
 // ===========================================================================
 
-describe("TestBuildGroupSectionCohort", () => {
+describe("Build group section cohort", () => {
+  // python: TestBuildGroupSectionCohort
   it("produces a non-empty sections.group", async () => {
     const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({ cohort: 123, name: "Power Users" }),
@@ -336,7 +340,8 @@ describe("TestBuildGroupSectionCohort", () => {
 // T021: mixed CohortBreakdown + GroupBy/str
 // ===========================================================================
 
-describe("TestBuildGroupSectionMixed", () => {
+describe("Build group section mixed", () => {
+  // python: TestBuildGroupSectionMixed
   it("a CohortBreakdown plus a string produces two group entries", async () => {
     const result = await makeStubWorkspace().buildParams("Login", {
       group_by: [new CohortBreakdown({ cohort: 123, name: "PU" }), "country"],
@@ -359,7 +364,8 @@ describe("TestBuildGroupSectionMixed", () => {
 // T009-T011: cohort filters across the three engines
 // ===========================================================================
 
-describe("TestBuildParamsCohortFilter", () => {
+describe("Build params cohort filter", () => {
+  // python: TestBuildParamsCohortFilter
   it("a cohort filter populates sections.filter", async () => {
     const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "PU"),
@@ -375,7 +381,8 @@ describe("TestBuildParamsCohortFilter", () => {
   });
 });
 
-describe("TestBuildFunnelParamsCohortFilter", () => {
+describe("Build funnel params cohort filter", () => {
+  // python: TestBuildFunnelParamsCohortFilter
   it("a cohort filter populates funnel sections.filter", async () => {
     const result = await makeStubWorkspace().buildFunnelParams(
       ["Signup", "Purchase"],
@@ -397,7 +404,8 @@ describe("TestBuildFunnelParamsCohortFilter", () => {
   });
 });
 
-describe("TestBuildRetentionParamsCohortFilter", () => {
+describe("Build retention params cohort filter", () => {
+  // python: TestBuildRetentionParamsCohortFilter
   it("a cohort filter populates retention sections.filter", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -425,7 +433,8 @@ describe("TestBuildRetentionParamsCohortFilter", () => {
 // T024-T026: CohortBreakdown across the three engines
 // ===========================================================================
 
-describe("TestBuildParamsCohortBreakdown", () => {
+describe("Build params cohort breakdown", () => {
+  // python: TestBuildParamsCohortBreakdown
   it("a CohortBreakdown appears in sections.group", async () => {
     const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
@@ -441,7 +450,8 @@ describe("TestBuildParamsCohortBreakdown", () => {
   });
 });
 
-describe("TestBuildFunnelParamsCohortBreakdown", () => {
+describe("Build funnel params cohort breakdown", () => {
+  // python: TestBuildFunnelParamsCohortBreakdown
   it("a CohortBreakdown appears in funnel sections.group", async () => {
     const result = await makeStubWorkspace().buildFunnelParams(
       ["Signup", "Purchase"],
@@ -463,7 +473,8 @@ describe("TestBuildFunnelParamsCohortBreakdown", () => {
   });
 });
 
-describe("TestBuildRetentionParamsCohortBreakdown", () => {
+describe("Build retention params cohort breakdown", () => {
+  // python: TestBuildRetentionParamsCohortBreakdown
   it("a CohortBreakdown alone works in retention group_by", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -502,7 +513,8 @@ describe("TestBuildRetentionParamsCohortBreakdown", () => {
 // T038: CohortMetric in events
 // ===========================================================================
 
-describe("TestBuildParamsCohortMetric", () => {
+describe("Build params cohort metric", () => {
+  // python: TestBuildParamsCohortMetric
   /** `ws.build_params(CohortMetric(123, "Power Users"))`. */
   async function powerUsers(): Promise<Record<string, unknown>> {
     return makeStubWorkspace().buildParams(
@@ -557,7 +569,8 @@ describe("TestBuildParamsCohortMetric", () => {
 // T039: CohortMetric mixed with Metric and Formula
 // ===========================================================================
 
-describe("TestBuildParamsCohortMetricMixed", () => {
+describe("Build params cohort metric mixed", () => {
+  // python: TestBuildParamsCohortMetricMixed
   it("a CohortMetric and a Metric produce two show entries", async () => {
     const result = await makeStubWorkspace().buildParams([
       new CohortMetric({ cohort: 123, name: "Power Users" }),
@@ -588,7 +601,8 @@ describe("TestBuildParamsCohortMetricMixed", () => {
 // T040: CM3 — math/math_property/per_user ignored for CohortMetric
 // ===========================================================================
 
-describe("TestBuildParamsCohortMetricMathIgnored", () => {
+describe("Build params cohort metric math ignored", () => {
+  // python: TestBuildParamsCohortMetricMathIgnored
   it("math='total' does not change the cohort metric's math", async () => {
     const result = await makeStubWorkspace().buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
@@ -667,7 +681,8 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
 // T007: query_flow where= — cohort filter
 // ===========================================================================
 
-describe("TestQueryFlowCohortFilter", () => {
+describe("Query flow cohort filter", () => {
+  // python: TestQueryFlowCohortFilter
   it("build_flow_params with a cohort filter produces filter_by_cohort", async () => {
     const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "PU"),
@@ -703,7 +718,8 @@ describe("TestQueryFlowCohortFilter", () => {
 // build_flow_cohort_filter — direct unit tests
 // ===========================================================================
 
-describe("TestBuildFlowCohortFilterDirect", () => {
+describe("Build flow cohort filter direct", () => {
+  // python: TestBuildFlowCohortFilterDirect
   it("a saved cohort filter produces a dict with the id", () => {
     const result = buildFlowCohortFilter(Filter.inCohort(123, "PU"));
     expect(result).not.toBeNull();
@@ -745,7 +761,8 @@ describe("TestBuildFlowCohortFilterDirect", () => {
 // Coded guard errors (BB4-BB8)
 // ===========================================================================
 
-describe("TestCodedFlowCohortFilterCodes", () => {
+describe("Coded flow cohort filter codes", () => {
+  // python: TestCodedFlowCohortFilterCodes
   /** Assert the thrown guard carries `code`. */
   function expectCode(fn: () => unknown, code: string): void {
     const error = expectThrows(

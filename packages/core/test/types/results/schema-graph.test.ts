@@ -30,8 +30,10 @@ function sampleResult(): SchemaGraphResult {
   });
 }
 
-describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
-  it("test_events_df_shape", () => {
+describe("SchemaGraphResult", () => {
+  // python: TestSchemaGraphResult
+  it("events df shape", () => {
+    // python: test_events_df_shape
     const result = sampleResult();
     expect(result.eventsRowColumns()).toStrictEqual([
       "name",
@@ -47,7 +49,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(row?.["display_name"]).toBe("Purchase");
   });
 
-  it("test_properties_df_covers_event_and_user", () => {
+  it("properties df covers event and user", () => {
+    // python: test_properties_df_covers_event_and_user
     const byName = new Map(
       sampleResult()
         .toPropertiesRows()
@@ -58,7 +61,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(byName.get("plan")?.["display_name"]).toBe("Plan");
   });
 
-  it("test_relationships_df_is_edge_list", () => {
+  it("relationships df is edge list", () => {
+    // python: test_relationships_df_is_edge_list
     const result = sampleResult();
     expect(result.relationshipsRowColumns()).toStrictEqual([
       "event",
@@ -72,13 +76,15 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(rows[0]?.["density_local"]).toBe(0.9);
   });
 
-  it("test_df_is_relationships", () => {
+  it("df is relationships", () => {
+    // python: test_df_is_relationships
     const result = sampleResult();
     expect(result.toRows()).toStrictEqual(result.toRelationshipsRows());
     expect(result.rowColumns()).toStrictEqual(result.relationshipsRowColumns());
   });
 
-  it("test_convenience_accessors", () => {
+  it("convenience accessors", () => {
+    // python: test_convenience_accessors
     const result = sampleResult();
     expect(result.propertiesForEvent("Purchase")).toStrictEqual(["amount"]);
     expect(result.eventsForProperty("amount")).toStrictEqual(["Purchase"]);
@@ -86,7 +92,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(result.propertiesForEvent("missing")).toStrictEqual([]);
   });
 
-  it("test_orphan_properties_skips_nameless", () => {
+  it("orphan properties skips nameless", () => {
+    // python: test_orphan_properties_skips_nameless
     const result = new SchemaGraphResult({
       computed_at: "t",
       properties: [{ events: [] }, { name: "real", events: [] }],
@@ -94,7 +101,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(result.orphanProperties()).toStrictEqual(["real"]);
   });
 
-  it("test_empty_result_has_typed_empty_frames", () => {
+  it("empty result has typed empty frames", () => {
+    // python: test_empty_result_has_typed_empty_frames
     const result = new SchemaGraphResult({ computed_at: "t" });
     expect(result.toEventsRows()).toHaveLength(0);
     expect(result.relationshipsRowColumns()).toStrictEqual([
@@ -104,14 +112,16 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     ]);
   });
 
-  it("test_to_dict_round_trips_fields", () => {
+  it("to dict round trips fields", () => {
+    // python: test_to_dict_round_trips_fields
     const d = sampleResult().toJSON();
     expect(d["event_to_properties"]).toStrictEqual({ Purchase: ["amount"] });
     expect(d["include_density"]).toBe(true);
     expect(Object.hasOwn(d, "user_properties")).toBe(true);
   });
 
-  it("test_dataframes_are_cached (determinism)", () => {
+  it("dataframes are cached (determinism)", () => {
+    // python: test_dataframes_are_cached
     const result = sampleResult();
     expect(result.toEventsRows()).toStrictEqual(result.toEventsRows());
     expect(result.toPropertiesRows()).toStrictEqual(result.toPropertiesRows());
@@ -120,7 +130,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     );
   });
 
-  it("test_density_local_none_when_density_not_requested", () => {
+  it("density local null when density not requested", () => {
+    // python: test_density_local_none_when_density_not_requested
     const result = new SchemaGraphResult({
       computed_at: "t",
       events: [{ name: "Purchase" }],
@@ -130,7 +141,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(result.toRelationshipsRows()[0]?.["density_local"]).toBeNull();
   });
 
-  it("test_non_dict_event_entry_is_filtered", () => {
+  it("non dict event entry is filtered", () => {
+    // python: test_non_dict_event_entry_is_filtered
     const result = new SchemaGraphResult({
       computed_at: "t",
       properties: [
@@ -147,7 +159,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(result.property_to_events["amount"]).toStrictEqual(["Purchase"]);
   });
 
-  it("test_relationships_df_skips_nameless_property", () => {
+  it("relationships df skips nameless property", () => {
+    // python: test_relationships_df_skips_nameless_property
     const result = new SchemaGraphResult({
       computed_at: "t",
       properties: [
@@ -160,11 +173,13 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     ).toStrictEqual(["amount"]);
   });
 
-  it("test_events_for_property_unknown_returns_empty", () => {
+  it("events for property unknown returns empty", () => {
+    // python: test_events_for_property_unknown_returns_empty
     expect(sampleResult().eventsForProperty("missing")).toStrictEqual([]);
   });
 
-  it("test_property_without_events_key", () => {
+  it("property without events key", () => {
+    // python: test_property_without_events_key
     const result = new SchemaGraphResult({
       computed_at: "t",
       properties: [{ name: "amount" }],
@@ -174,7 +189,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(result.orphanProperties()).toStrictEqual(["amount"]);
   });
 
-  it("test_maps_derived_from_properties", () => {
+  it("maps derived from properties", () => {
+    // python: test_maps_derived_from_properties
     const result = new SchemaGraphResult({
       computed_at: "t",
       events: [{ name: "Purchase" }, { name: "Login" }],
@@ -188,7 +204,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(result.propertiesForEvent("Login")).toStrictEqual([]);
   });
 
-  it("test_meta_records_drop_counts", () => {
+  it("meta records drop counts", () => {
+    // python: test_meta_records_drop_counts
     const result = new SchemaGraphResult({
       computed_at: "t",
       events: [{ name: "Purchase" }, { count: 5 }], // one nameless event
@@ -207,7 +224,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
     expect(result.meta["relationship_edges"]).toBe(1);
   });
 
-  it("test_to_dict_contains_all_fields", () => {
+  it("to dict contains all fields", () => {
+    // python: test_to_dict_contains_all_fields
     const d = sampleResult().toJSON();
     for (const key of [
       "computed_at",

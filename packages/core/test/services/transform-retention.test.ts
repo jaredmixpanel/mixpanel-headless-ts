@@ -69,7 +69,8 @@ function mockResponse(
 // TestTransformRetentionBasic (T017)
 // ===========================================================================
 
-describe("TestTransformRetentionBasic", () => {
+describe("Transform retention basic", () => {
+  // python: TestTransformRetentionBasic
   it("return type is RetentionQueryResult", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     expect(result).toBeInstanceOf(RetentionQueryResult);
@@ -132,7 +133,8 @@ describe("TestTransformRetentionBasic", () => {
 // TestTransformRetentionErrors (T018)
 // ===========================================================================
 
-describe("TestTransformRetentionErrors", () => {
+describe("Transform retention errors", () => {
+  // python: TestTransformRetentionErrors
   it("response containing 'error' raises QueryError with the message", () => {
     const errorResponse: Record<string, unknown> = { error: "invalid query" };
     expect(() =>
@@ -280,7 +282,8 @@ describe("TestTransformRetentionErrors", () => {
 // TestTransformRetentionNonDictSeries (T056)
 // ===========================================================================
 
-describe("TestTransformRetentionNonDictSeries", () => {
+describe("Transform retention non dict series", () => {
+  // python: TestTransformRetentionNonDictSeries
   it("series=[] raises QueryError with a descriptive message", () => {
     const raw = mockResponse({ series: [] });
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
@@ -357,7 +360,8 @@ const SEGMENTED_SERIES: Record<string, unknown> = {
   },
 };
 
-describe("TestTransformRetentionSegments", () => {
+describe("Transform retention segments", () => {
+  // python: TestTransformRetentionSegments
   it("segment names match the response keys (excluding $overall)", () => {
     const raw = mockResponse({ series: SEGMENTED_SERIES });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
@@ -411,7 +415,8 @@ describe("TestTransformRetentionSegments", () => {
 // TestTransformRetentionDateNormalization (T056)
 // ===========================================================================
 
-describe("TestTransformRetentionDateNormalization", () => {
+describe("Transform retention date normalization", () => {
+  // python: TestTransformRetentionDateNormalization
   it("ISO timestamp cohort keys are normalized to YYYY-MM-DD", () => {
     const raw = mockResponse({
       series: {
@@ -473,7 +478,8 @@ describe("TestTransformRetentionDateNormalization", () => {
 // TestTransformRetentionFormatVariations (T054)
 // ===========================================================================
 
-describe("TestTransformRetentionFormatVariations", () => {
+describe("Transform retention format variations", () => {
+  // python: TestTransformRetentionFormatVariations
   it("direct cohort dict format is parsed correctly", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     expect(Object.keys(result.cohorts)).toHaveLength(2);

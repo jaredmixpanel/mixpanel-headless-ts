@@ -67,7 +67,8 @@ function chartTypeOf(result: Record<string, unknown>): unknown {
 // T018: basic bookmark structure
 // ===========================================================================
 
-describe("TestBuildFunnelParamsDefaults", () => {
+describe("Build funnel params defaults", () => {
+  // python: TestBuildFunnelParamsDefaults
   it("behavior.type is 'funnel'", async () => {
     const result = await makeStubWorkspace().buildFunnelParams([
       "Signup",
@@ -203,7 +204,8 @@ describe("TestBuildFunnelParamsDefaults", () => {
 // T019: configuration options
 // ===========================================================================
 
-describe("TestBuildFunnelParamsConfiguration", () => {
+describe("Build funnel params configuration", () => {
+  // python: TestBuildFunnelParamsConfiguration
   it("a custom conversion_window is applied", async () => {
     const result = await makeStubWorkspace().buildFunnelParams(
       ["Signup", "Purchase"],
@@ -389,7 +391,8 @@ describe("TestBuildFunnelParamsConfiguration", () => {
 // T023: public method surface
 // ===========================================================================
 
-describe("TestBuildFunnelParamsPublicMethod", () => {
+describe("Build funnel params public method", () => {
+  // python: TestBuildFunnelParamsPublicMethod
   it("returns a dict", async () => {
     const result = await makeStubWorkspace().buildFunnelParams([
       "Signup",
@@ -466,7 +469,8 @@ describe("TestBuildFunnelParamsPublicMethod", () => {
 // T031: per-step filters and labels
 // ===========================================================================
 
-describe("TestBuildFunnelParamsPerStepFilters", () => {
+describe("Build funnel params per step filters", () => {
+  // python: TestBuildFunnelParamsPerStepFilters
   /** The two-step list most cases in this class share. */
   function filteredSteps(): Array<string | FunnelStep> {
     return [
@@ -563,7 +567,8 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
 // T032: global filter and group-by
 // ===========================================================================
 
-describe("TestBuildFunnelParamsGlobalFilterGroupBy", () => {
+describe("Build funnel params global filter group by", () => {
+  // python: TestBuildFunnelParamsGlobalFilterGroupBy
   it("a where filter populates sections.filter", async () => {
     const result = await makeStubWorkspace().buildFunnelParams(
       ["Signup", "Purchase"],
@@ -623,7 +628,8 @@ describe("TestBuildFunnelParamsGlobalFilterGroupBy", () => {
 // T033: mixed steps
 // ===========================================================================
 
-describe("TestBuildFunnelParamsMixedSteps", () => {
+describe("Build funnel params mixed steps", () => {
+  // python: TestBuildFunnelParamsMixedSteps
   /** The mixed list the first three cases share. */
   function mixedSteps(): Array<string | FunnelStep> {
     return [
@@ -671,7 +677,8 @@ describe("TestBuildFunnelParamsMixedSteps", () => {
 // T038: exclusions
 // ===========================================================================
 
-describe("TestBuildFunnelParamsExclusions", () => {
+describe("Build funnel params exclusions", () => {
+  // python: TestBuildFunnelParamsExclusions
   it("a string exclusion produces a non-empty exclusions list", async () => {
     const result = await makeStubWorkspace().buildFunnelParams(
       ["A", "B", "C"],
@@ -764,7 +771,8 @@ describe("TestBuildFunnelParamsExclusions", () => {
 // T039: holding constant
 // ===========================================================================
 
-describe("TestBuildFunnelParamsHoldingConstant", () => {
+describe("Build funnel params holding constant", () => {
+  // python: TestBuildFunnelParamsHoldingConstant
   it("a string holding_constant produces a non-empty aggregateBy", async () => {
     const result = await makeStubWorkspace().buildFunnelParams(["A", "B"], {
       holding_constant: "platform",
@@ -835,7 +843,8 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
 // T005: new funnel math types
 // ===========================================================================
 
-describe("TestBuildFunnelParamsNewMathTypes", () => {
+describe("Build funnel params new math types", () => {
+  // python: TestBuildFunnelParamsNewMathTypes
   it("math='histogram' is accepted", async () => {
     const result = await makeStubWorkspace().buildFunnelParams(
       ["Signup", "Purchase"],
@@ -856,7 +865,8 @@ describe("TestBuildFunnelParamsNewMathTypes", () => {
 // T009: reentry_mode
 // ===========================================================================
 
-describe("TestBuildFunnelParamsReentryMode", () => {
+describe("Build funnel params reentry mode", () => {
+  // python: TestBuildFunnelParamsReentryMode
   for (const mode of ["aggressive", "default", "basic", "optimized"]) {
     it(`reentry_mode='${mode}' produces funnelReentryMode`, async () => {
       const result = await makeStubWorkspace().buildFunnelParams(
@@ -882,7 +892,8 @@ describe("TestBuildFunnelParamsReentryMode", () => {
 // T032: data_group_id
 // ===========================================================================
 
-describe("TestDataGroupIdFunnel", () => {
+describe("Data group ID funnel", () => {
+  // python: TestDataGroupIdFunnel
   it('data_group_id=5 includes globalDataGroupId: "5" in sections', async () => {
     const result = await makeStubWorkspace().buildFunnelParams(
       ["Signup", "Purchase"],

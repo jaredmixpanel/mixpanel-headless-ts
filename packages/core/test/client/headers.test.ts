@@ -38,8 +38,10 @@ function deps(
   };
 }
 
-describe("TestSessionHeadersOnOutboundRequests", () => {
-  it("test_session_headers_included_in_outbound_request", () => {
+describe("Session headers on outbound requests", () => {
+  // python: TestSessionHeadersOnOutboundRequests
+  it("session headers included in outbound request", () => {
+    // python: test_session_headers_included_in_outbound_request
     // Python: env pre-cleared; Session.headers rides along on the request.
     const headers = requestHeaders(
       deps({ "X-Mixpanel-Cluster": "internal-1", "X-Tenant": "acme" }),
@@ -49,7 +51,8 @@ describe("TestSessionHeadersOnOutboundRequests", () => {
     expect(headers["X-Tenant"]).toBe("acme");
   });
 
-  it("test_session_headers_take_precedence_over_env_on_collision", () => {
+  it("session headers take precedence over env on collision", () => {
+    // python: test_session_headers_take_precedence_over_env_on_collision
     // Python: MP_CUSTOM_HEADER_NAME=X-Cluster / ..._VALUE=from-env set;
     // Session.headers carries the same name — session wins (layer 3 > 2).
     const headers = requestHeaders(

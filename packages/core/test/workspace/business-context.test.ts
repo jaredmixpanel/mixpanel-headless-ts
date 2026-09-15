@@ -122,7 +122,8 @@ function seenOf(transport: FakeTransport): string[] {
   );
 }
 
-describe("TestGetBusinessContextProject (:146)", () => {
+describe("Get business context project", () => {
+  // python: TestGetBusinessContextProject
   it("GET returns a BusinessContext with project_id and content", async () => {
     const { ws, transport } = makeWorkspace(() =>
       ok({ content: "# Project context\n\nHello." }),
@@ -192,7 +193,8 @@ describe("TestGetBusinessContextProject (:146)", () => {
   });
 });
 
-describe("TestSetBusinessContextProject (:230)", () => {
+describe("Set business context project", () => {
+  // python: TestSetBusinessContextProject
   it("SET issues PUT with a {content} body", async () => {
     const bodies: Array<[string, string, unknown]> = [];
     const { ws } = makeWorkspace((request) => {
@@ -272,7 +274,8 @@ describe("TestSetBusinessContextProject (:230)", () => {
   });
 });
 
-describe("TestClearBusinessContextProject (:324)", () => {
+describe("Clear business context project", () => {
+  // python: TestClearBusinessContextProject
   it("CLEAR issues PUT with an empty content body", async () => {
     const bodies: unknown[] = [];
     const { ws } = makeWorkspace((request) => {
@@ -289,7 +292,8 @@ describe("TestClearBusinessContextProject (:324)", () => {
   });
 });
 
-describe("TestGetBusinessContextOrganization (:350)", () => {
+describe("Get business context organization", () => {
+  // python: TestGetBusinessContextOrganization
   it("an explicit organization_id skips the /me fetch", async () => {
     const { ws, transport } = makeWorkspace(() =>
       ok({ content: "# Org content" }),
@@ -371,7 +375,8 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
   });
 });
 
-describe("TestSetBusinessContextOrganization (:446)", () => {
+describe("Set business context organization", () => {
+  // python: TestSetBusinessContextOrganization
   it("org SET hits the /organizations/{id} path", async () => {
     const seen: Array<[string, string, unknown]> = [];
     const { ws } = makeWorkspace((request) => {
@@ -398,7 +403,8 @@ describe("TestSetBusinessContextOrganization (:446)", () => {
   });
 });
 
-describe("TestGetBusinessContextChain (:483)", () => {
+describe("Get business context chain", () => {
+  // python: TestGetBusinessContextChain
   it("the chain returns both scopes from one round-trip", async () => {
     const { ws, transport } = makeWorkspace(() =>
       ok({ org_context: "# Org info", project_context: "# Project info" }),

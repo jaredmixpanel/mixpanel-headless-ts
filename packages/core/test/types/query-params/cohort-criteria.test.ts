@@ -17,7 +17,8 @@ function at(value: unknown, ...path: Array<string | number>): unknown {
   return cursor;
 }
 
-describe("operator maps (test_cohort_definition.py::TestOperatorMaps)", () => {
+describe("operator maps", () => {
+  // python: TestOperatorMaps
   it("PROPERTY_OPERATOR_MAP maps all expected CohortCriteria operators", () => {
     expect(Object.fromEntries(PROPERTY_OPERATOR_MAP)).toStrictEqual({
       equals: "==",

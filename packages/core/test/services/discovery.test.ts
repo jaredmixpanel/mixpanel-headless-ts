@@ -72,7 +72,8 @@ function discoveryFactory(
 /** The `success_handler` fixture. */
 const successHandler: CannedHandler = () => ({ status: 200, json: [] });
 
-describe("TestDiscoveryService", () => {
+describe("Discovery service", () => {
+  // python: TestDiscoveryService
   it("accepts an API client", () => {
     const { client } = createMockClient(makeSession(), successHandler);
     const discovery = new DiscoveryService(client);
@@ -86,7 +87,8 @@ describe("TestDiscoveryService", () => {
   });
 });
 
-describe("TestListEvents", () => {
+describe("List events", () => {
+  // python: TestListEvents
   it("returns events sorted alphabetically", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -170,7 +172,8 @@ describe("TestListEvents", () => {
   });
 });
 
-describe("TestListProperties", () => {
+describe("List properties", () => {
+  // python: TestListProperties
   it("returns properties sorted alphabetically", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -249,7 +252,8 @@ describe("TestListProperties", () => {
   });
 });
 
-describe("TestFindSimilarEvents", () => {
+describe("Find similar events", () => {
+  // python: TestFindSimilarEvents
   it("finds exact case-insensitive matches first", () => {
     const discovery = discoveryFactory(successHandler);
     const events = ["Sign Up", "Login", "Purchase"];
@@ -310,7 +314,8 @@ describe("TestFindSimilarEvents", () => {
   });
 });
 
-describe("TestListPropertyValues", () => {
+describe("List property values", () => {
+  // python: TestListPropertyValues
   it("returns values from the API", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -389,7 +394,8 @@ describe("TestListPropertyValues", () => {
   });
 });
 
-describe("TestClearCache", () => {
+describe("Clear cache", () => {
+  // python: TestClearCache
   it("clears all cached results", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -430,7 +436,8 @@ describe("TestClearCache", () => {
   });
 });
 
-describe("TestListFunnels", () => {
+describe("List funnels", () => {
+  // python: TestListFunnels
   it("returns a list of FunnelInfo objects", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -482,7 +489,8 @@ describe("TestListFunnels", () => {
   });
 });
 
-describe("TestListCohorts", () => {
+describe("List cohorts", () => {
+  // python: TestListCohorts
   it("returns a list of SavedCohort objects", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -596,7 +604,8 @@ describe("TestListCohorts", () => {
   });
 });
 
-describe("TestListTopEvents", () => {
+describe("List top events", () => {
+  // python: TestListTopEvents
   it("returns a list of TopEvent objects", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -676,7 +685,8 @@ describe("TestListTopEvents", () => {
   });
 });
 
-describe("TestListSubproperties", () => {
+describe("List subproperties", () => {
+  // python: TestListSubproperties
   /**
    * The `_values_handler` static helper.
    *
@@ -914,7 +924,8 @@ describe("TestListSubproperties", () => {
   });
 });
 
-describe("TestIterDictRows", () => {
+describe("Iter dict rows", () => {
+  // python: TestIterDictRows
   it("reports each unparseable value through logger.debug and keeps the rest", () => {
     const lines: string[] = [];
     const rows = iterDictRows(['{"a": 1}', "not json", '[1, {"b": 2}]', "{"], {

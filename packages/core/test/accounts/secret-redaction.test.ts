@@ -23,7 +23,8 @@ import { Secret } from "../../src/secret.js";
 
 const SENTINEL = "QASecretValue-MustNotLeak-987654321";
 
-describe("TestSecretLeakage (test_042_edge_cases.py:615)", () => {
+describe("Secret leakage", () => {
+  // python: TestSecretLeakage
   it("a ServiceAccount's serialized forms redact the secret", () => {
     const sa: Account = {
       type: "service_account",

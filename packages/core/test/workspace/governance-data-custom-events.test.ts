@@ -84,7 +84,8 @@ function eventDefJson(id = 1, name = "Purchase"): Record<string, unknown> {
 // US6: Custom Events
 // =============================================================================
 
-describe("TestCreateCustomEvent", () => {
+describe("Create custom event", () => {
+  // python: TestCreateCustomEvent
   it("create_custom_event() returns a typed CustomEvent built from the API response", async () => {
     const { ws } = makeWorkspace(() => ({
       status: 200,
@@ -149,7 +150,8 @@ describe("TestCreateCustomEvent", () => {
   });
 });
 
-describe("TestListCustomEvents", () => {
+describe("List custom events", () => {
+  // python: TestListCustomEvents
   it("list_custom_events() returns list of EventDefinition objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([eventDefJson(1, "CustomEvent1"), eventDefJson(2, "CustomEvent2")]),
@@ -167,7 +169,8 @@ describe("TestListCustomEvents", () => {
   });
 });
 
-describe("TestUpdateCustomEvent", () => {
+describe("Update custom event", () => {
+  // python: TestUpdateCustomEvent
   it("update_custom_event() returns the updated EventDefinition", async () => {
     const { ws } = makeWorkspace(() => ok(eventDefJson(1, "CustomEvent1")));
     const params = new UpdateEventDefinitionParams({ description: "Updated" });
@@ -217,7 +220,8 @@ describe("TestUpdateCustomEvent", () => {
   });
 });
 
-describe("TestDeleteCustomEvent", () => {
+describe("Delete custom event", () => {
+  // python: TestDeleteCustomEvent
   it("delete_custom_event() returns None on success", async () => {
     const { ws } = makeWorkspace(() => okBare());
     await expect(ws.deleteCustomEvent(2044168)).resolves.toBeUndefined();

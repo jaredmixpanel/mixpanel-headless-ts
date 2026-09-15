@@ -76,7 +76,8 @@ function groupEntry(
 // FIXED: Vector 1 — CustomPropertyRef(0) in Metric.filters
 // ===========================================================================
 
-describe("TestVector1MetricFilterCPFixed", () => {
+describe("Vector 1 metric filter CP fixed", () => {
+  // python: TestVector1MetricFilterCPFixed
   it("CustomPropertyRef(0) in Metric.filters raises", async () => {
     await expect(
       makeStubWorkspace().buildParams(
@@ -156,7 +157,8 @@ describe("TestVector1MetricFilterCPFixed", () => {
 // FIXED: Vector 2 — CustomPropertyRef(0) in FunnelStep.filters
 // ===========================================================================
 
-describe("TestVector2FunnelStepFilterCPFixed", () => {
+describe("Vector 2 funnel step filter CP fixed", () => {
+  // python: TestVector2FunnelStepFilterCPFixed
   it("CustomPropertyRef(0) in FunnelStep.filters raises", async () => {
     await expect(
       makeStubWorkspace().buildFunnelParams(
@@ -203,7 +205,8 @@ describe("TestVector2FunnelStepFilterCPFixed", () => {
 // DESIGN CHOICE: Vector 3 — inline CohortDefinition in CohortBreakdown
 // ===========================================================================
 
-describe("TestVector3InlineCohortDesignChoice", () => {
+describe("Vector 3 inline cohort design choice", () => {
+  // python: TestVector3InlineCohortDesignChoice
   it("an inline CohortDefinition breakdown passes both layers", async () => {
     const criteria = CohortCriteria.didEvent("FakeEvent", {
       at_least: 1,
@@ -249,7 +252,8 @@ describe("TestVector3InlineCohortDesignChoice", () => {
 // DESIGN CHOICE: Vector 4 — warning-only enum severity
 // ===========================================================================
 
-describe("TestVector4WarningOnlyEnumDesignChoice", () => {
+describe("Vector 4 warning only enum design choice", () => {
+  // python: TestVector4WarningOnlyEnumDesignChoice
   it("an invalid resourceType is a warning, not an error", async () => {
     const params = await makeStubWorkspace().buildParams("AnyEvent", {
       group_by: "country",
@@ -299,7 +303,8 @@ describe("TestVector4WarningOnlyEnumDesignChoice", () => {
 // FIXED: Vector 5 — negative CustomPropertyRef ID
 // ===========================================================================
 
-describe("TestVector5NegativeCPRefFixed", () => {
+describe("Vector 5 negative CP ref fixed", () => {
+  // python: TestVector5NegativeCPRefFixed
   it("CustomPropertyRef(-1) raises", async () => {
     await expect(
       makeStubWorkspace().buildParams(
@@ -347,7 +352,8 @@ describe("TestVector5NegativeCPRefFixed", () => {
 // FIXED: Vector 6 — empty-formula InlineCustomProperty
 // ===========================================================================
 
-describe("TestVector6EmptyFormulaFixed", () => {
+describe("Vector 6 empty formula fixed", () => {
+  // python: TestVector6EmptyFormulaFixed
   it("an empty formula in a per-metric filter raises", async () => {
     const badCp = new InlineCustomProperty({
       formula: "",
@@ -384,7 +390,8 @@ describe("TestVector6EmptyFormulaFixed", () => {
 // FIXED: Vector 7 — formula show-clause injection
 // ===========================================================================
 
-describe("TestVector7FormulaShowClauseFixed", () => {
+describe("Vector 7 formula show clause fixed", () => {
+  // python: TestVector7FormulaShowClauseFixed
   it("a hybrid clause (formula + behavior) still validates the behavior", async () => {
     const params = await makeStubWorkspace().buildParams("AnyEvent", {
       last: 7,
@@ -420,7 +427,8 @@ describe("TestVector7FormulaShowClauseFixed", () => {
 // FIXED: combined
 // ===========================================================================
 
-describe("TestCombinedFixes", () => {
+describe("Combined fixes", () => {
+  // python: TestCombinedFixes
   it("an invalid CP ID in Metric.filters is caught alongside other params", async () => {
     await expect(
       makeStubWorkspace().buildParams(

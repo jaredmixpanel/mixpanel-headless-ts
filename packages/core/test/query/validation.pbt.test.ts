@@ -140,8 +140,10 @@ const nonemptyFormulasArb: fc.Arbitrary<string> = fc
 // _suggest invariants
 // =============================================================================
 
-describe("TestSuggestInvariants", () => {
-  it("test_results_are_subset_of_valid", () => {
+describe("Suggest invariants", () => {
+  // python: TestSuggestInvariants
+  it("results are subset of valid", () => {
+    // python: test_results_are_subset_of_valid
     fc.assert(
       fc.property(queryStringsArb, validSetsArb, (value, valid) => {
         const result = suggest(value, valid);
@@ -155,7 +157,8 @@ describe("TestSuggestInvariants", () => {
     );
   });
 
-  it("test_result_length_bounded_by_n", () => {
+  it("result length bounded by n", () => {
+    // python: test_result_length_bounded_by_n
     fc.assert(
       fc.property(
         queryStringsArb,
@@ -174,7 +177,8 @@ describe("TestSuggestInvariants", () => {
     );
   });
 
-  it("test_exact_match_always_found", () => {
+  it("exact match always found", () => {
+    // python: test_exact_match_always_found
     fc.assert(
       fc.property(validSetsArb, (valid) => {
         // Python: `value = sorted(valid)[0]` — codepoint sort.
@@ -217,8 +221,10 @@ function referenceHasControlChar(s: string): boolean {
   return false;
 }
 
-describe("TestContainsControlChars", () => {
-  it("test_agrees_with_reference", () => {
+describe("Contains control chars", () => {
+  // python: TestContainsControlChars
+  it("agrees with reference", () => {
+    // python: test_agrees_with_reference
     fc.assert(
       fc.property(fc.string({ maxLength: 100, unit: "binary" }), (s) => {
         const expected = referenceHasControlChar(s);
@@ -231,7 +237,8 @@ describe("TestContainsControlChars", () => {
     );
   });
 
-  it("test_detects_embedded_control_chars", () => {
+  it("detects embedded control chars", () => {
+    // python: test_detects_embedded_control_chars
     // Python draws prefix/suffix from categories L/N/P; the port uses an
     // explicit representative alphabet over the same categories.
     const safeAlphabet = codepoints(`${LN_ALPHABET}.,;:!?-_()[]{}'"/@#`);
@@ -252,7 +259,8 @@ describe("TestContainsControlChars", () => {
     );
   });
 
-  it("test_clean_strings_pass", () => {
+  it("clean strings pass", () => {
+    // python: test_clean_strings_pass
     // Representative L/N/P/Z/S alphabet with the control set excluded
     // (see the file-header fidelity note).
     const cleanAlphabet = [
@@ -277,8 +285,10 @@ describe("TestContainsControlChars", () => {
 // validate_time_args valid-inputs soundness
 // =============================================================================
 
-describe("TestValidateTimeArgsSoundness", () => {
-  it("test_valid_ordered_dates_no_errors", () => {
+describe("Validate time args soundness", () => {
+  // python: TestValidateTimeArgsSoundness
+  it("valid ordered dates no errors", () => {
+    // python: test_valid_ordered_dates_no_errors
     fc.assert(
       fc.property(validDateStrsArb, validDateStrsArb, (a, b) => {
         // Ensure chronological order (Python `if from_date > to_date`).
@@ -301,7 +311,8 @@ describe("TestValidateTimeArgsSoundness", () => {
     );
   });
 
-  it("test_valid_last_no_dates_no_errors", () => {
+  it("valid last no dates no errors", () => {
+    // python: test_valid_last_no_dates_no_errors
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 3650 }), (last) => {
         const errors = validateTimeArgs({
@@ -318,7 +329,8 @@ describe("TestValidateTimeArgsSoundness", () => {
     );
   });
 
-  it("test_nonpositive_last_always_errors", () => {
+  it("nonpositive last always errors", () => {
+    // python: test_nonpositive_last_always_errors
     fc.assert(
       fc.property(fc.integer({ max: 0 }), (last) => {
         const errors = validateTimeArgs({
@@ -341,8 +353,10 @@ describe("TestValidateTimeArgsSoundness", () => {
 // _validate_custom_property boundary behavior
 // =============================================================================
 
-describe("TestCustomPropertyRefValidation", () => {
-  it("test_positive_id_no_errors", () => {
+describe("Custom property ref validation", () => {
+  // python: TestCustomPropertyRefValidation
+  it("positive ID no errors", () => {
+    // python: test_positive_id_no_errors
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 10_000 }), (propId) => {
         const ref = new CustomPropertyRef({ id: propId });
@@ -356,7 +370,8 @@ describe("TestCustomPropertyRefValidation", () => {
     );
   });
 
-  it("test_nonpositive_id_produces_cp1", () => {
+  it("nonpositive ID produces CP1", () => {
+    // python: test_nonpositive_id_produces_cp1
     fc.assert(
       fc.property(fc.integer({ max: 0 }), (propId) => {
         const ref = new CustomPropertyRef({ id: propId });
@@ -372,8 +387,10 @@ describe("TestCustomPropertyRefValidation", () => {
   });
 });
 
-describe("TestInlineCustomPropertyValidation", () => {
-  it("test_valid_inline_no_errors", () => {
+describe("Inline custom property validation", () => {
+  // python: TestInlineCustomPropertyValidation
+  it("valid inline no errors", () => {
+    // python: test_valid_inline_no_errors
     fc.assert(
       fc.property(
         nonemptyFormulasArb,
@@ -396,7 +413,8 @@ describe("TestInlineCustomPropertyValidation", () => {
     );
   });
 
-  it("test_whitespace_formula_produces_cp2", () => {
+  it("whitespace formula produces CP2", () => {
+    // python: test_whitespace_formula_produces_cp2
     fc.assert(
       fc.property(
         fc.uniqueArray(uppercaseKeysArb, { minLength: 1, maxLength: 3 }),

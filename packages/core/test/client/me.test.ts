@@ -22,8 +22,10 @@ import {
   type WorkspaceView,
 } from "../../src/client/me.js";
 
-describe("TestMeOrgInfo", () => {
-  it("test_construct", () => {
+describe("Me org info", () => {
+  // python: TestMeOrgInfo
+  it("construct", () => {
+    // python: test_construct
     const org = new MeOrgInfo({ id: 100, name: "Acme Corp" });
     expect(org.id).toBe(100);
     expect(org.name).toBe("Acme Corp");
@@ -31,7 +33,8 @@ describe("TestMeOrgInfo", () => {
     expect(org.permissions).toBeNull();
   });
 
-  it("test_construct_full", () => {
+  it("construct full", () => {
+    // python: test_construct_full
     const org = new MeOrgInfo({
       id: 100,
       name: "Acme Corp",
@@ -42,7 +45,8 @@ describe("TestMeOrgInfo", () => {
     expect(org.permissions).toStrictEqual(["manage_users", "view_billing"]);
   });
 
-  it("test_extra_fields_allowed", () => {
+  it("extra fields allowed", () => {
+    // python: test_extra_fields_allowed
     const org = MeOrgInfo.fromDict({
       id: 1,
       name: "Test",
@@ -55,8 +59,10 @@ describe("TestMeOrgInfo", () => {
   });
 });
 
-describe("TestMeProjectInfo", () => {
-  it("test_construct", () => {
+describe("Me project info", () => {
+  // python: TestMeProjectInfo
+  it("construct", () => {
+    // python: test_construct
     const project = new MeProjectInfo({
       name: "AI Demo",
       organization_id: 100,
@@ -67,7 +73,8 @@ describe("TestMeProjectInfo", () => {
     expect(project.has_workspaces).toBeNull();
   });
 
-  it("test_construct_full", () => {
+  it("construct full", () => {
+    // python: test_construct_full
     const project = new MeProjectInfo({
       name: "AI Demo",
       organization_id: 100,
@@ -80,7 +87,8 @@ describe("TestMeProjectInfo", () => {
     expect(project.has_workspaces).toBe(true);
   });
 
-  it("test_extra_fields_allowed", () => {
+  it("extra fields allowed", () => {
+    // python: test_extra_fields_allowed
     const project = MeProjectInfo.fromDict({
       name: "Test",
       organization_id: 1,
@@ -91,8 +99,10 @@ describe("TestMeProjectInfo", () => {
   });
 });
 
-describe("TestMeWorkspaceInfo", () => {
-  it("test_construct", () => {
+describe("Me workspace info", () => {
+  // python: TestMeWorkspaceInfo
+  it("construct", () => {
+    // python: test_construct
     const ws = new MeWorkspaceInfo({
       id: 3448413,
       name: "Default",
@@ -104,7 +114,8 @@ describe("TestMeWorkspaceInfo", () => {
     expect(ws.is_default).toBeNull();
   });
 
-  it("test_construct_full", () => {
+  it("construct full", () => {
+    // python: test_construct_full
     const ws = new MeWorkspaceInfo({
       id: 3448413,
       name: "Default",
@@ -120,7 +131,8 @@ describe("TestMeWorkspaceInfo", () => {
     expect(ws.is_global).toBe(false);
   });
 
-  it("test_extra_fields_allowed", () => {
+  it("extra fields allowed", () => {
+    // python: test_extra_fields_allowed
     const ws = MeWorkspaceInfo.fromDict({
       id: 1,
       name: "Test",
@@ -132,8 +144,10 @@ describe("TestMeWorkspaceInfo", () => {
   });
 });
 
-describe("TestMeResponse", () => {
-  it("test_construct_minimal", () => {
+describe("Me response", () => {
+  // python: TestMeResponse
+  it("construct minimal", () => {
+    // python: test_construct_minimal
     const me = new MeResponse();
     expect(me.user_id).toBeNull();
     expect(me.user_email).toBeNull();
@@ -145,7 +159,8 @@ describe("TestMeResponse", () => {
     expect(me.workspaces).toStrictEqual(new Map());
   });
 
-  it("test_construct_full", () => {
+  it("construct full", () => {
+    // python: test_construct_full
     const me = new MeResponse({
       user_id: 42,
       user_email: "jared@example.com",
@@ -167,7 +182,8 @@ describe("TestMeResponse", () => {
     expect(me.projects.get("3713224")?.name).toBe("AI Demo");
   });
 
-  it("test_extra_fields_allowed", () => {
+  it("extra fields allowed", () => {
+    // python: test_extra_fields_allowed
     const me = MeResponse.fromDict({
       user_id: 1,
       feature_flags: { new_ui: true },
@@ -177,7 +193,8 @@ describe("TestMeResponse", () => {
     expect(me.modelExtra["demo_account"]).toBe(false);
   });
 
-  it("test_serialization_round_trip", () => {
+  it("serialization round trip", () => {
+    // python: test_serialization_round_trip
     const original = new MeResponse({
       user_id: 42,
       user_email: "test@example.com",
@@ -224,12 +241,15 @@ function v(overrides: Partial<WorkspaceView> & { id: number }): WorkspaceView {
   };
 }
 
-describe("TestSelectWorkspaceId", () => {
-  it("test_empty_is_none", () => {
+describe("Select workspace ID", () => {
+  // python: TestSelectWorkspaceId
+  it("empty is null", () => {
+    // python: test_empty_is_none
     expect(selectWorkspaceId([])).toBeNull();
   });
 
-  it("test_global_wins", () => {
+  it("global wins", () => {
+    // python: test_global_wins
     const views = [
       v({ id: 1, is_default: true, name: "All Project Data" }),
       v({ id: 2, is_global: true }),
@@ -237,12 +257,14 @@ describe("TestSelectWorkspaceId", () => {
     expect(selectWorkspaceId(views)).toBe(2);
   });
 
-  it("test_all_project_data_name_when_no_global", () => {
+  it("all project data name when no global", () => {
+    // python: test_all_project_data_name_when_no_global
     const views = [v({ id: 1 }), v({ id: 2, name: "All Project Data" })];
     expect(selectWorkspaceId(views)).toBe(2);
   });
 
-  it("test_default_then_first_visible_then_first", () => {
+  it("default then first visible then first", () => {
+    // python: test_default_then_first_visible_then_first
     expect(
       selectWorkspaceId([v({ id: 1 }), v({ id: 2, is_default: true })]),
     ).toBe(2);
@@ -264,7 +286,8 @@ describe("TestSelectWorkspaceId", () => {
     ).toBe(9);
   });
 
-  it("test_unset_visibility_beats_later_explicit_visible", () => {
+  it("unset visibility beats later explicit visible", () => {
+    // python: test_unset_visibility_beats_later_explicit_visible
     // Guards the `is_visible is not False` rung: a mutation to `is True`
     // would skip the unflagged first view and wrongly pick the second.
     const views = [

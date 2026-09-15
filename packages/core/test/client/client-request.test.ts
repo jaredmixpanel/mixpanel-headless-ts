@@ -29,8 +29,10 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-describe("TestPublicRequest", () => {
-  it("test_request_sends_auth_header", async () => {
+describe("Public request", () => {
+  // python: TestPublicRequest
+  it("request sends auth header", async () => {
+    // python: test_request_sends_auth_header
     let capturedHeaders: Readonly<Record<string, string>> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedHeaders = request.headers;
@@ -41,7 +43,8 @@ describe("TestPublicRequest", () => {
     expect(capturedHeaders["authorization"]?.startsWith("Basic ")).toBe(true);
   });
 
-  it("test_request_with_query_params", async () => {
+  it("request with query params", async () => {
+    // python: test_request_with_query_params
     let capturedUrl = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedUrl = request.url;
@@ -54,7 +57,8 @@ describe("TestPublicRequest", () => {
     expect(capturedUrl.includes("limit=10")).toBe(true);
   });
 
-  it("test_request_with_json_body", async () => {
+  it("request with JSON body", async () => {
+    // python: test_request_with_json_body
     let capturedBody: unknown = {};
     let capturedContentType = "";
     const { client } = createMockClient(makeSession(), (request) => {
@@ -83,7 +87,8 @@ describe("TestPublicRequest", () => {
     });
   });
 
-  it("test_request_with_custom_headers", async () => {
+  it("request with custom headers", async () => {
+    // python: test_request_with_custom_headers
     let capturedHeaders: Readonly<Record<string, string>> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedHeaders = request.headers;
@@ -97,7 +102,8 @@ describe("TestPublicRequest", () => {
     expect(capturedHeaders["x-custom-header"]).toBe("custom-value");
   });
 
-  it("test_request_auto_injects_query_origin", async () => {
+  it("request auto injects query origin", async () => {
+    // python: test_request_auto_injects_query_origin
     let capturedParams: Readonly<Record<string, string>> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = request.params;
@@ -107,7 +113,8 @@ describe("TestPublicRequest", () => {
     expect(capturedParams["query_origin"]).toBe("mixpanel-headless");
   });
 
-  it("test_canonical_query_origin_wins_over_caller", async () => {
+  it("canonical query origin wins over caller", async () => {
+    // python: test_canonical_query_origin_wins_over_caller
     let capturedParams: Readonly<Record<string, string>> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = request.params;
@@ -119,7 +126,8 @@ describe("TestPublicRequest", () => {
     expect(capturedParams["query_origin"]).toBe("mixpanel-headless");
   });
 
-  it("test_request_does_not_inject_project_id", async () => {
+  it("request does not inject project ID", async () => {
+    // python: test_request_does_not_inject_project_id
     let capturedUrl = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedUrl = request.url;
@@ -130,7 +138,8 @@ describe("TestPublicRequest", () => {
     expect(capturedUrl.includes("project_id")).toBe(false);
   });
 
-  it("test_request_returns_json_response", async () => {
+  it("request returns JSON response", async () => {
+    // python: test_request_returns_json_response
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
       json: { data: { events: ["A", "B"] }, status: "ok" },
@@ -145,7 +154,8 @@ describe("TestPublicRequest", () => {
     });
   });
 
-  it("test_request_handles_401", async () => {
+  it("request handles 401", async () => {
+    // python: test_request_handles_401
     const { client } = createMockClient(makeSession(), () => ({
       status: 401,
       json: { error: "Invalid token" },
@@ -155,7 +165,8 @@ describe("TestPublicRequest", () => {
     ).rejects.toBeInstanceOf(AuthenticationError);
   });
 
-  it("test_request_handles_400", async () => {
+  it("request handles 400", async () => {
+    // python: test_request_handles_400
     const { client } = createMockClient(makeSession(), () => ({
       status: 400,
       json: { error: "Bad request" },
@@ -170,7 +181,8 @@ describe("TestPublicRequest", () => {
     expect(String(thrown)).toContain("Bad request");
   });
 
-  it("test_request_handles_429_with_retry", async () => {
+  it("request handles 429 with retry", async () => {
+    // python: test_request_handles_429_with_retry
     let callCount = 0;
     const { client } = createMockClient(makeSession(), () => {
       callCount += 1;
@@ -187,7 +199,8 @@ describe("TestPublicRequest", () => {
     expect(result).toStrictEqual({ success: true });
   });
 
-  it("test_request_raises_rate_limit_after_max_retries", async () => {
+  it("request raises rate limit after max retries", async () => {
+    // python: test_request_raises_rate_limit_after_max_retries
     const { client } = createMockClient(
       makeSession(),
       () => ({ status: 429, text: "", headers: { "Retry-After": "0" } }),
@@ -203,7 +216,8 @@ describe("TestPublicRequest", () => {
     expect((thrown as RateLimitError).retryAfter).toBe(0);
   });
 
-  it("test_request_lexicon_schemas_example", async () => {
+  it("request lexicon schemas example", async () => {
+    // python: test_request_lexicon_schemas_example
     let capturedUrl = "";
     let capturedMethod = "";
     const { client } = createMockClient(makeSession(), (request) => {
@@ -237,8 +251,10 @@ describe("TestPublicRequest", () => {
 // now end-to-end through the real client (tests/unit/test_app_api_client.py).
 // ---------------------------------------------------------------------------
 
-describe("TestAppRequest (B4-C1 deferral slice)", () => {
-  it("test_uses_bearer_auth_header", async () => {
+describe("App request (B4-C1 deferral slice)", () => {
+  // python: TestAppRequest
+  it("uses bearer auth header", async () => {
+    // python: test_uses_bearer_auth_header
     let capturedHeaders: Readonly<Record<string, string>> = {};
     const { client } = createMockClient(
       makeSession({ oauthToken: "test-oauth-token" }),
@@ -251,7 +267,8 @@ describe("TestAppRequest (B4-C1 deferral slice)", () => {
     expect(capturedHeaders["authorization"]).toBe("Bearer test-oauth-token");
   });
 
-  it("test_uses_basic_auth_when_configured", async () => {
+  it("uses basic auth when configured", async () => {
+    // python: test_uses_basic_auth_when_configured
     let capturedHeaders: Readonly<Record<string, string>> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedHeaders = request.headers;
@@ -261,7 +278,8 @@ describe("TestAppRequest (B4-C1 deferral slice)", () => {
     expect(capturedHeaders["authorization"]?.startsWith("Basic ")).toBe(true);
   });
 
-  it("test_builds_correct_url", async () => {
+  it("builds correct URL", async () => {
+    // python: test_builds_correct_url
     const capturedUrls: string[] = [];
     const { client } = createMockClient(
       makeSession({ oauthToken: "test-oauth-token" }),
@@ -279,8 +297,10 @@ describe("TestAppRequest (B4-C1 deferral slice)", () => {
   });
 });
 
-describe("TestAppRequestFormBody (B4-C1 deferral slice)", () => {
-  it("test_form_body_sent_as_form_encoded", async () => {
+describe("App request form body (B4-C1 deferral slice)", () => {
+  // python: TestAppRequestFormBody
+  it("form body sent as form encoded", async () => {
+    // python: test_form_body_sent_as_form_encoded
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(
       makeSession({ oauthToken: "test-oauth-token" }),

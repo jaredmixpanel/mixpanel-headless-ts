@@ -206,7 +206,8 @@ describe("toDict isolation (deep-copy semantics)", () => {
   });
 });
 
-describe("sanitizeRawCohort (tests/test_types_cohort_behaviors.py::TestSanitizeRawCohort)", () => {
+describe("sanitizeRawCohort", () => {
+  // python: TestSanitizeRawCohort
   it("removes a null selector from event_selector", () => {
     const raw = {
       behaviors: {
@@ -290,7 +291,7 @@ describe("sanitizeRawCohort (tests/test_types_cohort_behaviors.py::TestSanitizeR
   });
 });
 
-describe("CohortBreakdown (tests/test_types_cohort_behaviors.py)", () => {
+describe("CohortBreakdown", () => {
   it("stores fields with Python defaults", () => {
     const named = new CohortBreakdown({ cohort: 123, name: "Power Users" });
     expect(named.cohort).toBe(123);

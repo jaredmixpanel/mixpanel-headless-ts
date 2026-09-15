@@ -29,7 +29,8 @@ import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js"
 // FIXED: R2-V1 — FlowStep.filters custom-property scanning
 // ===========================================================================
 
-describe("TestR2V1FlowStepFiltersCPFixed", () => {
+describe("R2 V1 flow step filters CP fixed", () => {
+  // python: TestR2V1FlowStepFiltersCPFixed
   it("CustomPropertyRef(0) in FlowStep.filters raises", async () => {
     await expect(
       makeStubWorkspace().buildFlowParams(
@@ -107,7 +108,8 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
 // FIXED: R2-V2 — RetentionEvent.filters custom-property scanning
 // ===========================================================================
 
-describe("TestR2V2RetentionEventFiltersCPFixed", () => {
+describe("R2 V2 retention event filters CP fixed", () => {
+  // python: TestR2V2RetentionEventFiltersCPFixed
   it("CustomPropertyRef(0) in the born event raises", async () => {
     await expect(
       makeStubWorkspace().buildRetentionParams(
@@ -192,7 +194,8 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
 // FIXED: R2-V3 — NaN filter values
 // ===========================================================================
 
-describe("TestR2V3NaNFilterFixed", () => {
+describe("R2 V3 na n filter fixed", () => {
+  // python: TestR2V3NaNFilterFixed
   it("NaN in a where filter raises", async () => {
     await expect(
       makeStubWorkspace().buildParams("AnyEvent", {
@@ -242,7 +245,8 @@ describe("TestR2V3NaNFilterFixed", () => {
 // FIXED: R2-V4 — Inf filter values
 // ===========================================================================
 
-describe("TestR2V4InfFilterFixed", () => {
+describe("R2 V4 inf filter fixed", () => {
+  // python: TestR2V4InfFilterFixed
   it("Inf in a where filter raises", async () => {
     await expect(
       makeStubWorkspace().buildParams("AnyEvent", {
@@ -286,7 +290,8 @@ describe("TestR2V4InfFilterFixed", () => {
 // FIXED: combined
 // ===========================================================================
 
-describe("TestR2CombinedFixes", () => {
+describe("R2 combined fixes", () => {
+  // python: TestR2CombinedFixes
   it("a FlowStep CP error is caught at L1 (before the L2 NaN check)", async () => {
     await expect(
       makeStubWorkspace().buildFlowParams(

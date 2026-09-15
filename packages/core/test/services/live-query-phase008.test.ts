@@ -61,7 +61,8 @@ function liveQueryFactory(handler: CannedHandler): LiveQueryService {
 // US1: Activity Feed Tests
 // ===========================================================================
 
-describe("TestActivityFeedService", () => {
+describe("Activity feed service", () => {
+  // python: TestActivityFeedService
   it("returns ActivityFeedResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -201,7 +202,8 @@ describe("TestActivityFeedService", () => {
 // US2: Numeric Sum Tests
 // ===========================================================================
 
-describe("TestNumericSumService", () => {
+describe("Numeric sum service", () => {
+  // python: TestNumericSumService
   it("returns NumericSumResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -249,7 +251,8 @@ describe("TestNumericSumService", () => {
 // US3: Numeric Average Tests
 // ===========================================================================
 
-describe("TestNumericAverageService", () => {
+describe("Numeric average service", () => {
+  // python: TestNumericAverageService
   it("returns NumericAverageResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -291,7 +294,8 @@ describe("TestNumericAverageService", () => {
 // US4: Frequency Tests
 // ===========================================================================
 
-describe("TestFrequencyService", () => {
+describe("Frequency service", () => {
+  // python: TestFrequencyService
   it("returns FrequencyResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -341,7 +345,8 @@ describe("TestFrequencyService", () => {
 // US5: Numeric Bucketing Tests
 // ===========================================================================
 
-describe("TestNumericBucketService", () => {
+describe("Numeric bucket service", () => {
+  // python: TestNumericBucketService
   it("returns NumericBucketResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -400,7 +405,8 @@ describe("TestNumericBucketService", () => {
 // US6: Insights Tests
 // ===========================================================================
 
-describe("TestQuerySavedReportService", () => {
+describe("Query saved report service", () => {
+  // python: TestQuerySavedReportService
   it("returns SavedReportResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -472,7 +478,8 @@ describe("TestQuerySavedReportService", () => {
 // Error Handling Tests
 // ===========================================================================
 
-describe("TestPhase008ServiceErrorHandling", () => {
+describe("Phase 008 service error handling", () => {
+  // python: TestPhase008ServiceErrorHandling
   // --- Activity Feed ---
 
   it("activity_feed propagates AuthenticationError", async () => {
@@ -640,7 +647,8 @@ describe("TestPhase008ServiceErrorHandling", () => {
 // Edge Case Tests
 // ===========================================================================
 
-describe("TestPhase008EdgeCases", () => {
+describe("Phase 008 edge cases", () => {
+  // python: TestPhase008EdgeCases
   it("events with a missing timestamp raise ValueError", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,

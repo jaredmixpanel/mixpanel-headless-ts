@@ -62,7 +62,8 @@ const MOCK_FUNNEL_RESPONSE: Record<string, unknown> = {
 // T021: validation integration
 // ===========================================================================
 
-describe("TestQueryFunnelValidation", () => {
+describe("Query funnel validation", () => {
+  // python: TestQueryFunnelValidation
   it("a single-step funnel raises F1_MIN_STEPS", async () => {
     const mock = mockWorkspaceClient();
     const error = await expectRejects(
@@ -135,7 +136,8 @@ describe("TestQueryFunnelValidation", () => {
 // T022: execution path
 // ===========================================================================
 
-describe("TestQueryFunnelExecution", () => {
+describe("Query funnel execution", () => {
+  // python: TestQueryFunnelExecution
   /** Build the facade with the canonical funnel response installed. */
   function funnelWs(): { ws: Workspace; mock: MockWorkspaceClient } {
     const mock = mockWorkspaceClient();
@@ -224,7 +226,8 @@ describe("TestQueryFunnelExecution", () => {
 // T023: build_funnel_params vs query_funnel
 // ===========================================================================
 
-describe("TestBuildFunnelParamsVsQueryFunnel", () => {
+describe("Build funnel params vs query funnel", () => {
+  // python: TestBuildFunnelParamsVsQueryFunnel
   it("returns a plain dict, not a result object", async () => {
     const params = await makeStubWorkspace(
       mockWorkspaceClient(),

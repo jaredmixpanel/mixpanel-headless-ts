@@ -64,8 +64,10 @@ function catchParamError(fn: () => unknown): ParamValidationError {
   return caught as ParamValidationError;
 }
 
-describe("TestConstants", () => {
-  it("test_slug_alphabet_and_length", () => {
+describe("Constants", () => {
+  // python: TestConstants
+  it("slug alphabet and length", () => {
+    // python: test_slug_alphabet_and_length
     expect(SLUG_LENGTH).toBe(12);
     expect(SLUG_ALPHABET).toBe(
       "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz",
@@ -75,7 +77,8 @@ describe("TestConstants", () => {
     }
   });
 
-  it("test_tables", () => {
+  it("tables", () => {
+    // python: test_tables
     expect(Object.fromEntries(WEB_HOSTS)).toStrictEqual({
       us: "mixpanel.com",
       eu: "eu.mixpanel.com",
@@ -104,30 +107,35 @@ describe("TestConstants", () => {
   });
 });
 
-describe("TestWebHost", () => {
+describe("Web host", () => {
+  // python: TestWebHost
   it.each([
     ["us", "mixpanel.com"],
     ["eu", "eu.mixpanel.com"],
     ["in", "in.mixpanel.com"],
-  ])("test_known_regions[%s]", (region, host) => {
+  ])("known regions[%s]", (region, host) => {
+    // python: test_known_regions
     expect(webHost(region)).toBe(host);
   });
 
-  it("test_unknown_region_raises_rl3", () => {
+  it("unknown region raises RL3", () => {
+    // python: test_unknown_region_raises_rl3
     const exc = catchParamError(() => webHost("jp"));
     expect(exc.code).toBe("RL3_UNKNOWN_REGION");
     expect(exc.details).toStrictEqual({ region: "jp" });
   });
 });
 
-describe("TestIsSlug", () => {
+describe("Is slug", () => {
+  // python: TestIsSlug
   it.each([
     SLUG,
     "aaaaaaaaaaaa",
     "000000000000",
     "ab_-CD12efGH",
     "____________",
-  ])("test_positive[%s]", (value) => {
+  ])("positive[%s]", (value) => {
+    // python: test_positive
     expect(isSlug(value)).toBe(true);
   });
 
@@ -141,7 +149,8 @@ describe("TestIsSlug", () => {
     "EBrV5bW2u9Mw\n",
     "report/12345",
     "ÉBrV5bW2u9Mw",
-  ])("test_negative[%j]", (value) => {
+  ])("negative[%j]", (value) => {
+    // python: test_negative
     expect(isSlug(value)).toBe(false);
   });
 
@@ -150,8 +159,10 @@ describe("TestIsSlug", () => {
   });
 });
 
-describe("TestGenerateSlug", () => {
-  it("test_deterministic_with_injected_choice", () => {
+describe("Generate slug", () => {
+  // python: TestGenerateSlug
+  it("deterministic with injected choice", () => {
+    // python: test_deterministic_with_injected_choice
     expect(generateSlug({ choice: (alphabet) => alphabet[0]! })).toBe(
       "1".repeat(12),
     );
@@ -162,7 +173,8 @@ describe("TestGenerateSlug", () => {
     ).toBe("z".repeat(12));
   });
 
-  it("test_choice_receives_the_alphabet", () => {
+  it("choice receives the alphabet", () => {
+    // python: test_choice_receives_the_alphabet
     const seen: string[] = [];
     const choice = (alphabet: string): string => {
       seen.push(alphabet);
@@ -172,7 +184,8 @@ describe("TestGenerateSlug", () => {
     expect(seen).toStrictEqual(Array.from({ length: 12 }, () => SLUG_ALPHABET));
   });
 
-  it("test_default_is_a_valid_slug", () => {
+  it("default is a valid slug", () => {
+    // python: test_default_is_a_valid_slug
     const slug = generateSlug();
     expect(slug).toHaveLength(12);
     expect(isSlug(slug)).toBe(true);
@@ -182,8 +195,10 @@ describe("TestGenerateSlug", () => {
 
 // --- url-grammar.md §6 builders -----------------------------------------------
 
-describe("TestBuilders", () => {
-  it("test_slug_us_with_workspace", () => {
+describe("Builders", () => {
+  // python: TestBuilders
+  it("slug us with workspace", () => {
+    // python: test_slug_us_with_workspace
     expect(
       buildSlugUrl({
         region: "us",
@@ -195,7 +210,8 @@ describe("TestBuilders", () => {
     ).toBe(`https://mixpanel.com/project/3/view/75/app/insights#${SLUG}`);
   });
 
-  it("test_slug_eu_funnels_uses_insights_app", () => {
+  it("slug EU funnels uses insights app", () => {
+    // python: test_slug_eu_funnels_uses_insights_app
     expect(
       buildSlugUrl({
         region: "eu",
@@ -206,7 +222,8 @@ describe("TestBuilders", () => {
     ).toBe(`https://eu.mixpanel.com/project/3/app/insights#${SLUG}`);
   });
 
-  it("test_slug_in_flows", () => {
+  it("slug in flows", () => {
+    // python: test_slug_in_flows
     expect(
       buildSlugUrl({
         region: "in",
@@ -217,7 +234,8 @@ describe("TestBuilders", () => {
     ).toBe(`https://in.mixpanel.com/project/3/app/flows#${SLUG}`);
   });
 
-  it("test_slug_retention_uses_insights_app", () => {
+  it("slug retention uses insights app", () => {
+    // python: test_slug_retention_uses_insights_app
     expect(
       buildSlugUrl({
         region: "us",
@@ -228,7 +246,8 @@ describe("TestBuilders", () => {
     ).toBe(`https://mixpanel.com/project/3/app/insights#${SLUG}`);
   });
 
-  it("test_bookmark_insights", () => {
+  it("bookmark insights", () => {
+    // python: test_bookmark_insights
     expect(
       buildBookmarkUrl({
         region: "us",
@@ -239,7 +258,8 @@ describe("TestBuilders", () => {
     ).toBe("https://mixpanel.com/project/3/app/insights#report/123");
   });
 
-  it("test_bookmark_funnels_with_workspace", () => {
+  it("bookmark funnels with workspace", () => {
+    // python: test_bookmark_funnels_with_workspace
     expect(
       buildBookmarkUrl({
         region: "us",
@@ -255,7 +275,8 @@ describe("TestBuilders", () => {
     ["retention", "retention#report/123"],
     ["flows", "flows#report/123"],
     ["launch-analysis", "impact#report/123"],
-  ])("test_bookmark_other_types[%s]", (reportType, tail) => {
+  ])("bookmark other types[%s]", (reportType, tail) => {
+    // python: test_bookmark_other_types
     expect(
       buildBookmarkUrl({
         region: "us",
@@ -266,7 +287,8 @@ describe("TestBuilders", () => {
     ).toBe(`https://mixpanel.com/project/3/app/${tail}`);
   });
 
-  it("test_slug_unknown_type_raises_rl1", () => {
+  it("slug unknown type raises RL1", () => {
+    // python: test_slug_unknown_type_raises_rl1
     const exc = catchParamError(() =>
       buildSlugUrl({
         region: "us",
@@ -282,7 +304,8 @@ describe("TestBuilders", () => {
     });
   });
 
-  it("test_bookmark_unknown_type_raises_rl1", () => {
+  it("bookmark unknown type raises RL1", () => {
+    // python: test_bookmark_unknown_type_raises_rl1
     const exc = catchParamError(() =>
       buildBookmarkUrl({
         region: "us",
@@ -297,7 +320,8 @@ describe("TestBuilders", () => {
     expect(exc.details["allowed"]).toContain("launch-analysis");
   });
 
-  it("test_slug_invalid_slug_raises_rl2", () => {
+  it("slug invalid slug raises RL2", () => {
+    // python: test_slug_invalid_slug_raises_rl2
     const exc = catchParamError(() =>
       buildSlugUrl({
         region: "us",
@@ -315,7 +339,8 @@ describe("TestBuilders", () => {
     [{ project_id: -3 }, "project_id", -3],
     [{ workspace_id: 0 }, "workspace_id", 0],
     [{ workspace_id: -1 }, "workspace_id", -1],
-  ])("test_slug_non_positive_id_raises_rl6[%j]", (kwargs, field, value) => {
+  ])("slug non positive ID raises RL6[%j]", (kwargs, field, value) => {
+    // python: test_slug_non_positive_id_raises_rl6
     const exc = catchParamError(() =>
       buildSlugUrl({
         region: "us",
@@ -334,7 +359,8 @@ describe("TestBuilders", () => {
     [{ workspace_id: -1 }, "workspace_id", -1],
     [{ bookmark_id: 0 }, "bookmark_id", 0],
     [{ bookmark_id: -1 }, "bookmark_id", -1],
-  ])("test_bookmark_non_positive_id_raises_rl6[%j]", (kwargs, field, value) => {
+  ])("bookmark non positive ID raises RL6[%j]", (kwargs, field, value) => {
+    // python: test_bookmark_non_positive_id_raises_rl6
     const exc = catchParamError(() =>
       buildBookmarkUrl({
         region: "us",
@@ -349,7 +375,7 @@ describe("TestBuilders", () => {
   });
 
   it.each(["slug", "bookmark"])(
-    "test_unknown_region_raises_rl3[%s]",
+    "unknown region raises RL3[%s]", // python: test_unknown_region_raises_rl3
     (builder) => {
       const exc = catchParamError(() =>
         builder === "slug"
@@ -371,14 +397,17 @@ describe("TestBuilders", () => {
   );
 });
 
-describe("TestTableInvariants", () => {
-  it("test_slug_table_keys_match_report_link_type", () => {
+describe("Table invariants", () => {
+  // python: TestTableInvariants
+  it("slug table keys match report link type", () => {
+    // python: test_slug_table_keys_match_report_link_type
     expect(new Set(SLUG_APP_FOR_TYPE.keys())).toStrictEqual(
       new Set(REPORT_LINK_TYPE_VALUES),
     );
   });
 
-  it("test_bookmark_table_keys_match_bookmark_type", () => {
+  it("bookmark table keys match bookmark type", () => {
+    // python: test_bookmark_table_keys_match_bookmark_type
     expect(new Set(BOOKMARK_HASH_FOR_TYPE.keys())).toStrictEqual(
       new Set(BOOKMARK_TYPE_VALUES),
     );
@@ -389,7 +418,8 @@ describe("TestTableInvariants", () => {
     ["BOOKMARK_HASH_FOR_TYPE", BOOKMARK_HASH_FOR_TYPE],
     ["APP_TO_REPORT_TYPE", APP_TO_REPORT_TYPE],
     ["WEB_HOSTS", WEB_HOSTS],
-  ])("test_tables_are_read_only[%s]", (_name, table) => {
+  ])("tables are read only[%s]", (_name, table) => {
+    // python: test_tables_are_read_only
     // `MappingProxyType` → `ReadonlyMap`: the exported type exposes no
     // mutator (a compile-time fact, pinned here as a type-level assertion)
     // and the runtime value is a real `Map`.

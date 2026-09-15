@@ -78,7 +78,8 @@ function throwingClient(method: string, error: Error): MixpanelClient {
 // US4: Custom Properties
 // =============================================================================
 
-describe("TestListCustomProperties", () => {
+describe("List custom properties", () => {
+  // python: TestListCustomProperties
   it("list_custom_properties() returns list of CustomProperty objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([
@@ -100,7 +101,8 @@ describe("TestListCustomProperties", () => {
   });
 });
 
-describe("TestCreateCustomProperty", () => {
+describe("Create custom property", () => {
+  // python: TestCreateCustomProperty
   it("create_custom_property() returns the created CustomProperty", async () => {
     const { ws } = makeWorkspace(() =>
       ok(customPropertyJson(99, "New Prop", "events")),
@@ -121,7 +123,8 @@ describe("TestCreateCustomProperty", () => {
   });
 });
 
-describe("TestGetCustomProperty", () => {
+describe("Get custom property", () => {
+  // python: TestGetCustomProperty
   it("get_custom_property() returns a single CustomProperty by ID", async () => {
     const { ws } = makeWorkspace(() =>
       ok(customPropertyJson(42, "Revenue", "events")),
@@ -134,7 +137,8 @@ describe("TestGetCustomProperty", () => {
   });
 });
 
-describe("TestUpdateCustomProperty", () => {
+describe("Update custom property", () => {
+  // python: TestUpdateCustomProperty
   it("update_custom_property() returns the updated CustomProperty", async () => {
     const { ws } = makeWorkspace(() =>
       ok(customPropertyJson(42, "Renamed", "events")),
@@ -147,14 +151,16 @@ describe("TestUpdateCustomProperty", () => {
   });
 });
 
-describe("TestDeleteCustomProperty", () => {
+describe("Delete custom property", () => {
+  // python: TestDeleteCustomProperty
   it("delete_custom_property() returns None on success", async () => {
     const { ws } = makeWorkspace(() => okBare());
     await expect(ws.deleteCustomProperty("42")).resolves.toBeUndefined();
   });
 });
 
-describe("TestValidateCustomProperty", () => {
+describe("Validate custom property", () => {
+  // python: TestValidateCustomProperty
   it("validate_custom_property() returns an opaque dict", async () => {
     const { ws } = makeWorkspace(() => ok({ valid: true, errors: [] }));
     const params = new CreateCustomPropertyParams({

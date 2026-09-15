@@ -53,8 +53,10 @@ import {
 // list_replays validation
 // =============================================================================
 
-describe("list_replays argument validation (TestListReplaysValidation)", () => {
-  it("test_neither_arg_raises", async () => {
+describe("list_replays argument validation", () => {
+  // python: TestListReplaysValidation
+  it("neither arg raises", async () => {
+    // python: test_neither_arg_raises
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -63,7 +65,8 @@ describe("list_replays argument validation (TestListReplaysValidation)", () => {
     );
   });
 
-  it("test_both_args_raise", async () => {
+  it("both args raise", async () => {
+    // python: test_both_args_raise
     const ws = makeWorkspace();
     installStubService(ws);
     let caught: unknown;
@@ -78,7 +81,8 @@ describe("list_replays argument validation (TestListReplaysValidation)", () => {
     );
   });
 
-  it("test_distinct_id_without_window_raises", async () => {
+  it("distinct ID without window raises", async () => {
+    // python: test_distinct_id_without_window_raises
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -92,7 +96,8 @@ describe("list_replays argument validation (TestListReplaysValidation)", () => {
     );
   });
 
-  it("test_replay_ids_without_window_works", async () => {
+  it("replay IDs without window works", async () => {
+    // python: test_replay_ids_without_window_works
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.discoverResult = [];
@@ -101,7 +106,8 @@ describe("list_replays argument validation (TestListReplaysValidation)", () => {
     expect(callsTo(stub, "discover")).toHaveLength(1);
   });
 
-  it("test_empty_result_returns_empty_list", async () => {
+  it("empty result returns empty list", async () => {
+    // python: test_empty_result_returns_empty_list
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.discoverResult = [];
@@ -118,8 +124,10 @@ describe("list_replays argument validation (TestListReplaysValidation)", () => {
 // list_replays issues the documented query call
 // =============================================================================
 
-describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
-  it("test_distinct_id_path_delegates", async () => {
+describe("list_replays → discover kwargs", () => {
+  // python: TestListReplaysQueryCall
+  it("distinct ID path delegates", async () => {
+    // python: test_distinct_id_path_delegates
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.discoverResult = [summary()];
@@ -142,7 +150,8 @@ describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
     });
   });
 
-  it("test_discover_uses_workspace_query", async () => {
+  it("discover uses workspace query", async () => {
+    // python: test_discover_uses_workspace_query
     const ws = makeWorkspace();
     const calls: Array<[string, Readonly<Record<string, unknown>>]> = [];
     ws.replaysService = new ReplaysService(ws.client, {
@@ -170,7 +179,8 @@ describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
     expect(kwargs["to_date"]).toBe("2026-05-27");
   });
 
-  it("test_replay_ids_path_uses_90_day_lookback", async () => {
+  it("replay IDs path uses 90 day lookback", async () => {
+    // python: test_replay_ids_path_uses_90_day_lookback
     const ws = makeWorkspace();
     const calls: Array<Readonly<Record<string, unknown>>> = [];
     ws.replaysService = new ReplaysService(ws.client, {
@@ -193,8 +203,10 @@ describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
 // Retention default + warning
 // =============================================================================
 
-describe("missing retention defaults to 30 with a warning (TestRetentionWarning)", () => {
-  it("test_missing_retention_emits_userwarning", async () => {
+describe("missing retention defaults to 30 with a warning", () => {
+  // python: TestRetentionWarning
+  it("missing retention emits userwarning", async () => {
+    // python: test_missing_retention_emits_userwarning
     const recorded: string[] = [];
     const ws = makeWorkspace({
       warn: (message) => {
@@ -234,8 +246,10 @@ describe("missing retention defaults to 30 with a warning (TestRetentionWarning)
 // events_for_replay validation
 // =============================================================================
 
-describe("the 5-property cap (TestEventsForReplayValidation)", () => {
-  it("test_six_properties_raises_valueerror", async () => {
+describe("the 5-property cap", () => {
+  // python: TestEventsForReplayValidation
+  it("six properties raises valueerror", async () => {
+    // python: test_six_properties_raises_valueerror
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -247,7 +261,8 @@ describe("the 5-property cap (TestEventsForReplayValidation)", () => {
     );
   });
 
-  it("test_six_properties_raises_for_batched_variant", async () => {
+  it("six properties raises for batched variant", async () => {
+    // python: test_six_properties_raises_for_batched_variant
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -259,7 +274,8 @@ describe("the 5-property cap (TestEventsForReplayValidation)", () => {
     );
   });
 
-  it("test_five_properties_ok", async () => {
+  it("five properties ok", async () => {
+    // python: test_five_properties_ok
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     await ws.eventsForReplay("r-1", {

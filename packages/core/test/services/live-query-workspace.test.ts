@@ -122,9 +122,10 @@ function lastKwargs(calls: readonly RecordedCall[]): InlineQueryScope {
   return last?.options ?? {};
 }
 
-describe("TestWorkspacePassthrough", () => {
+describe("Workspace passthrough", () => {
+  // python: TestWorkspacePassthrough
   it.each(INSIGHTS_METHODS)(
-    "test_insights_methods_forward_workspace[%s]",
+    "insights methods forward workspace[%s]", // python: test_insights_methods_forward_workspace
     async (method) => {
       const mock = mockApiClient();
       const service = new LiveQueryService(mock.client);
@@ -135,7 +136,7 @@ describe("TestWorkspacePassthrough", () => {
   );
 
   it.each(INSIGHTS_METHODS)(
-    "test_insights_methods_default_to_none[%s]",
+    "insights methods default to null[%s]", // python: test_insights_methods_default_to_none
     async (method) => {
       const mock = mockApiClient();
       const service = new LiveQueryService(mock.client);
@@ -145,7 +146,8 @@ describe("TestWorkspacePassthrough", () => {
     },
   );
 
-  it("test_query_flow_forwards_workspace", async () => {
+  it("query flow forwards workspace", async () => {
+    // python: test_query_flow_forwards_workspace
     const mock = mockApiClient();
     const service = new LiveQueryService(mock.client);
     await service.queryFlow({ steps: [] }, 12345, "sankey", {
@@ -156,7 +158,7 @@ describe("TestWorkspacePassthrough", () => {
   });
 
   it.each(INSIGHTS_METHODS)(
-    "test_insights_methods_forward_pin_opt_out[%s]",
+    "insights methods forward pin opt out[%s]", // python: test_insights_methods_forward_pin_opt_out
     async (method) => {
       const mock = mockApiClient();
       const service = new LiveQueryService(mock.client);
@@ -169,7 +171,7 @@ describe("TestWorkspacePassthrough", () => {
   );
 
   it.each(INSIGHTS_METHODS)(
-    "test_insights_methods_default_to_pin_injection[%s]",
+    "insights methods default to pin injection[%s]", // python: test_insights_methods_default_to_pin_injection
     async (method) => {
       const mock = mockApiClient();
       const service = new LiveQueryService(mock.client);
@@ -179,7 +181,8 @@ describe("TestWorkspacePassthrough", () => {
     },
   );
 
-  it("test_query_flow_forwards_pin_opt_out", async () => {
+  it("query flow forwards pin opt out", async () => {
+    // python: test_query_flow_forwards_pin_opt_out
     const mock = mockApiClient();
     const service = new LiveQueryService(mock.client);
     await service.queryFlow({ steps: [] }, 12345, "sankey", {
@@ -189,7 +192,8 @@ describe("TestWorkspacePassthrough", () => {
     expect(lastKwargs(mock.arbFunnelsCalls).inject_workspace_id).toBe(false);
   });
 
-  it("test_query_flow_defaults_to_none", async () => {
+  it("query flow defaults to null", async () => {
+    // python: test_query_flow_defaults_to_none
     const mock = mockApiClient();
     const service = new LiveQueryService(mock.client);
     await service.queryFlow({ steps: [] }, 12345);

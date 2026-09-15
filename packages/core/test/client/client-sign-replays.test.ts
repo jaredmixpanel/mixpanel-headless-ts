@@ -27,8 +27,10 @@ function usCredentials(): Session {
   });
 }
 
-describe("TestSignReplaysRequest", () => {
-  it("test_posts_to_bulk_endpoint", async () => {
+describe("Sign replays request", () => {
+  // python: TestSignReplaysRequest
+  it("posts to bulk endpoint", async () => {
+    // python: test_posts_to_bulk_endpoint
     const captured: { method?: string; url?: string } = {};
     const { client } = createMockClient(usCredentials(), (request) => {
       captured.method = request.method;
@@ -42,7 +44,8 @@ describe("TestSignReplaysRequest", () => {
     );
   });
 
-  it("test_request_body_shape", async () => {
+  it("request body shape", async () => {
+    // python: test_request_body_shape
     const captured: { body?: unknown } = {};
     const { client } = createMockClient(usCredentials(), (request) => {
       captured.body = parseBody(request.bodyText);
@@ -57,7 +60,8 @@ describe("TestSignReplaysRequest", () => {
     });
   });
 
-  it("test_request_body_propagates_env_dev", async () => {
+  it("request body propagates env dev", async () => {
+    // python: test_request_body_propagates_env_dev
     const captured: { body?: Record<string, Array<Record<string, unknown>>> } =
       {};
     const { client } = createMockClient(usCredentials(), (request) => {
@@ -71,7 +75,8 @@ describe("TestSignReplaysRequest", () => {
     expect(captured.body?.["replays"]?.[0]?.["replay_env"]).toBe("dev");
   });
 
-  it("test_returns_raw_results_list", async () => {
+  it("returns raw results list", async () => {
+    // python: test_returns_raw_results_list
     const responseResults = [
       {
         replay_id: "r-1",
@@ -94,7 +99,8 @@ describe("TestSignReplaysRequest", () => {
     expect(result).toStrictEqual(responseResults);
   });
 
-  it("test_default_env_is_prod", async () => {
+  it("default env is prod", async () => {
+    // python: test_default_env_is_prod
     const captured: { body?: Record<string, Array<Record<string, unknown>>> } =
       {};
     const { client } = createMockClient(usCredentials(), (request) => {

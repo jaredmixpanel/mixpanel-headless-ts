@@ -64,7 +64,8 @@ function experimentJson(
 // TestWorkspaceExperimentCRUD
 // =============================================================================
 
-describe("TestWorkspaceExperimentCRUD", () => {
+describe("Workspace experiment CRUD", () => {
+  // python: TestWorkspaceExperimentCRUD
   it("list_experiments() returns list of Experiment objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
@@ -141,7 +142,8 @@ describe("TestWorkspaceExperimentCRUD", () => {
 // TestWorkspaceExperimentLifecycle
 // =============================================================================
 
-describe("TestWorkspaceExperimentLifecycle", () => {
+describe("Workspace experiment lifecycle", () => {
+  // python: TestWorkspaceExperimentLifecycle
   it("launch_experiment() returns the launched Experiment", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("xyz-456", "Test Experiment", "active")),
@@ -203,7 +205,8 @@ describe("TestWorkspaceExperimentLifecycle", () => {
 // TestWorkspaceExperimentManagement
 // =============================================================================
 
-describe("TestWorkspaceExperimentManagement", () => {
+describe("Workspace experiment management", () => {
+  // python: TestWorkspaceExperimentManagement
   it("archive_experiment() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.archiveExperiment("xyz-456")).resolves.toBeUndefined();

@@ -125,8 +125,10 @@ const networkErrorHandler: Handler = () => {
 
 // ---- tests -----------------------------------------------------------
 
-describe("TestProbeRegionHappyPaths", () => {
-  it("test_us_succeeds_first_short_circuits", async () => {
+describe("Probe region happy paths", () => {
+  // python: TestProbeRegionHappyPaths
+  it("us succeeds first short circuits", async () => {
+    // python: test_us_succeeds_first_short_circuits
     const visited: Region[] = [];
     const factory = factoryFor(
       { us: okHandler, eu: okHandler, in: okHandler },
@@ -142,7 +144,8 @@ describe("TestProbeRegionHappyPaths", () => {
     expect(visited).toStrictEqual(["us"]);
   });
 
-  it("test_eu_succeeds_after_us_fails", async () => {
+  it("EU succeeds after us fails", async () => {
+    // python: test_eu_succeeds_after_us_fails
     const visited: Region[] = [];
     const factory = factoryFor(
       { us: unauthHandler, eu: okHandler, in: okHandler },
@@ -157,7 +160,8 @@ describe("TestProbeRegionHappyPaths", () => {
     expect(visited).toStrictEqual(["us", "eu"]);
   });
 
-  it("test_in_succeeds_after_us_and_eu_fail", async () => {
+  it("in succeeds after us and EU fail", async () => {
+    // python: test_in_succeeds_after_us_and_eu_fail
     const visited: Region[] = [];
     const factory = factoryFor(
       { us: unauthHandler, eu: unauthHandler, in: okHandler },
@@ -174,8 +178,10 @@ describe("TestProbeRegionHappyPaths", () => {
   });
 });
 
-describe("TestProbeRegionErrorPaths", () => {
-  it("test_all_regions_401_raises_with_full_attempts", async () => {
+describe("Probe region error paths", () => {
+  // python: TestProbeRegionErrorPaths
+  it("all regions 401 raises with full attempts", async () => {
+    // python: test_all_regions_401_raises_with_full_attempts
     const factory = factoryFor({
       us: unauthHandler,
       eu: unauthHandler,
@@ -198,7 +204,8 @@ describe("TestProbeRegionErrorPaths", () => {
     }
   });
 
-  it("test_network_error_rendered_as_status_zero", async () => {
+  it("network error rendered as status zero", async () => {
+    // python: test_network_error_rendered_as_status_zero
     const factory = factoryFor({
       us: networkErrorHandler,
       eu: unauthHandler,
@@ -223,7 +230,8 @@ describe("TestProbeRegionErrorPaths", () => {
     ).toBe(true);
   });
 
-  it("test_all_network_errors_raise_network_subclass", async () => {
+  it("all network errors raise network subclass", async () => {
+    // python: test_all_network_errors_raise_network_subclass
     const factory = factoryFor({
       us: networkErrorHandler,
       eu: networkErrorHandler,
@@ -252,7 +260,8 @@ describe("TestProbeRegionErrorPaths", () => {
     }
   });
 
-  it("test_mixed_network_and_auth_failure_raises_generic", async () => {
+  it("mixed network and auth failure raises generic", async () => {
+    // python: test_mixed_network_and_auth_failure_raises_generic
     const factory = factoryFor({
       us: networkErrorHandler,
       eu: networkErrorHandler,
@@ -270,8 +279,10 @@ describe("TestProbeRegionErrorPaths", () => {
   });
 });
 
-describe("TestProbeRegionOrdering", () => {
-  it("test_custom_order_eu_first", async () => {
+describe("Probe region ordering", () => {
+  // python: TestProbeRegionOrdering
+  it("custom order EU first", async () => {
+    // python: test_custom_order_eu_first
     const visited: Region[] = [];
     const factory = factoryFor(
       { eu: okHandler, us: okHandler, in: okHandler },
@@ -286,7 +297,8 @@ describe("TestProbeRegionOrdering", () => {
     expect(visited).toStrictEqual(["eu"]);
   });
 
-  it("test_custom_order_skips_unlisted_regions", async () => {
+  it("custom order skips unlisted regions", async () => {
+    // python: test_custom_order_skips_unlisted_regions
     const factory = factoryFor({
       eu: unauthHandler,
       us: okHandler,
@@ -307,8 +319,10 @@ describe("TestProbeRegionOrdering", () => {
   });
 });
 
-describe("TestProbeRegionTimeout", () => {
-  it("test_timeout_is_passed_to_request", async () => {
+describe("Probe region timeout", () => {
+  // python: TestProbeRegionTimeout
+  it("timeout is passed to request", async () => {
+    // python: test_timeout_is_passed_to_request
     const capturedTimeouts: number[] = [];
     const captureHandler: Handler = (captured) => {
       capturedTimeouts.push(captured.timeoutSeconds);
@@ -331,8 +345,10 @@ describe("TestProbeRegionTimeout", () => {
   });
 });
 
-describe("TestProbeRegionSendsHeaders", () => {
-  it("test_authorization_header_forwarded", async () => {
+describe("Probe region sends headers", () => {
+  // python: TestProbeRegionSendsHeaders
+  it("authorization header forwarded", async () => {
+    // python: test_authorization_header_forwarded
     const captured: Array<string | undefined> = [];
     const captureHandler: Handler = (got) => {
       captured.push(got.headers["Authorization"]);
@@ -347,7 +363,8 @@ describe("TestProbeRegionSendsHeaders", () => {
     expect(captured).toStrictEqual(["Basic SECRET"]);
   });
 
-  it("test_request_targets_me_endpoint", async () => {
+  it("request targets me endpoint", async () => {
+    // python: test_request_targets_me_endpoint
     const capturedPaths: string[] = [];
     const captureHandler: Handler = (got) => {
       capturedPaths.push(got.path);
@@ -363,8 +380,10 @@ describe("TestProbeRegionSendsHeaders", () => {
   });
 });
 
-describe("TestProbeRegionResponseBodyCap", () => {
-  it("test_oversized_response_body_truncated_to_4kib", async () => {
+describe("Probe region response body cap", () => {
+  // python: TestProbeRegionResponseBodyCap
+  it("oversized response body truncated to 4kib", async () => {
+    // python: test_oversized_response_body_truncated_to_4kib
     const bigBody = "x".repeat(100_000); // 100 KB
     const bigBodyHandler: Handler = () => ({ status: 401, text: bigBody });
     // Every region returns the same oversized 401 — we just want to
@@ -384,7 +403,8 @@ describe("TestProbeRegionResponseBodyCap", () => {
     }
   });
 
-  it("test_small_response_body_preserved_verbatim", async () => {
+  it("small response body preserved verbatim", async () => {
+    // python: test_small_response_body_preserved_verbatim
     const smallBody = '{"error": "credential rejected"}';
     const smallBodyHandler: Handler = () => ({ status: 401, text: smallBody });
     const factory = factoryFor({
@@ -403,13 +423,15 @@ describe("TestProbeRegionResponseBodyCap", () => {
   });
 });
 
-describe("TestRegionProbeFactoryURLStripping", () => {
+describe("Region probe factory URL stripping", () => {
+  // python: TestRegionProbeFactoryURLStripping
   // Header note: the Python class spies on `probe_region` via
   // monkeypatch to observe the factory's base URL. The TS twin asserts
   // the pure `probeBaseUrl` derivation directly AND observes the real
   // factory through an injected recording fetch (packet §2.4).
 
-  it("test_factory_drops_path_component_for_standard_endpoint", async () => {
+  it("factory drops path component for standard endpoint", async () => {
+    // python: test_factory_drops_path_component_for_standard_endpoint
     // Pure derivation (the `_factory` base computation, :276-277).
     expect(probeBaseUrl("https://mixpanel.com/api/app")).toBe(
       "https://mixpanel.com",
@@ -434,7 +456,8 @@ describe("TestRegionProbeFactoryURLStripping", () => {
     expect(seenUrls[0]).toBe("https://mixpanel.com/api/app/me");
   });
 
-  it("test_factory_handles_trailing_slash_endpoint", () => {
+  it("factory handles trailing slash endpoint", () => {
+    // python: test_factory_handles_trailing_slash_endpoint
     // Future `https://mixpanel.com/api/app/` (trailing slash) still
     // strips to the host root.
     expect(probeBaseUrl("https://mixpanel.com/api/app/")).toBe(

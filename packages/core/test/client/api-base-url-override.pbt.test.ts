@@ -84,7 +84,8 @@ function liveNow(): Record<string, Record<string, string>> {
 // ── Properties ────────────────────────────────────────────────────────
 
 describe("test_api_base_url_override_pbt", () => {
-  it("test_override_table_is_base_plus_prefix", () => {
+  it("override table is base plus prefix", () => {
+    // python: test_override_table_is_base_plus_prefix
     fc.assert(
       fc.property(baseUrls, slashRuns, regions, (base, slashes, region) => {
         const table = endpointsFor(region, {
@@ -103,7 +104,8 @@ describe("test_api_base_url_override_pbt", () => {
     );
   });
 
-  it("test_build_url_appends_normalised_path", () => {
+  it("build URL appends normalised path", () => {
+    // python: test_build_url_appends_normalised_path
     fc.assert(
       fc.property(
         baseUrls,
@@ -125,7 +127,8 @@ describe("test_api_base_url_override_pbt", () => {
     );
   });
 
-  it("test_unset_returns_live_table_untouched", () => {
+  it("unset returns live table untouched", () => {
+    // python: test_unset_returns_live_table_untouched
     fc.assert(
       fc.property(regions, (region) => {
         const table = endpointsFor(region, {});
@@ -135,7 +138,8 @@ describe("test_api_base_url_override_pbt", () => {
     );
   });
 
-  it("test_resolving_override_never_mutates_live_table", () => {
+  it("resolving override never mutates live table", () => {
+    // python: test_resolving_override_never_mutates_live_table
     fc.assert(
       fc.property(baseUrls, slashRuns, regions, (base, slashes, region) => {
         endpointsFor(region, { apiBaseUrl: `${base}${slashes}` });

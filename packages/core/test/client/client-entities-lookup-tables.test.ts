@@ -28,8 +28,10 @@ function oauthCredentials(): Session {
 // Domain 12 — Lookup Tables (US6)
 // ---------------------------------------------------------------------------
 
-describe("TestListLookupTables", () => {
-  it("test_returns_list", async () => {
+describe("List lookup tables", () => {
+  // python: TestListLookupTables
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -44,7 +46,8 @@ describe("TestListLookupTables", () => {
     expect(result[0]?.["name"]).toBe("Plans");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -54,7 +57,8 @@ describe("TestListLookupTables", () => {
     expect(capturedUrls[0]).toContain("/data-definitions/lookup-tables/");
   });
 
-  it("test_data_group_id_param", async () => {
+  it("data group ID param", async () => {
+    // python: test_data_group_id_param
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -64,7 +68,8 @@ describe("TestListLookupTables", () => {
     expect(capturedUrls[0]).toContain("data-group-id=5");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -75,8 +80,10 @@ describe("TestListLookupTables", () => {
   });
 });
 
-describe("TestGetLookupUploadUrl", () => {
-  it("test_returns_dict", async () => {
+describe("Get lookup upload URL", () => {
+  // python: TestGetLookupUploadUrl
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -97,7 +104,8 @@ describe("TestGetLookupUploadUrl", () => {
     expect(Object.keys(result)).toContain("key");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -112,7 +120,8 @@ describe("TestGetLookupUploadUrl", () => {
     );
   });
 
-  it("test_content_type_param", async () => {
+  it("content type param", async () => {
+    // python: test_content_type_param
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -130,8 +139,10 @@ describe("TestGetLookupUploadUrl", () => {
   });
 });
 
-describe("TestUploadToSignedUrl", () => {
-  it("test_returns_none", async () => {
+describe("Upload to signed URL", () => {
+  // python: TestUploadToSignedUrl
+  it("returns null", async () => {
+    // python: test_returns_none
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.url]);
@@ -144,7 +155,8 @@ describe("TestUploadToSignedUrl", () => {
     expect(captured[0]?.[0]).toBe("PUT");
   });
 
-  it("test_targets_external_url", async () => {
+  it("targets external URL", async () => {
+    // python: test_targets_external_url
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -158,8 +170,10 @@ describe("TestUploadToSignedUrl", () => {
   });
 });
 
-describe("TestRegisterLookupTable", () => {
-  it("test_returns_dict", async () => {
+describe("Register lookup table", () => {
+  // python: TestRegisterLookupTable
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.headers["content-type"] ?? ""]);
@@ -181,7 +195,8 @@ describe("TestRegisterLookupTable", () => {
     expect(result["data_group_id"]).toBe(10);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -195,8 +210,10 @@ describe("TestRegisterLookupTable", () => {
   });
 });
 
-describe("TestMarkLookupTableReady", () => {
-  it("test_returns_dict", async () => {
+describe("Mark lookup table ready", () => {
+  // python: TestMarkLookupTableReady
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, string]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, request.headers["content-type"] ?? ""]);
@@ -215,7 +232,8 @@ describe("TestMarkLookupTableReady", () => {
     expect(result["status"]).toBe("ready");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -229,8 +247,10 @@ describe("TestMarkLookupTableReady", () => {
   });
 });
 
-describe("TestGetLookupUploadStatus", () => {
-  it("test_returns_dict", async () => {
+describe("Get lookup upload status", () => {
+  // python: TestGetLookupUploadStatus
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -245,7 +265,8 @@ describe("TestGetLookupUploadStatus", () => {
     expect(result["state"]).toBe("complete");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -259,8 +280,10 @@ describe("TestGetLookupUploadStatus", () => {
   });
 });
 
-describe("TestUpdateLookupTable", () => {
-  it("test_returns_dict", async () => {
+describe("Update lookup table", () => {
+  // python: TestUpdateLookupTable
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -279,7 +302,8 @@ describe("TestUpdateLookupTable", () => {
     expect(result["name"]).toBe("Updated Table");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -298,8 +322,10 @@ describe("TestUpdateLookupTable", () => {
   });
 });
 
-describe("TestDeleteLookupTables", () => {
-  it("test_returns_none", async () => {
+describe("Delete lookup tables", () => {
+  // python: TestDeleteLookupTables
+  it("returns null", async () => {
+    // python: test_returns_none
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -310,7 +336,8 @@ describe("TestDeleteLookupTables", () => {
     expect(captured[0]?.[1]).toStrictEqual({ "data-group-ids": [1, 2, 3] });
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -321,8 +348,10 @@ describe("TestDeleteLookupTables", () => {
   });
 });
 
-describe("TestDownloadLookupTable", () => {
-  it("test_returns_bytes", async () => {
+describe("Download lookup table", () => {
+  // python: TestDownloadLookupTable
+  it("returns bytes", async () => {
+    // python: test_returns_bytes
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       text: "col1,col2\nval1,val2",
@@ -333,7 +362,8 @@ describe("TestDownloadLookupTable", () => {
     expect(new TextDecoder().decode(result)).toContain("col1,col2");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -346,7 +376,8 @@ describe("TestDownloadLookupTable", () => {
     expect(capturedUrls[0]).toContain("data-group-id=5");
   });
 
-  it("test_optional_params", async () => {
+  it("optional params", async () => {
+    // python: test_optional_params
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -362,8 +393,10 @@ describe("TestDownloadLookupTable", () => {
   });
 });
 
-describe("TestGetLookupDownloadUrl", () => {
-  it("test_returns_str", async () => {
+describe("Get lookup download URL", () => {
+  // python: TestGetLookupDownloadUrl
+  it("returns str", async () => {
+    // python: test_returns_str
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -376,7 +409,8 @@ describe("TestGetLookupDownloadUrl", () => {
     expect(result).toContain("storage.googleapis.com");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -392,7 +426,8 @@ describe("TestGetLookupDownloadUrl", () => {
     expect(capturedUrls[0]).toContain("data-group-id=5");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -406,8 +441,10 @@ describe("TestGetLookupDownloadUrl", () => {
   });
 });
 
-describe("TestGetLookupUploadUrlMissingKeys", () => {
-  it("test_get_lookup_upload_url_missing_keys", async () => {
+describe("Get lookup upload URL missing keys", () => {
+  // python: TestGetLookupUploadUrlMissingKeys
+  it("get lookup upload URL missing keys", async () => {
+    // python: test_get_lookup_upload_url_missing_keys
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { url: "https://example.com" } },
@@ -418,8 +455,10 @@ describe("TestGetLookupUploadUrlMissingKeys", () => {
   });
 });
 
-describe("TestUploadToSignedUrlNetworkFailure", () => {
-  it("test_upload_to_signed_url_network_failure", async () => {
+describe("Upload to signed URL network failure", () => {
+  // python: TestUploadToSignedUrlNetworkFailure
+  it("upload to signed URL network failure", async () => {
+    // python: test_upload_to_signed_url_network_failure
     const { client } = createMockClient(oauthCredentials(), () => {
       throw new TypeError("Connection refused");
     });
@@ -432,8 +471,10 @@ describe("TestUploadToSignedUrlNetworkFailure", () => {
   });
 });
 
-describe("TestRegisterLookupTableNonJsonResponse", () => {
-  it("test_register_lookup_table_non_json_response", async () => {
+describe("Register lookup table non JSON response", () => {
+  // python: TestRegisterLookupTableNonJsonResponse
+  it("register lookup table non JSON response", async () => {
+    // python: test_register_lookup_table_non_json_response
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       text: "<html>Server Error</html>",

@@ -46,11 +46,13 @@ function eventName(value: JsonValue): unknown {
   return (toNativeJson(value) as { event?: unknown }).event;
 }
 
-describe("TestEventExport", () => {
+describe("Event export", () => {
+  // python: TestEventExport
   const mockData =
     '{"event":"A","properties":{"time":1}}\n{"event":"B","properties":{"time":2}}\n';
 
-  it("test_export_events_returns_iterator", () => {
+  it("export events returns iterator", () => {
+    // python: test_export_events_returns_iterator
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
       text: mockData,
@@ -61,7 +63,8 @@ describe("TestEventExport", () => {
     expect(typeof result.next).toBe("function");
   });
 
-  it("test_jsonl_parsing_line_by_line", async () => {
+  it("JSONL parsing line by line", async () => {
+    // python: test_jsonl_parsing_line_by_line
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
       text: mockData,
@@ -72,7 +75,8 @@ describe("TestEventExport", () => {
     expect(eventName(events[1] as JsonValue)).toBe("B");
   });
 
-  it("test_on_batch_callback", async () => {
+  it("on batch callback", async () => {
+    // python: test_on_batch_callback
     const lines: string[] = [];
     for (let i = 0; i < 1500; i += 1) {
       lines.push(JSON.stringify({ event: `E${i}`, properties: { time: i } }));
@@ -93,7 +97,8 @@ describe("TestEventExport", () => {
     expect(batchCounts).toContain(1500);
   });
 
-  it("test_event_name_filtering", async () => {
+  it("event name filtering", async () => {
+    // python: test_event_name_filtering
     let capturedUrl = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedUrl = request.url;
@@ -107,7 +112,8 @@ describe("TestEventExport", () => {
     expect(capturedUrl.includes("event=")).toBe(true);
   });
 
-  it("test_malformed_json_skipped", async () => {
+  it("malformed JSON skipped", async () => {
+    // python: test_malformed_json_skipped
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
       text: '{"event":"A","properties":{"time":1}}\nNOT JSON\n{"event":"B","properties":{"time":2}}\n',
@@ -118,7 +124,8 @@ describe("TestEventExport", () => {
     expect(eventName(events[1] as JsonValue)).toBe("B");
   });
 
-  it("test_export_events_with_limit", async () => {
+  it("export events with limit", async () => {
+    // python: test_export_events_with_limit
     let capturedUrl = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedUrl = request.url;
@@ -130,7 +137,8 @@ describe("TestEventExport", () => {
     expect(capturedUrl.includes("limit=1000")).toBe(true);
   });
 
-  it("test_export_events_without_limit", async () => {
+  it("export events without limit", async () => {
+    // python: test_export_events_without_limit
     let capturedUrl = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedUrl = request.url;
@@ -140,7 +148,8 @@ describe("TestEventExport", () => {
     expect(capturedUrl.includes("limit=")).toBe(false);
   });
 
-  it("test_export_events_limit_with_other_params", async () => {
+  it("export events limit with other params", async () => {
+    // python: test_export_events_limit_with_other_params
     let capturedUrl = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedUrl = request.url;
@@ -159,8 +168,10 @@ describe("TestEventExport", () => {
   });
 });
 
-describe("TestRequestEncodingRegression", () => {
-  it("test_profile_export_uses_json_body", async () => {
+describe("Request encoding regression", () => {
+  // python: TestRequestEncodingRegression
+  it("profile export uses JSON body", async () => {
+    // python: test_profile_export_uses_json_body
     let capturedContentType = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedContentType = request.headers["content-type"] ?? "";
@@ -171,8 +182,10 @@ describe("TestRequestEncodingRegression", () => {
   });
 });
 
-describe("TestRetryStateResetRegression", () => {
-  it("test_batch_count_resets_on_retry", async () => {
+describe("Retry state reset regression", () => {
+  // python: TestRetryStateResetRegression
+  it("batch count resets on retry", async () => {
+    // python: test_batch_count_resets_on_retry
     const lines: string[] = [];
     for (let i = 0; i < 1500; i += 1) {
       lines.push(JSON.stringify({ event: `E${i}`, properties: { time: i } }));
@@ -211,7 +224,8 @@ describe("TestRetryStateResetRegression", () => {
     expect(lastAttemptCounts).toContain(1500);
   });
 
-  it("test_profile_page_count_resets_on_retry", async () => {
+  it("profile page count resets on retry", async () => {
+    // python: test_profile_page_count_resets_on_retry
     let attempt = 0;
     const currentAttemptCounts: number[] = [];
     const handler = (): CannedResponse => {
@@ -241,7 +255,8 @@ describe("TestRetryStateResetRegression", () => {
     expect(currentAttemptCounts).toStrictEqual([1]);
   });
 
-  it("test_multiple_retries_dont_accumulate_state", async () => {
+  it("multiple retries dont accumulate state", async () => {
+    // python: test_multiple_retries_dont_accumulate_state
     const lines: string[] = [];
     for (let i = 0; i < 5; i += 1) {
       lines.push(JSON.stringify({ event: `E${i}`, properties: { time: i } }));
@@ -262,7 +277,8 @@ describe("TestRetryStateResetRegression", () => {
     expect(events).toHaveLength(5);
   });
 
-  it("test_stream_rate_limit_error_carries_project_id", async () => {
+  it("stream rate limit error carries project ID", async () => {
+    // python: test_stream_rate_limit_error_carries_project_id
     const { client } = createMockClient(
       makeSession(),
       () => ({ status: 429, headers: { "Retry-After": "0" } }),
@@ -279,8 +295,10 @@ describe("TestRetryStateResetRegression", () => {
   });
 });
 
-describe("TestRetryAfterHardening (export slice)", () => {
-  it("test_export_events_negative_retry_after_uses_backoff", async () => {
+describe("Retry after hardening (export slice)", () => {
+  // python: TestRetryAfterHardening
+  it("export events negative retry after uses backoff", async () => {
+    // python: test_export_events_negative_retry_after_uses_backoff
     let calls = 0;
     const handler = (): CannedResponse => {
       calls += 1;
@@ -301,8 +319,10 @@ describe("TestRetryAfterHardening (export slice)", () => {
   });
 });
 
-describe("TestNonQueryHostsUnaffected (C1 hand-off)", () => {
-  it("test_export_stream_carries_no_workspace_id_param", async () => {
+describe("Non query hosts unaffected (C1 hand-off)", () => {
+  // python: TestNonQueryHostsUnaffected
+  it("export stream carries no workspace ID param", async () => {
+    // python: test_export_stream_carries_no_workspace_id_param
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(
       makeSession({ workspaceId: 777 }),

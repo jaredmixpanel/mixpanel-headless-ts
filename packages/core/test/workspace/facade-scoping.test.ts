@@ -69,7 +69,8 @@ describe("workspace facade scoping (session-pinned half)", () => {
 // translatable because `Workspace.use()` is live).
 // ---------------------------------------------------------------------------
 
-describe("TestWorkspaceFacadeScoping (test_query_workspace_scoping.py:379)", () => {
+describe("Workspace facade scoping", () => {
+  // python: TestWorkspaceFacadeScoping
   it("use({workspace: N}) then events() sends the pin", async () => {
     const canned: CannedResponse = { status: 200, json: ["Login"] };
     const { client, transport } = createMockClient(makeSession(), () => canned);
@@ -84,7 +85,8 @@ describe("TestWorkspaceFacadeScoping (test_query_workspace_scoping.py:379)", () 
   });
 });
 
-describe("TestDiscoveryCacheAcrossUse (test_query_workspace_scoping.py:401)", () => {
+describe("Discovery cache across use", () => {
+  // python: TestDiscoveryCacheAcrossUse
   it("use() discards the cached discovery results", async () => {
     const canned: CannedResponse = { status: 200, json: ["Login"] };
     const { client, transport } = createMockClient(makeSession(), () => canned);

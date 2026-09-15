@@ -56,8 +56,10 @@ function native(items: readonly JsonValue[]): unknown[] {
   return items.map((item) => toNativeJson(item));
 }
 
-describe("TestPaginateAll", () => {
-  it("test_yields_all_results_across_pages", async () => {
+describe("Paginate all", () => {
+  // python: TestPaginateAll
+  it("yields all results across pages", async () => {
+    // python: test_yields_all_results_across_pages
     let callCount = 0;
     const { client } = createMockClient(
       oauthCredentials(),
@@ -94,7 +96,8 @@ describe("TestPaginateAll", () => {
     expect(callCount).toBe(2);
   });
 
-  it("test_follows_next_cursor_until_none", async () => {
+  it("follows next cursor until null", async () => {
+    // python: test_follows_next_cursor_until_none
     const cursorsSeen: Array<string | null> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -136,7 +139,8 @@ describe("TestPaginateAll", () => {
     expect(cursorsSeen).toStrictEqual([null, "c2", "c3"]);
   });
 
-  it("test_handles_empty_results", async () => {
+  it("handles empty results", async () => {
+    // python: test_handles_empty_results
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -154,7 +158,8 @@ describe("TestPaginateAll", () => {
     expect(items).toStrictEqual([]);
   });
 
-  it("test_handles_missing_pagination_field", async () => {
+  it("handles missing pagination field", async () => {
+    // python: test_handles_missing_pagination_field
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -168,7 +173,8 @@ describe("TestPaginateAll", () => {
     expect(native(items)).toStrictEqual([{ id: 1 }, { id: 2 }]);
   });
 
-  it("test_respects_page_size_parameter", async () => {
+  it("respects page size parameter", async () => {
+    // python: test_respects_page_size_parameter
     const capturedParams: Array<Record<string, string>> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -190,7 +196,8 @@ describe("TestPaginateAll", () => {
     expect(capturedParams[0]?.["page_size"]).toBe("25");
   });
 
-  it("test_passes_additional_params", async () => {
+  it("passes additional params", async () => {
+    // python: test_passes_additional_params
     const capturedParams: Array<Record<string, string>> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -214,7 +221,8 @@ describe("TestPaginateAll", () => {
     expect(capturedParams[0]?.["include_archived"]).toBe("true");
   });
 
-  it("test_injects_query_origin_telemetry", async () => {
+  it("injects query origin telemetry", async () => {
+    // python: test_injects_query_origin_telemetry
     const capturedParams: Array<Record<string, string>> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -234,7 +242,8 @@ describe("TestPaginateAll", () => {
     expect(capturedParams[0]?.["query_origin"]).toBe("mixpanel-headless");
   });
 
-  it("test_canonical_query_origin_wins_over_caller", async () => {
+  it("canonical query origin wins over caller", async () => {
+    // python: test_canonical_query_origin_wins_over_caller
     const capturedParams: Array<Record<string, string>> = [];
     const { client } = createMockClient(
       oauthCredentials(),
@@ -258,7 +267,8 @@ describe("TestPaginateAll", () => {
     expect(capturedParams[0]?.["query_origin"]).toBe("mixpanel-headless");
   });
 
-  it("test_handles_response_without_results_key", async () => {
+  it("handles response without results key", async () => {
+    // python: test_handles_response_without_results_key
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -271,8 +281,10 @@ describe("TestPaginateAll", () => {
   });
 });
 
-describe("TestPaginateAllRobustness", () => {
-  it("test_infinite_loop_same_cursor", async () => {
+describe("Paginate all robustness", () => {
+  // python: TestPaginateAllRobustness
+  it("infinite loop same cursor", async () => {
+    // python: test_infinite_loop_same_cursor
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -290,7 +302,8 @@ describe("TestPaginateAllRobustness", () => {
     ).rejects.toThrow(/maximum page limit/);
   });
 
-  it("test_non_json_response", async () => {
+  it("non JSON response", async () => {
+    // python: test_non_json_response
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -330,7 +343,8 @@ describe("TestPaginateAllRobustness", () => {
     expect(error.message).toMatch(/Non-JSON response during pagination/);
   });
 
-  it("test_http_429_mid_pagination", async () => {
+  it("HTTP 429 mid pagination", async () => {
+    // python: test_http_429_mid_pagination
     let callCount = 0;
     const { client, sleeps } = createMockClient(
       oauthCredentials(),
@@ -361,7 +375,8 @@ describe("TestPaginateAllRobustness", () => {
     expect(sleeps).toStrictEqual([30_000, 30_000, 30_000]);
   });
 
-  it("test_http_500_mid_pagination", async () => {
+  it("HTTP 500 mid pagination", async () => {
+    // python: test_http_500_mid_pagination
     let callCount = 0;
     const { client } = createMockClient(
       oauthCredentials(),
@@ -385,7 +400,8 @@ describe("TestPaginateAllRobustness", () => {
     ).rejects.toThrow(ServerError);
   });
 
-  it("test_http_401_mid_pagination", async () => {
+  it("HTTP 401 mid pagination", async () => {
+    // python: test_http_401_mid_pagination
     let callCount = 0;
     const { client } = createMockClient(
       oauthCredentials(),
@@ -410,8 +426,10 @@ describe("TestPaginateAllRobustness", () => {
   });
 });
 
-describe("TestPaginateAllMalformedResults", () => {
-  it("test_null_results_treated_as_empty_page", async () => {
+describe("Paginate all malformed results", () => {
+  // python: TestPaginateAllMalformedResults
+  it("null results treated as empty page", async () => {
+    // python: test_null_results_treated_as_empty_page
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({
@@ -427,7 +445,8 @@ describe("TestPaginateAllMalformedResults", () => {
     expect(items).toStrictEqual([]);
   });
 
-  it("test_null_results_still_follows_next_cursor", async () => {
+  it("null results still follows next cursor", async () => {
+    // python: test_null_results_still_follows_next_cursor
     let callCount = 0;
     const { client } = createMockClient(
       oauthCredentials(),
@@ -464,7 +483,7 @@ describe("TestPaginateAllMalformedResults", () => {
     ["dict", { id: 1 }],
     ["bool", true],
   ])(
-    "test_non_list_results_raises_invalid_response[%s]",
+    "non list results raises invalid response[%s]", // python: test_non_list_results_raises_invalid_response
     async (_label: string, resultsValue: unknown) => {
       const { client } = createMockClient(
         oauthCredentials(),
@@ -537,8 +556,10 @@ async function runRateLimitedPagination(
   return { durations: sleeps, raised };
 }
 
-describe("TestPaginateAllRetryAfter", () => {
-  it("test_valid_retry_after_is_honored", async () => {
+describe("Paginate all retry after", () => {
+  // python: TestPaginateAllRetryAfter
+  it("valid retry after is honored", async () => {
+    // python: test_valid_retry_after_is_honored
     const { durations, raised } = await runRateLimitedPagination("30");
     expect(durations).toStrictEqual([30_000]);
     expect(raised).toStrictEqual([]);
@@ -555,7 +576,7 @@ describe("TestPaginateAllRetryAfter", () => {
     ["empty", ""],
     ["thousands-separator", "1,000"],
   ])(
-    "test_hostile_retry_after_falls_back_to_backoff[%s]",
+    "hostile retry after falls back to backoff[%s]", // python: test_hostile_retry_after_falls_back_to_backoff
     async (_label: string, retryAfter: string) => {
       const { durations, raised } = await runRateLimitedPagination(retryAfter);
       expect(durations).toStrictEqual([1_000]);
@@ -568,7 +589,7 @@ describe("TestPaginateAllRetryAfter", () => {
     ["exponent", "1e9"],
     ["one-day", "86400"],
   ])(
-    "test_oversized_retry_after_is_clamped[%s]",
+    "oversized retry after is clamped[%s]", // python: test_oversized_retry_after_is_clamped
     async (_label: string, retryAfter: string) => {
       const { durations, raised } = await runRateLimitedPagination(retryAfter);
       expect(durations).toStrictEqual([PAGINATION_BACKOFF_MAX_SECONDS * 1000]);
@@ -576,13 +597,15 @@ describe("TestPaginateAllRetryAfter", () => {
     },
   );
 
-  it("test_missing_retry_after_uses_exponential_backoff", async () => {
+  it("missing retry after uses exponential backoff", async () => {
+    // python: test_missing_retry_after_uses_exponential_backoff
     const { durations, raised } = await runRateLimitedPagination(null);
     expect(durations).toStrictEqual([1_000]);
     expect(raised).toStrictEqual([]);
   });
 
-  it("test_exhausted_retries_backoff_schedule_is_bounded", async () => {
+  it("exhausted retries backoff schedule is bounded", async () => {
+    // python: test_exhausted_retries_backoff_schedule_is_bounded
     const { durations, raised } = await runRateLimitedPagination("inf", true);
     expect(durations).toStrictEqual([1_000, 2_000, 4_000]);
     expect(durations).toHaveLength(MAX_RATE_LIMIT_RETRIES);
@@ -600,7 +623,7 @@ describe("TestPaginateAllRetryAfter", () => {
     ["infinity", "inf"],
     ["garbage", "abc"],
   ])(
-    "test_hostile_retry_after_not_reported_on_error[%s]",
+    "hostile retry after not reported on error[%s]", // python: test_hostile_retry_after_not_reported_on_error
     async (_label: string, retryAfter: string) => {
       const { raised } = await runRateLimitedPagination(retryAfter, true);
       expect(raised[0]).toBeInstanceOf(RateLimitError);
@@ -608,7 +631,8 @@ describe("TestPaginateAllRetryAfter", () => {
     },
   );
 
-  it("test_valid_retry_after_reported_on_error", async () => {
+  it("valid retry after reported on error", async () => {
+    // python: test_valid_retry_after_reported_on_error
     const { raised } = await runRateLimitedPagination("45", true);
     expect(raised[0]).toBeInstanceOf(RateLimitError);
     expect((raised[0] as RateLimitError).retryAfter).toBe(45);

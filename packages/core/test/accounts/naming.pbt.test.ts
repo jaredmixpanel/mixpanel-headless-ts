@@ -65,8 +65,8 @@ const meResponses = fc
       : new MeResponse({ organizations: {} }),
   );
 
-describe("naming PBT (test_naming_pbt.py)", () => {
-  it("slugify is idempotent (:45)", () => {
+describe("naming PBT", () => {
+  it("slugify is idempotent", () => {
     fc.assert(
       fc.property(orgNames, (value) => {
         const once = slugify(value);
@@ -76,7 +76,7 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     );
   });
 
-  it("non-empty output matches ^[a-z0-9-]{1,32}$ (:53)", () => {
+  it("non-empty output matches ^[a-z0-9-]{1,32}$", () => {
     fc.assert(
       fc.property(orgNames, (value) => {
         const result = slugify(value);
@@ -87,7 +87,7 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     );
   });
 
-  it("never produces leading or trailing dash (:63)", () => {
+  it("never produces leading or trailing dash", () => {
     fc.assert(
       fc.property(orgNames, (value) => {
         const result = slugify(value);
@@ -98,7 +98,7 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     );
   });
 
-  it("no consecutive dashes (:72)", () => {
+  it("no consecutive dashes", () => {
     fc.assert(
       fc.property(orgNames, (value) => {
         expect(slugify(value)).not.toContain("--");
@@ -107,7 +107,7 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     );
   });
 
-  it("default_account_name never returns a name in existing (:101)", () => {
+  it("default_account_name never returns a name in existing", () => {
     fc.assert(
       fc.property(meResponses, existingSets, (me, existing) => {
         expect(existing.has(defaultAccountName(me, existing))).toBe(false);
@@ -116,7 +116,7 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     );
   });
 
-  it("default_account_name is deterministic (:110)", () => {
+  it("default_account_name is deterministic", () => {
     fc.assert(
       fc.property(meResponses, existingSets, (me, existing) => {
         expect(defaultAccountName(me, existing)).toBe(
@@ -127,7 +127,7 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     );
   });
 
-  it("collision suffix starts at -2, never -1 (:120)", () => {
+  it("collision suffix starts at -2, never -1", () => {
     fc.assert(
       fc.property(meResponses, (me) => {
         const base = defaultAccountName(me, new Set());
@@ -138,7 +138,7 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     );
   });
 
-  it("collision suffixes are monotonic (:136)", () => {
+  it("collision suffixes are monotonic", () => {
     fc.assert(
       fc.property(meResponses, (me) => {
         const base = defaultAccountName(me, new Set());

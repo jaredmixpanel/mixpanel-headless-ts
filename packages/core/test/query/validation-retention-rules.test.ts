@@ -72,8 +72,10 @@ function pyRange(start: number, stop: number): number[] {
 // T-US5: Multi-error collection
 // =============================================================================
 
-describe("TestValidateRetentionMultiError", () => {
-  it("test_multiple_errors_collected", () => {
+describe("Validate retention multi error", () => {
+  // python: TestValidateRetentionMultiError
+  it("multiple errors collected", () => {
+    // python: test_multiple_errors_collected
     const errors = validateRetentionArgs(
       validRetentionArgs({ born_event: "", retention_unit: "invalid" }),
     );
@@ -81,7 +83,8 @@ describe("TestValidateRetentionMultiError", () => {
     expect(codes(errors)).toContain("R7_INVALID_RETENTION_UNIT");
   });
 
-  it("test_three_simultaneous_errors", () => {
+  it("three simultaneous errors", () => {
+    // python: test_three_simultaneous_errors
     const errors = validateRetentionArgs(
       validRetentionArgs({
         born_event: "",
@@ -99,42 +102,50 @@ describe("TestValidateRetentionMultiError", () => {
 // R10: mode validation
 // =============================================================================
 
-describe("TestValidateRetentionR10", () => {
-  it("test_invalid_mode_returns_r10_error", () => {
+describe("Validate retention R10", () => {
+  // python: TestValidateRetentionR10
+  it("invalid mode returns R10 error", () => {
+    // python: test_invalid_mode_returns_r10_error
     const errors = validateRetentionArgs(validRetentionArgs({ mode: "pwned" }));
     expect(errors.some((e) => e.code === "R10_INVALID_MODE")).toBe(true);
   });
 
-  it("test_none_mode_returns_r10_error", () => {
+  it("null mode returns R10 error", () => {
+    // python: test_none_mode_returns_r10_error
     const errors = validateRetentionArgs(validRetentionArgs({ mode: null }));
     expect(errors.some((e) => e.code === "R10_INVALID_MODE")).toBe(true);
   });
 
-  it("test_valid_mode_curve_no_error", () => {
+  it("valid mode curve no error", () => {
+    // python: test_valid_mode_curve_no_error
     const errors = validateRetentionArgs(validRetentionArgs({ mode: "curve" }));
     expect(codes(errors)).not.toContain("R10_INVALID_MODE");
   });
 
-  it("test_valid_mode_trends_no_error", () => {
+  it("valid mode trends no error", () => {
+    // python: test_valid_mode_trends_no_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ mode: "trends" }),
     );
     expect(codes(errors)).not.toContain("R10_INVALID_MODE");
   });
 
-  it("test_valid_mode_table_no_error", () => {
+  it("valid mode table no error", () => {
+    // python: test_valid_mode_table_no_error
     const errors = validateRetentionArgs(validRetentionArgs({ mode: "table" }));
     expect(codes(errors)).not.toContain("R10_INVALID_MODE");
   });
 
-  it("test_r10_error_path_is_mode", () => {
+  it("R10 error path is mode", () => {
+    // python: test_r10_error_path_is_mode
     const errors = validateRetentionArgs(validRetentionArgs({ mode: "bad" }));
     const r10Errors = errors.filter((e) => e.code === "R10_INVALID_MODE");
     expect(r10Errors).toHaveLength(1);
     expect(r10Errors[0]!.path).toBe("mode");
   });
 
-  it("test_mode_close_match_has_suggestion", () => {
+  it("mode close match has suggestion", () => {
+    // python: test_mode_close_match_has_suggestion
     const errors = validateRetentionArgs(validRetentionArgs({ mode: "curv" }));
     const r10Errors = errors.filter((e) => e.code === "R10_INVALID_MODE");
     expect(r10Errors).toHaveLength(1);
@@ -143,8 +154,10 @@ describe("TestValidateRetentionR10", () => {
   });
 });
 
-describe("TestValidateRetentionR5c", () => {
-  it("test_too_many_buckets_returns_error", () => {
+describe("Validate retention R5c", () => {
+  // python: TestValidateRetentionR5c
+  it("too many buckets returns error", () => {
+    // python: test_too_many_buckets_returns_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ bucket_sizes: pyRange(1, 1001) }),
     );
@@ -153,14 +166,16 @@ describe("TestValidateRetentionR5c", () => {
     );
   });
 
-  it("test_730_buckets_no_error", () => {
+  it("730 buckets no error", () => {
+    // python: test_730_buckets_no_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ bucket_sizes: pyRange(1, 731) }),
     );
     expect(codes(errors)).not.toContain("R5_BUCKET_SIZES_TOO_MANY");
   });
 
-  it("test_error_message_includes_count", () => {
+  it("error message includes count", () => {
+    // python: test_error_message_includes_count
     const errors = validateRetentionArgs(
       validRetentionArgs({ bucket_sizes: pyRange(1, 1001) }),
     );
@@ -174,49 +189,58 @@ describe("TestValidateRetentionR5c", () => {
 // R11: unit validation for retention context
 // =============================================================================
 
-describe("TestValidateRetentionR11", () => {
-  it("test_invalid_unit_hour_returns_r11_error", () => {
+describe("Validate retention R11", () => {
+  // python: TestValidateRetentionR11
+  it("invalid unit hour returns R11 error", () => {
+    // python: test_invalid_unit_hour_returns_r11_error
     const errors = validateRetentionArgs(validRetentionArgs({ unit: "hour" }));
     expect(errors.some((e) => e.code === "R11_INVALID_UNIT")).toBe(true);
   });
 
-  it("test_invalid_unit_minute_returns_r11_error", () => {
+  it("invalid unit minute returns R11 error", () => {
+    // python: test_invalid_unit_minute_returns_r11_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ unit: "minute" }),
     );
     expect(errors.some((e) => e.code === "R11_INVALID_UNIT")).toBe(true);
   });
 
-  it("test_invalid_unit_quarter_returns_r11_error", () => {
+  it("invalid unit quarter returns R11 error", () => {
+    // python: test_invalid_unit_quarter_returns_r11_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ unit: "quarter" }),
     );
     expect(errors.some((e) => e.code === "R11_INVALID_UNIT")).toBe(true);
   });
 
-  it("test_valid_unit_day_no_error", () => {
+  it("valid unit day no error", () => {
+    // python: test_valid_unit_day_no_error
     const errors = validateRetentionArgs(validRetentionArgs({ unit: "day" }));
     expect(codes(errors)).not.toContain("R11_INVALID_UNIT");
   });
 
-  it("test_valid_unit_week_no_error", () => {
+  it("valid unit week no error", () => {
+    // python: test_valid_unit_week_no_error
     const errors = validateRetentionArgs(validRetentionArgs({ unit: "week" }));
     expect(codes(errors)).not.toContain("R11_INVALID_UNIT");
   });
 
-  it("test_valid_unit_month_no_error", () => {
+  it("valid unit month no error", () => {
+    // python: test_valid_unit_month_no_error
     const errors = validateRetentionArgs(validRetentionArgs({ unit: "month" }));
     expect(codes(errors)).not.toContain("R11_INVALID_UNIT");
   });
 
-  it("test_r11_error_path_is_unit", () => {
+  it("R11 error path is unit", () => {
+    // python: test_r11_error_path_is_unit
     const errors = validateRetentionArgs(validRetentionArgs({ unit: "hour" }));
     const r11 = errors.filter((e) => e.code === "R11_INVALID_UNIT");
     expect(r11).toHaveLength(1);
     expect(r11[0]!.path).toBe("unit");
   });
 
-  it("test_r11_has_suggestion_for_close_match", () => {
+  it("R11 has suggestion for close match", () => {
+    // python: test_r11_has_suggestion_for_close_match
     const errors = validateRetentionArgs(validRetentionArgs({ unit: "dya" }));
     const r11 = errors.filter((e) => e.code === "R11_INVALID_UNIT");
     expect(r11).toHaveLength(1);
@@ -229,34 +253,40 @@ describe("TestValidateRetentionR11", () => {
 // R12: group_by empty string validation
 // =============================================================================
 
-describe("TestValidateRetentionR12", () => {
-  it("test_empty_string_group_by_returns_r12_error", () => {
+describe("Validate retention R12", () => {
+  // python: TestValidateRetentionR12
+  it("empty string group by returns R12 error", () => {
+    // python: test_empty_string_group_by_returns_r12_error
     const errors = validateRetentionArgs(validRetentionArgs({ group_by: "" }));
     expect(errors.some((e) => e.code === "R12_EMPTY_GROUP_BY")).toBe(true);
   });
 
-  it("test_whitespace_only_group_by_returns_r12_error", () => {
+  it("whitespace only group by returns R12 error", () => {
+    // python: test_whitespace_only_group_by_returns_r12_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ group_by: " ".repeat(3) }),
     );
     expect(errors.some((e) => e.code === "R12_EMPTY_GROUP_BY")).toBe(true);
   });
 
-  it("test_empty_string_in_list_returns_r12_error", () => {
+  it("empty string in list returns R12 error", () => {
+    // python: test_empty_string_in_list_returns_r12_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ group_by: ["platform", ""] }),
     );
     expect(errors.some((e) => e.code === "R12_EMPTY_GROUP_BY")).toBe(true);
   });
 
-  it("test_valid_group_by_no_r12_error", () => {
+  it("valid group by no R12 error", () => {
+    // python: test_valid_group_by_no_r12_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ group_by: "platform" }),
     );
     expect(codes(errors)).not.toContain("R12_EMPTY_GROUP_BY");
   });
 
-  it("test_r12_error_path_is_group_by", () => {
+  it("R12 error path is group by", () => {
+    // python: test_r12_error_path_is_group_by
     const errors = validateRetentionArgs(validRetentionArgs({ group_by: "" }));
     const r12 = errors.filter((e) => e.code === "R12_EMPTY_GROUP_BY");
     expect(r12).toHaveLength(1);
@@ -268,50 +298,58 @@ describe("TestValidateRetentionR12", () => {
 // T010: R13 — unbounded_mode validation
 // =============================================================================
 
-describe("TestValidateRetentionR13UnboundedMode", () => {
-  it("test_valid_unbounded_mode_none_no_error", () => {
+describe("Validate retention R13 unbounded mode", () => {
+  // python: TestValidateRetentionR13UnboundedMode
+  it("valid unbounded mode null no error", () => {
+    // python: test_valid_unbounded_mode_none_no_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ unbounded_mode: "none" }),
     );
     expect(codes(errors)).not.toContain("R13_INVALID_UNBOUNDED_MODE");
   });
 
-  it("test_valid_unbounded_mode_carry_back_no_error", () => {
+  it("valid unbounded mode carry back no error", () => {
+    // python: test_valid_unbounded_mode_carry_back_no_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ unbounded_mode: "carry_back" }),
     );
     expect(codes(errors)).not.toContain("R13_INVALID_UNBOUNDED_MODE");
   });
 
-  it("test_valid_unbounded_mode_carry_forward_no_error", () => {
+  it("valid unbounded mode carry forward no error", () => {
+    // python: test_valid_unbounded_mode_carry_forward_no_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ unbounded_mode: "carry_forward" }),
     );
     expect(codes(errors)).not.toContain("R13_INVALID_UNBOUNDED_MODE");
   });
 
-  it("test_valid_unbounded_mode_consecutive_forward_no_error", () => {
+  it("valid unbounded mode consecutive forward no error", () => {
+    // python: test_valid_unbounded_mode_consecutive_forward_no_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ unbounded_mode: "consecutive_forward" }),
     );
     expect(codes(errors)).not.toContain("R13_INVALID_UNBOUNDED_MODE");
   });
 
-  it("test_none_unbounded_mode_no_error", () => {
+  it("null unbounded mode no error", () => {
+    // python: test_none_unbounded_mode_no_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ unbounded_mode: null }),
     );
     expect(codes(errors)).not.toContain("R13_INVALID_UNBOUNDED_MODE");
   });
 
-  it("test_invalid_unbounded_mode_returns_r13_error", () => {
+  it("invalid unbounded mode returns R13 error", () => {
+    // python: test_invalid_unbounded_mode_returns_r13_error
     const errors = validateRetentionArgs(
       validRetentionArgs({ unbounded_mode: "invalid" }),
     );
     expect(codes(errors)).toContain("R13_INVALID_UNBOUNDED_MODE");
   });
 
-  it("test_r13_error_path_is_unbounded_mode", () => {
+  it("R13 error path is unbounded mode", () => {
+    // python: test_r13_error_path_is_unbounded_mode
     const errors = validateRetentionArgs(
       validRetentionArgs({ unbounded_mode: "bad" }),
     );
@@ -325,8 +363,10 @@ describe("TestValidateRetentionR13UnboundedMode", () => {
 // R5: bucket_sizes boolean edge case
 // =============================================================================
 
-describe("TestValidateRetentionR5Boolean", () => {
-  it("test_boolean_true_rejected", () => {
+describe("Validate retention R5 boolean", () => {
+  // python: TestValidateRetentionR5Boolean
+  it("boolean true rejected", () => {
+    // python: test_boolean_true_rejected
     // Python `bool` is a subclass of `int`, so the validator must
     // reject booleans explicitly (Cautions §8).
     const errors = validateRetentionArgs(
@@ -337,7 +377,8 @@ describe("TestValidateRetentionR5Boolean", () => {
     );
   });
 
-  it("test_boolean_false_rejected", () => {
+  it("boolean false rejected", () => {
+    // python: test_boolean_false_rejected
     const errors = validateRetentionArgs(
       validRetentionArgs({ bucket_sizes: [false] }),
     );
@@ -351,8 +392,10 @@ describe("TestValidateRetentionR5Boolean", () => {
 // T036: data_group_id validation for retention
 // =============================================================================
 
-describe("TestDataGroupIdValidationRetention", () => {
-  it("test_valid_data_group_id", () => {
+describe("Data group ID validation retention", () => {
+  // python: TestDataGroupIdValidationRetention
+  it("valid data group ID", () => {
+    // python: test_valid_data_group_id
     const errors = validateRetentionArgs(
       validRetentionArgs({ data_group_id: 5 }),
     );
@@ -361,7 +404,8 @@ describe("TestDataGroupIdValidationRetention", () => {
     );
   });
 
-  it("test_none_data_group_id", () => {
+  it("null data group ID", () => {
+    // python: test_none_data_group_id
     const errors = validateRetentionArgs(
       validRetentionArgs({ data_group_id: null }),
     );
@@ -370,7 +414,8 @@ describe("TestDataGroupIdValidationRetention", () => {
     );
   });
 
-  it("test_zero_data_group_id", () => {
+  it("zero data group ID", () => {
+    // python: test_zero_data_group_id
     const errors = validateRetentionArgs(
       validRetentionArgs({ data_group_id: 0 }),
     );
@@ -379,7 +424,8 @@ describe("TestDataGroupIdValidationRetention", () => {
     ).toHaveLength(1);
   });
 
-  it("test_negative_data_group_id", () => {
+  it("negative data group ID", () => {
+    // python: test_negative_data_group_id
     const errors = validateRetentionArgs(
       validRetentionArgs({ data_group_id: -2 }),
     );

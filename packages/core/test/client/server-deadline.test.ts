@@ -69,15 +69,18 @@ function okResults(): CannedResponse {
   return { status: 200, json: { results: [] } };
 }
 
-describe("TestServerDeadlineAccommodation", () => {
-  it("test_default_constants_outlast_server_deadlines", () => {
+describe("Server deadline accommodation", () => {
+  // python: TestServerDeadlineAccommodation
+  it("default constants outlast server deadlines", () => {
+    // python: test_default_constants_outlast_server_deadlines
     expect(DEFAULT_APP_TIMEOUT_S).toBeGreaterThan(APP_API_SERVER_DEADLINE_S);
     expect(DEFAULT_QUERY_TIMEOUT_S).toBeGreaterThan(
       QUERY_API_SERVER_DEADLINE_S,
     );
   });
 
-  it("test_default_export_timeout_outlasts_query_deadline", async () => {
+  it("default export timeout outlasts query deadline", async () => {
+    // python: test_default_export_timeout_outlasts_query_deadline
     const client = createMixpanelClient({ session: makeSession() });
     expect(client.core.exportTimeoutSeconds).toBeGreaterThan(
       QUERY_API_SERVER_DEADLINE_S,
@@ -85,19 +88,22 @@ describe("TestServerDeadlineAccommodation", () => {
     await client.close();
   });
 
-  it("test_app_request_outlasts_app_deadline", async () => {
+  it("app request outlasts app deadline", async () => {
+    // python: test_app_request_outlasts_app_deadline
     const { client } = createMockClient(makeSession(), okResults);
     await client.appRequest("GET", "/projects/12345/dashboards");
     expect(capturedTimeouts[0]).toBe(DEFAULT_APP_TIMEOUT_S);
   });
 
-  it("test_query_request_outlasts_query_deadline", async () => {
+  it("query request outlasts query deadline", async () => {
+    // python: test_query_request_outlasts_query_deadline
     const { client } = createMockClient(makeSession(), okResults);
     await client.request("GET", `${endpointBase("us", "query")}/segmentation`);
     expect(capturedTimeouts[0]).toBe(DEFAULT_QUERY_TIMEOUT_S);
   });
 
-  it("test_explicit_constructor_timeout_wins_everywhere", async () => {
+  it("explicit constructor timeout wins everywhere", async () => {
+    // python: test_explicit_constructor_timeout_wins_everywhere
     const { client } = createMockClient(makeSession(), okResults, {
       timeoutSeconds: 42.0,
     });
@@ -107,7 +113,8 @@ describe("TestServerDeadlineAccommodation", () => {
     expect(capturedTimeouts[1]).toBe(42.0);
   });
 
-  it("test_per_call_timeout_wins_over_defaults", async () => {
+  it("per call timeout wins over defaults", async () => {
+    // python: test_per_call_timeout_wins_over_defaults
     const { client } = createMockClient(makeSession(), okResults, {
       timeoutSeconds: 42.0,
     });
@@ -118,8 +125,10 @@ describe("TestServerDeadlineAccommodation", () => {
   });
 });
 
-describe("TestPaginateAll (server-deadline half)", () => {
-  it("test_default_timeout_outlasts_app_deadline", async () => {
+describe("Paginate all (server-deadline half)", () => {
+  // python: TestPaginateAll
+  it("default timeout outlasts app deadline", async () => {
+    // python: test_default_timeout_outlasts_app_deadline
     // With no explicit client timeout, the request timeout must be the
     // app-route default (sized to outlast the server's ~120s deadline),
     // never `None` (httpx reads that as "no timeout at all").
@@ -144,8 +153,10 @@ describe("TestPaginateAll (server-deadline half)", () => {
   });
 });
 
-describe("TestApiClientPerEventProperties (server-deadline half)", () => {
-  it("test_uses_export_timeout", async () => {
+describe("API client per event properties (server-deadline half)", () => {
+  // python: TestApiClientPerEventProperties
+  it("uses export timeout", async () => {
+    // python: test_uses_export_timeout
     // The gather runs under the long export timeout, not the route
     // default.
     const { client } = createMockClient(makeSession(), okResults);

@@ -164,7 +164,8 @@ function makeWorkspace(stub: StubClient): Workspace {
 /** Cast helper for the transformed-record assertions. */
 type Rec = Record<string, unknown>;
 
-describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
+describe("Stream events", () => {
+  // python: TestStreamEvents
   it("T006: basic streaming with the default (normalized) format", async () => {
     const stub = stubClient();
     stub.setEvents(function* () {
@@ -355,7 +356,8 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
   });
 });
 
-describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
+describe("Stream profiles", () => {
+  // python: TestStreamProfiles
   it("T010: basic streaming with the default (normalized) format", async () => {
     const stub = stubClient();
     stub.setProfiles(function* () {
@@ -510,7 +512,8 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
   });
 });
 
-describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
+describe("Normalized event format", () => {
+  // python: TestNormalizedEventFormat
   it("T019: normalized events carry every required field", async () => {
     const stub = stubClient();
     stub.setEvents(function* () {
@@ -542,7 +545,8 @@ describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
   });
 });
 
-describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
+describe("Raw event format", () => {
+  // python: TestRawEventFormat
   it("T020: raw events keep the Mixpanel API structure", async () => {
     const stub = stubClient();
     stub.setEvents(function* () {
@@ -569,7 +573,8 @@ describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
   });
 });
 
-describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => {
+describe("Normalized profile format", () => {
+  // python: TestNormalizedProfileFormat
   it("T021: normalized profiles carry every required field", async () => {
     const stub = stubClient();
     stub.setProfiles(function* () {
@@ -594,7 +599,8 @@ describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => 
   });
 });
 
-describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
+describe("Raw profile format", () => {
+  // python: TestRawProfileFormat
   it("T022: raw profiles keep the `$`-prefixed API structure", async () => {
     const stub = stubClient();
     stub.setProfiles(function* () {

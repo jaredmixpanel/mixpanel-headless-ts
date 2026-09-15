@@ -49,7 +49,8 @@ function behaviorsOf(
 // T015: default structure
 // ===========================================================================
 
-describe("TestBuildRetentionParamsDefaults", () => {
+describe("Build retention params defaults", () => {
+  // python: TestBuildRetentionParamsDefaults
   it("behavior.type is 'retention'", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -163,7 +164,8 @@ describe("TestBuildRetentionParamsDefaults", () => {
 // T016: shared section builders
 // ===========================================================================
 
-describe("TestBuildRetentionParamsTimeSections", () => {
+describe("Build retention params time sections", () => {
+  // python: TestBuildRetentionParamsTimeSections
   it("the default time section is 'in the last' with last=30", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -215,7 +217,8 @@ describe("TestBuildRetentionParamsTimeSections", () => {
 // T-US2: per-event filters
 // ===========================================================================
 
-describe("TestBuildRetentionParamsPerEventFilters", () => {
+describe("Build retention params per event filters", () => {
+  // python: TestBuildRetentionParamsPerEventFilters
   it("a RetentionEvent with filters populates behaviors[0].filters", async () => {
     const born = new RetentionEvent({
       event: "Signup",
@@ -258,7 +261,8 @@ describe("TestBuildRetentionParamsPerEventFilters", () => {
 // T-US2: global filters and group-by
 // ===========================================================================
 
-describe("TestBuildRetentionParamsGlobalFilters", () => {
+describe("Build retention params global filters", () => {
+  // python: TestBuildRetentionParamsGlobalFilters
   it("a where filter populates sections.filter", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -286,7 +290,8 @@ describe("TestBuildRetentionParamsGlobalFilters", () => {
 // T-US3: custom bucket sizes
 // ===========================================================================
 
-describe("TestBuildRetentionParamsBucketSizes", () => {
+describe("Build retention params bucket sizes", () => {
+  // python: TestBuildRetentionParamsBucketSizes
   it("explicit bucket_sizes populate retentionCustomBucketSizes", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -313,7 +318,8 @@ describe("TestBuildRetentionParamsBucketSizes", () => {
 // T-US6: display modes
 // ===========================================================================
 
-describe("TestBuildRetentionParamsMode", () => {
+describe("Build retention params mode", () => {
+  // python: TestBuildRetentionParamsMode
   it("mode='curve' produces chartType 'retention-curve'", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -358,7 +364,8 @@ describe("TestBuildRetentionParamsMode", () => {
 // T005: new retention math types
 // ===========================================================================
 
-describe("TestBuildRetentionParamsNewMathTypes", () => {
+describe("Build retention params new math types", () => {
+  // python: TestBuildRetentionParamsNewMathTypes
   it("math='total' is accepted", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -386,7 +393,8 @@ describe("TestBuildRetentionParamsNewMathTypes", () => {
 // T009: unbounded_mode
 // ===========================================================================
 
-describe("TestBuildRetentionParamsUnboundedMode", () => {
+describe("Build retention params unbounded mode", () => {
+  // python: TestBuildRetentionParamsUnboundedMode
   for (const mode of [
     "carry_forward",
     "carry_back",
@@ -420,7 +428,8 @@ describe("TestBuildRetentionParamsUnboundedMode", () => {
 // T009: retention_cumulative
 // ===========================================================================
 
-describe("TestBuildRetentionParamsCumulative", () => {
+describe("Build retention params cumulative", () => {
+  // python: TestBuildRetentionParamsCumulative
   it("retention_cumulative=true produces retentionCumulative", async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",
@@ -473,7 +482,8 @@ describe("TestBuildRetentionParamsCumulative", () => {
 // T032: data_group_id
 // ===========================================================================
 
-describe("TestDataGroupIdRetention", () => {
+describe("Data group ID retention", () => {
+  // python: TestDataGroupIdRetention
   it('data_group_id=5 includes globalDataGroupId: "5" in sections', async () => {
     const result = await makeStubWorkspace().buildRetentionParams(
       "Signup",

@@ -63,7 +63,8 @@ function freshTokens(access = "brw-tok-fresh"): OAuthTokens {
   });
 }
 
-describe("TestAdd (test_accounts_namespace.py:46)", () => {
+describe("Add", () => {
+  // python: TestAdd
   it("adding a service account writes the record with default_project", async () => {
     const { effects, config } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -281,7 +282,8 @@ describe("TestAdd (test_accounts_namespace.py:46)", () => {
   });
 });
 
-describe("TestUpdate (test_accounts_namespace.py:243)", () => {
+describe("Update", () => {
+  // python: TestUpdate
   it("updating default_project rewrites the account block", async () => {
     const { effects, config } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -322,7 +324,8 @@ describe("TestUpdate (test_accounts_namespace.py:243)", () => {
   });
 });
 
-describe("TestList (test_accounts_namespace.py:277)", () => {
+describe("List", () => {
+  // python: TestList
   it("no accounts → empty list", () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -341,7 +344,8 @@ describe("TestList (test_accounts_namespace.py:277)", () => {
   });
 });
 
-describe("TestUse (test_accounts_namespace.py:299)", () => {
+describe("Use", () => {
+  // python: TestUse
   it("use(name) sets [active].account", async () => {
     const { effects, config } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -375,7 +379,8 @@ describe("TestUse (test_accounts_namespace.py:299)", () => {
   });
 });
 
-describe("TestShow (test_accounts_namespace.py:349)", () => {
+describe("Show", () => {
+  // python: TestShow
   it("show(name) returns that account's summary", async () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -400,7 +405,8 @@ describe("TestShow (test_accounts_namespace.py:349)", () => {
   });
 });
 
-describe("TestRemove (test_accounts_namespace.py:384)", () => {
+describe("Remove", () => {
+  // python: TestRemove
   it("an unreferenced account removes cleanly", async () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -422,7 +428,8 @@ describe("TestRemove (test_accounts_namespace.py:384)", () => {
   });
 });
 
-describe("TestToken (test_accounts_namespace.py:416)", () => {
+describe("Token", () => {
+  // python: TestToken
   it("service_account has no bearer → null", async () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -445,7 +452,8 @@ describe("TestToken (test_accounts_namespace.py:416)", () => {
   });
 });
 
-describe("TestTest (test_accounts_namespace.py:451)", () => {
+describe("Test", () => {
+  // python: TestTest
   it("unknown account → ok=false with a helpful error string", async () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -598,7 +606,8 @@ describe("TestTest (test_accounts_namespace.py:451)", () => {
   });
 });
 
-describe("TestTestOAuthBrowser (test_accounts_namespace.py:614)", () => {
+describe("Test OAuth browser", () => {
+  // python: TestTestOAuthBrowser
   // The three on-disk failure fixtures (missing tokens.json / expired
   // without refresh / refresh revoked) re-express as tokenResolver
   // rejections carrying the OnDiskTokenResolver's actionable messages
@@ -663,7 +672,8 @@ describe("TestTestOAuthBrowser (test_accounts_namespace.py:614)", () => {
   });
 });
 
-describe("TestLogin (test_accounts_namespace.py:756)", () => {
+describe("Login", () => {
+  // python: TestLogin
   it("login rejects non-oauth_browser accounts", async () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -748,7 +758,8 @@ describe("TestLogin (test_accounts_namespace.py:756)", () => {
   });
 });
 
-describe("TestPublicSurface (test_accounts_namespace.py:914)", () => {
+describe("Public surface", () => {
+  // python: TestPublicSurface
   it("login / test (and every __all__ name) resolve on the namespace", () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -775,7 +786,8 @@ describe("TestPublicSurface (test_accounts_namespace.py:914)", () => {
   });
 });
 
-describe("TestLogoutHonorsStorageOverride (test_accounts_namespace.py:934)", () => {
+describe("Logout honors storage override", () => {
+  // python: TestLogoutHonorsStorageOverride
   it("logout removes exactly the injected store's tokens", async () => {
     const { effects, tokenStore } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -859,7 +871,7 @@ describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
 // via `getCustomHeader()` becomes the one-entry headers bag handed to
 // `effects.bridge.export` (accounts-ops.ts:847-848) — a name/value swap
 // or dropped-header regression there now fails here.
-describe("B8-ARB-A ASR-F1 custom-header export composition lock (test_bridge_export.py:274)", () => {
+describe("B8-ARB-A ASR-F1 custom-header export composition lock", () => {
   it("[settings].custom_header propagates into the exported headers bag through the orchestration", async () => {
     const exportedHeaders: Array<Readonly<Record<string, string>> | null> = [];
     const { effects, config } = makeEffects({

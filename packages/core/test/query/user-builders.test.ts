@@ -114,7 +114,8 @@ function rawFilter(
 // filter_to_selector — individual operator mapping
 // =============================================================================
 
-describe("filterToSelector equals (TestFilterToSelectorEquals)", () => {
+describe("filterToSelector equals", () => {
+  // python: TestFilterToSelectorEquals
   it("single string value", () => {
     const f = Filter.equals("plan", "premium");
     expect(filterToSelector(f)).toBe('properties["plan"] == "premium"');
@@ -144,7 +145,8 @@ describe("filterToSelector equals (TestFilterToSelectorEquals)", () => {
   });
 });
 
-describe("filterToSelector not-equals (TestFilterToSelectorNotEquals)", () => {
+describe("filterToSelector not-equals", () => {
+  // python: TestFilterToSelectorNotEquals
   it("single value", () => {
     const f = Filter.notEquals("plan", "free");
     expect(filterToSelector(f)).toBe('properties["plan"] != "free"');
@@ -160,21 +162,24 @@ describe("filterToSelector not-equals (TestFilterToSelectorNotEquals)", () => {
   });
 });
 
-describe("filterToSelector contains (TestFilterToSelectorContains)", () => {
+describe("filterToSelector contains", () => {
+  // python: TestFilterToSelectorContains
   it("contains string", () => {
     const f = Filter.contains("email", "gmail");
     expect(filterToSelector(f)).toBe('"gmail" in properties["email"]');
   });
 });
 
-describe("filterToSelector not-contains (TestFilterToSelectorNotContains)", () => {
+describe("filterToSelector not-contains", () => {
+  // python: TestFilterToSelectorNotContains
   it("not-contains string", () => {
     const f = Filter.notContains("email", "spam");
     expect(filterToSelector(f)).toBe('not "spam" in properties["email"]');
   });
 });
 
-describe("filterToSelector greater-than (TestFilterToSelectorGreaterThan)", () => {
+describe("filterToSelector greater-than", () => {
+  // python: TestFilterToSelectorGreaterThan
   it("integer value", () => {
     const f = Filter.greaterThan("age", 18);
     expect(filterToSelector(f)).toBe('properties["age"] > 18');
@@ -186,7 +191,8 @@ describe("filterToSelector greater-than (TestFilterToSelectorGreaterThan)", () =
   });
 });
 
-describe("filterToSelector less-than (TestFilterToSelectorLessThan)", () => {
+describe("filterToSelector less-than", () => {
+  // python: TestFilterToSelectorLessThan
   it("integer value", () => {
     const f = Filter.lessThan("age", 65);
     expect(filterToSelector(f)).toBe('properties["age"] < 65');
@@ -198,7 +204,8 @@ describe("filterToSelector less-than (TestFilterToSelectorLessThan)", () => {
   });
 });
 
-describe("filterToSelector between (TestFilterToSelectorBetween)", () => {
+describe("filterToSelector between", () => {
+  // python: TestFilterToSelectorBetween
   it("integer range", () => {
     const f = Filter.between("age", 18, 65);
     expect(filterToSelector(f)).toBe(
@@ -221,7 +228,8 @@ describe("filterToSelector between (TestFilterToSelectorBetween)", () => {
   });
 });
 
-describe("filterToSelector is-set (TestFilterToSelectorIsSet)", () => {
+describe("filterToSelector is-set", () => {
+  // python: TestFilterToSelectorIsSet
   it("is set", () => {
     expect(filterToSelector(Filter.isSet("email"))).toBe(
       'defined(properties["email"])',
@@ -229,7 +237,8 @@ describe("filterToSelector is-set (TestFilterToSelectorIsSet)", () => {
   });
 });
 
-describe("filterToSelector is-not-set (TestFilterToSelectorIsNotSet)", () => {
+describe("filterToSelector is-not-set", () => {
+  // python: TestFilterToSelectorIsNotSet
   it("is not set", () => {
     expect(filterToSelector(Filter.isNotSet("phone"))).toBe(
       'not defined(properties["phone"])',
@@ -237,7 +246,8 @@ describe("filterToSelector is-not-set (TestFilterToSelectorIsNotSet)", () => {
   });
 });
 
-describe("filterToSelector booleans (TestFilterToSelectorBooleans)", () => {
+describe("filterToSelector booleans", () => {
+  // python: TestFilterToSelectorBooleans
   it("is true", () => {
     expect(filterToSelector(Filter.isTrue("verified"))).toBe(
       'properties["verified"] == true',
@@ -255,7 +265,8 @@ describe("filterToSelector booleans (TestFilterToSelectorBooleans)", () => {
 // filter_to_selector — value formatting
 // =============================================================================
 
-describe("filterToSelector value formatting (TestFilterToSelectorValueFormatting)", () => {
+describe("filterToSelector value formatting", () => {
+  // python: TestFilterToSelectorValueFormatting
   it("string value is quoted", () => {
     const f = Filter.equals("city", "New York");
     expect(filterToSelector(f)).toBe('properties["city"] == "New York"');
@@ -306,7 +317,8 @@ describe("filterToSelector value formatting (TestFilterToSelectorValueFormatting
 // filter_to_selector — edge cases
 // =============================================================================
 
-describe("filterToSelector edge cases (TestFilterToSelectorEdgeCases)", () => {
+describe("filterToSelector edge cases", () => {
+  // python: TestFilterToSelectorEdgeCases
   it("dollar-prefixed property name", () => {
     expect(filterToSelector(Filter.equals("$city", "London"))).toBe(
       'properties["$city"] == "London"',
@@ -348,7 +360,8 @@ describe("filterToSelector edge cases (TestFilterToSelectorEdgeCases)", () => {
 // filters_to_selector — AND combination
 // =============================================================================
 
-describe("filtersToSelector (TestFiltersToSelector)", () => {
+describe("filtersToSelector", () => {
+  // python: TestFiltersToSelector
   it("empty list returns empty string", () => {
     expect(filtersToSelector([])).toBe("");
   });
@@ -413,7 +426,8 @@ describe("filtersToSelector (TestFiltersToSelector)", () => {
 // extract_cohort_filter
 // =============================================================================
 
-describe("extractCohortFilter (TestExtractCohortFilter)", () => {
+describe("extractCohortFilter", () => {
+  // python: TestExtractCohortFilter
   it("no cohort filter", () => {
     const filters = [Filter.equals("plan", "premium"), Filter.isSet("email")];
     const [remaining, cohort] = extractCohortFilter(filters);
@@ -519,7 +533,8 @@ describe("extractCohortFilter (TestExtractCohortFilter)", () => {
 // PR #118 review fixes — property escaping and between bounds
 // =============================================================================
 
-describe("filterToSelector property escaping (TestFilterToSelectorPropertyEscaping)", () => {
+describe("filterToSelector property escaping", () => {
+  // python: TestFilterToSelectorPropertyEscaping
   it("property name containing a double quote is escaped", () => {
     const f = Filter.equals('weird"prop', "val");
     expect(filterToSelector(f)).toBe(
@@ -535,7 +550,8 @@ describe("filterToSelector property escaping (TestFilterToSelectorPropertyEscapi
   });
 });
 
-describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsValidation)", () => {
+describe("filterToSelector between bounds", () => {
+  // python: TestFilterToSelectorBetweenBoundsValidation
   it("string lower bound is rejected", () => {
     const f = rawFilter("prop", "is between", ["low", 10]);
 
@@ -559,7 +575,8 @@ describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsVali
   });
 });
 
-describe("not-equals error message (TestNotEqualsErrorMessage)", () => {
+describe("not-equals error message", () => {
+  // python: TestNotEqualsErrorMessage
   it("error references Filter.not_equals(), not does_not_equal()", () => {
     const f = rawFilter("prop", "does not equal", [{ nested: true }]);
 
@@ -590,7 +607,8 @@ function expectCode(thunk: () => unknown, code: string): void {
   expect((error as ParamValidationError).code).toBe(code);
 }
 
-describe("coded engage-selector codes (TestCodedEngageSelectorCodes)", () => {
+describe("coded engage-selector codes", () => {
+  // python: TestCodedEngageSelectorCodes
   it("ES1 direct", () => {
     const f = rawFilter(123, "is set", null);
     expectCode(() => filterToSelector(f), "ES1_PROPERTY_NOT_STRING");
@@ -769,7 +787,8 @@ const specialCharText = fc
   )
   .map((chars) => chars.join(""));
 
-describe("formatValue special characters (TestPbtFormatValueSpecialChars)", () => {
+describe("formatValue special characters", () => {
+  // python: TestPbtFormatValueSpecialChars
   it("never crashes on special characters", () => {
     fc.assert(
       fc.property(specialCharText, (s) => {
@@ -859,7 +878,8 @@ describe("formatValue escaping round-trips (NEW, PBT)", () => {
   });
 });
 
-describe("filtersToSelector OR/AND precedence (TestFiltersToSelectorOrAndPrecedence)", () => {
+describe("filtersToSelector OR/AND precedence", () => {
+  // python: TestFiltersToSelectorOrAndPrecedence
   it("multi-value equals stays parenthesized inside an AND chain", () => {
     const f1 = Filter.equals("plan", ["free", "trial"]);
     const f2 = Filter.isSet("email");

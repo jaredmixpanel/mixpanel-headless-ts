@@ -106,7 +106,8 @@ function makeWorkspace(
   return { ws: new Workspace({ session: TEST_SESSION, client }), client };
 }
 
-describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", () => {
+describe("Live queries — live-query delegation", () => {
+  // python: TestLiveQueries
   it("segmentation() delegates to the live-query service (T043)", async () => {
     const { ws } = makeWorkspace();
     const result = new SegmentationResult({
@@ -363,7 +364,8 @@ describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", ()
   });
 });
 
-describe("TestDiscovery (test_workspace.py:439) — discovery delegation", () => {
+describe("Discovery — discovery delegation", () => {
+  // python: TestDiscovery
   it("events() delegates to the discovery service", async () => {
     const { ws } = makeWorkspace();
     const listEvents = vi.fn().mockResolvedValue(["Login", "Purchase"]);
@@ -393,7 +395,8 @@ describe("TestDiscovery (test_workspace.py:439) — discovery delegation", () =>
   });
 });
 
-describe("TestContextManager (test_workspace.py:712)", () => {
+describe("Context manager", () => {
+  // python: TestContextManager
   it("`await using` disposal closes the facade (the __enter__ twin)", async () => {
     // Python's `with ws as entered: assert entered is ws` locks that the
     // context manager hands back the SAME object. The TS twin is
@@ -427,7 +430,8 @@ describe("TestContextManager (test_workspace.py:712)", () => {
   });
 });
 
-describe("TestLimitValidation (test_workspace.py:754)", () => {
+describe("Limit validation", () => {
+  // python: TestLimitValidation
   it("streamEvents rejects a limit over 100000", async () => {
     const { ws } = makeWorkspace();
     await expect(
@@ -468,7 +472,8 @@ function stubMeService(ws: Workspace, stub: Partial<MeService>): void {
   vi.spyOn(ws, "meService", "get").mockReturnValue(stub as MeService);
 }
 
-describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
+describe("Workspaces method", () => {
+  // python: TestWorkspacesMethod
   it("workspaces() returns WorkspaceRefs built from MeWorkspaceInfo", async () => {
     const { ws } = makeWorkspace();
     const listWorkspaces = vi.fn().mockResolvedValue([
@@ -508,7 +513,8 @@ describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
   });
 });
 
-describe("TestProjectsMethod (test_workspace.py:861)", () => {
+describe("Projects method", () => {
+  // python: TestProjectsMethod
   it("projects() returns Project records built from MeProjectInfo tuples", async () => {
     const { ws } = makeWorkspace();
     const listProjects = vi.fn().mockResolvedValue([
@@ -547,7 +553,8 @@ describe("TestProjectsMethod (test_workspace.py:861)", () => {
   });
 });
 
-describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
+describe("Coded workspace guard codes", () => {
+  // python: TestCodedWorkspaceGuardCodes
   it("WR2: validateLimit below the minimum raises the coded error", () => {
     const error = expectThrows(
       () => validateLimit(0),
@@ -639,7 +646,7 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
   });
 });
 
-describe("MeService construction (workspace.py:866-885)", () => {
+describe("MeService construction", () => {
   it("the lazy accessor builds one service bound to the session", () => {
     const { ws } = makeWorkspace();
 
@@ -706,7 +713,8 @@ function wsEntry(
   };
 }
 
-describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
+describe("Facade resolver wiring", () => {
+  // python: TestFacadeResolverWiring
   it("a warm /me resolves without hitting /workspaces/public", async () => {
     const calls: string[] = [];
     const session = makeSession({

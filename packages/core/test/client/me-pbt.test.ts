@@ -88,7 +88,8 @@ const viewsNoGlobalWithApd: fc.Arbitrary<WorkspaceView[]> = fc
   );
 
 describe("select_workspace_id precedence (PBT)", () => {
-  it("test_select_result_belongs_to_input", () => {
+  it("select result belongs to input", () => {
+    // python: test_select_result_belongs_to_input
     fc.assert(
       fc.property(viewsArb, (views) => {
         // For a non-empty input, the chosen id is always one of the
@@ -99,7 +100,8 @@ describe("select_workspace_id precedence (PBT)", () => {
     );
   });
 
-  it("test_all_project_data_name_chosen_without_global", () => {
+  it("all project data name chosen without global", () => {
+    // python: test_all_project_data_name_chosen_without_global
     fc.assert(
       fc.property(viewsNoGlobalWithApd, (views) => {
         // With no global view, an 'All Project Data'-named view wins.

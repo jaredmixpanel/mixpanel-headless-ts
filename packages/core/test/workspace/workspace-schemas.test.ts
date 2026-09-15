@@ -84,7 +84,7 @@ function schemaEntryJson(
 // ===========================================================================
 
 describe("Workspace.listSchemaRegistry", () => {
-  it("returns all schemas as SchemaEntry list (:154)", async () => {
+  it("returns all schemas as SchemaEntry list", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         schemaEntryJson("event", "Purchase"),
@@ -104,13 +104,13 @@ describe("Workspace.listSchemaRegistry", () => {
     expect(schemas[2]?.name).toBe("$user");
   });
 
-  it("returns empty list when no schemas exist (:182)", async () => {
+  it("returns empty list when no schemas exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
 
     await expect(ws.listSchemaRegistry()).resolves.toStrictEqual([]);
   });
 
-  it("passes the entity_type filter to the API (:194)", async () => {
+  it("passes the entity_type filter to the API", async () => {
     const capturedUrl: string[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       capturedUrl.push(request.url);
@@ -126,7 +126,7 @@ describe("Workspace.listSchemaRegistry", () => {
     expect(capturedUrl[0]).toContain("schemas/event");
   });
 
-  it("preserves the schemaJson field content (:220)", async () => {
+  it("preserves the schemaJson field content", async () => {
     const customSchema = {
       type: "object",
       properties: {
@@ -145,7 +145,7 @@ describe("Workspace.listSchemaRegistry", () => {
     expect(schemas[0]?.schema_definition).toStrictEqual(customSchema);
   });
 
-  it("preserves the version field (:251)", async () => {
+  it("preserves the version field", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([schemaEntryJson("event", "Purchase", undefined, "2025-03-20")]),
     );
@@ -172,7 +172,7 @@ describe("Workspace.listSchemaRegistry", () => {
 // ===========================================================================
 
 describe("Workspace.createSchema", () => {
-  it("returns the raw dict from the API (:301)", async () => {
+  it("returns the raw dict from the API", async () => {
     const schemaDef = {
       properties: { amount: { type: "number" } },
       required: ["amount"],
@@ -188,7 +188,7 @@ describe("Workspace.createSchema", () => {
     expect(result["name"]).toBe("Purchase");
   });
 
-  it("constructs the correct API path (:329)", async () => {
+  it("constructs the correct API path", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -204,7 +204,7 @@ describe("Workspace.createSchema", () => {
     expect(captured[0]?.method).toBe("POST");
   });
 
-  it("percent-encodes entity names with special chars (:351)", async () => {
+  it("percent-encodes entity names with special chars", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -223,7 +223,7 @@ describe("Workspace.createSchema", () => {
 // ===========================================================================
 
 describe("Workspace.createSchemasBulk", () => {
-  it("returns a BulkCreateSchemasResponse (:386)", async () => {
+  it("returns a BulkCreateSchemasResponse", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ added: 3, deleted: 0 }));
     const params = new BulkCreateSchemasParams({
       entries: [
@@ -252,7 +252,7 @@ describe("Workspace.createSchemasBulk", () => {
     expect(result.deleted).toBe(0);
   });
 
-  it("reports the deleted count with truncate=True (:425)", async () => {
+  it("reports the deleted count with truncate=True", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ added: 2, deleted: 5 }));
     const params = new BulkCreateSchemasParams({
       entries: [
@@ -278,7 +278,7 @@ describe("Workspace.createSchemasBulk", () => {
     expect(result.deleted).toBe(5);
   });
 
-  it("returns zero counts for empty entries (:461)", async () => {
+  it("returns zero counts for empty entries", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ added: 0, deleted: 0 }));
 
     const result = await ws.createSchemasBulk(
@@ -290,7 +290,7 @@ describe("Workspace.createSchemasBulk", () => {
     expect(result.deleted).toBe(0);
   });
 
-  it("sends POST to the schemas endpoint (:482)", async () => {
+  it("sends POST to the schemas endpoint", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -320,7 +320,7 @@ describe("Workspace.createSchemasBulk", () => {
 // ===========================================================================
 
 describe("Workspace.updateSchema", () => {
-  it("returns the raw dict from the API (:522)", async () => {
+  it("returns the raw dict from the API", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         entityType: "event",
@@ -344,7 +344,7 @@ describe("Workspace.updateSchema", () => {
     expect(Object.hasOwn(schemaJson.properties, "tax")).toBe(true);
   });
 
-  it("sends PATCH to the correct path (:553)", async () => {
+  it("sends PATCH to the correct path", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -358,7 +358,7 @@ describe("Workspace.updateSchema", () => {
     expect(captured[0]?.url).toContain("schemas/event/Purchase");
   });
 
-  it("percent-encodes $user for profile schemas (:575)", async () => {
+  it("percent-encodes $user for profile schemas", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -378,7 +378,7 @@ describe("Workspace.updateSchema", () => {
 // ===========================================================================
 
 describe("Workspace.updateSchemasBulk", () => {
-  it("returns a list of BulkPatchResult (:607)", async () => {
+  it("returns a list of BulkPatchResult", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         { entityType: "event", name: "Purchase", status: "ok" },
@@ -411,7 +411,7 @@ describe("Workspace.updateSchemasBulk", () => {
     expect(results[1]?.status).toBe("ok");
   });
 
-  it("returns error status for failed entries (:656)", async () => {
+  it("returns error status for failed entries", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         { entityType: "event", name: "Purchase", status: "ok" },
@@ -447,7 +447,7 @@ describe("Workspace.updateSchemasBulk", () => {
     expect(results[1]?.error).toBe("Entity not found");
   });
 
-  it("returns an empty list for empty entries (:704)", async () => {
+  it("returns an empty list for empty entries", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const results = await ws.updateSchemasBulk(
@@ -457,7 +457,7 @@ describe("Workspace.updateSchemasBulk", () => {
     expect(results).toStrictEqual([]);
   });
 
-  it("sends PATCH to the schemas endpoint (:720)", async () => {
+  it("sends PATCH to the schemas endpoint", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -477,7 +477,7 @@ describe("Workspace.updateSchemasBulk", () => {
 // ===========================================================================
 
 describe("Workspace.deleteSchemas", () => {
-  it("deletes all and returns the count with no args (:749)", async () => {
+  it("deletes all and returns the count with no args", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ deleteCount: 10 }));
 
     const result = await ws.deleteSchemas();
@@ -486,7 +486,7 @@ describe("Workspace.deleteSchemas", () => {
     expect(result.delete_count).toBe(10);
   });
 
-  it("deletes all schemas of one entity type (:768)", async () => {
+  it("deletes all schemas of one entity type", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -502,7 +502,7 @@ describe("Workspace.deleteSchemas", () => {
     expect(captured[0]?.method).toBe("DELETE");
   });
 
-  it("deletes a single schema by type + name (:792)", async () => {
+  it("deletes a single schema by type + name", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -520,7 +520,7 @@ describe("Workspace.deleteSchemas", () => {
     expect(captured[0]?.url).toContain("schemas/event/Purchase");
   });
 
-  it("returns a zero count when nothing matches (:815)", async () => {
+  it("returns a zero count when nothing matches", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ deleteCount: 0 }));
 
     const result = await ws.deleteSchemas({ entity_type: "custom_event" });
@@ -529,7 +529,7 @@ describe("Workspace.deleteSchemas", () => {
     expect(result.delete_count).toBe(0);
   });
 
-  it("sends the DELETE HTTP method (:834)", async () => {
+  it("sends the DELETE HTTP method", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
@@ -542,7 +542,7 @@ describe("Workspace.deleteSchemas", () => {
     expect(captured[0]?.method).toBe("DELETE");
   });
 
-  it("raises when entity_name is given without entity_type (:855)", async () => {
+  it("raises when entity_name is given without entity_type", async () => {
     const captured: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);

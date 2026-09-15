@@ -81,8 +81,10 @@ const BOOKMARK_RAW = {
 const SHORT = "https://mixpanel.com/s/AbC123";
 const SHORT_TARGET = `https://mixpanel.com/project/12345/view/75/app/insights#${SLUG}`;
 
-describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
-  it("test_bare_slug", async () => {
+describe("Resolve slug links", () => {
+  // python: TestResolveSlugLinks
+  it("bare slug", async () => {
+    // python: test_bare_slug
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -110,7 +112,8 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     expect(resolved.overrides).toBeNull();
   });
 
-  it("test_full_url_with_workspace", async () => {
+  it("full URL with workspace", async () => {
+    // python: test_full_url_with_workspace
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord({ type: "funnels" }));
     const link = `https://mixpanel.com/project/12345/view/75/app/insights/?utm=x#${SLUG}`;
@@ -125,7 +128,8 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     expect(resolved.input).toBe(link);
   });
 
-  it("test_project_only_url_uses_pinned_workspace", async () => {
+  it("project only URL uses pinned workspace", async () => {
+    // python: test_project_only_url_uses_pinned_workspace
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -138,7 +142,8 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   });
 
-  it("test_project_only_url_without_pin_is_none", async () => {
+  it("project only URL without pin is null", async () => {
+    // python: test_project_only_url_without_pin_is_none
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -150,7 +155,8 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   });
 
-  it("test_slug_record_with_embedded_bookmark", async () => {
+  it("slug record with embedded bookmark", async () => {
+    // python: test_slug_record_with_embedded_bookmark
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() =>
       slugRecord({
@@ -170,7 +176,8 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     expect(mock.bookmarkGetCalls).toHaveLength(0);
   });
 
-  it("test_flows_record_rebuilds_under_flows_app", async () => {
+  it("flows record rebuilds under flows app", async () => {
+    // python: test_flows_record_rebuilds_under_flows_app
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() =>
       slugRecord({ type: "flows", params: FLOW_PARAMS }),
@@ -186,7 +193,8 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     );
   });
 
-  it("test_unknown_slug_raises_not_found", async () => {
+  it("unknown slug raises not found", async () => {
+    // python: test_unknown_slug_raises_not_found
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => {
       throw new ReportLinkNotFoundError("nope", {
@@ -203,14 +211,16 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     expect(exc.code).toBe("REPORT_LINK_SLUG_NOT_FOUND");
   });
 
-  it("test_malformed_slug_record_raises_response_validation_error", async () => {
+  it("malformed slug record raises response validation error", async () => {
+    // python: test_malformed_slug_record_raises_response_validation_error
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord({ params: "nope" }));
 
     await expectRaises(ws.resolveReportLink(SLUG), ResponseValidationError);
   });
 
-  it("test_slug_record_without_slug_raises_response_validation_error", async () => {
+  it("slug record without slug raises response validation error", async () => {
+    // python: test_slug_record_without_slug_raises_response_validation_error
     const { ws, mock } = makeWorkspace();
     const record = slugRecord();
     delete record["slug"];
@@ -219,7 +229,8 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     await expectRaises(ws.resolveReportLink(SLUG), ResponseValidationError);
   });
 
-  it("test_dashboard_edited_bookmark_resolves_slug", async () => {
+  it("dashboard edited bookmark resolves slug", async () => {
+    // python: test_dashboard_edited_bookmark_resolves_slug
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -232,8 +243,10 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
   });
 });
 
-describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => {
-  it("test_bookmark_url_type_from_bookmark_not_hint", async () => {
+describe("Resolve bookmark links", () => {
+  // python: TestResolveBookmarkLinks
+  it("bookmark URL type from bookmark not hint", async () => {
+    // python: test_bookmark_url_type_from_bookmark_not_hint
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmark(() => BOOKMARK_RAW);
 
@@ -258,7 +271,8 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
     );
   });
 
-  it("test_bookmark_url_with_workspace", async () => {
+  it("bookmark URL with workspace", async () => {
+    // python: test_bookmark_url_with_workspace
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmark(() => ({ ...BOOKMARK_RAW, type: "insights" }));
 
@@ -272,7 +286,8 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
     );
   });
 
-  it("test_overrides_tail_logs_warning_and_returns_base_params", async () => {
+  it("overrides tail logs warning and returns base params", async () => {
+    // python: test_overrides_tail_logs_warning_and_returns_base_params
     const { ws, mock, log } = makeWorkspace();
     mock.setGetBookmark(() => BOOKMARK_RAW);
 
@@ -290,7 +305,8 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
     ).toBe(true);
   });
 
-  it("test_unknown_bookmark_raises_not_found", async () => {
+  it("unknown bookmark raises not found", async () => {
+    // python: test_unknown_bookmark_raises_not_found
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmark(() => {
       throw new QueryError("Resource not found", { statusCode: 404 });
@@ -314,7 +330,8 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
     );
   });
 
-  it("test_unknown_bookmark_under_pinned_workspace_names_the_workspace", async () => {
+  it("unknown bookmark under pinned workspace names the workspace", async () => {
+    // python: test_unknown_bookmark_under_pinned_workspace_names_the_workspace
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
     mock.setGetBookmark(() => {
       throw new QueryError("Resource not found", { statusCode: 404 });
@@ -341,7 +358,7 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
     ["insights", "insights#report/123"],
     ["funnels", "funnels#view/123"],
   ])(
-    "test_unknown_bookmark_type_falls_back_to_url_app_with_warning[%s]",
+    "unknown bookmark type falls back to URL app with warning[%s]", // python: test_unknown_bookmark_type_falls_back_to_url_app_with_warning
     async (app, expectedTail) => {
       const { ws, mock, log } = makeWorkspace();
       mock.setGetBookmark(() => ({ ...BOOKMARK_RAW, type: "user" }));
@@ -362,7 +379,8 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
     },
   );
 
-  it("test_other_query_error_passes_through", async () => {
+  it("other query error passes through", async () => {
+    // python: test_other_query_error_passes_through
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmark(() => {
       throw new QueryError("Permission denied", { statusCode: 403 });
@@ -378,7 +396,8 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
     expect(exc.statusCode).toBe(403);
   });
 
-  it("test_bookmark_without_params_yields_empty_dict", async () => {
+  it("bookmark without params yields empty dict", async () => {
+    // python: test_bookmark_without_params_yields_empty_dict
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmark(() => ({ ...BOOKMARK_RAW, params: null }));
 
@@ -390,7 +409,8 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
   });
 });
 
-describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", () => {
+describe("Resolve scope and unsupported", () => {
+  // python: TestResolveScopeAndUnsupported
   /**
    * `_assert_no_client_calls`: neither record reader nor the
    * workspace resolver was called.
@@ -403,7 +423,8 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   }
 
-  it("test_project_mismatch", async () => {
+  it("project mismatch", async () => {
+    // python: test_project_mismatch
     const { ws, mock } = makeWorkspace();
 
     const exc = await expectRaises(
@@ -424,7 +445,8 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
     assertNoClientCalls(mock);
   });
 
-  it("test_region_mismatch", async () => {
+  it("region mismatch", async () => {
+    // python: test_region_mismatch
     const { ws, mock } = makeWorkspace();
 
     const exc = await expectRaises(
@@ -445,7 +467,8 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
     assertNoClientCalls(mock);
   });
 
-  it("test_region_checked_before_project", async () => {
+  it("region checked before project", async () => {
+    // python: test_region_checked_before_project
     const { ws } = makeWorkspace();
 
     const exc = await expectRaises(
@@ -458,7 +481,8 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
     expect(exc.code).toBe("REPORT_LINK_REGION_MISMATCH");
   });
 
-  it("test_dashboard_link_unsupported", async () => {
+  it("dashboard link unsupported", async () => {
+    // python: test_dashboard_link_unsupported
     const { ws, mock } = makeWorkspace();
 
     const exc = await expectRaises(
@@ -478,7 +502,8 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
     assertNoClientCalls(mock);
   });
 
-  it("test_legacy_hash_unsupported", async () => {
+  it("legacy hash unsupported", async () => {
+    // python: test_legacy_hash_unsupported
     const { ws, mock } = makeWorkspace();
 
     const exc = await expectRaises(
@@ -496,7 +521,8 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
     assertNoClientCalls(mock);
   });
 
-  it("test_unsupported_kinds_win_over_scope_checks", async () => {
+  it("unsupported kinds win over scope checks", async () => {
+    // python: test_unsupported_kinds_win_over_scope_checks
     const { ws } = makeWorkspace();
 
     await expectRaises(
@@ -505,7 +531,8 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
     );
   });
 
-  it("test_parse_error_propagates", async () => {
+  it("parse error propagates", async () => {
+    // python: test_parse_error_propagates
     const { ws, mock } = makeWorkspace();
 
     await expectRaises(
@@ -517,8 +544,10 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
   });
 });
 
-describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
-  it("test_short_link_resolves_like_its_target", async () => {
+describe("Resolve short links", () => {
+  // python: TestResolveShortLinks
+  it("short link resolves like its target", async () => {
+    // python: test_short_link_resolves_like_its_target
     const { ws, mock } = makeWorkspace();
     mock.setResolveShortLink(() => SHORT_TARGET);
     mock.setGetBookmarkUrl(() => slugRecord());
@@ -537,7 +566,8 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     }).toStrictEqual(direct.toDict());
   });
 
-  it("test_short_link_to_bookmark", async () => {
+  it("short link to bookmark", async () => {
+    // python: test_short_link_to_bookmark
     const { ws, mock } = makeWorkspace();
     mock.setResolveShortLink(
       () => "https://mixpanel.com/project/12345/app/insights#report/123",
@@ -553,7 +583,8 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     );
   });
 
-  it("test_short_link_chain_raises", async () => {
+  it("short link chain raises", async () => {
+    // python: test_short_link_chain_raises
     const { ws, mock } = makeWorkspace();
     mock.setResolveShortLink(() => "https://mixpanel.com/s/XyZ");
 
@@ -570,7 +601,8 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
   });
 
-  it("test_short_link_to_dashboard_unsupported", async () => {
+  it("short link to dashboard unsupported", async () => {
+    // python: test_short_link_to_dashboard_unsupported
     const { ws, mock } = makeWorkspace();
     mock.setResolveShortLink(
       () => "https://mixpanel.com/project/12345/app/boards#id=555",
@@ -585,7 +617,8 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
   });
 
-  it("test_short_link_target_in_other_project", async () => {
+  it("short link target in other project", async () => {
+    // python: test_short_link_target_in_other_project
     const { ws, mock } = makeWorkspace();
     mock.setResolveShortLink(
       () => `https://mixpanel.com/project/3/app/insights#${SLUG}`,
@@ -601,7 +634,8 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     expect(mock.bookmarkGetCalls).toHaveLength(0);
   });
 
-  it("test_short_link_region_mismatch_before_network", async () => {
+  it("short link region mismatch before network", async () => {
+    // python: test_short_link_region_mismatch_before_network
     const { ws, mock } = makeWorkspace();
 
     const exc = await expectRaises(
@@ -613,7 +647,8 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     expect(mock.resolveShortLinkCalls).toHaveLength(0);
   });
 
-  it("test_short_link_errors_propagate", async () => {
+  it("short link errors propagate", async () => {
+    // python: test_short_link_errors_propagate
     const { ws, mock } = makeWorkspace();
     mock.setResolveShortLink(() => {
       throw new ReportLinkNotFoundError("gone", {
@@ -629,7 +664,8 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     expect(exc.code).toBe("SHORT_LINK_NOT_FOUND");
   });
 
-  it("test_query_report_link_through_short_link", async () => {
+  it("query report link through short link", async () => {
+    // python: test_query_report_link_through_short_link
     const { ws, mock } = makeWorkspace();
     mock.setResolveShortLink(() => SHORT_TARGET);
     mock.setGetBookmarkUrl(() => slugRecord());
@@ -649,8 +685,10 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
   });
 });
 
-describe("TestResolveSlugWithUnknownServerType (test_workspace_report_links.py:1450)", () => {
-  it("test_unknown_type_falls_back_to_parsed_app", async () => {
+describe("Resolve slug with unknown server type", () => {
+  // python: TestResolveSlugWithUnknownServerType
+  it("unknown type falls back to parsed app", async () => {
+    // python: test_unknown_type_falls_back_to_parsed_app
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord({ type: "user" }));
 
@@ -664,7 +702,8 @@ describe("TestResolveSlugWithUnknownServerType (test_workspace_report_links.py:1
     );
   });
 
-  it("test_unknown_type_on_bare_slug_defaults_to_insights_app", async () => {
+  it("unknown type on bare slug defaults to insights app", async () => {
+    // python: test_unknown_type_on_bare_slug_defaults_to_insights_app
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord({ type: "user" }));
 
@@ -675,7 +714,8 @@ describe("TestResolveSlugWithUnknownServerType (test_workspace_report_links.py:1
     );
   });
 
-  it("test_unknown_type_logs_a_warning", async () => {
+  it("unknown type logs a warning", async () => {
+    // python: test_unknown_type_logs_a_warning
     const { ws, mock, log } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord({ type: "user" }));
 
@@ -689,7 +729,8 @@ describe("TestResolveSlugWithUnknownServerType (test_workspace_report_links.py:1
     ).toBe(true);
   });
 
-  it("test_unknown_type_cannot_run", async () => {
+  it("unknown type cannot run", async () => {
+    // python: test_unknown_type_cannot_run
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord({ type: "user" }));
 

@@ -111,8 +111,9 @@ function bodyOf(transport: FakeTransport, index = 0): unknown {
 // TestWorkspaceBookmarkCRUD (test_workspace_crud.py)
 // =============================================================================
 
-describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
-  it("list_bookmarks_v2() returns list of Bookmark objects (:533)", async () => {
+describe("Workspace bookmark CRUD", () => {
+  // python: TestWorkspaceBookmarkCRUD
+  it("list_bookmarks_v2() returns list of Bookmark objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         bookmarkJson(1, "Bookmark A", "insights"),
@@ -129,12 +130,12 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmarks[1]?.bookmark_type).toBe("funnels");
   });
 
-  it("list_bookmarks_v2() returns empty list when none exist (:559)", async () => {
+  it("list_bookmarks_v2() returns empty list when none exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listBookmarksV2()).resolves.toStrictEqual([]);
   });
 
-  it("list_bookmarks_v2(bookmark_type='funnels') passes filter (:571)", async () => {
+  it("list_bookmarks_v2(bookmark_type='funnels') passes filter", async () => {
     const capturedUrl: string[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       capturedUrl.push(request.url);
@@ -146,7 +147,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmarks[0]?.bookmark_type).toBe("funnels");
   });
 
-  it("list_bookmarks_v2() preserves the API response order (:592)", async () => {
+  it("list_bookmarks_v2() preserves the API response order", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([bookmarkJson(5, "E"), bookmarkJson(3, "C"), bookmarkJson(1, "A")]),
     );
@@ -154,7 +155,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmarks.map((b) => b.id)).toStrictEqual([5, 3, 1]);
   });
 
-  it("create_bookmark() returns the created Bookmark (:614)", async () => {
+  it("create_bookmark() returns the created Bookmark", async () => {
     const { ws } = makeFacadeWorkspace((request) =>
       ok(
         request.method === "PATCH"
@@ -176,7 +177,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.name).toBe("New Bookmark");
   });
 
-  it("create_bookmark() sends description when provided (:644)", async () => {
+  it("create_bookmark() sends description when provided", async () => {
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH") {
         return ok(dashboardJson(99));
@@ -199,7 +200,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.description).toBe("A test bookmark");
   });
 
-  it("create_bookmark() can associate with a dashboard (:669)", async () => {
+  it("create_bookmark() can associate with a dashboard", async () => {
     const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH") {
         return ok(dashboardJson(99));
@@ -221,7 +222,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.dashboard_id).toBe(99);
   });
 
-  it("create_bookmark() PATCHes the report into the dashboard layout (:693)", async () => {
+  it("create_bookmark() PATCHes the report into the dashboard layout", async () => {
     const { ws, transport } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("bookmarks")) {
         return ok({
@@ -256,7 +257,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(patchBody.content.content_params.source_bookmark_id).toBe(42);
   });
 
-  it("create_bookmark() raises when dashboard_id is missing (:734)", async () => {
+  it("create_bookmark() raises when dashboard_id is missing", async () => {
     const calls: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
@@ -277,7 +278,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(calls).toStrictEqual([]);
   });
 
-  it("create_bookmark() rejects malformed sorting before any API call (:750)", async () => {
+  it("create_bookmark() rejects malformed sorting before any API call", async () => {
     const calls: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
@@ -309,7 +310,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(calls).toStrictEqual([]);
   });
 
-  it("update_bookmark() rejects malformed sorting before the API call (:792)", async () => {
+  it("update_bookmark() rejects malformed sorting before the API call", async () => {
     const calls: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
@@ -325,7 +326,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(calls).toStrictEqual([]);
   });
 
-  it("update_bookmark() rejects malformed displayOptions (:810)", async () => {
+  it("update_bookmark() rejects malformed displayOptions", async () => {
     const calls: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
@@ -347,7 +348,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(calls).toStrictEqual([]);
   });
 
-  it("update_bookmark() name-only partial does not false-reject (:839)", async () => {
+  it("update_bookmark() name-only partial does not false-reject", async () => {
     const calls: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
@@ -357,7 +358,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("update_bookmark() with warning-only errors does NOT raise (:864)", async () => {
+  it("update_bookmark() with warning-only errors does NOT raise", async () => {
     const calls: CapturedFetchRequest[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
@@ -371,7 +372,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("create_bookmark() logs warnings instead of dropping them (:890)", async () => {
+  it("create_bookmark() logs warnings instead of dropping them", async () => {
     const logger = logCollector();
     const { ws } = makeFacadeWorkspace(
       (request) =>
@@ -400,7 +401,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     ).toBe(true);
   });
 
-  it("create_bookmark() accepts the canonical valid sorting block (:927)", async () => {
+  it("create_bookmark() accepts the canonical valid sorting block", async () => {
     const { ws } = makeFacadeWorkspace((request) =>
       ok(
         request.method === "PATCH"
@@ -430,7 +431,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.id).toBe(77);
   });
 
-  it("get_bookmark() returns a single Bookmark by ID (:967)", async () => {
+  it("get_bookmark() returns a single Bookmark by ID", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(bookmarkJson(1, "My Bookmark", "retention")),
     );
@@ -442,7 +443,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.bookmark_type).toBe("retention");
   });
 
-  it("get_bookmark() preserves extra fields (:988)", async () => {
+  it("get_bookmark() preserves extra fields", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...bookmarkJson(5, "Detailed", "insights"),
@@ -456,7 +457,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.description).toBe("Detailed bookmark");
   });
 
-  it("update_bookmark() returns the updated Bookmark (:1004)", async () => {
+  it("update_bookmark() returns the updated Bookmark", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(bookmarkJson(1, "Updated Name", "insights")),
     );
@@ -469,7 +470,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.name).toBe("Updated Name");
   });
 
-  it("update_bookmark() can update description (:1024)", async () => {
+  it("update_bookmark() can update description", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ...bookmarkJson(1, "Same", "insights"), description: "New desc" }),
     );
@@ -480,7 +481,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.description).toBe("New desc");
   });
 
-  it("update_bookmark() can update query params (:1039)", async () => {
+  it("update_bookmark() can update query params", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...bookmarkJson(1, "Same", "insights"),
@@ -494,33 +495,33 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmark.params).toStrictEqual({ events: [{ event: "Login" }] });
   });
 
-  it("delete_bookmark() returns None on success (:1054)", async () => {
+  it("delete_bookmark() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteBookmark(1)).resolves.toBeUndefined();
   });
 
-  it("delete_bookmark() handles a 200 response (:1064)", async () => {
+  it("delete_bookmark() handles a 200 response", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(ws.deleteBookmark(1)).resolves.toBeUndefined();
   });
 
-  it("bulk_delete_bookmarks() returns None on success (:1074)", async () => {
+  it("bulk_delete_bookmarks() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.bulkDeleteBookmarks([1, 2])).resolves.toBeUndefined();
   });
 
-  it("bulk_delete_bookmarks() works with a single ID (:1084)", async () => {
+  it("bulk_delete_bookmarks() works with a single ID", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.bulkDeleteBookmarks([42])).resolves.toBeUndefined();
   });
 
-  it("bulk_delete_bookmarks() sends multiple IDs (:1094)", async () => {
+  it("bulk_delete_bookmarks() sends multiple IDs", async () => {
     const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
     await ws.bulkDeleteBookmarks([10, 20, 30]);
     expect(transport.captures).toHaveLength(1);
   });
 
-  it("bulk_update_bookmarks() returns None on success (:1108)", async () => {
+  it("bulk_update_bookmarks() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateBookmarks([
@@ -529,7 +530,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("bulk_update_bookmarks() handles multiple entries (:1119)", async () => {
+  it("bulk_update_bookmarks() handles multiple entries", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateBookmarks([
@@ -540,7 +541,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("bulk_update_bookmarks() can update query params (:1134)", async () => {
+  it("bulk_update_bookmarks() can update query params", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateBookmarks([
@@ -552,24 +553,24 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("bookmark_linked_dashboard_ids() returns list of int (:1147)", async () => {
+  it("bookmark_linked_dashboard_ids() returns list of int", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([10, 20, 30]));
     await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([
       10, 20, 30,
     ]);
   });
 
-  it("bookmark_linked_dashboard_ids() returns [] when none linked (:1162)", async () => {
+  it("bookmark_linked_dashboard_ids() returns [] when none linked", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([]);
   });
 
-  it("bookmark_linked_dashboard_ids() works with a single ID (:1174)", async () => {
+  it("bookmark_linked_dashboard_ids() works with a single ID", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([42]));
     await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([42]);
   });
 
-  it("get_bookmark_history() returns BookmarkHistoryResponse (:1186)", async () => {
+  it("get_bookmark_history() returns BookmarkHistoryResponse", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         results: [
@@ -592,7 +593,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     ).toBe("created");
   });
 
-  it("get_bookmark_history() handles empty history (:1216)", async () => {
+  it("get_bookmark_history() handles empty history", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ results: [], pagination: { page_size: 20 } }),
     );
@@ -602,7 +603,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(history.results).toStrictEqual([]);
   });
 
-  it("get_bookmark_history() preserves pagination metadata (:1238)", async () => {
+  it("get_bookmark_history() preserves pagination metadata", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         results: [{ action: "created" }],
@@ -620,7 +621,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(history.pagination?.next_cursor).toBe("abc123");
   });
 
-  it("list_bookmarks_v2() maps 'type' to bookmark_type (:1265)", async () => {
+  it("list_bookmarks_v2() maps 'type' to bookmark_type", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([{ id: 1, name: "F", type: "flows", params: {} }]),
     );
@@ -628,7 +629,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     expect(bookmarks[0]?.bookmark_type).toBe("flows");
   });
 
-  it("create_bookmark() works with the funnel bookmark type (:1285)", async () => {
+  it("create_bookmark() works with the funnel bookmark type", async () => {
     const { ws } = makeFacadeWorkspace((request) =>
       ok(
         request.method === "PATCH"

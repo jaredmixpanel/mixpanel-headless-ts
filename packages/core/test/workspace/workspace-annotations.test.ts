@@ -85,7 +85,8 @@ function tagJson(id = 1, name = "releases"): Record<string, unknown> {
 // TestWorkspaceAnnotationCRUD
 // =============================================================================
 
-describe("TestWorkspaceAnnotationCRUD", () => {
+describe("Workspace annotation CRUD", () => {
+  // python: TestWorkspaceAnnotationCRUD
   it("list_annotations() returns list of Annotation objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([annotationJson(1, "First"), annotationJson(2, "Second")]),
@@ -201,7 +202,8 @@ describe("TestWorkspaceAnnotationCRUD", () => {
 // TestWorkspaceAnnotationTags
 // =============================================================================
 
-describe("TestWorkspaceAnnotationTags", () => {
+describe("Workspace annotation tags", () => {
+  // python: TestWorkspaceAnnotationTags
   it("list_annotation_tags() returns list of AnnotationTag objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([tagJson(1, "releases"), tagJson(2, "deployments")]),

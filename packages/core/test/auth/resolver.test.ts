@@ -202,8 +202,10 @@ const SA_QUAD: ResolverEnv = {
 
 // ---- tests -----------------------------------------------------------
 
-describe("TestAccountAxisPriority", () => {
-  it("test_explicit_param_beats_active", () => {
+describe("Account axis priority", () => {
+  // python: TestAccountAxisPriority
+  it("explicit param beats active", () => {
+    // python: test_explicit_param_beats_active
     const config = cmWithActive();
     config.addAccount(
       parseAccount({
@@ -219,12 +221,14 @@ describe("TestAccountAxisPriority", () => {
     expect(s.account.name).toBe("other");
   });
 
-  it("test_active_used_when_no_param", () => {
+  it("active used when no param", () => {
+    // python: test_active_used_when_no_param
     const s = resolveSession({}, sources(cmWithActive()));
     expect(s.account.name).toBe("team");
   });
 
-  it("test_env_quad_synthesizes_service_account", () => {
+  it("env quad synthesizes service account", () => {
+    // python: test_env_quad_synthesizes_service_account
     const config = cm();
     config.active = { account: "team" };
     const s = resolveSession(
@@ -243,7 +247,8 @@ describe("TestAccountAxisPriority", () => {
     ).toBe("env.user");
   });
 
-  it("test_oauth_token_env_synthesizes", () => {
+  it("OAuth token env synthesizes", () => {
+    // python: test_oauth_token_env_synthesizes
     const s = resolveSession(
       {},
       sources(cm(), {
@@ -255,7 +260,8 @@ describe("TestAccountAxisPriority", () => {
     expect(s.account.type).toBe("oauth_token");
   });
 
-  it("test_sa_env_quad_beats_oauth_token_env", () => {
+  it("sa env quad beats OAuth token env", () => {
+    // python: test_sa_env_quad_beats_oauth_token_env
     const s = resolveSession(
       {},
       sources(cm(), { ...SA_QUAD, MP_OAUTH_TOKEN: "env-bearer" }),
@@ -264,13 +270,16 @@ describe("TestAccountAxisPriority", () => {
   });
 });
 
-describe("TestProjectAxisPriority", () => {
-  it("test_explicit_param_beats_active", () => {
+describe("Project axis priority", () => {
+  // python: TestProjectAxisPriority
+  it("explicit param beats active", () => {
+    // python: test_explicit_param_beats_active
     const s = resolveSession({ project: "888" }, sources(cmWithActive()));
     expect(s.project.id).toBe("888");
   });
 
-  it("test_env_beats_param", () => {
+  it("env beats param", () => {
+    // python: test_env_beats_param
     const s = resolveSession(
       { project: "888" },
       sources(cmWithActive(), { MP_PROJECT_ID: "777" }),
@@ -278,12 +287,14 @@ describe("TestProjectAxisPriority", () => {
     expect(s.project.id).toBe("777");
   });
 
-  it("test_active_used_when_no_param", () => {
+  it("active used when no param", () => {
+    // python: test_active_used_when_no_param
     const s = resolveSession({}, sources(cmWithActive()));
     expect(s.project.id).toBe("3713224");
   });
 
-  it("test_missing_project_axis_raises", () => {
+  it("missing project axis raises", () => {
+    // python: test_missing_project_axis_raises
     const config = new FakeConfig();
     // An oauth_browser account (default_project optional) so the
     // account axis resolves but the project axis cannot.
@@ -295,8 +306,10 @@ describe("TestProjectAxisPriority", () => {
   });
 });
 
-describe("TestWorkspaceAxisPriority", () => {
-  it("test_param_overrides_active", () => {
+describe("Workspace axis priority", () => {
+  // python: TestWorkspaceAxisPriority
+  it("param overrides active", () => {
+    // python: test_param_overrides_active
     const config = cmWithActive();
     config.active = { ...config.active, workspace: 99 };
     const s = resolveSession({ workspace: 42 }, sources(config));
@@ -304,7 +317,8 @@ describe("TestWorkspaceAxisPriority", () => {
     expect(s.workspace?.id).toBe(42);
   });
 
-  it("test_env_overrides_param", () => {
+  it("env overrides param", () => {
+    // python: test_env_overrides_param
     const s = resolveSession(
       { workspace: 42 },
       sources(cmWithActive(), { MP_WORKSPACE_ID: "100" }),
@@ -313,13 +327,15 @@ describe("TestWorkspaceAxisPriority", () => {
     expect(s.workspace?.id).toBe(100);
   });
 
-  it("test_workspace_none_when_unset", () => {
+  it("workspace null when unset", () => {
+    // python: test_workspace_none_when_unset
     const s = resolveSession({}, sources(cmWithActive()));
     expect(s.workspace ?? null).toBeNull();
   });
 });
 
-describe("TestTargetMutualExclusion", () => {
+describe("Target mutual exclusion", () => {
+  // python: TestTargetMutualExclusion
   /**
    * Build the `ecom` target fixture on a config.
    *
@@ -337,7 +353,8 @@ describe("TestTargetMutualExclusion", () => {
     );
   }
 
-  it("test_target_with_account_raises", () => {
+  it("target with account raises", () => {
+    // python: test_target_with_account_raises
     const config = cmWithActive();
     addEcom(config);
     expect(() =>
@@ -345,7 +362,8 @@ describe("TestTargetMutualExclusion", () => {
     ).toThrow(ParamValidationError);
   });
 
-  it("test_target_with_project_raises", () => {
+  it("target with project raises", () => {
+    // python: test_target_with_project_raises
     const config = cmWithActive();
     addEcom(config);
     expect(() =>
@@ -353,7 +371,8 @@ describe("TestTargetMutualExclusion", () => {
     ).toThrow(ParamValidationError);
   });
 
-  it("test_target_with_workspace_raises", () => {
+  it("target with workspace raises", () => {
+    // python: test_target_with_workspace_raises
     const config = cmWithActive();
     addEcom(config);
     expect(() =>
@@ -372,7 +391,8 @@ describe("TestTargetMutualExclusion", () => {
     );
   });
 
-  it("test_target_alone_resolves", () => {
+  it("target alone resolves", () => {
+    // python: test_target_alone_resolves
     const config = cmWithActive();
     addEcom(config, 42);
     const s = resolveSession({ target: "ecom" }, sources(config));
@@ -383,8 +403,10 @@ describe("TestTargetMutualExclusion", () => {
   });
 });
 
-describe("TestNoSideEffects", () => {
-  it("test_does_not_mutate_environ (re-expressed: sources untouched)", () => {
+describe("No side effects", () => {
+  // python: TestNoSideEffects
+  it("does not mutate environ (re-expressed: sources untouched)", () => {
+    // python: test_does_not_mutate_environ
     const env: ResolverEnv = { MP_PROJECT_ID: "777" };
     const config = cmWithActive();
     const bag = sources(config, env);
@@ -397,7 +419,8 @@ describe("TestNoSideEffects", () => {
     expect([...config.accounts.keys()]).toStrictEqual(accountNamesBefore);
   });
 
-  it("test_does_not_read_oauth_tokens", () => {
+  it("does not read OAuth tokens", () => {
+    // python: test_does_not_read_oauth_tokens
     const config = cm();
     config.addAccount(
       parseAccount({
@@ -414,8 +437,10 @@ describe("TestNoSideEffects", () => {
   });
 });
 
-describe("TestErrorMessages", () => {
-  it("test_no_account_lists_options", () => {
+describe("Error messages", () => {
+  // python: TestErrorMessages
+  it("no account lists options", () => {
+    // python: test_no_account_lists_options
     // cm has accounts but no [active].account; no env vars set.
     const error = expectThrows(() => resolveSession({}, sources(cm())));
     expect(error).toBeInstanceOf(ConfigError);
@@ -424,16 +449,19 @@ describe("TestErrorMessages", () => {
   });
 });
 
-describe("TestCrossSourceOrdering", () => {
+describe("Cross source ordering", () => {
+  // python: TestCrossSourceOrdering
   // ── Account axis ──────────────────────────────────────────────────
 
-  it("test_bridge_account_beats_config_active", () => {
+  it("bridge account beats config active", () => {
+    // python: test_bridge_account_beats_config_active
     const bridge = makeBridge({ project: "3713224" });
     const s = resolveSession({}, sources(cmWithActive(), {}, bridge));
     expect(s.account.name).toBe("bridge-account");
   });
 
-  it("test_target_account_beats_bridge", () => {
+  it("target account beats bridge", () => {
+    // python: test_target_account_beats_bridge
     const config = cmWithActive();
     config.addTarget(
       new Target({
@@ -448,7 +476,8 @@ describe("TestCrossSourceOrdering", () => {
     expect(s.account.name).toBe("team");
   });
 
-  it("test_env_sa_quad_beats_target", () => {
+  it("env sa quad beats target", () => {
+    // python: test_env_sa_quad_beats_target
     const config = cmWithActive();
     config.addTarget(
       new Target({
@@ -462,7 +491,8 @@ describe("TestCrossSourceOrdering", () => {
     expect(s.account.name).not.toBe("team");
   });
 
-  it("test_env_sa_quad_beats_bridge", () => {
+  it("env sa quad beats bridge", () => {
+    // python: test_env_sa_quad_beats_bridge
     const bridge = makeBridge({ project: "3713224" });
     const s = resolveSession({}, sources(cmWithActive(), SA_QUAD, bridge));
     expect(s.account.name).not.toBe("bridge-account");
@@ -470,13 +500,15 @@ describe("TestCrossSourceOrdering", () => {
 
   // ── Project axis ──────────────────────────────────────────────────
 
-  it("test_bridge_project_beats_account_default", () => {
+  it("bridge project beats account default", () => {
+    // python: test_bridge_project_beats_account_default
     const bridge = makeBridge({ project: "3018488" });
     const s = resolveSession({}, sources(cmWithActive(), {}, bridge));
     expect(s.project.id).toBe("3018488");
   });
 
-  it("test_target_project_beats_bridge", () => {
+  it("target project beats bridge", () => {
+    // python: test_target_project_beats_bridge
     const config = cmWithActive();
     config.addTarget(
       new Target({
@@ -491,7 +523,8 @@ describe("TestCrossSourceOrdering", () => {
     expect(s.project.id).toBe("3018488");
   });
 
-  it("test_env_project_beats_target", () => {
+  it("env project beats target", () => {
+    // python: test_env_project_beats_target
     const config = cmWithActive();
     config.addTarget(
       new Target({
@@ -508,7 +541,8 @@ describe("TestCrossSourceOrdering", () => {
     expect(s.project.id).toBe("5555555");
   });
 
-  it("test_env_project_beats_bridge", () => {
+  it("env project beats bridge", () => {
+    // python: test_env_project_beats_bridge
     const bridge = makeBridge({ project: "3018488" });
     const s = resolveSession(
       {},
@@ -519,7 +553,8 @@ describe("TestCrossSourceOrdering", () => {
 
   // ── Workspace axis ────────────────────────────────────────────────
 
-  it("test_bridge_workspace_beats_active", () => {
+  it("bridge workspace beats active", () => {
+    // python: test_bridge_workspace_beats_active
     const config = cmWithActive();
     config.active = { ...config.active, workspace: 99 };
     const bridge = makeBridge({ project: "3713224", workspace: 42 });
@@ -528,7 +563,8 @@ describe("TestCrossSourceOrdering", () => {
     expect(s.workspace?.id).toBe(42);
   });
 
-  it("test_target_workspace_beats_bridge", () => {
+  it("target workspace beats bridge", () => {
+    // python: test_target_workspace_beats_bridge
     const config = cmWithActive();
     config.addTarget(
       new Target({
@@ -544,7 +580,8 @@ describe("TestCrossSourceOrdering", () => {
     expect(s.workspace?.id).toBe(77);
   });
 
-  it("test_env_workspace_beats_target", () => {
+  it("env workspace beats target", () => {
+    // python: test_env_workspace_beats_target
     const config = cmWithActive();
     config.addTarget(
       new Target({
@@ -562,7 +599,8 @@ describe("TestCrossSourceOrdering", () => {
     expect(s.workspace?.id).toBe(999);
   });
 
-  it("test_env_workspace_beats_bridge", () => {
+  it("env workspace beats bridge", () => {
+    // python: test_env_workspace_beats_bridge
     const bridge = makeBridge({ project: "3713224", workspace: 42 });
     const s = resolveSession(
       {},
@@ -575,7 +613,8 @@ describe("TestCrossSourceOrdering", () => {
 
 // ---- test_042_edge_cases.py::TestResolverEdgeCases --------
 
-describe("TestResolverEdgeCases (test_042_edge_cases.py)", () => {
+describe("Resolver edge cases", () => {
+  // python: TestResolverEdgeCases
   /**
    * Fresh empty config (the `empty_cm` fixture twin — no bridge by
    * construction, see file header).
@@ -586,7 +625,8 @@ describe("TestResolverEdgeCases (test_042_edge_cases.py)", () => {
     return new FakeConfig();
   }
 
-  it("test_partial_sa_quad_no_secret_falls_through", () => {
+  it("partial sa quad no secret falls through", () => {
+    // python: test_partial_sa_quad_no_secret_falls_through
     // No MP_SECRET → quad incomplete → no env account → no fallback →
     // raise.
     expect(() =>
@@ -601,7 +641,8 @@ describe("TestResolverEdgeCases (test_042_edge_cases.py)", () => {
     ).toThrow(ConfigError);
   });
 
-  it("test_partial_sa_quad_no_username_falls_through", () => {
+  it("partial sa quad no username falls through", () => {
+    // python: test_partial_sa_quad_no_username_falls_through
     expect(() =>
       resolveSession(
         {},
@@ -615,7 +656,7 @@ describe("TestResolverEdgeCases (test_042_edge_cases.py)", () => {
   });
 
   it.each(["abc", "0", "-1", "1.5"])(
-    "test_workspace_id_invalid_raises_config_error[%s]",
+    "workspace ID invalid raises config error[%s]", // python: test_workspace_id_invalid_raises_config_error
     (badWorkspace) => {
       const error = expectThrows(() =>
         resolveSession(
@@ -635,7 +676,8 @@ describe("TestResolverEdgeCases (test_042_edge_cases.py)", () => {
     },
   );
 
-  it("test_workspace_id_empty_string_treated_as_unset", () => {
+  it("workspace ID empty string treated as unset", () => {
+    // python: test_workspace_id_empty_string_treated_as_unset
     const s = resolveSession(
       {},
       sources(emptyCm(), {

@@ -54,8 +54,10 @@ function expectedDateRange(
   return { type: "between", from: start, to: toDate };
 }
 
-describe("TestActivityFeedDateRange", () => {
-  it("test_returns_known_type_and_correct_arm", () => {
+describe("Activity feed date range", () => {
+  // python: TestActivityFeedDateRange
+  it("returns known type and correct arm", () => {
+    // python: test_returns_known_type_and_correct_arm
     fc.assert(
       fc.property(optionalFeedDates, optionalFeedDates, (fromDate, toDate) => {
         const result = buildActivityFeedDateRange(fromDate, toDate);

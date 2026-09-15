@@ -104,7 +104,8 @@ function flagJson(
 // TestWorkspaceFeatureFlagCRUD
 // =============================================================================
 
-describe("TestWorkspaceFeatureFlagCRUD", () => {
+describe("Workspace feature flag CRUD", () => {
+  // python: TestWorkspaceFeatureFlagCRUD
   it("list_feature_flags() returns list of FeatureFlag objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([
@@ -241,7 +242,8 @@ describe("TestWorkspaceFeatureFlagCRUD", () => {
 // TestWorkspaceFeatureFlagLifecycle
 // =============================================================================
 
-describe("TestWorkspaceFeatureFlagLifecycle", () => {
+describe("Workspace feature flag lifecycle", () => {
+  // python: TestWorkspaceFeatureFlagLifecycle
   it("archive_feature_flag() returns None on success", async () => {
     const { ws } = makeWorkspace(() => ({ status: 204 }));
     await expect(ws.archiveFeatureFlag("abc-123")).resolves.toBeUndefined();
@@ -275,7 +277,8 @@ describe("TestWorkspaceFeatureFlagLifecycle", () => {
 // TestWorkspaceFeatureFlagOperations
 // =============================================================================
 
-describe("TestWorkspaceFeatureFlagOperations", () => {
+describe("Workspace feature flag operations", () => {
+  // python: TestWorkspaceFeatureFlagOperations
   it("set_flag_test_users() returns None on success", async () => {
     const { ws } = makeWorkspace(() => ({ status: 204 }));
     const params = new SetTestUsersParams({

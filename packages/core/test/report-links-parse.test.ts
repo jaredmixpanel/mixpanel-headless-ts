@@ -328,8 +328,10 @@ const ERROR_ROWS: ReadonlyArray<readonly [string, string]> = [
   ["not a url at all", "REPORT_LINK_UNPARSEABLE"],
 ];
 
-describe("TestParseTable", () => {
-  it.each(PARSE_ROWS)("test_row[%j]", (value, expected) => {
+describe("Parse table", () => {
+  // python: TestParseTable
+  it.each(PARSE_ROWS)("row[%j]", (value, expected) => {
+    // python: test_row
     const parsed = parseReportLink(value);
     expectParsedReportLink(parsed);
     for (const name of Object.keys(expected) as Array<keyof ParsedReportLink>) {
@@ -340,13 +342,15 @@ describe("TestParseTable", () => {
     expect(parsed.raw).toBe("raw" in expected ? expected.raw : value.trim());
   });
 
-  it.each(ERROR_ROWS)("test_error_row[%j]", (value, code) => {
+  it.each(ERROR_ROWS)("error row[%j]", (value, code) => {
+    // python: test_error_row
     const exc = catchParseError(() => parseReportLink(value));
     expect(exc.code).toBe(code);
     expect(exc.details).toHaveProperty("hint");
   });
 
-  it("test_unparseable_message", () => {
+  it("unparseable message", () => {
+    // python: test_unparseable_message
     const exc = catchParseError(() => parseReportLink("not a url at all"));
     expect(exc.code).toBe("REPORT_LINK_UNPARSEABLE");
     expect(exc.details["raw"]).toBe("not a url at all");
@@ -356,7 +360,8 @@ describe("TestParseTable", () => {
     );
   });
 
-  it("test_not_mixpanel_host_message", () => {
+  it("not mixpanel host message", () => {
+    // python: test_not_mixpanel_host_message
     const exc = catchParseError(() =>
       parseReportLink("https://example.com/project/3/app/insights#x"),
     );
@@ -367,7 +372,8 @@ describe("TestParseTable", () => {
     );
   });
 
-  it("test_unrecognized_path_message", () => {
+  it("unrecognized path message", () => {
+    // python: test_unrecognized_path_message
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/settings/project/3"),
     );
@@ -376,7 +382,8 @@ describe("TestParseTable", () => {
     expect(exc.details["hint"]).toContain("/s/{code}");
   });
 
-  it("test_unrecognized_hash_message", () => {
+  it("unrecognized hash message", () => {
+    // python: test_unrecognized_hash_message
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/insights#foo/bar"),
     );
@@ -385,7 +392,8 @@ describe("TestParseTable", () => {
     expect(exc.details["hint"]).toContain("12-character slug");
   });
 
-  it("test_empty_hash_message", () => {
+  it("empty hash message", () => {
+    // python: test_empty_hash_message
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/funnels#"),
     );
@@ -394,7 +402,8 @@ describe("TestParseTable", () => {
     expect(exc.details["project_id"]).toBe(3);
   });
 
-  it("test_parse_error_details_carry_parsed_fields", () => {
+  it("parse error details carry parsed fields", () => {
+    // python: test_parse_error_details_carry_parsed_fields
     const exc = catchParseError(() =>
       parseReportLink("https://eu.mixpanel.com/project/9/view/2/app/flows#x"),
     );
@@ -403,7 +412,8 @@ describe("TestParseTable", () => {
     expect(exc.details["workspace_id"]).toBe(2);
   });
 
-  it("test_frozen", () => {
+  it("frozen", () => {
+    // python: test_frozen
     const parsed = parseReportLink(SLUG);
     expect(Object.isFrozen(parsed)).toBe(true);
     expect(() => {
@@ -412,14 +422,16 @@ describe("TestParseTable", () => {
     expect(parsed.slug).toBe(SLUG);
   });
 
-  it("test_boards_id_outside_boards_app_is_unrecognized", () => {
+  it("boards ID outside boards app is unrecognized", () => {
+    // python: test_boards_id_outside_boards_app_is_unrecognized
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/insights#id=555"),
     );
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_HASH");
   });
 
-  it("test_boards_with_invalid_edited_bookmark_is_dashboard", () => {
+  it("boards with invalid edited bookmark is dashboard", () => {
+    // python: test_boards_with_invalid_edited_bookmark_is_dashboard
     const parsed = parseReportLink(
       "https://mixpanel.com/project/3/app/boards#id=555&edited-bookmark=short",
     );
@@ -428,33 +440,38 @@ describe("TestParseTable", () => {
     expect(parsed.slug).toBeNull();
   });
 
-  it("test_short_link_without_code_is_unrecognized_path", () => {
+  it("short link without code is unrecognized path", () => {
+    // python: test_short_link_without_code_is_unrecognized_path
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/s/"),
     );
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_PATH");
   });
 
-  it("test_unknown_app_is_unrecognized_path", () => {
+  it("unknown app is unrecognized path", () => {
+    // python: test_unknown_app_is_unrecognized_path
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/users#abc"),
     );
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_PATH");
   });
 
-  it("test_non_ascii_digits_are_not_ids", () => {
+  it("non ascii digits are not IDs", () => {
+    // python: test_non_ascii_digits_are_not_ids
     const exc = catchParseError(() =>
       parseReportLink(`https://mixpanel.com/project/٣/app/insights#${SLUG}`),
     );
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_PATH");
   });
 
-  it("test_bare_known_host_is_unrecognized_path", () => {
+  it("bare known host is unrecognized path", () => {
+    // python: test_bare_known_host_is_unrecognized_path
     const exc = catchParseError(() => parseReportLink("mixpanel.com"));
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_PATH");
   });
 
-  it("test_host_prefix_lookalike_is_unparseable", () => {
+  it("host prefix lookalike is unparseable", () => {
+    // python: test_host_prefix_lookalike_is_unparseable
     const exc = catchParseError(() =>
       parseReportLink(`mixpanel.comx/project/3/app/insights#${SLUG}`),
     );
@@ -464,14 +481,16 @@ describe("TestParseTable", () => {
     );
   });
 
-  it("test_boards_hash_without_id_is_unrecognized", () => {
+  it("boards hash without ID is unrecognized", () => {
+    // python: test_boards_hash_without_id_is_unrecognized
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/boards#foo=bar"),
     );
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_HASH");
   });
 
-  it("test_malformed_netloc_is_unparseable", () => {
+  it("malformed netloc is unparseable", () => {
+    // python: test_malformed_netloc_is_unparseable
     const exc = catchParseError(() =>
       parseReportLink("https://[::1/project/3/app/insights#x"),
     );
@@ -479,8 +498,10 @@ describe("TestParseTable", () => {
   });
 });
 
-describe("TestParserTolerance", () => {
-  it("test_trailing_slash_after_bookmark_hash", () => {
+describe("Parser tolerance", () => {
+  // python: TestParserTolerance
+  it("trailing slash after bookmark hash", () => {
+    // python: test_trailing_slash_after_bookmark_hash
     const parsed = parseReportLink(
       "https://mixpanel.com/project/3/app/insights#report/123/",
     );
@@ -489,7 +510,8 @@ describe("TestParserTolerance", () => {
     expect(parsed.title_segment).toBeNull();
   });
 
-  it("test_trailing_slash_after_slug", () => {
+  it("trailing slash after slug", () => {
+    // python: test_trailing_slash_after_slug
     const parsed = parseReportLink(
       `https://mixpanel.com/project/3/app/insights#${SLUG}/`,
     );
@@ -497,7 +519,8 @@ describe("TestParserTolerance", () => {
     expect(parsed.slug).toBe(SLUG);
   });
 
-  it("test_query_tail_after_slug", () => {
+  it("query tail after slug", () => {
+    // python: test_query_tail_after_slug
     const parsed = parseReportLink(
       `https://mixpanel.com/project/3/app/insights#${SLUG}?utm=x`,
     );
@@ -505,7 +528,8 @@ describe("TestParserTolerance", () => {
     expect(parsed.slug).toBe(SLUG);
   });
 
-  it("test_query_tail_after_bookmark_hash", () => {
+  it("query tail after bookmark hash", () => {
+    // python: test_query_tail_after_bookmark_hash
     const parsed = parseReportLink(
       "https://mixpanel.com/project/3/app/insights#report/123?utm=x",
     );
@@ -513,7 +537,8 @@ describe("TestParserTolerance", () => {
     expect(parsed.bookmark_id).toBe(123);
   });
 
-  it("test_overrides_tail_keeps_question_mark_and_slash", () => {
+  it("overrides tail keeps question mark and slash", () => {
+    // python: test_overrides_tail_keeps_question_mark_and_slash
     const parsed = parseReportLink(
       "https://mixpanel.com/project/3/app/funnels#view/123/~(a~'x?y/z')/",
     );
@@ -522,7 +547,8 @@ describe("TestParserTolerance", () => {
     expect(parsed.overrides_jsurl).toBe("~(a~'x?y/z')/");
   });
 
-  it("test_slash_only_hash_is_empty", () => {
+  it("slash only hash is empty", () => {
+    // python: test_slash_only_hash_is_empty
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/insights#/"),
     );
@@ -533,13 +559,14 @@ describe("TestParserTolerance", () => {
     `javascript://mixpanel.com/project/3/app/insights#${SLUG}`,
     `ftp://mixpanel.com/project/3/app/insights#${SLUG}`,
     `file://mixpanel.com/project/3/app/insights#${SLUG}`,
-  ])("test_non_http_scheme_is_unparseable[%s]", (url) => {
+  ])("non HTTP scheme is unparseable[%s]", (url) => {
+    // python: test_non_http_scheme_is_unparseable
     const exc = catchParseError(() => parseReportLink(url));
     expect(exc.code).toBe("REPORT_LINK_UNPARSEABLE");
   });
 
   it.each(["http", "HTTP", "Https"])(
-    "test_http_schemes_parse[%s]",
+    "HTTP schemes parse[%s]", // python: test_http_schemes_parse
     (scheme) => {
       const parsed = parseReportLink(
         `${scheme}://mixpanel.com/project/3/app/insights#${SLUG}`,
@@ -548,7 +575,8 @@ describe("TestParserTolerance", () => {
     },
   );
 
-  it("test_percent_hash_decodes_only_the_hash", () => {
+  it("percent hash decodes only the hash", () => {
+    // python: test_percent_hash_decodes_only_the_hash
     const parsed = parseReportLink(
       "https://mixpanel.com/project/3/app/insights%23report/123/my%2Ftitle",
     );
@@ -557,14 +585,16 @@ describe("TestParserTolerance", () => {
     expect(parsed.title_segment).toBe("my%2Ftitle");
   });
 
-  it("test_percent_hash_lower_case", () => {
+  it("percent hash lower case", () => {
+    // python: test_percent_hash_lower_case
     const parsed = parseReportLink(
       `https://mixpanel.com/project/3/app/insights%23${SLUG}`,
     );
     expect(parsed.slug).toBe(SLUG);
   });
 
-  it("test_non_digit_workspace_segment_is_unrecognized_path", () => {
+  it("non digit workspace segment is unrecognized path", () => {
+    // python: test_non_digit_workspace_segment_is_unrecognized_path
     const exc = catchParseError(() =>
       parseReportLink(
         `https://mixpanel.com/project/3/view/x/app/insights#${SLUG}`,
@@ -573,7 +603,8 @@ describe("TestParserTolerance", () => {
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_PATH");
   });
 
-  it("test_duplicate_fragment_keys_first_wins", () => {
+  it("duplicate fragment keys first wins", () => {
+    // python: test_duplicate_fragment_keys_first_wins
     const parsed = parseReportLink(
       "https://mixpanel.com/project/3/app/boards#id=1&id=2",
     );
@@ -581,7 +612,8 @@ describe("TestParserTolerance", () => {
     expect(parsed.dashboard_id).toBe(1);
   });
 
-  it("test_scheme_without_host_is_unparseable", () => {
+  it("scheme without host is unparseable", () => {
+    // python: test_scheme_without_host_is_unparseable
     const exc = catchParseError(() => parseReportLink("https://"));
     expect(exc.code).toBe("REPORT_LINK_UNPARSEABLE");
   });

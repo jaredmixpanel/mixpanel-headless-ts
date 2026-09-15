@@ -200,8 +200,10 @@ function makeCdnHandler(
 // sign()
 // =============================================================================
 
-describe("sign wraps the client call in SignedReplay objects (TestSignWrapping)", () => {
-  it("test_sign_returns_list_of_signed_replay", async () => {
+describe("sign wraps the client call in SignedReplay objects", () => {
+  // python: TestSignWrapping
+  it("sign returns list of signed replay", async () => {
+    // python: test_sign_returns_list_of_signed_replay
     const { client, signCalls } = mockApiClient({
       signResponse: () => [
         {
@@ -242,8 +244,10 @@ describe("sign wraps the client call in SignedReplay objects (TestSignWrapping)"
 // fetch_files() — the CDN walker
 // =============================================================================
 
-describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => {
-  it("test_returns_timestamp_sorted_events", async () => {
+describe("buffered fetch concatenates + sorts", () => {
+  // python: TestFetchFilesHappyPath
+  it("returns timestamp sorted events", async () => {
+    // python: test_returns_timestamp_sorted_events
     const fileContents = new Map<
       number,
       ReadonlyArray<Record<string, unknown>> | null
@@ -266,7 +270,8 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
     expect(events.map((e) => e["timestamp"])).toStrictEqual([10, 20, 30, 40]);
   });
 
-  it("test_uses_correct_file_naming", async () => {
+  it("uses correct file naming", async () => {
+    // python: test_uses_correct_file_naming
     const callLog: number[] = [];
     const fileContents = new Map<
       number,
@@ -290,7 +295,8 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
     expect([...callLog].sort((a, b) => a - b)).toStrictEqual([0, 1, 2]);
   });
 
-  it("test_respects_max_files_bound", async () => {
+  it("respects max files bound", async () => {
+    // python: test_respects_max_files_bound
     const fileContents = new Map<
       number,
       ReadonlyArray<Record<string, unknown>> | null
@@ -315,8 +321,10 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
   });
 });
 
-describe("404 termination semantics (TestFetchFilesTermination)", () => {
-  it("test_first_file_404_raises_replay_not_found", async () => {
+describe("404 termination semantics", () => {
+  // python: TestFetchFilesTermination
+  it("first file 404 raises replay not found", async () => {
+    // python: test_first_file_404_raises_replay_not_found
     const { client } = mockApiClient();
     const service = new ReplaysService(client, {
       fetchImpl: cdnFetch(makeCdnHandler()),
@@ -339,7 +347,8 @@ describe("404 termination semantics (TestFetchFilesTermination)", () => {
     expect(String(exc.details["cdn_url_prefix"]).endsWith("/")).toBe(true);
   });
 
-  it("test_mid_walk_404_terminates_cleanly", async () => {
+  it("mid walk 404 terminates cleanly", async () => {
+    // python: test_mid_walk_404_terminates_cleanly
     const fileContents = new Map<
       number,
       ReadonlyArray<Record<string, unknown>> | null
@@ -363,8 +372,10 @@ describe("404 termination semantics (TestFetchFilesTermination)", () => {
   });
 });
 
-describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
-  it("test_403_with_re_sign_succeeds_after_resign", async () => {
+describe("403 re-sign retry", () => {
+  // python: TestFetchFiles403Retry
+  it("403 with re sign succeeds after resign", async () => {
+    // python: test_403_with_re_sign_succeeds_after_resign
     const state = { resigned: false };
     const signCalls: CapturedFetchRequest[] = [];
     const handler: CannedHandler = (request) => {
@@ -410,7 +421,8 @@ describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
     expect(events.map((e) => e["timestamp"])).toStrictEqual([0, 10]);
   });
 
-  it("test_403_without_re_sign_raises_expired", async () => {
+  it("403 without re sign raises expired", async () => {
+    // python: test_403_without_re_sign_raises_expired
     const { client, signCalls } = mockApiClient();
     const service = new ReplaysService(client, {
       fetchImpl: cdnFetch(makeCdnHandler({ files403: new Set([0]) })),
@@ -436,8 +448,10 @@ describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
   });
 });
 
-describe("credential redaction on transport errors (TestFetchFilesCredentialRedaction)", () => {
-  it("test_transport_error_redacts_signed_credential", async () => {
+describe("credential redaction on transport errors", () => {
+  // python: TestFetchFilesCredentialRedaction
+  it("transport error redacts signed credential", async () => {
+    // python: test_transport_error_redacts_signed_credential
     const signed = signedFixture();
     const { client } = mockApiClient();
     const service = new ReplaysService(client, {
@@ -471,8 +485,10 @@ describe("credential redaction on transport errors (TestFetchFilesCredentialReda
 // Mobile-replay detection
 // =============================================================================
 
-describe("mobile-replay detection (TestMobileReplayDetection)", () => {
-  it("test_non_rrweb_first_event_raises_unsupported_format", async () => {
+describe("mobile-replay detection", () => {
+  // python: TestMobileReplayDetection
+  it("non rrweb first event raises unsupported format", async () => {
+    // python: test_non_rrweb_first_event_raises_unsupported_format
     const fileContents = new Map<
       number,
       ReadonlyArray<Record<string, unknown>> | null
@@ -507,8 +523,10 @@ describe("mobile-replay detection (TestMobileReplayDetection)", () => {
 // discover() — no query_fn
 // =============================================================================
 
-describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
-  it("test_raises_without_query_fn", async () => {
+describe("discover without query_fn", () => {
+  // python: TestDiscoverNoQueryFn
+  it("raises without query fn", async () => {
+    // python: test_raises_without_query_fn
     const { client } = mockApiClient();
     const service = new ReplaysService(client); // no queryFn
     let caught: unknown;
@@ -528,7 +546,8 @@ describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
     expect((caught as MixpanelHeadlessError).message).toContain("query_fn");
   });
 
-  it("test_empty_replay_ids_returns_empty", async () => {
+  it("empty replay IDs returns empty", async () => {
+    // python: test_empty_replay_ids_returns_empty
     const { client } = mockApiClient();
     const calls: unknown[] = [];
     const service = new ReplaysService(client, {
@@ -640,8 +659,10 @@ function serviceWithSeries(
   return { service, calls };
 }
 
-describe("discover parses the min-time series (TestDiscoverParsing)", () => {
-  it("test_one_summary_per_replay", async () => {
+describe("discover parses the min-time series", () => {
+  // python: TestDiscoverParsing
+  it("one summary per replay", async () => {
+    // python: test_one_summary_per_replay
     const { service } = serviceWithSeries(DISCOVERY_SERIES, {
       projectId: "3",
     });
@@ -660,7 +681,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(byId.get("rid-aaa")?.project_id).toBe(3);
   });
 
-  it("test_query_uses_min_time_aggregation", async () => {
+  it("query uses min time aggregation", async () => {
+    // python: test_query_uses_min_time_aggregation
     const { service, calls } = serviceWithSeries(DISCOVERY_SERIES);
     await service.discover({
       distinctId: "u-1",
@@ -676,7 +698,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     ]);
   });
 
-  it("test_missing_retention_defaults_30_with_warning", async () => {
+  it("missing retention defaults 30 with warning", async () => {
+    // python: test_missing_retention_defaults_30_with_warning
     const warnings: string[] = [];
     const { service } = serviceWithSeries(DISCOVERY_SERIES_NO_RETENTION, {
       warn: (message) => {
@@ -696,7 +719,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(out[0]?.start_time).toBe(1779319127 * 1000);
   });
 
-  it("test_empty_series_returns_empty", async () => {
+  it("empty series returns empty", async () => {
+    // python: test_empty_series_returns_empty
     const { service } = serviceWithSeries({});
     await expect(
       service.discover({
@@ -707,7 +731,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     ).resolves.toStrictEqual([]);
   });
 
-  it("test_nonstandard_retention_defaults_30_with_warning", async () => {
+  it("nonstandard retention defaults 30 with warning", async () => {
+    // python: test_nonstandard_retention_defaults_30_with_warning
     const warnings: string[] = [];
     const series: Record<string, unknown> = {
       "Session Recording Checkpoint [Minimum Time]": {
@@ -736,7 +761,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(out[0]?.start_time).toBe(1779322882 * 1000);
   });
 
-  it("test_limit_caps_summaries", async () => {
+  it("limit caps summaries", async () => {
+    // python: test_limit_caps_summaries
     const { service } = serviceWithSeries(DISCOVERY_SERIES);
     const out = await service.discover({
       distinctId: "u-1",
@@ -747,7 +773,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(out).toHaveLength(1);
   });
 
-  it("test_default_window_is_90_day_lookback", async () => {
+  it("default window is 90 day lookback", async () => {
+    // python: test_default_window_is_90_day_lookback
     const { service, calls } = serviceWithSeries({});
     await service.discover({ replayIds: ["rid-aaa"] });
     const kwargs = calls[0]?.options ?? {};
@@ -756,7 +783,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(Object.hasOwn(kwargs, "to_date")).toBe(false);
   });
 
-  it("test_explicit_window_overrides_lookback", async () => {
+  it("explicit window overrides lookback", async () => {
+    // python: test_explicit_window_overrides_lookback
     const { service, calls } = serviceWithSeries(DISCOVERY_SERIES);
     await service.discover({
       distinctId: "u-1",
@@ -769,7 +797,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(Object.hasOwn(kwargs, "last")).toBe(false);
   });
 
-  it("test_missing_retention_warning_has_no_doubled_prefix", async () => {
+  it("missing retention warning has no doubled prefix", async () => {
+    // python: test_missing_retention_warning_has_no_doubled_prefix
     const warnings: string[] = [];
     const { service } = serviceWithSeries(DISCOVERY_SERIES_NO_RETENTION, {
       warn: (text) => {
@@ -787,8 +816,10 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
   });
 });
 
-describe("events_for parses the $all_events series (TestEventsForParsing)", () => {
-  it("test_returns_time_sorted_events_per_replay", async () => {
+describe("events_for parses the $all_events series", () => {
+  // python: TestEventsForParsing
+  it("returns time sorted events per replay", async () => {
+    // python: test_returns_time_sorted_events_per_replay
     const { service } = serviceWithSeries(EVENTS_SERIES);
     const out = await service.eventsFor(["rid-bab"]);
     expect(new Set(out.keys())).toStrictEqual(new Set(["rid-bab"]));
@@ -800,7 +831,8 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     expect(events[0]?.event_time).toBeLessThan(events[1]?.event_time ?? 0);
   });
 
-  it("test_event_properties_surface", async () => {
+  it("event properties surface", async () => {
+    // python: test_event_properties_surface
     const { service } = serviceWithSeries(EVENTS_SERIES_WITH_PROP);
     const out = await service.eventsFor(["rid-bab"], {
       eventProperties: ["$browser"],
@@ -810,7 +842,8 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     });
   });
 
-  it("test_issues_all_events_query_shape", async () => {
+  it("issues all events query shape", async () => {
+    // python: test_issues_all_events_query_shape
     const { service, calls } = serviceWithSeries(EVENTS_SERIES);
     await service.eventsFor(["rid-bab"]);
     expect(calls[0]?.events).toBe("$all_events");
@@ -819,12 +852,14 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     ).toStrictEqual(["$time", "$event_name", "$mp_replay_id"]);
   });
 
-  it("test_empty_series_returns_empty_dict", async () => {
+  it("empty series returns empty dict", async () => {
+    // python: test_empty_series_returns_empty_dict
     const { service } = serviceWithSeries({});
     expect((await service.eventsFor(["rid-bab"])).size).toBe(0);
   });
 
-  it("test_default_window_is_90_day_lookback", async () => {
+  it("default window is 90 day lookback", async () => {
+    // python: test_default_window_is_90_day_lookback
     const { service, calls } = serviceWithSeries({});
     await service.eventsFor(["rid-bab"]);
     const kwargs = calls[0]?.options ?? {};
@@ -833,7 +868,8 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     expect(Object.hasOwn(kwargs, "to_date")).toBe(false);
   });
 
-  it("test_explicit_window_overrides_lookback", async () => {
+  it("explicit window overrides lookback", async () => {
+    // python: test_explicit_window_overrides_lookback
     const { service, calls } = serviceWithSeries({});
     await service.eventsFor(["rid-bab"], {
       fromDate: "2026-05-20",

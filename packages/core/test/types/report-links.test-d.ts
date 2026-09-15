@@ -25,8 +25,10 @@ declare const record: BookmarkUrl;
 declare const link: ReportLink;
 declare const resolved: ResolvedReport;
 
-describe("TestBookmarkUrl", () => {
-  it("test_frozen — fields are readonly (runtime freeze is the open todo)", () => {
+describe("Bookmark URL", () => {
+  // python: TestBookmarkUrl
+  it("frozen — fields are readonly (runtime freeze is the open todo)", () => {
+    // python: test_frozen
     // @ts-expect-error -- `slug` is readonly
     record.slug = "x";
     // @ts-expect-error -- `params` is readonly
@@ -39,8 +41,10 @@ describe("TestBookmarkUrl", () => {
   });
 });
 
-describe("TestReportLink", () => {
-  it("test_frozen — fields are readonly", () => {
+describe("Report link", () => {
+  // python: TestReportLink
+  it("frozen — fields are readonly", () => {
+    // python: test_frozen
     // @ts-expect-error -- `slug` is readonly
     link.slug = "x";
     // @ts-expect-error -- `url` is readonly
@@ -50,8 +54,10 @@ describe("TestReportLink", () => {
   });
 });
 
-describe("TestResolvedReport", () => {
-  it("test_frozen — fields are readonly", () => {
+describe("Resolved report", () => {
+  // python: TestResolvedReport
+  it("frozen — fields are readonly", () => {
+    // python: test_frozen
     // @ts-expect-error -- `params` is readonly
     resolved.params = {};
     expectTypeOf(resolved.source).toEqualTypeOf<"slug" | "bookmark">();
@@ -61,8 +67,10 @@ describe("TestResolvedReport", () => {
   });
 });
 
-describe("TestReportLinkType", () => {
-  it("test_query_result_alias_members", () => {
+describe("Report link type", () => {
+  // python: TestReportLinkType
+  it("query result alias members", () => {
+    // python: test_query_result_alias_members
     expectTypeOf<ReportLinkQueryResult>().toEqualTypeOf<
       QueryResult | FunnelQueryResult | RetentionQueryResult | FlowQueryResult
     >();

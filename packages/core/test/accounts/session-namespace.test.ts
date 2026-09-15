@@ -29,7 +29,8 @@ async function seeded(): Promise<EffectsBundle> {
   return bundle;
 }
 
-describe("TestShow (test_session_namespace.py:42)", () => {
+describe("Show", () => {
+  // python: TestShow
   it("show() returns an ActiveSession matching [active]", async () => {
     const bundle = await seeded();
     bundle.config.setActive({ account: "x", workspace: 42 });
@@ -44,7 +45,8 @@ describe("TestShow (test_session_namespace.py:42)", () => {
   });
 });
 
-describe("TestUse (test_session_namespace.py:59)", () => {
+describe("Use", () => {
+  // python: TestUse
   it("updating only the account axis preserves the others", async () => {
     const bundle = await seeded();
     bundle.config.setActive({ workspace: 42 });

@@ -120,7 +120,8 @@ function fakeReadFile(
 // US5: Lookup Tables
 // =============================================================================
 
-describe("TestListLookupTables", () => {
+describe("List lookup tables", () => {
+  // python: TestListLookupTables
   it("list_lookup_tables() returns list of LookupTable objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([lookupTableJson(1, "Products"), lookupTableJson(2, "Categories")]),
@@ -154,7 +155,8 @@ describe("TestListLookupTables", () => {
   });
 });
 
-describe("TestUploadLookupTable", () => {
+describe("Upload lookup table", () => {
+  // python: TestUploadLookupTable
   /**
    * The three-step upload handler (`:1430-1460`).
    *
@@ -300,7 +302,8 @@ describe("TestUploadLookupTable", () => {
   });
 });
 
-describe("TestMarkLookupTableReady", () => {
+describe("Mark lookup table ready", () => {
+  // python: TestMarkLookupTableReady
   it("mark_lookup_table_ready() returns a LookupTable", async () => {
     const { ws } = makeWorkspace(() => ok(lookupTableJson(1, "Products")));
     const params = new MarkLookupTableReadyParams({
@@ -314,7 +317,8 @@ describe("TestMarkLookupTableReady", () => {
   });
 });
 
-describe("TestGetLookupUploadUrl", () => {
+describe("Get lookup upload URL", () => {
+  // python: TestGetLookupUploadUrl
   it("get_lookup_upload_url() returns LookupTableUploadUrl", async () => {
     const { ws } = makeWorkspace(() =>
       ok({
@@ -348,7 +352,8 @@ describe("TestGetLookupUploadUrl", () => {
   });
 });
 
-describe("TestGetLookupUploadStatus", () => {
+describe("Get lookup upload status", () => {
+  // python: TestGetLookupUploadStatus
   it("get_lookup_upload_status() returns an opaque dict", async () => {
     const { ws } = makeWorkspace(() =>
       ok({ upload_id: "abc123", state: "completed", rows_imported: 1000 }),
@@ -361,7 +366,8 @@ describe("TestGetLookupUploadStatus", () => {
   });
 });
 
-describe("TestUpdateLookupTable", () => {
+describe("Update lookup table", () => {
+  // python: TestUpdateLookupTable
   it("update_lookup_table() returns the updated LookupTable", async () => {
     const { ws } = makeWorkspace(() =>
       ok(lookupTableJson(1, "Renamed Catalog")),
@@ -374,14 +380,16 @@ describe("TestUpdateLookupTable", () => {
   });
 });
 
-describe("TestDeleteLookupTables", () => {
+describe("Delete lookup tables", () => {
+  // python: TestDeleteLookupTables
   it("delete_lookup_tables() returns None on success", async () => {
     const { ws } = makeWorkspace(() => okBare());
     await expect(ws.deleteLookupTables([1, 2])).resolves.toBeUndefined();
   });
 });
 
-describe("TestDownloadLookupTable", () => {
+describe("Download lookup table", () => {
+  // python: TestDownloadLookupTable
   it("download_lookup_table() returns raw bytes", async () => {
     const csvContent = "product_id,name\n1,Widget\n2,Gadget\n";
     const { ws } = makeWorkspace(() => ({ status: 200, text: csvContent }));
@@ -412,7 +420,8 @@ describe("TestDownloadLookupTable", () => {
   });
 });
 
-describe("TestGetLookupDownloadUrl", () => {
+describe("Get lookup download URL", () => {
+  // python: TestGetLookupDownloadUrl
   it("get_lookup_download_url() returns a signed download URL string", async () => {
     const { ws } = makeWorkspace(() =>
       ok("https://storage.googleapis.com/download/abc"),

@@ -143,8 +143,10 @@ function bookmarkWithChartType(chartType: string): Dict {
 // Math Type Dispatch
 // =============================================================================
 
-describe("TestMathTypeDispatch", () => {
-  it("test_insights_valid_math_passes", () => {
+describe("Math type dispatch", () => {
+  // python: TestMathTypeDispatch
+  it("insights valid math passes", () => {
+    // python: test_insights_valid_math_passes
     fc.assert(
       fc.property(fc.constantFrom(...VALID_MATH_INSIGHTS), (math) => {
         const errors = validateBookmark(bookmarkWithMath(math), {
@@ -162,7 +164,8 @@ describe("TestMathTypeDispatch", () => {
     );
   });
 
-  it("test_insights_invalid_math_fails", () => {
+  it("insights invalid math fails", () => {
+    // python: test_insights_invalid_math_fails
     fc.assert(
       fc.property(invalidMathStringsArb, (math) => {
         const errors = validateBookmark(bookmarkWithMath(math), {
@@ -180,7 +183,8 @@ describe("TestMathTypeDispatch", () => {
     );
   });
 
-  it("test_funnel_valid_math_passes", () => {
+  it("funnel valid math passes", () => {
+    // python: test_funnel_valid_math_passes
     fc.assert(
       fc.property(fc.constantFrom(...VALID_MATH_FUNNELS), (math) => {
         const errors = validateBookmark(bookmarkWithMath(math), {
@@ -198,7 +202,8 @@ describe("TestMathTypeDispatch", () => {
     );
   });
 
-  it("test_retention_valid_math_passes", () => {
+  it("retention valid math passes", () => {
+    // python: test_retention_valid_math_passes
     fc.assert(
       fc.property(fc.constantFrom(...VALID_MATH_RETENTION), (math) => {
         const errors = validateBookmark(bookmarkWithMath(math), {
@@ -221,8 +226,10 @@ describe("TestMathTypeDispatch", () => {
 // Filter Enum Consistency
 // =============================================================================
 
-describe("TestFilterEnumConsistency", () => {
-  it("test_valid_filter_operators_pass", () => {
+describe("Filter enum consistency", () => {
+  // python: TestFilterEnumConsistency
+  it("valid filter operators pass", () => {
+    // python: test_valid_filter_operators_pass
     fc.assert(
       fc.property(fc.constantFrom(...VALID_FILTER_OPERATORS), (op) => {
         const errors = validateBookmark(bookmarkWithFilter(op));
@@ -240,7 +247,8 @@ describe("TestFilterEnumConsistency", () => {
     );
   });
 
-  it("test_invalid_filter_operators_fail", () => {
+  it("invalid filter operators fail", () => {
+    // python: test_invalid_filter_operators_fail
     fc.assert(
       fc.property(invalidFilterOperatorsArb, (op) => {
         const errors = validateBookmark(bookmarkWithFilter(op));
@@ -261,8 +269,10 @@ describe("TestFilterEnumConsistency", () => {
 // Chart Type Consistency
 // =============================================================================
 
-describe("TestChartTypeConsistency", () => {
-  it("test_valid_chart_types_pass", () => {
+describe("Chart type consistency", () => {
+  // python: TestChartTypeConsistency
+  it("valid chart types pass", () => {
+    // python: test_valid_chart_types_pass
     fc.assert(
       fc.property(fc.constantFrom(...VALID_CHART_TYPES), (ct) => {
         const errors = validateBookmark(bookmarkWithChartType(ct));
@@ -280,7 +290,8 @@ describe("TestChartTypeConsistency", () => {
     );
   });
 
-  it("test_invalid_chart_types_fail", () => {
+  it("invalid chart types fail", () => {
+    // python: test_invalid_chart_types_fail
     fc.assert(
       fc.property(invalidChartTypesArb, (ct) => {
         const errors = validateBookmark(bookmarkWithChartType(ct));

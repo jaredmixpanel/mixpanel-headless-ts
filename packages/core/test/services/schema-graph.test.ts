@@ -204,7 +204,8 @@ function defaultMockApi(): LexiconStub {
   );
 }
 
-describe("TestSchemaGraphResult (to_graph half — Phase-2 deferral)", () => {
+describe("Schema graph result (to_graph half — Phase-2 deferral)", () => {
+  // python: TestSchemaGraphResult
   it("yields a directed event->property graph with node kinds", () => {
     const g = sampleResult().toGraph();
     expect(nodeKind(g, "Purchase")).toBe("event");
@@ -260,7 +261,8 @@ describe("TestSchemaGraphResult (to_graph half — Phase-2 deferral)", () => {
   });
 });
 
-describe("TestApiClientBulkLexicon", () => {
+describe("API client bulk lexicon", () => {
+  // python: TestApiClientBulkLexicon
   it("adds includeEvents=true and resourceType for include_events", async () => {
     let seen: Record<string, string> = {};
     const client = mockClient((request) => {
@@ -365,7 +367,8 @@ describe("TestApiClientBulkLexicon", () => {
   });
 });
 
-describe("TestApiClientPerEventProperties", () => {
+describe("API client per event properties", () => {
+  // python: TestApiClientPerEventProperties
   // The query-API per-event properties gather (the relationship
   // source). The App API's `includeEvents=true` bulk call computes this
   // same join behind a ~120s gateway deadline it cannot meet on large
@@ -374,7 +377,8 @@ describe("TestApiClientPerEventProperties", () => {
   // `client/server-deadline.test.ts` — it needs the transport-timeout
   // capture seam.)
 
-  it("test_url_params_and_unwrap", async () => {
+  it("URL params and unwrap", async () => {
+    // python: test_url_params_and_unwrap
     let seenUrl = "";
     let seenParams: Record<string, string> = {};
     const client = mockClient((request) => {
@@ -398,7 +402,8 @@ describe("TestApiClientPerEventProperties", () => {
     ]);
   });
 
-  it("test_raises_on_unexpected_shape", async () => {
+  it("raises on unexpected shape", async () => {
+    // python: test_raises_on_unexpected_shape
     const client = mockClient(() => ({
       status: 200,
       json: { results: { unexpected: "shape" } },
@@ -412,7 +417,8 @@ describe("TestApiClientPerEventProperties", () => {
   });
 });
 
-describe("TestCanonicalResourceType", () => {
+describe("Canonical resource type", () => {
+  // python: TestCanonicalResourceType
   it.each([
     ["event", "Event"],
     ["events", "Event"],
@@ -426,7 +432,8 @@ describe("TestCanonicalResourceType", () => {
   });
 });
 
-describe("TestDiscoveryGetSchemaGraph", () => {
+describe("Discovery get schema graph", () => {
+  // python: TestDiscoveryGetSchemaGraph
   it("builds the adjacency maps from the inverted per-event gather", async () => {
     const stub = defaultMockApi();
     const result = await new DiscoveryService(stub.client).getSchemaGraph();
@@ -556,7 +563,8 @@ describe("TestDiscoveryGetSchemaGraph", () => {
   });
 });
 
-describe("TestFacadeAndCli (facade half)", () => {
+describe("Facade and CLI (facade half)", () => {
+  // python: TestFacadeAndCli
   it("delegates Workspace.schema_graph to the discovery service", async () => {
     const stub = lexiconStub([{ name: "Purchase" }], []);
     const ws = new Workspace({ session: makeSession(), client: stub.client });

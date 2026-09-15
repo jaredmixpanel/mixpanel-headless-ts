@@ -52,7 +52,8 @@ function measurementOf(
 // T023: E2E group_by with custom properties
 // ===========================================================================
 
-describe("TestGroupByCustomPropertyE2E", () => {
+describe("Group by custom property E2E", () => {
+  // python: TestGroupByCustomPropertyE2E
   it("build_params with a CustomPropertyRef in group_by", async () => {
     const params = await makeStubWorkspace().buildParams("Purchase", {
       group_by: new GroupBy({
@@ -117,7 +118,8 @@ describe("TestGroupByCustomPropertyE2E", () => {
 // T032: E2E filter with custom properties
 // ===========================================================================
 
-describe("TestFilterCustomPropertyE2E", () => {
+describe("Filter custom property E2E", () => {
+  // python: TestFilterCustomPropertyE2E
   it("build_params with a CustomPropertyRef in the filter", async () => {
     const params = await makeStubWorkspace().buildParams("Purchase", {
       where: Filter.greaterThan(new CustomPropertyRef({ id: 42 }), 100),
@@ -147,7 +149,8 @@ describe("TestFilterCustomPropertyE2E", () => {
 // T038-T040: E2E measurement with custom properties
 // ===========================================================================
 
-describe("TestMeasurementCustomPropertyE2E", () => {
+describe("Measurement custom property E2E", () => {
+  // python: TestMeasurementCustomPropertyE2E
   it("T038: Metric(property=CustomPropertyRef(...))", async () => {
     const params = await makeStubWorkspace().buildParams(
       new Metric({
@@ -196,7 +199,8 @@ describe("TestMeasurementCustomPropertyE2E", () => {
 // T044-T045: combined positions
 // ===========================================================================
 
-describe("TestCombinedPositions", () => {
+describe("Combined positions", () => {
+  // python: TestCombinedPositions
   it("T044: a ref in group_by plus an inline in where", async () => {
     const icp = InlineCustomProperty.numeric("A * B", { A: "price", B: "qty" });
     const params = await makeStubWorkspace().buildParams("Purchase", {
@@ -258,7 +262,8 @@ describe("TestCombinedPositions", () => {
 //                 ::TestMeasurementPropertyBuilder :361
 // ===========================================================================
 
-describe("TestMeasurementPropertyBuilder", () => {
+describe("Measurement property builder", () => {
+  // python: TestMeasurementPropertyBuilder
   it("T034: a plain-string Metric.property is unchanged", async () => {
     const params = await makeStubWorkspace().buildParams(
       new Metric({ event: "Purchase", math: "average", property: "amount" }),

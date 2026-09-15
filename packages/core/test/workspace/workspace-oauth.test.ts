@@ -69,7 +69,8 @@ function workspaceHandler(request: CapturedFetchRequest): CannedResponse {
   return { status: 404, json: { error: "not found" } };
 }
 
-describe("TestWorkspaceConstructionWithOAuth (test_workspace_oauth.py:157)", () => {
+describe("Workspace construction with OAuth", () => {
+  // python: TestWorkspaceConstructionWithOAuth
   it("an OAuth-typed session resolves through the oauth_token account path", () => {
     const oauthSession = makeSession({
       name: "test_account",
@@ -101,7 +102,8 @@ describe("TestWorkspaceConstructionWithOAuth (test_workspace_oauth.py:157)", () 
   });
 });
 
-describe("TestWorkspaceListWorkspaces (test_workspace_oauth.py:196)", () => {
+describe("Workspace list workspaces", () => {
+  // python: TestWorkspaceListWorkspaces
   it("listWorkspaces() returns PublicWorkspace models", async () => {
     const { client } = createMockClient(TEST_SESSION, workspaceHandler);
     const ws = new Workspace({ session: TEST_SESSION, client });
@@ -127,7 +129,8 @@ describe("TestWorkspaceListWorkspaces (test_workspace_oauth.py:196)", () => {
   });
 });
 
-describe("TestWorkspaceResolveWorkspaceId (test_workspace_oauth.py:253)", () => {
+describe("Workspace resolve workspace ID", () => {
+  // python: TestWorkspaceResolveWorkspaceId
   it("resolveWorkspaceId() returns the default workspace ID", async () => {
     const { client } = createMockClient(TEST_SESSION, workspaceHandler);
     const ws = new Workspace({ session: TEST_SESSION, client });

@@ -34,13 +34,15 @@ function parseBody(bodyText: string): Record<string, unknown> {
     : (JSON.parse(bodyText) as Record<string, unknown>);
 }
 
-describe("TestEngageStats", () => {
+describe("Engage stats", () => {
+  // python: TestEngageStats
   const okStats: CannedResponse = {
     status: 200,
     json: { results: [], total: 0 },
   };
 
-  it("test_posts_to_engage_endpoint", async () => {
+  it("posts to engage endpoint", async () => {
+    // python: test_posts_to_engage_endpoint
     let capturedUrl = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedUrl = request.url;
@@ -50,7 +52,8 @@ describe("TestEngageStats", () => {
     expect(capturedUrl.includes("/engage")).toBe(true);
   });
 
-  it("test_posts_to_engage_stats_url", async () => {
+  it("posts to engage stats URL", async () => {
+    // python: test_posts_to_engage_stats_url
     let capturedUrl = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedUrl = request.url;
@@ -60,7 +63,8 @@ describe("TestEngageStats", () => {
     expect(capturedUrl.includes("/engage/stats")).toBe(true);
   });
 
-  it("test_sends_project_id", async () => {
+  it("sends project ID", async () => {
+    // python: test_sends_project_id
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -70,7 +74,8 @@ describe("TestEngageStats", () => {
     expect(capturedBody["project_id"]).toBe("12345");
   });
 
-  it("test_default_action_is_count", async () => {
+  it("default action is count", async () => {
+    // python: test_default_action_is_count
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -80,7 +85,8 @@ describe("TestEngageStats", () => {
     expect(capturedBody["action"]).toBe("count()");
   });
 
-  it("test_custom_action", async () => {
+  it("custom action", async () => {
+    // python: test_custom_action
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -90,7 +96,8 @@ describe("TestEngageStats", () => {
     expect(capturedBody["action"]).toBe("sum(properties['revenue'])");
   });
 
-  it("test_where_sent_as_selector", async () => {
+  it("where sent as selector", async () => {
+    // python: test_where_sent_as_selector
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -101,7 +108,8 @@ describe("TestEngageStats", () => {
     expect(Object.hasOwn(capturedBody, "where")).toBe(false);
   });
 
-  it("test_selector_omitted_when_where_none", async () => {
+  it("selector omitted when where null", async () => {
+    // python: test_selector_omitted_when_where_none
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -111,7 +119,8 @@ describe("TestEngageStats", () => {
     expect(Object.hasOwn(capturedBody, "selector")).toBe(false);
   });
 
-  it("test_filter_by_cohort_parameter", async () => {
+  it("filter by cohort parameter", async () => {
+    // python: test_filter_by_cohort_parameter
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -121,7 +130,8 @@ describe("TestEngageStats", () => {
     expect(Object.hasOwn(capturedBody, "filter_by_cohort")).toBe(true);
   });
 
-  it("test_filter_by_cohort_omitted_when_none", async () => {
+  it("filter by cohort omitted when null", async () => {
+    // python: test_filter_by_cohort_omitted_when_none
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -131,7 +141,8 @@ describe("TestEngageStats", () => {
     expect(Object.hasOwn(capturedBody, "filter_by_cohort")).toBe(false);
   });
 
-  it("test_segment_by_cohorts_parameter", async () => {
+  it("segment by cohorts parameter", async () => {
+    // python: test_segment_by_cohorts_parameter
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -146,7 +157,8 @@ describe("TestEngageStats", () => {
     expect(parsed).toStrictEqual({ cohort_1: true, cohort_2: false });
   });
 
-  it("test_segment_by_cohorts_omitted_when_none", async () => {
+  it("segment by cohorts omitted when null", async () => {
+    // python: test_segment_by_cohorts_omitted_when_none
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -156,7 +168,8 @@ describe("TestEngageStats", () => {
     expect(Object.hasOwn(capturedBody, "segment_by_cohorts")).toBe(false);
   });
 
-  it("test_group_id_parameter", async () => {
+  it("group ID parameter", async () => {
+    // python: test_group_id_parameter
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -166,7 +179,8 @@ describe("TestEngageStats", () => {
     expect(capturedBody["data_group_id"]).toBe("companies");
   });
 
-  it("test_group_id_omitted_when_none", async () => {
+  it("group ID omitted when null", async () => {
+    // python: test_group_id_omitted_when_none
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -176,7 +190,8 @@ describe("TestEngageStats", () => {
     expect(Object.hasOwn(capturedBody, "data_group_id")).toBe(false);
   });
 
-  it("test_as_of_timestamp_parameter", async () => {
+  it("as of timestamp parameter", async () => {
+    // python: test_as_of_timestamp_parameter
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -186,7 +201,8 @@ describe("TestEngageStats", () => {
     expect(capturedBody["as_of_timestamp"]).toBe(1700000000);
   });
 
-  it("test_as_of_timestamp_omitted_when_none", async () => {
+  it("as of timestamp omitted when null", async () => {
+    // python: test_as_of_timestamp_omitted_when_none
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -196,7 +212,8 @@ describe("TestEngageStats", () => {
     expect(Object.hasOwn(capturedBody, "as_of_timestamp")).toBe(false);
   });
 
-  it("test_include_all_users_false_by_default", async () => {
+  it("include all users false by default", async () => {
+    // python: test_include_all_users_false_by_default
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -206,7 +223,8 @@ describe("TestEngageStats", () => {
     expect(capturedBody["include_all_users"]).not.toBe(true);
   });
 
-  it("test_include_all_users_true", async () => {
+  it("include all users true", async () => {
+    // python: test_include_all_users_true
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -219,7 +237,8 @@ describe("TestEngageStats", () => {
     expect(capturedBody["include_all_users"]).toBe(true);
   });
 
-  it("test_returns_raw_dict", async () => {
+  it("returns raw dict", async () => {
+    // python: test_returns_raw_dict
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
       json: { results: [{ count: 42 }], total: 42 },
@@ -230,7 +249,8 @@ describe("TestEngageStats", () => {
     expect(native["total"]).toBe(42);
   });
 
-  it("test_uses_post_method", async () => {
+  it("uses post method", async () => {
+    // python: test_uses_post_method
     let capturedMethod = "";
     const { client } = createMockClient(makeSession(), (request) => {
       capturedMethod = request.method;
@@ -240,7 +260,8 @@ describe("TestEngageStats", () => {
     expect(capturedMethod).toBe("POST");
   });
 
-  it("test_all_params_combined", async () => {
+  it("all params combined", async () => {
+    // python: test_all_params_combined
     let capturedBody: Record<string, unknown> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedBody = parseBody(request.bodyText);
@@ -265,7 +286,8 @@ describe("TestEngageStats", () => {
     expect(capturedBody["include_all_users"]).toBe(true);
   });
 
-  it("test_non_dict_response_raises_query_error", async () => {
+  it("non dict response raises query error", async () => {
+    // python: test_non_dict_response_raises_query_error
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
       json: [1, 2, 3],

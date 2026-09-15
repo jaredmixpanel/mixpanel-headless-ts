@@ -114,7 +114,7 @@ function makeService(
   return { service, calls, cache };
 }
 
-describe("MeService.fetch (test_me.py:487-532)", () => {
+describe("MeService.fetch", () => {
   it("calls the client on the first call", async () => {
     const { service, calls } = makeService();
 
@@ -175,7 +175,7 @@ describe("MeService.fetch (test_me.py:487-532)", () => {
   });
 });
 
-describe("MeService.fetch error handling (test_me.py:534-597)", () => {
+describe("MeService.fetch error handling", () => {
   it("401 raises an actionable ConfigError", async () => {
     const { service } = makeService({
       behaviour: () =>
@@ -239,7 +239,7 @@ describe("MeService.fetch error handling (test_me.py:534-597)", () => {
   });
 });
 
-describe("MeService.listProjects / findProject (test_me.py:601-630)", () => {
+describe("MeService.listProjects / findProject", () => {
   it("returns projects sorted by name", async () => {
     const { service } = makeService();
 
@@ -273,7 +273,7 @@ describe("MeService.listProjects / findProject (test_me.py:601-630)", () => {
   });
 });
 
-describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
+describe("MeService.listWorkspaces", () => {
   it("lists every workspace across projects", async () => {
     const { service } = makeService();
 
@@ -312,7 +312,7 @@ describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
     ).resolves.toStrictEqual([]);
   });
 
-  it("a non-numeric project id raises ConfigError (me.py:833-840)", async () => {
+  it("a non-numeric project id raises ConfigError", async () => {
     const { service } = makeService();
 
     await expect(
@@ -321,7 +321,7 @@ describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
   });
 });
 
-describe("MeService.findDefaultWorkspace (test_me.py:660-682)", () => {
+describe("MeService.findDefaultWorkspace", () => {
   it("finds the default workspace for a project", async () => {
     const { service } = makeService();
 
@@ -352,7 +352,7 @@ describe("MeService.findDefaultWorkspace (test_me.py:660-682)", () => {
   });
 });
 
-describe("MeService.resolveWorkspace (me.py:869-915) — the dagger path", () => {
+describe("MeService.resolveWorkspace — the dagger path", () => {
   it("returns null on a cold cache WITHOUT calling the API", async () => {
     const { service, calls } = makeService();
 
@@ -419,8 +419,9 @@ describe("MeService cache-store seam", () => {
 // ≡ "returns null on a cold cache WITHOUT calling the API".
 // ---------------------------------------------------------------------------
 
-describe("TestMeServiceResolveWorkspace (test_workspace_resolution.py:154)", () => {
-  it("picks the global view for the requested project (:175)", async () => {
+describe("Me service resolve workspace", () => {
+  // python: TestMeServiceResolveWorkspace
+  it("picks the global view for the requested project", async () => {
     const raw: Record<string, JsonValue> = {
       user_id: 1,
       user_email: "ak@example.com",
@@ -450,7 +451,7 @@ describe("TestMeServiceResolveWorkspace (test_workspace_resolution.py:154)", () 
     await expect(service.resolveWorkspace("4025120")).resolves.toBe(2);
   });
 
-  it("only workspaces of the requested project are considered (:186)", async () => {
+  it("only workspaces of the requested project are considered", async () => {
     const raw: Record<string, JsonValue> = {
       user_id: 1,
       user_email: "ak@example.com",

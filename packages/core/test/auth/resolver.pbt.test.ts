@@ -134,8 +134,9 @@ function sources(
   return { env, config, bridge: null };
 }
 
-describe("resolver PBT (test_resolver_pbt.py)", () => {
-  it("test_resolver_determinism", () => {
+describe("resolver PBT", () => {
+  it("resolver determinism", () => {
+    // python: test_resolver_determinism
     fc.assert(
       fc.property(accountNames, projectIds, (name, project) => {
         const config = buildCm(name, project);
@@ -146,7 +147,8 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
     );
   });
 
-  it("test_axis_independence_project_does_not_change_account", () => {
+  it("axis independence project does not change account", () => {
+    // python: test_axis_independence_project_does_not_change_account
     fc.assert(
       fc.property(
         accountNames,
@@ -165,7 +167,8 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
     );
   });
 
-  it("test_axis_independence_workspace_does_not_change_account_or_project", () => {
+  it("axis independence workspace does not change account or project", () => {
+    // python: test_axis_independence_workspace_does_not_change_account_or_project
     fc.assert(
       fc.property(
         accountNames,
@@ -182,7 +185,8 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
     );
   });
 
-  it("test_env_wins_for_project_axis", () => {
+  it("env wins for project axis", () => {
+    // python: test_env_wins_for_project_axis
     fc.assert(
       fc.property(
         accountNames,
@@ -200,7 +204,8 @@ describe("resolver PBT (test_resolver_pbt.py)", () => {
     );
   });
 
-  it("test_env_wins_for_workspace_axis", () => {
+  it("env wins for workspace axis", () => {
+    // python: test_env_wins_for_workspace_axis
     fc.assert(
       fc.property(
         accountNames,

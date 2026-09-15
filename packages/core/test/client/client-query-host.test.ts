@@ -24,8 +24,10 @@ import {
 /** A frozen instant for the date-defaulting tests (UTC noon). */
 const FROZEN_NOW = new Date("2026-08-15T12:00:00Z");
 
-describe("TestSegmentation", () => {
-  it("test_segmentation_basic", async () => {
+describe("Segmentation", () => {
+  // python: TestSegmentation
+  it("segmentation basic", async () => {
+    // python: test_segmentation_basic
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -37,7 +39,8 @@ describe("TestSegmentation", () => {
     expect(capturedParams["to_date"]).toBe("2024-01-31");
   });
 
-  it("test_segmentation_with_on", async () => {
+  it("segmentation with on", async () => {
+    // python: test_segmentation_with_on
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -49,7 +52,8 @@ describe("TestSegmentation", () => {
     expect(capturedParams["on"]).toBe('properties["country"]');
   });
 
-  it("test_segmentation_with_where", async () => {
+  it("segmentation with where", async () => {
+    // python: test_segmentation_with_where
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -62,8 +66,10 @@ describe("TestSegmentation", () => {
   });
 });
 
-describe("TestDiscovery", () => {
-  it("test_get_events", async () => {
+describe("Discovery", () => {
+  // python: TestDiscovery
+  it("get events", async () => {
+    // python: test_get_events
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(
       makeSession(),
@@ -82,7 +88,8 @@ describe("TestDiscovery", () => {
     expect(capturedParams["to_date"]!).toHaveLength(10);
   });
 
-  it("test_get_events_caller_overrides", async () => {
+  it("get events caller overrides", async () => {
+    // python: test_get_events_caller_overrides
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -99,7 +106,8 @@ describe("TestDiscovery", () => {
     expect(capturedParams["to_date"]).toBe("2024-12-31");
   });
 
-  it("test_get_events_falls_back_on_date_range_403", async () => {
+  it("get events falls back on date range 403", async () => {
+    // python: test_get_events_falls_back_on_date_range_403
     const capturedFromDates: string[] = [];
     let callCount = 0;
     const { client } = createMockClient(
@@ -125,7 +133,8 @@ describe("TestDiscovery", () => {
     expect(capturedFromDates[1]).toBe("2026-05-17");
   });
 
-  it("test_get_events_does_not_retry_when_caller_set_from_date", async () => {
+  it("get events does not retry when caller set from date", async () => {
+    // python: test_get_events_does_not_retry_when_caller_set_from_date
     let callCount = 0;
     const { client } = createMockClient(makeSession(), () => {
       callCount += 1;
@@ -140,7 +149,8 @@ describe("TestDiscovery", () => {
     expect(callCount).toBe(1);
   });
 
-  it("test_get_events_does_not_retry_on_unrelated_403", async () => {
+  it("get events does not retry on unrelated 403", async () => {
+    // python: test_get_events_does_not_retry_on_unrelated_403
     let callCount = 0;
     const { client } = createMockClient(makeSession(), () => {
       callCount += 1;
@@ -150,7 +160,8 @@ describe("TestDiscovery", () => {
     expect(callCount).toBe(1);
   });
 
-  it("test_get_events_does_not_retry_on_non_403_with_matching_text", async () => {
+  it("get events does not retry on non 403 with matching text", async () => {
+    // python: test_get_events_does_not_retry_on_non_403_with_matching_text
     let callCount = 0;
     const { client } = createMockClient(makeSession(), () => {
       callCount += 1;
@@ -163,7 +174,8 @@ describe("TestDiscovery", () => {
     expect(callCount).toBe(1);
   });
 
-  it("test_get_events_empty_string_from_date_is_not_replaced", async () => {
+  it("get events empty string from date is not replaced", async () => {
+    // python: test_get_events_empty_string_from_date_is_not_replaced
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -174,7 +186,8 @@ describe("TestDiscovery", () => {
     expect(capturedParams["to_date"]).toBe("");
   });
 
-  it("test_get_event_properties", async () => {
+  it("get event properties", async () => {
+    // python: test_get_event_properties
     let capturedParams: Record<string, string> = {};
     let capturedPath = "";
     const { client } = createMockClient(makeSession(), (request) => {
@@ -188,7 +201,8 @@ describe("TestDiscovery", () => {
     expect(new Set(props)).toStrictEqual(new Set(["prop1", "prop2"]));
   });
 
-  it("test_get_property_values", async () => {
+  it("get property values", async () => {
+    // python: test_get_property_values
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -201,8 +215,10 @@ describe("TestDiscovery", () => {
   });
 });
 
-describe("TestFunnelAndRetention", () => {
-  it("test_funnel", async () => {
+describe("Funnel and retention", () => {
+  // python: TestFunnelAndRetention
+  it("funnel", async () => {
+    // python: test_funnel
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -212,7 +228,8 @@ describe("TestFunnelAndRetention", () => {
     expect(capturedParams["funnel_id"]).toBe("12345");
   });
 
-  it("test_retention", async () => {
+  it("retention", async () => {
+    // python: test_retention
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -223,7 +240,8 @@ describe("TestFunnelAndRetention", () => {
     expect(capturedParams["event"]).toBe("Purchase");
   });
 
-  it("test_retention_default_interval_sends_unit_only", async () => {
+  it("retention default interval sends unit only", async () => {
+    // python: test_retention_default_interval_sends_unit_only
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -237,7 +255,8 @@ describe("TestFunnelAndRetention", () => {
     expect(Object.hasOwn(capturedParams, "interval")).toBe(false);
   });
 
-  it("test_retention_custom_interval_sends_interval_only", async () => {
+  it("retention custom interval sends interval only", async () => {
+    // python: test_retention_custom_interval_sends_interval_only
     let capturedParams: Record<string, string> = {};
     const { client } = createMockClient(makeSession(), (request) => {
       capturedParams = { ...request.params };
@@ -251,7 +270,8 @@ describe("TestFunnelAndRetention", () => {
     expect(Object.hasOwn(capturedParams, "unit")).toBe(false);
   });
 
-  it("test_retention_unit_and_interval_mutually_exclusive", async () => {
+  it("retention unit and interval mutually exclusive", async () => {
+    // python: test_retention_unit_and_interval_mutually_exclusive
     for (const interval of [1, 2, 7, 14, 30]) {
       let capturedParams: Record<string, string> = {};
       const { client } = createMockClient(makeSession(), (request) => {
@@ -270,8 +290,10 @@ describe("TestFunnelAndRetention", () => {
   });
 });
 
-describe("TestSegmentationSum", () => {
-  it("test_segmentation_sum_basic", async () => {
+describe("Segmentation sum", () => {
+  // python: TestSegmentationSum
+  it("segmentation sum basic", async () => {
+    // python: test_segmentation_sum_basic
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("/segmentation/sum")).toBe(true);
       return {
@@ -296,7 +318,8 @@ describe("TestSegmentationSum", () => {
     );
   });
 
-  it("test_segmentation_sum_with_filter", async () => {
+  it("segmentation sum with filter", async () => {
+    // python: test_segmentation_sum_with_filter
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("where=")).toBe(true);
       return { status: 200, json: { status: "ok", results: {} } };
@@ -314,8 +337,10 @@ describe("TestSegmentationSum", () => {
   });
 });
 
-describe("TestSegmentationAverage", () => {
-  it("test_segmentation_average_basic", async () => {
+describe("Segmentation average", () => {
+  // python: TestSegmentationAverage
+  it("segmentation average basic", async () => {
+    // python: test_segmentation_average_basic
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("/segmentation/average")).toBe(true);
       return {
@@ -340,7 +365,8 @@ describe("TestSegmentationAverage", () => {
     );
   });
 
-  it("test_segmentation_average_hourly", async () => {
+  it("segmentation average hourly", async () => {
+    // python: test_segmentation_average_hourly
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("unit=hour")).toBe(true);
       return { status: 200, json: { status: "ok", results: {} } };
@@ -358,8 +384,10 @@ describe("TestSegmentationAverage", () => {
   });
 });
 
-describe("TestFrequency", () => {
-  it("test_frequency_basic", async () => {
+describe("Frequency", () => {
+  // python: TestFrequency
+  it("frequency basic", async () => {
+    // python: test_frequency_basic
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("/retention/addiction")).toBe(true);
       return {
@@ -381,7 +409,8 @@ describe("TestFrequency", () => {
     expect(data["2024-01-01"]?.[0]).toBe(305);
   });
 
-  it("test_frequency_with_event_filter", async () => {
+  it("frequency with event filter", async () => {
+    // python: test_frequency_with_event_filter
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("event=")).toBe(true);
       return { status: 200, json: { data: {} } };
@@ -395,8 +424,10 @@ describe("TestFrequency", () => {
   });
 });
 
-describe("TestSegmentationNumeric", () => {
-  it("test_segmentation_numeric_basic", async () => {
+describe("Segmentation numeric", () => {
+  // python: TestSegmentationNumeric
+  it("segmentation numeric basic", async () => {
+    // python: test_segmentation_numeric_basic
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("/segmentation/numeric")).toBe(true);
       return {
@@ -428,7 +459,8 @@ describe("TestSegmentationNumeric", () => {
     expect(Object.hasOwn(values, "0 - 100")).toBe(true);
   });
 
-  it("test_segmentation_numeric_with_type", async () => {
+  it("segmentation numeric with type", async () => {
+    // python: test_segmentation_numeric_with_type
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("type=unique")).toBe(true);
       return { status: 200, json: { data: { series: [], values: {} } } };
@@ -446,8 +478,10 @@ describe("TestSegmentationNumeric", () => {
   });
 });
 
-describe("TestQuerySavedReport", () => {
-  it("test_query_saved_report_basic", async () => {
+describe("Query saved report", () => {
+  // python: TestQuerySavedReport
+  it("query saved report basic", async () => {
+    // python: test_query_saved_report_basic
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("/insights")).toBe(true);
       expect(request.url.includes("bookmark_id=")).toBe(true);
@@ -474,7 +508,8 @@ describe("TestQuerySavedReport", () => {
     ).toBe(true);
   });
 
-  it("test_query_saved_report_passes_bookmark_id", async () => {
+  it("query saved report passes bookmark ID", async () => {
+    // python: test_query_saved_report_passes_bookmark_id
     const { client } = createMockClient(makeSession(), (request) => {
       expect(request.url.includes("bookmark_id=99887766")).toBe(true);
       return { status: 200, json: { series: {} } };

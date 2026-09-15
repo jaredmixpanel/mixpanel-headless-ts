@@ -60,19 +60,23 @@ function validArgs(
 // Fuzzy matching (test_validation.py)
 // =============================================================================
 
-describe("TestFuzzyMatching", () => {
-  it("test_close_match", () => {
+describe("Fuzzy matching", () => {
+  // python: TestFuzzyMatching
+  it("close match", () => {
+    // python: test_close_match
     const result = suggest("totl", new Set(["total", "unique", "average"]));
     expect(result).not.toBeNull();
     expect(result).toContain("total");
   });
 
-  it("test_no_match", () => {
+  it("no match", () => {
+    // python: test_no_match
     const result = suggest("zzzzz", new Set(["total", "unique"]));
     expect(result).toBeNull();
   });
 
-  it("test_returns_tuple", () => {
+  it("returns tuple", () => {
+    // python: test_returns_tuple
     // Python asserts `isinstance(result, tuple)`; the TS port returns a
     // frozen array (the closest immutable-sequence analog, R4.2).
     const result = suggest("averge", new Set(["average", "median"]));
@@ -85,25 +89,30 @@ describe("TestFuzzyMatching", () => {
 // Layer 1: validate_query_args (test_validation.py)
 // =============================================================================
 
-describe("TestValidateQueryArgsLayer1", () => {
-  it("test_valid_args_no_errors", () => {
+describe("Validate query args layer 1", () => {
+  // python: TestValidateQueryArgsLayer1
+  it("valid args no errors", () => {
+    // python: test_valid_args_no_errors
     const errors = validateQueryArgs(validArgs());
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_v0_no_events", () => {
+  it("V0 no events", () => {
+    // python: test_v0_no_events
     const errors = validateQueryArgs(validArgs({ events: [] }));
     expect(errors.some((e) => e.code === "V0_NO_EVENTS")).toBe(true);
   });
 
-  it("test_v1_math_requires_property", () => {
+  it("V1 math requires property", () => {
+    // python: test_v1_math_requires_property
     const errors = validateQueryArgs(validArgs({ math: "average" }));
     expect(errors.some((e) => e.code === "V1_MATH_REQUIRES_PROPERTY")).toBe(
       true,
     );
   });
 
-  it("test_v1_valid_with_property", () => {
+  it("V1 valid with property", () => {
+    // python: test_v1_valid_with_property
     const errors = validateQueryArgs(
       validArgs({ math: "average", math_property: "amount" }),
     );
@@ -112,7 +121,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_v2_rejects_property", () => {
+  it("V2 rejects property", () => {
+    // python: test_v2_rejects_property
     const errors = validateQueryArgs(
       validArgs({ math: "unique", math_property: "amount" }),
     );
@@ -121,7 +131,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_v2_total_allows_property", () => {
+  it("V2 total allows property", () => {
+    // python: test_v2_total_allows_property
     const errors = validateQueryArgs(
       validArgs({ math: "total", math_property: "amount" }),
     );
@@ -130,7 +141,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_v3_per_user_incompatible", () => {
+  it("V3 per user incompatible", () => {
+    // python: test_v3_per_user_incompatible
     const errors = validateQueryArgs(
       validArgs({ math: "dau", per_user: "average" }),
     );
@@ -139,7 +151,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_v3b_per_user_requires_property", () => {
+  it("V3b per user requires property", () => {
+    // python: test_v3b_per_user_requires_property
     const errors = validateQueryArgs(
       validArgs({ math: "total", per_user: "average" }),
     );
@@ -148,21 +161,24 @@ describe("TestValidateQueryArgsLayer1", () => {
     ).toBe(true);
   });
 
-  it("test_v4_formula_min_events", () => {
+  it("V4 formula min events", () => {
+    // python: test_v4_formula_min_events
     const errors = validateQueryArgs(
       validArgs({ has_formula: true, events: ["Login"] }),
     );
     expect(errors.some((e) => e.code === "V4_FORMULA_MIN_EVENTS")).toBe(true);
   });
 
-  it("test_v4_formula_with_two_events", () => {
+  it("V4 formula with two events", () => {
+    // python: test_v4_formula_with_two_events
     const errors = validateQueryArgs(
       validArgs({ has_formula: true, events: ["Login", "Signup"] }),
     );
     expect(errors.some((e) => e.code === "V4_FORMULA_MIN_EVENTS")).toBe(false);
   });
 
-  it("test_v5_rolling_cumulative_exclusive", () => {
+  it("V5 rolling cumulative exclusive", () => {
+    // python: test_v5_rolling_cumulative_exclusive
     const errors = validateQueryArgs(
       validArgs({ rolling: 7, cumulative: true }),
     );
@@ -171,41 +187,48 @@ describe("TestValidateQueryArgsLayer1", () => {
     ).toBe(true);
   });
 
-  it("test_v6_rolling_positive", () => {
+  it("V6 rolling positive", () => {
+    // python: test_v6_rolling_positive
     const errors = validateQueryArgs(validArgs({ rolling: 0 }));
     expect(errors.some((e) => e.code === "V6_ROLLING_POSITIVE")).toBe(true);
   });
 
-  it("test_v7_last_positive", () => {
+  it("V7 last positive", () => {
+    // python: test_v7_last_positive
     const errors = validateQueryArgs(validArgs({ last: 0 }));
     expect(errors.some((e) => e.code === "V7_LAST_POSITIVE")).toBe(true);
   });
 
-  it("test_v8_from_date_format", () => {
+  it("V8 from date format", () => {
+    // python: test_v8_from_date_format
     const errors = validateQueryArgs(validArgs({ from_date: "01/01/2024" }));
     expect(errors.some((e) => e.code === "V8_DATE_FORMAT")).toBe(true);
   });
 
-  it("test_v8_valid_date", () => {
+  it("V8 valid date", () => {
+    // python: test_v8_valid_date
     const errors = validateQueryArgs(
       validArgs({ from_date: "2024-01-01", to_date: "2024-01-31" }),
     );
     expect(errors.some((e) => e.code === "V8_DATE_FORMAT")).toBe(false);
   });
 
-  it("test_v9_to_requires_from", () => {
+  it("V9 to requires from", () => {
+    // python: test_v9_to_requires_from
     const errors = validateQueryArgs(validArgs({ to_date: "2024-01-31" }));
     expect(errors.some((e) => e.code === "V9_TO_REQUIRES_FROM")).toBe(true);
   });
 
-  it("test_v10_date_last_exclusive", () => {
+  it("V10 date last exclusive", () => {
+    // python: test_v10_date_last_exclusive
     const errors = validateQueryArgs(
       validArgs({ from_date: "2024-01-01", last: 7 }),
     );
     expect(errors.some((e) => e.code === "V10_DATE_LAST_EXCLUSIVE")).toBe(true);
   });
 
-  it("test_v10_default_last_with_dates_ok", () => {
+  it("V10 default last with dates ok", () => {
+    // python: test_v10_default_last_with_dates_ok
     const errors = validateQueryArgs(
       validArgs({ from_date: "2024-01-01", to_date: "2024-01-31" }),
     );
@@ -214,7 +237,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_v11_bucket_requires_size", () => {
+  it("V11 bucket requires size", () => {
+    // python: test_v11_bucket_requires_size
     const errors = validateQueryArgs(
       validArgs({
         group_by: new GroupBy({
@@ -229,7 +253,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_v12_bucket_size_positive", () => {
+  it("V12 bucket size positive", () => {
+    // python: test_v12_bucket_size_positive
     expect(
       () =>
         new GroupBy({
@@ -242,7 +267,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     ).toThrow(/bucket_size must be positive/);
   });
 
-  it("test_v12b_bucket_requires_number", () => {
+  it("V12b bucket requires number", () => {
+    // python: test_v12b_bucket_requires_number
     const errors = validateQueryArgs(
       validArgs({
         group_by: new GroupBy({
@@ -259,7 +285,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_v13_metric_math_property", () => {
+  it("V13 metric math property", () => {
+    // python: test_v13_metric_math_property
     expect(() => new Metric({ event: "Purchase", math: "average" })).toThrow(
       /requires a property/,
     );
@@ -268,7 +295,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_v13_valid_metric", () => {
+  it("V13 valid metric", () => {
+    // python: test_v13_valid_metric
     const errors = validateQueryArgs(
       validArgs({
         events: [
@@ -285,7 +313,8 @@ describe("TestValidateQueryArgsLayer1", () => {
     );
   });
 
-  it("test_collects_all_errors", () => {
+  it("collects all errors", () => {
+    // python: test_collects_all_errors
     // Use a plain string event so top-level math validation (V1) fires;
     // events=[] would skip V1 because no plain events consume top-level math.
     const errors = validateQueryArgs(
@@ -301,22 +330,26 @@ describe("TestValidateQueryArgsLayer1", () => {
 // T036: data_group_id validation for insights (test_validation.py)
 // =============================================================================
 
-describe("TestDataGroupIdValidationInsights", () => {
-  it("test_valid_data_group_id", () => {
+describe("Data group ID validation insights", () => {
+  // python: TestDataGroupIdValidationInsights
+  it("valid data group ID", () => {
+    // python: test_valid_data_group_id
     const errors = validateQueryArgs(validArgs({ data_group_id: 5 }));
     expect(errors.some((e) => e.code === "DG1_INVALID_DATA_GROUP_ID")).toBe(
       false,
     );
   });
 
-  it("test_none_data_group_id", () => {
+  it("null data group ID", () => {
+    // python: test_none_data_group_id
     const errors = validateQueryArgs(validArgs({ data_group_id: null }));
     expect(errors.some((e) => e.code === "DG1_INVALID_DATA_GROUP_ID")).toBe(
       false,
     );
   });
 
-  it("test_zero_data_group_id", () => {
+  it("zero data group ID", () => {
+    // python: test_zero_data_group_id
     const errors = validateQueryArgs(validArgs({ data_group_id: 0 }));
     const dgErrors = errors.filter(
       (e) => e.code === "DG1_INVALID_DATA_GROUP_ID",
@@ -325,14 +358,16 @@ describe("TestDataGroupIdValidationInsights", () => {
     expect(dgErrors[0]!.path).toBe("data_group_id");
   });
 
-  it("test_negative_data_group_id", () => {
+  it("negative data group ID", () => {
+    // python: test_negative_data_group_id
     const errors = validateQueryArgs(validArgs({ data_group_id: -1 }));
     expect(
       errors.filter((e) => e.code === "DG1_INVALID_DATA_GROUP_ID"),
     ).toHaveLength(1);
   });
 
-  it("test_data_group_id_true_rejected", () => {
+  it("data group ID true rejected", () => {
+    // python: test_data_group_id_true_rejected
     // Python: bool is a subtype of int, so the bool guard must fire first.
     const errors = validateQueryArgs(validArgs({ data_group_id: true }));
     expect(
@@ -340,7 +375,8 @@ describe("TestDataGroupIdValidationInsights", () => {
     ).toHaveLength(1);
   });
 
-  it("test_data_group_id_false_rejected", () => {
+  it("data group ID false rejected", () => {
+    // python: test_data_group_id_false_rejected
     const errors = validateQueryArgs(validArgs({ data_group_id: false }));
     expect(
       errors.filter((e) => e.code === "DG1_INVALID_DATA_GROUP_ID"),

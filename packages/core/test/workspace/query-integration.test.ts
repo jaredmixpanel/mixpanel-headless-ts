@@ -134,7 +134,8 @@ function showOf(
 // T009: end-to-end timeseries
 // ===========================================================================
 
-describe("TestQueryTimeseries", () => {
+describe("Query timeseries", () => {
+  // python: TestQueryTimeseries
   it("returns a QueryResult", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
     await expect(ws.query("Login")).resolves.toBeInstanceOf(QueryResult);
@@ -194,7 +195,8 @@ describe("TestQueryTimeseries", () => {
 // T009b: non-existent event
 // ===========================================================================
 
-describe("TestQueryNonExistentEvent", () => {
+describe("Query non existent event", () => {
+  // python: TestQueryNonExistentEvent
   it("an empty response raises nothing and yields zero rows", async () => {
     const { ws } = wsWith(EMPTY_RESPONSE);
     const result = await ws.query("NonExistentEvent");
@@ -213,7 +215,8 @@ describe("TestQueryNonExistentEvent", () => {
 // T033: multi-event
 // ===========================================================================
 
-describe("TestMultiEventIntegration", () => {
+describe("Multi event integration", () => {
+  // python: TestMultiEventIntegration
   it("returns rows for all metrics", async () => {
     const { ws } = wsWith(MULTI_EVENT_RESPONSE);
     const result = await ws.query(["Signup", "Login", "Purchase"], {
@@ -229,7 +232,8 @@ describe("TestMultiEventIntegration", () => {
 // T037: formula
 // ===========================================================================
 
-describe("TestFormulaIntegration", () => {
+describe("Formula integration", () => {
+  // python: TestFormulaIntegration
   it("a formula query returns the formula series", async () => {
     const { ws } = wsWith(FORMULA_RESPONSE);
     const result = await ws.query(
@@ -248,7 +252,8 @@ describe("TestFormulaIntegration", () => {
 // T046: total mode
 // ===========================================================================
 
-describe("TestTotalModeIntegration", () => {
+describe("Total mode integration", () => {
+  // python: TestTotalModeIntegration
   it("total mode returns a single row per metric", async () => {
     const { ws } = wsWith(TOTAL_RESPONSE);
     const result = await ws.query("Login", { math: "unique", mode: "total" });
@@ -262,7 +267,8 @@ describe("TestTotalModeIntegration", () => {
 // T050: persistence
 // ===========================================================================
 
-describe("TestQueryPersistence", () => {
+describe("Query persistence", () => {
+  // python: TestQueryPersistence
   it("params is suitable for create_bookmark", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.query("Login", { math: "unique", last: 7 });
@@ -277,7 +283,8 @@ describe("TestQueryPersistence", () => {
 // Response validation in the transform
 // ===========================================================================
 
-describe("TestTransformQueryResultValidation", () => {
+describe("Transform query result validation", () => {
+  // python: TestTransformQueryResultValidation
   it("an error-as-200 raises QueryError", async () => {
     const { ws } = wsWith({ error: "invalid query", status: "fail" });
     await expect(ws.query("Login")).rejects.toThrow(
@@ -312,7 +319,8 @@ describe("TestTransformQueryResultValidation", () => {
 // Formula-in-list
 // ===========================================================================
 
-describe("TestFormulaInListIntegration", () => {
+describe("Formula in list integration", () => {
+  // python: TestFormulaInListIntegration
   it("a Formula in the events list produces a formula show clause", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.query([
@@ -369,7 +377,8 @@ describe("TestFormulaInListIntegration", () => {
 // T054d: build_params() does not invoke the API
 // ===========================================================================
 
-describe("TestBuildParamsNoApiCall", () => {
+describe("Build params no API call", () => {
+  // python: TestBuildParamsNoApiCall
   it("build_params returns params without calling the client", async () => {
     const { ws, mock } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.buildParams("Login");

@@ -58,8 +58,10 @@ import {
   slugRecord,
 } from "./workspace-report-links-fixtures.js";
 
-describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
-  it("test_url_workspace_differs_from_pinned_raises_before_fetch", async () => {
+describe("Workspace scope", () => {
+  // python: TestWorkspaceScope
+  it("URL workspace differs from pinned raises before fetch", async () => {
+    // python: test_url_workspace_differs_from_pinned_raises_before_fetch
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
 
     const exc = await expectRaises(
@@ -79,7 +81,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
   });
 
-  it("test_url_workspace_equal_to_pinned_is_fine", async () => {
+  it("URL workspace equal to pinned is fine", async () => {
+    // python: test_url_workspace_equal_to_pinned_is_fine
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -90,7 +93,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(resolved.workspace_id).toBe(75);
   });
 
-  it("test_unpinned_session_accepts_any_url_workspace", async () => {
+  it("unpinned session accepts any URL workspace", async () => {
+    // python: test_unpinned_session_accepts_any_url_workspace
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -101,7 +105,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(resolved.workspace_id).toBe(9);
   });
 
-  it("test_resolved_report_workspace_differs_from_pinned_raises", async () => {
+  it("resolved report workspace differs from pinned raises", async () => {
+    // python: test_resolved_report_workspace_differs_from_pinned_raises
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
     const resolved = resolvedReport("insights", INSIGHTS_PARAMS, {
       workspace_id: 9,
@@ -116,7 +121,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
-  it("test_resolved_report_without_workspace_runs_project_wide_on_pinned_session", async () => {
+  it("resolved report without workspace runs project wide on pinned session", async () => {
+    // python: test_resolved_report_without_workspace_runs_project_wide_on_pinned_session
     // Greptile P1 on PR #223: a later `use(workspace=...)` must not leak
     // its data view into a report that was resolved without one.
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
@@ -133,7 +139,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
-  it("test_resolve_unpinned_then_pin_then_run_stays_project_wide", async () => {
+  it("resolve unpinned then pin then run stays project wide", async () => {
+    // python: test_resolve_unpinned_then_pin_then_run_stays_project_wide
     const { ws: wsA, mock } = makeWorkspace({ session: TEST_SESSION });
     mock.setGetBookmarkUrl(() => slugRecord());
     const resolved = await wsA.resolveReportLink(SLUG);
@@ -150,7 +157,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
-  it("test_resolved_workspace_is_applied_when_session_is_unpinned", async () => {
+  it("resolved workspace is applied when session is unpinned", async () => {
+    // python: test_resolved_workspace_is_applied_when_session_is_unpinned
     // Greptile P1 on PR #223: a pin-clearing `use(project=...)` must not
     // silently turn a data-view report into a project-wide one.
     const { ws: wsA, mock } = makeWorkspace({ session: PINNED_SESSION });
@@ -173,7 +181,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     });
   });
 
-  it("test_url_workspace_is_applied_when_session_is_unpinned", async () => {
+  it("URL workspace is applied when session is unpinned", async () => {
+    // python: test_url_workspace_is_applied_when_session_is_unpinned
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -191,7 +200,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     });
   });
 
-  it("test_pinned_workspace_is_recorded_and_applied", async () => {
+  it("pinned workspace is recorded and applied", async () => {
+    // python: test_pinned_workspace_is_recorded_and_applied
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -207,7 +217,8 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     });
   });
 
-  it("test_scope_checked_after_use_workspace_switch", async () => {
+  it("scope checked after use workspace switch", async () => {
+    // python: test_scope_checked_after_use_workspace_switch
     const { ws: wsA, mock } = makeWorkspace({ session: PINNED_SESSION });
     mock.setGetBookmarkUrl(() => slugRecord());
     const resolved = await wsA.resolveReportLink(SLUG);

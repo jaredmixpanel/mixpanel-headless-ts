@@ -22,8 +22,10 @@ import {
 import { ResponseValidationError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
 
-describe("TestAccountNameBoundaries", () => {
-  it("test_account_name_64_chars_passes", () => {
+describe("Account name boundaries", () => {
+  // python: TestAccountNameBoundaries
+  it("account name 64 chars passes", () => {
+    // python: test_account_name_64_chars_passes
     const sa = parseAccount({
       type: "service_account",
       name: "a".repeat(64),
@@ -34,7 +36,8 @@ describe("TestAccountNameBoundaries", () => {
     expect(sa.name).toHaveLength(64);
   });
 
-  it("test_account_name_65_chars_fails", () => {
+  it("account name 65 chars fails", () => {
+    // python: test_account_name_65_chars_fails
     expect(() =>
       parseAccount({
         type: "service_account",
@@ -56,7 +59,8 @@ describe("TestAccountNameBoundaries", () => {
     ["teaméaccent"], // accented char
     ["team😀emoji"], // emoji
     ["team\ttab"], // tab
-  ])("test_account_name_rejects_exotic_chars[%j]", (name) => {
+  ])("account name rejects exotic chars[%j]", (name) => {
+    // python: test_account_name_rejects_exotic_chars
     // Pattern allows only [a-zA-Z0-9_-]; everything else raises.
     expect(() =>
       parseAccount({
@@ -70,8 +74,10 @@ describe("TestAccountNameBoundaries", () => {
   });
 });
 
-describe("TestOAuthTokenValidatorUnderCopy", () => {
-  it("test_model_copy_setting_both_does_not_revalidate", () => {
+describe("OAuth token validator under copy", () => {
+  // python: TestOAuthTokenValidatorUnderCopy
+  it("model copy setting both does not revalidate", () => {
+    // python: test_model_copy_setting_both_does_not_revalidate
     // `model_copy(update=...)` bypasses the XOR validator (Pydantic
     // limitation); the TS twin: object spread over the parse-once
     // model never re-fires parseAccount's guard.
@@ -88,7 +94,8 @@ describe("TestOAuthTokenValidatorUnderCopy", () => {
     expect(bad.token_env).toBe("MY_ENV");
   });
 
-  it("test_validate_python_round_trip_enforces_xor", () => {
+  it("validate python round trip enforces xor", () => {
+    // python: test_validate_python_round_trip_enforces_xor
     // The escape hatch: round-tripping via the parse factory
     // re-validates (the TypeAdapter.validate_python twin).
     const original = parseAccount({

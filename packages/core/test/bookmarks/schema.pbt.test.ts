@@ -295,8 +295,10 @@ function validateInsights(params: unknown): ValidationError[] {
   return validateWithPydantic(INSIGHTS_BOOKMARK_PARAMS_MODEL.validate, params);
 }
 
-describe("TestRoundtripSoundness", () => {
-  it("test_insights_minimal_roundtrip_no_errors", () => {
+describe("Roundtrip soundness", () => {
+  // python: TestRoundtripSoundness
+  it("insights minimal roundtrip no errors", () => {
+    // python: test_insights_minimal_roundtrip_no_errors
     fc.assert(
       fc.property(
         fc.string({ minLength: 1, maxLength: 50, unit: "binary" }),
@@ -313,7 +315,8 @@ describe("TestRoundtripSoundness", () => {
     );
   });
 
-  it("test_sort_by_columns_roundtrip", () => {
+  it("sort by columns roundtrip", () => {
+    // python: test_sort_by_columns_roundtrip
     fc.assert(
       fc.property(fc.constantFrom("column"), (sortBy) => {
         const raw = { sortBy, colSortAttrs: [] };
@@ -325,7 +328,8 @@ describe("TestRoundtripSoundness", () => {
     );
   });
 
-  it("test_flows_step_roundtrip", () => {
+  it("flows step roundtrip", () => {
+    // python: test_flows_step_roundtrip
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 10 }), (forward) => {
         expect(
@@ -337,8 +341,10 @@ describe("TestRoundtripSoundness", () => {
   });
 });
 
-describe("TestValidatorIdempotence", () => {
-  it("test_validator_no_state_leak", () => {
+describe("Validator idempotence", () => {
+  // python: TestValidatorIdempotence
+  it("validator no state leak", () => {
+    // python: test_validator_no_state_leak
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 5 }), (extraCount) => {
         const valid = validMinimalInsights();
@@ -355,8 +361,10 @@ describe("TestValidatorIdempotence", () => {
   });
 });
 
-describe("TestExtraFieldRejection", () => {
-  it("test_unknown_field_on_sections_rejected", () => {
+describe("Extra field rejection", () => {
+  // python: TestExtraFieldRejection
+  it("unknown field on sections rejected", () => {
+    // python: test_unknown_field_on_sections_rejected
     fc.assert(
       fc.property(safeExtraFieldNames, (fieldName) => {
         const params = validMinimalInsights();
@@ -372,7 +380,8 @@ describe("TestExtraFieldRejection", () => {
     );
   });
 
-  it("test_unknown_field_on_behavior_rejected", () => {
+  it("unknown field on behavior rejected", () => {
+    // python: test_unknown_field_on_behavior_rejected
     fc.assert(
       fc.property(safeExtraFieldNames, (fieldName) => {
         const params = validMinimalInsights();
@@ -389,7 +398,8 @@ describe("TestExtraFieldRejection", () => {
     );
   });
 
-  it("test_unknown_field_on_sort_config_rejected", () => {
+  it("unknown field on sort config rejected", () => {
+    // python: test_unknown_field_on_sort_config_rejected
     fc.assert(
       fc.property(safeExtraFieldNames, (fieldName) => {
         const bad: Dict = {
@@ -412,8 +422,10 @@ describe("TestExtraFieldRejection", () => {
   });
 });
 
-describe("TestRequiredFieldRejection", () => {
-  it("test_missing_required_top_level_field_rejected", () => {
+describe("Required field rejection", () => {
+  // python: TestRequiredFieldRejection
+  it("missing required top level field rejected", () => {
+    // python: test_missing_required_top_level_field_rejected
     fc.assert(
       fc.property(
         fc.constantFrom("displayOptions", "sections"),
@@ -433,7 +445,8 @@ describe("TestRequiredFieldRejection", () => {
     );
   });
 
-  it("test_missing_required_sections_field_rejected", () => {
+  it("missing required sections field rejected", () => {
+    // python: test_missing_required_sections_field_rejected
     fc.assert(
       fc.property(fc.constantFrom("show", "time"), (fieldName) => {
         const params = validMinimalInsights();
@@ -450,7 +463,8 @@ describe("TestRequiredFieldRejection", () => {
   });
 });
 
-describe("TestDiscriminatorRejection", () => {
+describe("Discriminator rejection", () => {
+  // python: TestDiscriminatorRejection
   const KNOWN_METRIC_TYPES: ReadonlySet<string> = new Set([
     "event",
     "simple",
@@ -467,7 +481,8 @@ describe("TestDiscriminatorRejection", () => {
     "metric",
   ]);
 
-  it("test_bad_behavior_type_rejected", () => {
+  it("bad behavior type rejected", () => {
+    // python: test_bad_behavior_type_rejected
     fc.assert(
       fc.property(
         fc
@@ -491,7 +506,8 @@ describe("TestDiscriminatorRejection", () => {
     );
   });
 
-  it("test_bad_sort_by_rejected", () => {
+  it("bad sort by rejected", () => {
+    // python: test_bad_sort_by_rejected
     const KNOWN_SORT_BY: ReadonlySet<string> = new Set([
       "column",
       "value",
@@ -517,8 +533,10 @@ describe("TestDiscriminatorRejection", () => {
   });
 });
 
-describe("TestLegacyFieldTolerance", () => {
-  it("test_legacy_field_tolerated", () => {
+describe("Legacy field tolerance", () => {
+  // python: TestLegacyFieldTolerance
+  it("legacy field tolerated", () => {
+    // python: test_legacy_field_tolerated
     fc.assert(
       fc.property(fc.constantFrom(...INSIGHTS_LEGACY_FIELDS), (field) => {
         const [fieldName, fieldValue] = field;
@@ -530,7 +548,8 @@ describe("TestLegacyFieldTolerance", () => {
     );
   });
 
-  it("test_multiple_legacy_fields_tolerated", () => {
+  it("multiple legacy fields tolerated", () => {
+    // python: test_multiple_legacy_fields_tolerated
     fc.assert(
       fc.property(
         fc
@@ -553,8 +572,10 @@ describe("TestLegacyFieldTolerance", () => {
   });
 });
 
-describe("TestDispatchConsistency", () => {
-  it("test_dispatch_returns_consistent_class", () => {
+describe("Dispatch consistency", () => {
+  // python: TestDispatchConsistency
+  it("dispatch returns consistent class", () => {
+    // python: test_dispatch_returns_consistent_class
     fc.assert(
       fc.property(
         fc.constantFrom("insights", "funnels", "retention", "flows", "user"),

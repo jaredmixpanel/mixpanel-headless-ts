@@ -166,7 +166,8 @@ const rawRetentionResponse: fc.Arbitrary<Record<string, unknown>> = fc
 // _transform_funnel property tests
 // ===========================================================================
 
-describe("TestTransformFunnelProperties", () => {
+describe("Transform funnel properties", () => {
+  // python: TestTransformFunnelProperties
   it("first step conversion is always 1.0", () => {
     fc.assert(
       fc.property(
@@ -280,7 +281,8 @@ describe("TestTransformFunnelProperties", () => {
 // _transform_retention property tests
 // ===========================================================================
 
-describe("TestTransformRetentionProperties", () => {
+describe("Transform retention properties", () => {
+  // python: TestTransformRetentionProperties
   it("retention values are non-negative", () => {
     fc.assert(
       fc.property(

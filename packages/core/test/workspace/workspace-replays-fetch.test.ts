@@ -92,8 +92,10 @@ function makeReplay(replayId: string): Replay {
 // fetch_replay flow
 // =============================================================================
 
-describe("fetch_replay signs, fetches, joins (TestFetchReplay)", () => {
-  it("test_explicit_retention_skips_discovery", async () => {
+describe("fetch_replay signs, fetches, joins", () => {
+  // python: TestFetchReplay
+  it("explicit retention skips discovery", async () => {
+    // python: test_explicit_retention_skips_discovery
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.signResult = [signedFixture()];
@@ -114,7 +116,8 @@ describe("fetch_replay signs, fetches, joins (TestFetchReplay)", () => {
     expect(replay.mixpanel_events).toStrictEqual([]);
   });
 
-  it("test_include_mixpanel_events_triggers_follow_up", async () => {
+  it("include mixpanel events triggers follow up", async () => {
+    // python: test_include_mixpanel_events_triggers_follow_up
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.signResult = [signedFixture()];
@@ -152,7 +155,8 @@ describe("fetch_replay signs, fetches, joins (TestFetchReplay)", () => {
     expect(replay.mixpanel_events[0]?.event_name).toBe("Login");
   });
 
-  it("test_default_skips_mixpanel_events", async () => {
+  it("default skips mixpanel events", async () => {
+    // python: test_default_skips_mixpanel_events
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.signResult = [signedFixture()];
@@ -161,7 +165,8 @@ describe("fetch_replay signs, fetches, joins (TestFetchReplay)", () => {
     expect(callsTo(stub, "eventsFor")).toHaveLength(0);
   });
 
-  it("test_retention_none_discovers", async () => {
+  it("retention null discovers", async () => {
+    // python: test_retention_none_discovers
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.discoverResult = [summary("r-1", { retentionDays: 7 })];
@@ -187,7 +192,8 @@ describe("fetch_replay signs, fetches, joins (TestFetchReplay)", () => {
     expect(replay.retention_days).toBe(7);
   });
 
-  it("test_distinct_id_is_threaded", async () => {
+  it("distinct ID is threaded", async () => {
+    // python: test_distinct_id_is_threaded
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.signResult = [signedFixture()];
@@ -209,13 +215,16 @@ describe("fetch_replay signs, fetches, joins (TestFetchReplay)", () => {
 // replays_for_user
 // =============================================================================
 
-describe("replays_for_user composition (TestReplaysForUser)", () => {
-  it("test_method_exists", () => {
+describe("replays_for_user composition", () => {
+  // python: TestReplaysForUser
+  it("method exists", () => {
+    // python: test_method_exists
     const ws = makeWorkspace();
     expect(typeof ws.replaysForUser).toBe("function");
   });
 
-  it("test_empty_window_returns_empty_bundle", async () => {
+  it("empty window returns empty bundle", async () => {
+    // python: test_empty_window_returns_empty_bundle
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.discoverResult = [];
@@ -233,8 +242,10 @@ describe("replays_for_user composition (TestReplaysForUser)", () => {
 // sign_replay / sign_replays
 // =============================================================================
 
-describe("sign wiring (TestSignReplaysWiring)", () => {
-  it("test_sign_replay_returns_first_signed", async () => {
+describe("sign wiring", () => {
+  // python: TestSignReplaysWiring
+  it("sign replay returns first signed", async () => {
+    // python: test_sign_replay_returns_first_signed
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.signResult = [signedFixture("r-1")];
@@ -246,7 +257,8 @@ describe("sign wiring (TestSignReplaysWiring)", () => {
     expect(calls[0]?.args).toStrictEqual([["r-1"], "prod"]);
   });
 
-  it("test_sign_replays_passes_through", async () => {
+  it("sign replays passes through", async () => {
+    // python: test_sign_replays_passes_through
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.signResult = [signedFixture("r-1"), signedFixture("r-2")];
@@ -262,8 +274,10 @@ describe("sign wiring (TestSignReplaysWiring)", () => {
 // events_for_replays window passthrough
 // =============================================================================
 
-describe("events window passthrough (TestEventsForReplaysWindow)", () => {
-  it("test_explicit_window_passes_through", async () => {
+describe("events window passthrough", () => {
+  // python: TestEventsForReplaysWindow
+  it("explicit window passes through", async () => {
+    // python: test_explicit_window_passes_through
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     await ws.eventsForReplays(["r-1"], {
@@ -278,7 +292,8 @@ describe("events window passthrough (TestEventsForReplaysWindow)", () => {
     expect(kwargs["toDate"]).toBe("2026-05-21");
   });
 
-  it("test_default_window_is_none", async () => {
+  it("default window is null", async () => {
+    // python: test_default_window_is_none
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     await ws.eventsForReplay("r-1");
@@ -295,8 +310,10 @@ describe("events window passthrough (TestEventsForReplaysWindow)", () => {
 // fetch_replays resilience
 // =============================================================================
 
-describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () => {
-  it("test_one_failure_does_not_sink_the_bundle", async () => {
+describe("fetch_replays per-replay isolation", () => {
+  // python: TestFetchReplaysResilience
+  it("one failure does not sink the bundle", async () => {
+    // python: test_one_failure_does_not_sink_the_bundle
     const warnings: string[] = [];
     const ws = makeWorkspace({
       logger: {
@@ -356,7 +373,8 @@ describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () =
     expect(bundle.head(1).failures).toStrictEqual([]);
   });
 
-  it("test_all_failures_raise_first_underlying_error", async () => {
+  it("all failures raise first underlying error", async () => {
+    // python: test_all_failures_raise_first_underlying_error
     const ws = makeWorkspace();
     ws.fetchReplay = (): Promise<Replay> =>
       Promise.reject(
@@ -393,8 +411,10 @@ describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () =
 // replays_for_user default limit
 // =============================================================================
 
-describe("replays_for_user default limit (TestReplaysForUserLimit)", () => {
-  it("test_default_limit_is_20", async () => {
+describe("replays_for_user default limit", () => {
+  // python: TestReplaysForUserLimit
+  it("default limit is 20", async () => {
+    // python: test_default_limit_is_20
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.discoverResult = []; // short-circuit before any fetch
@@ -414,8 +434,10 @@ describe("replays_for_user default limit (TestReplaysForUserLimit)", () => {
 // fetch_replays Insights batching
 // =============================================================================
 
-describe("fetch_replays retention threading + batching (TestFetchReplaysBatching)", () => {
-  it("test_retention_by_id_passed_to_each_fetch", async () => {
+describe("fetch_replays retention threading + batching", () => {
+  // python: TestFetchReplaysBatching
+  it("retention by ID passed to each fetch", async () => {
+    // python: test_retention_by_id_passed_to_each_fetch
     const ws = makeWorkspace();
     const seen = new Map<string, unknown>();
     ws.fetchReplay = (
@@ -434,7 +456,8 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
     expect(Object.fromEntries(seen)).toStrictEqual({ "r-1": 7, "r-2": 90 });
   });
 
-  it("test_events_joined_in_one_batched_call", async () => {
+  it("events joined in one batched call", async () => {
+    // python: test_events_joined_in_one_batched_call
     const ws = makeWorkspace();
     const fetchOpts: Array<Record<string, unknown>> = [];
     ws.fetchReplay = (
@@ -485,7 +508,8 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
     expect(byId.get("r-2")?.mixpanel_events).toStrictEqual([]);
   });
 
-  it("test_no_events_call_when_flag_off", async () => {
+  it("no events call when flag off", async () => {
+    // python: test_no_events_call_when_flag_off
     const ws = makeWorkspace();
     ws.fetchReplay = (rid: string): Promise<Replay> =>
       Promise.resolve(makeReplay(rid));
@@ -499,8 +523,10 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
   });
 });
 
-describe("replays_for_user threads retention (TestReplaysForUserThreadsRetention)", () => {
-  it("test_retention_map_built_from_summaries", async () => {
+describe("replays_for_user threads retention", () => {
+  // python: TestReplaysForUserThreadsRetention
+  it("retention map built from summaries", async () => {
+    // python: test_retention_map_built_from_summaries
     const ws = makeWorkspace();
     const stub = installStubService(ws);
     stub.discoverResult = [
@@ -542,8 +568,10 @@ describe("replays_for_user threads retention (TestReplaysForUserThreadsRetention
 // Coded guard errors — WR1/WR4/WR5
 // =============================================================================
 
-describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
-  it("test_wr1_direct_raises_coded_error", () => {
+describe("coded replay guards", () => {
+  // python: TestCodedReplayGuardCodes
+  it("WR1 direct raises coded error", () => {
+    // python: test_wr1_direct_raises_coded_error
     let caught: unknown;
     try {
       checkEventPropertiesCount(["a", "b", "c", "d", "e", "f"]);
@@ -556,7 +584,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 
-  it("test_wr1_seam_raises_coded_error", async () => {
+  it("WR1 seam raises coded error", async () => {
+    // python: test_wr1_seam_raises_coded_error
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -568,7 +597,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 
-  it("test_wr4_neither_arg_raises_coded_error", async () => {
+  it("WR4 neither arg raises coded error", async () => {
+    // python: test_wr4_neither_arg_raises_coded_error
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -577,7 +607,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 
-  it("test_wr4_neither_arg_empty_replay_ids_raises_coded_error", async () => {
+  it("WR4 neither arg empty replay IDs raises coded error", async () => {
+    // python: test_wr4_neither_arg_empty_replay_ids_raises_coded_error
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -586,7 +617,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 
-  it("test_wr4_both_args_raise_coded_error", async () => {
+  it("WR4 both args raise coded error", async () => {
+    // python: test_wr4_both_args_raise_coded_error
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -595,7 +627,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 
-  it("test_wr4_both_args_with_dates_raise_coded_error", async () => {
+  it("WR4 both args with dates raise coded error", async () => {
+    // python: test_wr4_both_args_with_dates_raise_coded_error
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -610,7 +643,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 
-  it("test_wr5_missing_both_dates_raises_coded_error", async () => {
+  it("WR5 missing both dates raises coded error", async () => {
+    // python: test_wr5_missing_both_dates_raises_coded_error
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -619,7 +653,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 
-  it("test_wr5_missing_to_date_raises_coded_error", async () => {
+  it("WR5 missing to date raises coded error", async () => {
+    // python: test_wr5_missing_to_date_raises_coded_error
     const ws = makeWorkspace();
     installStubService(ws);
     await expectGuard(
@@ -629,7 +664,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 
-  it("test_wr_guards_stay_catchable_as_value_error", async () => {
+  it("wr guards stay catchable as value error", async () => {
+    // python: test_wr_guards_stay_catchable_as_value_error
     // Python asserts the guard is catchable as a bare `ValueError`;
     // `ParamValidationError` is that subclass. The TS twin is the class
     // identity itself (there is no separate `ValueError` ancestor on

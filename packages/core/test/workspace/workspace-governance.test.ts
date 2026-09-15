@@ -154,7 +154,7 @@ function deletionRequestJson(
 // ===========================================================================
 
 describe("Workspace.getSchemaEnforcement", () => {
-  it("returns a SchemaEnforcementConfig (:197)", async () => {
+  it("returns a SchemaEnforcementConfig", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(enforcementJson()));
 
     const result = await ws.getSchemaEnforcement();
@@ -165,7 +165,7 @@ describe("Workspace.getSchemaEnforcement", () => {
     expect(result.id).toBe(1);
   });
 
-  it("returns a partial config with fields=... (:215)", async () => {
+  it("returns a partial config with fields=...", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ruleEvent: "Warn and Accept", state: "ingested" }),
     );
@@ -178,7 +178,7 @@ describe("Workspace.getSchemaEnforcement", () => {
 });
 
 describe("Workspace.initSchemaEnforcement", () => {
-  it("returns a dict response (:241)", async () => {
+  it("returns a dict response", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ id: 1, ruleEvent: "Warn and Drop", state: "planned" }),
     );
@@ -193,7 +193,7 @@ describe("Workspace.initSchemaEnforcement", () => {
 });
 
 describe("Workspace.updateSchemaEnforcement", () => {
-  it("returns a dict response (:269)", async () => {
+  it("returns a dict response", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         ruleEvent: "Warn and Hide",
@@ -214,7 +214,7 @@ describe("Workspace.updateSchemaEnforcement", () => {
 });
 
 describe("Workspace.replaceSchemaEnforcement", () => {
-  it("returns a dict response (:299)", async () => {
+  it("returns a dict response", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         ruleEvent: "Warn and Drop",
@@ -241,7 +241,7 @@ describe("Workspace.replaceSchemaEnforcement", () => {
 });
 
 describe("Workspace.deleteSchemaEnforcement", () => {
-  it("returns a dict response (:335)", async () => {
+  it("returns a dict response", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ deleted: true }));
 
     const result = await ws.deleteSchemaEnforcement();
@@ -256,7 +256,7 @@ describe("Workspace.deleteSchemaEnforcement", () => {
 // ===========================================================================
 
 describe("Workspace.runAudit", () => {
-  it("returns an AuditResponse with parsed violations (:360)", async () => {
+  it("returns an AuditResponse with parsed violations", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         [
@@ -285,7 +285,7 @@ describe("Workspace.runAudit", () => {
     expect(result.computed_at).toBe("2026-01-01T00:00:00Z");
   });
 
-  it("handles an empty violations list (:401)", async () => {
+  it("handles an empty violations list", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([[], { computed_at: "2026-01-01T12:00:00Z" }]),
     );
@@ -297,7 +297,7 @@ describe("Workspace.runAudit", () => {
     expect(result.computed_at).toBe("2026-01-01T12:00:00Z");
   });
 
-  it("returns an empty AuditResponse for an empty results list (:421)", async () => {
+  it("returns an empty AuditResponse for an empty results list", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.runAudit();
@@ -309,7 +309,7 @@ describe("Workspace.runAudit", () => {
 });
 
 describe("Workspace.runAuditEventsOnly", () => {
-  it("returns an AuditResponse (:446)", async () => {
+  it("returns an AuditResponse", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         [{ violation: "Unexpected Event", name: "rogue_event", count: 100 }],
@@ -326,7 +326,7 @@ describe("Workspace.runAuditEventsOnly", () => {
     expect(result.computed_at).toBe("2026-01-02T00:00:00Z");
   });
 
-  it("returns an empty AuditResponse when empty (:477)", async () => {
+  it("returns an empty AuditResponse when empty", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.runAuditEventsOnly();
@@ -342,7 +342,7 @@ describe("Workspace.runAuditEventsOnly", () => {
 // ===========================================================================
 
 describe("Workspace.listDataVolumeAnomalies", () => {
-  it("returns a list of DataVolumeAnomaly (:507)", async () => {
+  it("returns a list of DataVolumeAnomaly", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ anomalies: [anomalyJson(1, "Signup"), anomalyJson(2, "Login")] }),
     );
@@ -360,13 +360,13 @@ describe("Workspace.listDataVolumeAnomalies", () => {
     expect(result[1]?.event_name).toBe("Login");
   });
 
-  it("returns an empty list when none exist (:538)", async () => {
+  it("returns an empty list when none exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ anomalies: [] }));
 
     await expect(ws.listDataVolumeAnomalies()).resolves.toStrictEqual([]);
   });
 
-  it("passes query_params filters (:553)", async () => {
+  it("passes query_params filters", async () => {
     const capturedUrls: string[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       capturedUrls.push(request.url);
@@ -383,7 +383,7 @@ describe("Workspace.listDataVolumeAnomalies", () => {
 });
 
 describe("Workspace.updateAnomaly", () => {
-  it("returns a dict response (:578)", async () => {
+  it("returns a dict response", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ updated: true }));
 
     const result = await ws.updateAnomaly(
@@ -400,7 +400,7 @@ describe("Workspace.updateAnomaly", () => {
 });
 
 describe("Workspace.bulkUpdateAnomalies", () => {
-  it("returns a dict response (:599)", async () => {
+  it("returns a dict response", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({ updated: 2 }));
 
     const result = await ws.bulkUpdateAnomalies(
@@ -423,7 +423,7 @@ describe("Workspace.bulkUpdateAnomalies", () => {
 // ===========================================================================
 
 describe("Workspace.listDeletionRequests", () => {
-  it("returns a list of EventDeletionRequest (:631)", async () => {
+  it("returns a list of EventDeletionRequest", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         deletionRequestJson(1, "event_a"),
@@ -442,7 +442,7 @@ describe("Workspace.listDeletionRequests", () => {
     expect(result[1]?.id).toBe(2);
   });
 
-  it("returns an empty list when none exist (:658)", async () => {
+  it("returns an empty list when none exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
 
     await expect(ws.listDeletionRequests()).resolves.toStrictEqual([]);
@@ -450,7 +450,7 @@ describe("Workspace.listDeletionRequests", () => {
 });
 
 describe("Workspace.createDeletionRequest", () => {
-  it("returns the updated list of EventDeletionRequest (:677)", async () => {
+  it("returns the updated list of EventDeletionRequest", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         deletionRequestJson(1, "existing"),
@@ -474,7 +474,7 @@ describe("Workspace.createDeletionRequest", () => {
 });
 
 describe("Workspace.cancelDeletionRequest", () => {
-  it("returns the updated list of EventDeletionRequest (:710)", async () => {
+  it("returns the updated list of EventDeletionRequest", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([deletionRequestJson(1, "remaining")]),
     );
@@ -488,7 +488,7 @@ describe("Workspace.cancelDeletionRequest", () => {
 });
 
 describe("Workspace.previewDeletionFilters", () => {
-  it("returns a list of filter dicts (:734)", async () => {
+  it("returns a list of filter dicts", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         { property: "country", op: "equals", value: "US" },
@@ -510,7 +510,7 @@ describe("Workspace.previewDeletionFilters", () => {
     expect(result[1]?.["property"]).toBe("platform");
   });
 
-  it("returns an empty list when no filters match (:763)", async () => {
+  it("returns an empty list when no filters match", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.previewDeletionFilters(

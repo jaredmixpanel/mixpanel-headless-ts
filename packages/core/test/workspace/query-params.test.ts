@@ -48,7 +48,8 @@ import {
 // T008: basic bookmark params
 // ===========================================================================
 
-describe("TestBasicParams", () => {
+describe("Basic params", () => {
+  // python: TestBasicParams
   it("a single event string produces one show entry", () => {
     const params = build();
     const show = section(params, "show");
@@ -104,7 +105,8 @@ describe("TestBasicParams", () => {
 // T017: aggregation params
 // ===========================================================================
 
-describe("TestAggregationParams", () => {
+describe("Aggregation params", () => {
+  // python: TestAggregationParams
   it("math='unique' reaches the measurement", () => {
     expect(measurementOf(build({ math: "unique" }))["math"]).toBe("unique");
   });
@@ -157,7 +159,8 @@ describe("TestAggregationParams", () => {
 // T024-T025: filter and group params
 // ===========================================================================
 
-describe("TestFilterParams", () => {
+describe("Filter params", () => {
+  // python: TestFilterParams
   it("Filter.equals produces the correct filter entry", () => {
     const params = build({ where: [Filter.equals("country", "US")] });
     const f = section(params, "filter")[0]!;
@@ -215,7 +218,8 @@ describe("TestFilterParams", () => {
   });
 });
 
-describe("TestGroupParams", () => {
+describe("Group params", () => {
+  // python: TestGroupParams
   it("a string group_by produces the correct group entry", () => {
     const params = build({ group_by: "platform" });
     const g = section(params, "group")[0]!;
@@ -276,7 +280,8 @@ describe("TestGroupParams", () => {
 // T032: multi-event params
 // ===========================================================================
 
-describe("TestMultiEventParams", () => {
+describe("Multi event params", () => {
+  // python: TestMultiEventParams
   it("a list of strings produces multiple show entries", () => {
     const params = build({
       events: ["Signup", "Login", "Purchase"],
@@ -318,7 +323,8 @@ describe("TestMultiEventParams", () => {
 // T036: formula params
 // ===========================================================================
 
-describe("TestFormulaParams", () => {
+describe("Formula params", () => {
+  // python: TestFormulaParams
   it("a formula entry is appended to sections.show", () => {
     const params = build({
       events: [

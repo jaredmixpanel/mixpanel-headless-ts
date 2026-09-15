@@ -139,7 +139,8 @@ function okBare(): CannedResponse {
 // US1: Data Definitions — Events
 // =============================================================================
 
-describe("TestGetEventDefinitions", () => {
+describe("Get event definitions", () => {
+  // python: TestGetEventDefinitions
   it("get_event_definitions() returns list of EventDefinition objects", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([eventDefJson()]));
     const result = await ws.getEventDefinitions({ names: ["Purchase"] });
@@ -170,7 +171,8 @@ describe("TestGetEventDefinitions", () => {
   });
 });
 
-describe("TestUpdateEventDefinition", () => {
+describe("Update event definition", () => {
+  // python: TestUpdateEventDefinition
   it("update_event_definition() returns the updated EventDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(eventDefJson(1, "Purchase")));
     const params = new UpdateEventDefinitionParams({
@@ -184,14 +186,16 @@ describe("TestUpdateEventDefinition", () => {
   });
 });
 
-describe("TestDeleteEventDefinition", () => {
+describe("Delete event definition", () => {
+  // python: TestDeleteEventDefinition
   it("delete_event_definition() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => okBare());
     await expect(ws.deleteEventDefinition("OldEvent")).resolves.toBeUndefined();
   });
 });
 
-describe("TestBulkUpdateEventDefinitions", () => {
+describe("Bulk update event definitions", () => {
+  // python: TestBulkUpdateEventDefinitions
   it("bulk_update_event_definitions() returns list of EventDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([eventDefJson(1, "E1"), eventDefJson(2, "E2")]),
@@ -215,7 +219,8 @@ describe("TestBulkUpdateEventDefinitions", () => {
 // US1: Data Definitions — Properties
 // =============================================================================
 
-describe("TestGetPropertyDefinitions", () => {
+describe("Get property definitions", () => {
+  // python: TestGetPropertyDefinitions
   it("get_property_definitions() returns list of PropertyDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([propertyDefJson()]));
     const result = await ws.getPropertyDefinitions({ names: ["$browser"] });
@@ -251,7 +256,8 @@ describe("TestGetPropertyDefinitions", () => {
   });
 });
 
-describe("TestUpdatePropertyDefinition", () => {
+describe("Update property definition", () => {
+  // python: TestUpdatePropertyDefinition
   it("update_property_definition() returns the updated PropertyDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(propertyDefJson(1, "$browser")),
@@ -264,7 +270,8 @@ describe("TestUpdatePropertyDefinition", () => {
   });
 });
 
-describe("TestBulkUpdatePropertyDefinitions", () => {
+describe("Bulk update property definitions", () => {
+  // python: TestBulkUpdatePropertyDefinitions
   it("bulk_update_property_definitions() returns list of PropertyDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([propertyDefJson(1, "$browser"), propertyDefJson(2, "$city")]),
@@ -296,7 +303,8 @@ describe("TestBulkUpdatePropertyDefinitions", () => {
 // US2: Tags
 // =============================================================================
 
-describe("TestListLexiconTags", () => {
+describe("List lexicon tags", () => {
+  // python: TestListLexiconTags
   it("list_lexicon_tags() returns list of LexiconTag objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
@@ -320,7 +328,8 @@ describe("TestListLexiconTags", () => {
   });
 });
 
-describe("TestCreateLexiconTag", () => {
+describe("Create lexicon tag", () => {
+  // python: TestCreateLexiconTag
   it("create_lexicon_tag() returns the created LexiconTag", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(tagJson(99, "new-tag")));
     const tag = await ws.createLexiconTag(
@@ -333,7 +342,8 @@ describe("TestCreateLexiconTag", () => {
   });
 });
 
-describe("TestUpdateLexiconTag", () => {
+describe("Update lexicon tag", () => {
+  // python: TestUpdateLexiconTag
   it("update_lexicon_tag() returns the updated LexiconTag", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(tagJson(1, "renamed-tag")));
     const tag = await ws.updateLexiconTag(
@@ -346,7 +356,8 @@ describe("TestUpdateLexiconTag", () => {
   });
 });
 
-describe("TestDeleteLexiconTag", () => {
+describe("Delete lexicon tag", () => {
+  // python: TestDeleteLexiconTag
   it("delete_lexicon_tag() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => okBare());
     await expect(ws.deleteLexiconTag("core-metrics")).resolves.toBeUndefined();
@@ -357,7 +368,8 @@ describe("TestDeleteLexiconTag", () => {
 // US7: Tracking & History
 // =============================================================================
 
-describe("TestGetTrackingMetadata", () => {
+describe("Get tracking metadata", () => {
+  // python: TestGetTrackingMetadata
   it("get_tracking_metadata() returns an opaque dict", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ last_seen: "2026-01-01", platforms: ["web", "ios"] }),
@@ -370,7 +382,8 @@ describe("TestGetTrackingMetadata", () => {
   });
 });
 
-describe("TestGetEventHistory", () => {
+describe("Get event history", () => {
+  // python: TestGetEventHistory
   it("get_event_history() returns a list of history dicts", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
@@ -391,7 +404,8 @@ describe("TestGetEventHistory", () => {
   });
 });
 
-describe("TestGetPropertyHistory", () => {
+describe("Get property history", () => {
+  // python: TestGetPropertyHistory
   it("get_property_history() returns a list of history dicts", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([{ action: "hidden", timestamp: "2026-03-01" }]),
@@ -408,7 +422,8 @@ describe("TestGetPropertyHistory", () => {
 // US8: Export
 // =============================================================================
 
-describe("TestExportLexicon", () => {
+describe("Export lexicon", () => {
+  // python: TestExportLexicon
   it("export_lexicon() returns an opaque dict with export data", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ events: [eventDefJson()], properties: [propertyDefJson()] }),

@@ -49,7 +49,8 @@ const EU_PROJECT_ME = {
   },
 };
 
-describe("TestLoginRegionMismatch (test_login_region_check.py:84)", () => {
+describe("Login region mismatch", () => {
+  // python: TestLoginRegionMismatch
   it("us auth picking an eu project raises the E-2 ConfigError", async () => {
     const bundle = makeEffects({
       oauthFlow: stubbedFlow(),

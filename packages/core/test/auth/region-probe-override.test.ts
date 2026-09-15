@@ -85,7 +85,8 @@ function basesOf(urls: string[]): string[] {
   return urls.map((u) => u.replace(/\/api\/app\/me$/, ""));
 }
 
-describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
+describe("Region probe under API base URL override", () => {
+  // python: TestRegionProbeUnderApiBaseUrlOverride
   for (const explicit of [false, true]) {
     const arm = explicit ? "injected bag" : "getEnv seam";
 
@@ -185,7 +186,8 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
     return lines;
   }
 
-  it("test_narration_names_api_base_url_only", async () => {
+  it("narration names API base URL only", async () => {
+    // python: test_narration_names_api_base_url_only
     const first = (
       await narrationLines({ MP_API_BASE_URL: "http://127.0.0.1:8080" })
     )[0]!;
@@ -194,7 +196,8 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
     expect(first).not.toContain("MP_APP_BASE_URL");
   });
 
-  it("test_narration_names_app_base_url_only", async () => {
+  it("narration names app base URL only", async () => {
+    // python: test_narration_names_app_base_url_only
     const first = (
       await narrationLines({ MP_APP_BASE_URL: "http://app.internal:9000" })
     )[0]!;
@@ -203,7 +206,8 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
     expect(first).not.toContain("MP_API_BASE_URL");
   });
 
-  it("test_narration_names_both_when_both_set", async () => {
+  it("narration names both when both set", async () => {
+    // python: test_narration_names_both_when_both_set
     const first = (
       await narrationLines({
         MP_API_BASE_URL: "http://127.0.0.1:8080",
@@ -215,7 +219,8 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
     expect(first).toContain("MP_APP_BASE_URL");
   });
 
-  it("test_narration_unchanged_without_override", async () => {
+  it("narration unchanged without override", async () => {
+    // python: test_narration_unchanged_without_override
     expect((await narrationLines({}))[0]).toBe(
       "Probing regions for /me access ...",
     );

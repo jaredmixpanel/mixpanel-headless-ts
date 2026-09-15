@@ -46,7 +46,8 @@ import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js"
 // T001: PropertyInput construction
 // ===========================================================================
 
-describe("TestPropertyInput", () => {
+describe("Property input", () => {
+  // python: TestPropertyInput
   it("can be constructed with just a name", () => {
     const pi = new PropertyInput({ name: "price" });
     expect(pi.name).toBe("price");
@@ -97,7 +98,8 @@ describe("TestPropertyInput", () => {
 // T002: InlineCustomProperty construction
 // ===========================================================================
 
-describe("TestInlineCustomProperty", () => {
+describe("Inline custom property", () => {
+  // python: TestInlineCustomProperty
   it("can be constructed with a formula plus a single input", () => {
     const icp = new InlineCustomProperty({
       formula: "A",
@@ -131,7 +133,8 @@ describe("TestInlineCustomProperty", () => {
 // T003: InlineCustomProperty.numeric()
 // ===========================================================================
 
-describe("TestInlineCustomPropertyNumeric", () => {
+describe("Inline custom property numeric", () => {
+  // python: TestInlineCustomPropertyNumeric
   it("creates an all-number property with multiple inputs", () => {
     const icp = InlineCustomProperty.numeric("A * B", {
       A: "price",
@@ -162,7 +165,8 @@ describe("TestInlineCustomPropertyNumeric", () => {
 // T004: CustomPropertyRef construction
 // ===========================================================================
 
-describe("TestCustomPropertyRef", () => {
+describe("Custom property ref", () => {
+  // python: TestCustomPropertyRef
   it("stores the given integer id", () => {
     expect(new CustomPropertyRef({ id: 42 }).id).toBe(42);
   });
@@ -176,7 +180,8 @@ describe("TestCustomPropertyRef", () => {
 // Type widening backward compatibility
 // ===========================================================================
 
-describe("TestTypeWidening", () => {
+describe("Type widening", () => {
+  // python: TestTypeWidening
   it("Metric.property still accepts a plain string", () => {
     const m = new Metric({
       event: "Purchase",
@@ -245,7 +250,8 @@ describe("TestTypeWidening", () => {
 // T047-T056: fail-fast validation (CP1-CP6)
 // ===========================================================================
 
-describe("TestCustomPropertyValidationCP1", () => {
+describe("Custom property validation CP1", () => {
+  // python: TestCustomPropertyValidationCP1
   it("CustomPropertyRef(0) in group_by raises", async () => {
     await expect(
       makeStubWorkspace().buildParams("Purchase", {
@@ -285,7 +291,8 @@ describe("TestCustomPropertyValidationCP1", () => {
   });
 });
 
-describe("TestCustomPropertyValidationCP2", () => {
+describe("Custom property validation CP2", () => {
+  // python: TestCustomPropertyValidationCP2
   it("an empty formula raises", async () => {
     const icp = new InlineCustomProperty({
       formula: "",
@@ -321,7 +328,8 @@ describe("TestCustomPropertyValidationCP2", () => {
   });
 });
 
-describe("TestCustomPropertyValidationCP3", () => {
+describe("Custom property validation CP3", () => {
+  // python: TestCustomPropertyValidationCP3
   it("an empty inputs dict raises", async () => {
     const icp = new InlineCustomProperty({ formula: "A", inputs: {} });
     await expect(
@@ -337,7 +345,8 @@ describe("TestCustomPropertyValidationCP3", () => {
   });
 });
 
-describe("TestCustomPropertyValidationCP4", () => {
+describe("Custom property validation CP4", () => {
+  // python: TestCustomPropertyValidationCP4
   for (const key of ["a", "AB", "1", "aa"]) {
     it(`the input key '${key}' raises`, async () => {
       const icp = new InlineCustomProperty({
@@ -358,7 +367,8 @@ describe("TestCustomPropertyValidationCP4", () => {
   }
 });
 
-describe("TestCustomPropertyValidationCP5", () => {
+describe("Custom property validation CP5", () => {
+  // python: TestCustomPropertyValidationCP5
   it("a formula longer than 20,000 chars raises", async () => {
     const icp = new InlineCustomProperty({
       formula: "A".repeat(20001),
@@ -388,7 +398,8 @@ describe("TestCustomPropertyValidationCP5", () => {
   });
 });
 
-describe("TestCustomPropertyValidationCP6", () => {
+describe("Custom property validation CP6", () => {
+  // python: TestCustomPropertyValidationCP6
   it("an empty PropertyInput.name raises", async () => {
     const icp = new InlineCustomProperty({
       formula: "A",
@@ -407,7 +418,8 @@ describe("TestCustomPropertyValidationCP6", () => {
   });
 });
 
-describe("TestCustomPropertyValidationValid", () => {
+describe("Custom property validation valid", () => {
+  // python: TestCustomPropertyValidationValid
   it("a valid InlineCustomProperty passes", async () => {
     const icp = InlineCustomProperty.numeric("A * B", {
       A: "price",
@@ -432,7 +444,8 @@ describe("TestCustomPropertyValidationValid", () => {
   });
 });
 
-describe("TestCustomPropertyValidationFilterPosition", () => {
+describe("Custom property validation filter position", () => {
+  // python: TestCustomPropertyValidationFilterPosition
   it("CustomPropertyRef(0) in the filter raises", async () => {
     await expect(
       makeStubWorkspace().buildParams("Purchase", {
@@ -447,7 +460,8 @@ describe("TestCustomPropertyValidationFilterPosition", () => {
   });
 });
 
-describe("TestCustomPropertyValidationMeasurementPosition", () => {
+describe("Custom property validation measurement position", () => {
+  // python: TestCustomPropertyValidationMeasurementPosition
   it("CustomPropertyRef(0) in Metric.property raises", async () => {
     await expect(
       makeStubWorkspace().buildParams(
@@ -470,7 +484,8 @@ describe("TestCustomPropertyValidationMeasurementPosition", () => {
   });
 });
 
-describe("TestCustomPropertyValidationFunnelRetention", () => {
+describe("Custom property validation funnel retention", () => {
+  // python: TestCustomPropertyValidationFunnelRetention
   it("CustomPropertyRef(0) in funnel group_by raises", async () => {
     await expect(
       makeStubWorkspace().buildFunnelParams(["Signup", "Purchase"], {

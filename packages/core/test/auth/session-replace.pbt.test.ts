@@ -133,8 +133,9 @@ const sessions: fc.Arbitrary<Session> = fc
     headers: new Map<string, string>(),
   }));
 
-describe("Session.replace PBT (test_session_pbt.py)", () => {
-  it("test_replace_account_preserves_other_axes", () => {
+describe("Session.replace PBT", () => {
+  it("replace account preserves other axes", () => {
+    // python: test_replace_account_preserves_other_axes
     fc.assert(
       fc.property(sessions, accounts, (s, newAccount) => {
         const s2 = sessionReplace(s, { account: newAccount });
@@ -145,7 +146,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_project_preserves_other_axes", () => {
+  it("replace project preserves other axes", () => {
+    // python: test_replace_project_preserves_other_axes
     fc.assert(
       fc.property(sessions, projects, (s, newProject) => {
         const s2 = sessionReplace(s, { project: newProject });
@@ -156,7 +158,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_workspace_preserves_other_axes", () => {
+  it("replace workspace preserves other axes", () => {
+    // python: test_replace_workspace_preserves_other_axes
     fc.assert(
       fc.property(sessions, workspaceIds, (s, wsId) => {
         const newWorkspace: WorkspaceRef = { id: wsId };
@@ -168,7 +171,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_workspace_to_none_clears", () => {
+  it("replace workspace to null clears", () => {
+    // python: test_replace_workspace_to_none_clears
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, { workspace: null });
@@ -177,7 +181,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_omitting_workspace_preserves", () => {
+  it("replace omitting workspace preserves", () => {
+    // python: test_replace_omitting_workspace_preserves
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
@@ -186,7 +191,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_returns_new_object", () => {
+  it("replace returns new object", () => {
+    // python: test_replace_returns_new_object
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
@@ -196,7 +202,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_omitting_axes_preserves_all", () => {
+  it("replace omitting axes preserves all", () => {
+    // python: test_replace_omitting_axes_preserves_all
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
@@ -208,7 +215,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_session_typeadapter_roundtrip_preserves_equality", () => {
+  it("session typeadapter roundtrip preserves equality", () => {
+    // python: test_session_typeadapter_roundtrip_preserves_equality
     fc.assert(
       fc.property(sessions, (s) => {
         // model_dump → validate_python twin: re-parse the session's own
@@ -226,7 +234,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_session_auth_header_format", async () => {
+  it("session auth header format", async () => {
+    // python: test_session_auth_header_format
     // A fake TokenResolver is supplied so the OAuth variants don't
     // need real on-disk tokens.
     const fakeResolver: TokenResolver = {

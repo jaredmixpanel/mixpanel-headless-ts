@@ -58,7 +58,8 @@ const EMPTY_OK: Record<string, unknown> = {
 // T007: time range validation (V7-V11)
 // ===========================================================================
 
-describe("TestTimeRangeValidation", () => {
+describe("Time range validation", () => {
+  // python: TestTimeRangeValidation
   it("V7: last must be a positive integer", async () => {
     await expect(
       makeStubWorkspace().query("Login", { last: 0 }),
@@ -132,7 +133,8 @@ describe("TestTimeRangeValidation", () => {
 // T016: aggregation validation (V1-V3)
 // ===========================================================================
 
-describe("TestAggregationValidation", () => {
+describe("Aggregation validation", () => {
+  // python: TestAggregationValidation
   it("V1: property-based math requires math_property", async () => {
     await expect(
       makeStubWorkspace().query("Purchase", { math: "average" }),
@@ -224,7 +226,8 @@ describe("TestAggregationValidation", () => {
 // T018: per-Metric validation (V13-V14)
 // ===========================================================================
 
-describe("TestPerMetricValidation", () => {
+describe("Per metric validation", () => {
+  // python: TestPerMetricValidation
   it("V13: a Metric with property math requires a property", () => {
     expect(() => new Metric({ event: "Purchase", math: "average" })).toThrow(
       ParamValidationError,
@@ -289,7 +292,8 @@ describe("TestPerMetricValidation", () => {
 // T035: formula validation (V4)
 // ===========================================================================
 
-describe("TestFormulaValidation", () => {
+describe("Formula validation", () => {
+  // python: TestFormulaValidation
   it("V4: a formula requires at least 2 events", async () => {
     await expect(
       makeStubWorkspace().query("Login", { formula: "A * 100" }),
@@ -304,7 +308,8 @@ describe("TestFormulaValidation", () => {
 // T040: analysis mode validation (V5-V6)
 // ===========================================================================
 
-describe("TestAnalysisModeValidation", () => {
+describe("Analysis mode validation", () => {
+  // python: TestAnalysisModeValidation
   it("V5: rolling and cumulative are mutually exclusive", async () => {
     await expect(
       makeStubWorkspace().query("Login", { rolling: 7, cumulative: true }),
@@ -337,7 +342,8 @@ describe("TestAnalysisModeValidation", () => {
 // GroupBy validation (V11-V12)
 // ===========================================================================
 
-describe("TestGroupByValidation", () => {
+describe("Group by validation", () => {
+  // python: TestGroupByValidation
   it("V11: bucket_min requires bucket_size", async () => {
     await expect(
       makeStubWorkspace().query("Purchase", {
@@ -438,7 +444,8 @@ describe("TestGroupByValidation", () => {
 // V0: empty events
 // ===========================================================================
 
-describe("TestEmptyEventsValidation", () => {
+describe("Empty events validation", () => {
+  // python: TestEmptyEventsValidation
   it("V0: an empty events list is rejected", async () => {
     await expect(makeStubWorkspace().query([])).rejects.toBeInstanceOf(
       BookmarkValidationError,
@@ -465,7 +472,8 @@ describe("TestEmptyEventsValidation", () => {
 // Formula-in-list validation
 // ===========================================================================
 
-describe("TestFormulaInListValidation", () => {
+describe("Formula in list validation", () => {
+  // python: TestFormulaInListValidation
   it("a Formula as the sole argument is rejected", async () => {
     await expect(
       makeStubWorkspace().query(new Formula({ expression: "A * 100" })),
@@ -518,7 +526,8 @@ describe("TestFormulaInListValidation", () => {
 // T054c: build_params() validation parity
 // ===========================================================================
 
-describe("TestBuildParamsValidation", () => {
+describe("Build params validation", () => {
+  // python: TestBuildParamsValidation
   it("rejects last=0", async () => {
     await expect(
       makeStubWorkspace().buildParams("Login", { last: 0 }),
@@ -551,7 +560,8 @@ describe("TestBuildParamsValidation", () => {
 // T064: percentile validation
 // ===========================================================================
 
-describe("TestPercentileValidation", () => {
+describe("Percentile validation", () => {
+  // python: TestPercentileValidation
   it("V1: math='percentile' requires math_property", async () => {
     await expect(
       makeStubWorkspace().buildParams("Login", {
@@ -615,7 +625,8 @@ describe("TestPercentileValidation", () => {
 // T068: histogram validation
 // ===========================================================================
 
-describe("TestHistogramValidation", () => {
+describe("Histogram validation", () => {
+  // python: TestHistogramValidation
   it("V1: math='histogram' requires math_property", async () => {
     await expect(
       makeStubWorkspace().buildParams("Login", { math: "histogram" }),

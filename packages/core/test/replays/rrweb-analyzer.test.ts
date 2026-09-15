@@ -253,13 +253,16 @@ function byAction(
 // Convenience entry points
 // =============================================================================
 
-describe("analyze_events() convenience function (TestAnalyzeEventsWrapper)", () => {
-  it("test_empty_raises_value_error", () => {
+describe("analyze_events() convenience function", () => {
+  // python: TestAnalyzeEventsWrapper
+  it("empty raises value error", () => {
+    // python: test_empty_raises_value_error
     expect(() => analyzeEvents([])).toThrow(ValueError);
     expect(() => analyzeEvents([])).toThrow(/cannot be empty/);
   });
 
-  it("test_non_list_raises_value_error", () => {
+  it("non list raises value error", () => {
+    // python: test_non_list_raises_value_error
     // Python passes the string "not a list": non-empty and non-list, so
     // the emptiness guard passes and the list guard fires.
     const notAList = "not a list" as unknown as readonly Dict[];
@@ -267,12 +270,14 @@ describe("analyze_events() convenience function (TestAnalyzeEventsWrapper)", () 
     expect(() => analyzeEvents(notAList)).toThrow(/must be a list/);
   });
 
-  it("test_returns_string", () => {
+  it("returns string", () => {
+    // python: test_returns_string
     const out = analyzeEvents([meta(1000, "/x")]);
     expect(out).toContain("Navigated to /x");
   });
 
-  it("test_actions_carry_description", () => {
+  it("actions carry description", () => {
+    // python: test_actions_carry_description
     const result = new RrwebAnalyzer().analyze([meta(1000, "/x")]);
     expect(result.actions.length).toBeGreaterThan(0);
     expect(result.actions[0]?.description).toBe("Navigated to /x");
@@ -285,8 +290,10 @@ describe("analyze_events() convenience function (TestAnalyzeEventsWrapper)", () 
 // Console errors
 // =============================================================================
 
-describe("rrweb/console@* level=error plugin events (TestConsoleErrors)", () => {
-  it("test_console_error_emitted", () => {
+describe("rrweb/console@* level=error plugin events", () => {
+  // python: TestConsoleErrors
+  it("console error emitted", () => {
+    // python: test_console_error_emitted
     const events = [
       meta(1000, "/x"),
       pluginConsoleError(2000, "TypeError: bad"),
@@ -300,7 +307,8 @@ describe("rrweb/console@* level=error plugin events (TestConsoleErrors)", () => 
     expect(result.errors[0]?.message).toBe("TypeError: bad");
   });
 
-  it("test_non_error_plugin_ignored", () => {
+  it("non error plugin ignored", () => {
+    // python: test_non_error_plugin_ignored
     const events = [
       meta(1000, "/x"),
       {
@@ -318,7 +326,8 @@ describe("rrweb/console@* level=error plugin events (TestConsoleErrors)", () => 
     );
   });
 
-  it("test_unrelated_plugin_ignored", () => {
+  it("unrelated plugin ignored", () => {
+    // python: test_unrelated_plugin_ignored
     const events = [
       meta(1000, "/x"),
       {
@@ -333,7 +342,8 @@ describe("rrweb/console@* level=error plugin events (TestConsoleErrors)", () => 
     );
   });
 
-  it("test_empty_message_not_emitted", () => {
+  it("empty message not emitted", () => {
+    // python: test_empty_message_not_emitted
     const events = [
       meta(1000, "/x"),
       {
@@ -356,8 +366,10 @@ describe("rrweb/console@* level=error plugin events (TestConsoleErrors)", () => 
 // Debouncing
 // =============================================================================
 
-describe("scroll / input / selection debouncing (TestDebouncing)", () => {
-  it("test_scroll_debounced", () => {
+describe("scroll / input / selection debouncing", () => {
+  // python: TestDebouncing
+  it("scroll debounced", () => {
+    // python: test_scroll_debounced
     const events = [
       meta(1000, "/x"),
       scroll(2000),
@@ -370,13 +382,15 @@ describe("scroll / input / selection debouncing (TestDebouncing)", () => {
     expect(byAction(result.actions, "scroll")).toHaveLength(1);
   });
 
-  it("test_scroll_re_fires_after_gap", () => {
+  it("scroll re fires after gap", () => {
+    // python: test_scroll_re_fires_after_gap
     const events = [meta(1000, "/x"), scroll(2000), scroll(5000)];
     const result = new RrwebAnalyzer().analyze(events);
     expect(byAction(result.actions, "scroll")).toHaveLength(2);
   });
 
-  it("test_input_debounced_per_node", () => {
+  it("input debounced per node", () => {
+    // python: test_input_debounced_per_node
     const root = documentRoot(
       elementNode(10, "input", { attributes: { id: "email", type: "text" } }),
       elementNode(11, "input", {
@@ -394,7 +408,8 @@ describe("scroll / input / selection debouncing (TestDebouncing)", () => {
     expect(byAction(result.actions, "input")).toHaveLength(2);
   });
 
-  it("test_input_checkbox", () => {
+  it("input checkbox", () => {
+    // python: test_input_checkbox
     const root = documentRoot(
       elementNode(20, "input", {
         attributes: { type: "checkbox", id: "agree" },
@@ -409,7 +424,8 @@ describe("scroll / input / selection debouncing (TestDebouncing)", () => {
     expect(result.markdown_summary).toContain("to checked");
   });
 
-  it("test_input_no_text_no_check_modified_fallback", () => {
+  it("input no text no check modified fallback", () => {
+    // python: test_input_no_text_no_check_modified_fallback
     const root = documentRoot(
       elementNode(30, "input", { attributes: { type: "text", id: "foo" } }),
     );
@@ -427,7 +443,8 @@ describe("scroll / input / selection debouncing (TestDebouncing)", () => {
 // Mouse-interaction subtypes
 // =============================================================================
 
-describe("all five mouse-interaction types (TestMouseInteractions)", () => {
+describe("all five mouse-interaction types", () => {
+  // python: TestMouseInteractions
   it.each([
     [2, "Clicked", "click"],
     [3, "Right-clicked", "click"],
@@ -435,7 +452,7 @@ describe("all five mouse-interaction types (TestMouseInteractions)", () => {
     [5, "Focused", "click"],
     [7, "Tapped", "touch_start"],
   ] as ReadonlyArray<readonly [number, string, string]>)(
-    "test_each_interaction_type[%i]",
+    "each interaction type[%i]", // python: test_each_interaction_type
     (clickType, expectedVerb, expectedAction) => {
       const root = documentRoot(
         elementNode(40, "button", { attributes: { id: "go" }, text: "Go" }),
@@ -459,7 +476,8 @@ describe("all five mouse-interaction types (TestMouseInteractions)", () => {
     },
   );
 
-  it("test_unknown_interaction_type_ignored", () => {
+  it("unknown interaction type ignored", () => {
+    // python: test_unknown_interaction_type_ignored
     const root = documentRoot(
       elementNode(50, "div", { attributes: { id: "x" } }),
     );
@@ -476,7 +494,8 @@ describe("all five mouse-interaction types (TestMouseInteractions)", () => {
     ).toBe(false);
   });
 
-  it("test_click_on_unknown_node_describes_as_element", () => {
+  it("click on unknown node describes as element", () => {
+    // python: test_click_on_unknown_node_describes_as_element
     const events = [meta(1000, "/x"), click(2000, 999)];
     const result = new RrwebAnalyzer().analyze(events);
     const clicks = byAction(result.actions, "click");
@@ -484,7 +503,8 @@ describe("all five mouse-interaction types (TestMouseInteractions)", () => {
     expect(clicks[0]?.target_desc).toBe("element");
   });
 
-  it("test_click_with_no_node_id_is_dropped", () => {
+  it("click with no node ID is dropped", () => {
+    // python: test_click_with_no_node_id_is_dropped
     const events = [
       meta(1000, "/x"),
       { type: 3, data: { source: 2, type: 2, x: 0, y: 0 }, timestamp: 2000 },
@@ -493,7 +513,8 @@ describe("all five mouse-interaction types (TestMouseInteractions)", () => {
     expect(result.actions.some((a) => a.action === "click")).toBe(false);
   });
 
-  it("test_data_selectors_propagated_to_click_metadata", () => {
+  it("data selectors propagated to click metadata", () => {
+    // python: test_data_selectors_propagated_to_click_metadata
     const root = documentRoot(
       elementNode(40, "button", {
         attributes: {
@@ -514,7 +535,8 @@ describe("all five mouse-interaction types (TestMouseInteractions)", () => {
     expect(Object.hasOwn(clicks[0]?.metadata ?? {}, "id")).toBe(false);
   });
 
-  it("test_selector_label_fn_uses_propagated_testid", () => {
+  it("selector label fn uses propagated testid", () => {
+    // python: test_selector_label_fn_uses_propagated_testid
     const root = documentRoot(
       elementNode(41, "button", {
         attributes: { "data-testid": "checkout" },
@@ -539,8 +561,10 @@ describe("all five mouse-interaction types (TestMouseInteractions)", () => {
 // Selection events
 // =============================================================================
 
-describe("selection events with text extraction (TestSelectionEvents)", () => {
-  it("test_selection_extracts_text", () => {
+describe("selection events with text extraction", () => {
+  // python: TestSelectionEvents
+  it("selection extracts text", () => {
+    // python: test_selection_extracts_text
     const root = documentRoot(
       elementNode(60, "p", { text: "hello world from acme" }),
     );
@@ -554,7 +578,8 @@ describe("selection events with text extraction (TestSelectionEvents)", () => {
     expect(result.markdown_summary).toContain("Selected");
   });
 
-  it("test_selection_without_text_fallback", () => {
+  it("selection without text fallback", () => {
+    // python: test_selection_without_text_fallback
     const events = [
       meta(1000, "/x"),
       { type: 3, data: { source: 14, ranges: [] }, timestamp: 2000 },
@@ -563,7 +588,8 @@ describe("selection events with text extraction (TestSelectionEvents)", () => {
     expect(result.actions.some((a) => a.action === "select")).toBe(false);
   });
 
-  it("test_selection_unknown_node_fallback", () => {
+  it("selection unknown node fallback", () => {
+    // python: test_selection_unknown_node_fallback
     const events = [
       meta(1000, "/x"),
       selection(2000, 999, 999, { startOffset: 0, endOffset: 5 }),
@@ -578,8 +604,10 @@ describe("selection events with text extraction (TestSelectionEvents)", () => {
 // Mutations
 // =============================================================================
 
-describe("DOM tracker mutation application (TestMutations)", () => {
-  it("test_mutation_adds", () => {
+describe("DOM tracker mutation application", () => {
+  // python: TestMutations
+  it("mutation adds", () => {
+    // python: test_mutation_adds
     const root = documentRoot(); // empty body
     const events = [
       meta(1000, "/x"),
@@ -600,7 +628,8 @@ describe("DOM tracker mutation application (TestMutations)", () => {
     );
   });
 
-  it("test_mutation_removes", () => {
+  it("mutation removes", () => {
+    // python: test_mutation_removes
     const root = documentRoot(elementNode(80, "button", { text: "Bye" }));
     const events = [
       meta(1000, "/x"),
@@ -614,7 +643,8 @@ describe("DOM tracker mutation application (TestMutations)", () => {
     expect(clicks[0]?.target_desc).toBe("element");
   });
 
-  it("test_mutation_text_change", () => {
+  it("mutation text change", () => {
+    // python: test_mutation_text_change
     const root = documentRoot(elementNode(90, "button", { text: "Old" }));
     const events = [
       meta(1000, "/x"),
@@ -628,7 +658,8 @@ describe("DOM tracker mutation application (TestMutations)", () => {
     expect(clicks.some((a) => a.target_desc.includes('"New"'))).toBe(true);
   });
 
-  it("test_mutation_attribute_change", () => {
+  it("mutation attribute change", () => {
+    // python: test_mutation_attribute_change
     const root = documentRoot(elementNode(100, "button"));
     const events = [
       meta(1000, "/x"),
@@ -644,7 +675,8 @@ describe("DOM tracker mutation application (TestMutations)", () => {
     ).toBe(true);
   });
 
-  it("test_mutation_text_change_for_unknown_node", () => {
+  it("mutation text change for unknown node", () => {
+    // python: test_mutation_text_change_for_unknown_node
     const events = [
       meta(1000, "/x"),
       mutation(1800, { texts: [{ id: 999, value: "ghost" }] }),
@@ -658,7 +690,8 @@ describe("DOM tracker mutation application (TestMutations)", () => {
 // Description fallbacks
 // =============================================================================
 
-describe("descriptive-attribute priority ladder (TestDescriptionFallbacks)", () => {
+describe("descriptive-attribute priority ladder", () => {
+  // python: TestDescriptionFallbacks
   it.each([
     [{ "aria-label": "Save changes" }, null, '"Save changes"'],
     [{ title: "tooltip-text" }, null, '"tooltip-text"'],
@@ -667,7 +700,7 @@ describe("descriptive-attribute priority ladder (TestDescriptionFallbacks)", () 
     [{ placeholder: "search…" }, null, 'placeholder="search…"'],
     [{ id: "go" }, null, "#go"],
   ] as ReadonlyArray<readonly [Record<string, string>, string | null, string]>)(
-    "test_button_description[%#]",
+    "button description[%#]", // python: test_button_description
     (attributes, text, fragment) => {
       const root = documentRoot(
         elementNode(200, "button", { attributes, text }),
@@ -684,7 +717,8 @@ describe("descriptive-attribute priority ladder (TestDescriptionFallbacks)", () 
     },
   );
 
-  it("test_anchor_with_http_href_appends_path", () => {
+  it("anchor with HTTP href appends path", () => {
+    // python: test_anchor_with_http_href_appends_path
     const root = documentRoot(
       elementNode(210, "a", {
         attributes: { href: "https://example.com/docs/intro" },
@@ -702,7 +736,8 @@ describe("descriptive-attribute priority ladder (TestDescriptionFallbacks)", () 
     ).toBe(true);
   });
 
-  it("test_input_with_type", () => {
+  it("input with type", () => {
+    // python: test_input_with_type
     const root = documentRoot(
       elementNode(220, "input", {
         attributes: { type: "email", id: "email" },
@@ -719,7 +754,8 @@ describe("descriptive-attribute priority ladder (TestDescriptionFallbacks)", () 
     ).toBe(true);
   });
 
-  it("test_ancestor_traversal_fallback", () => {
+  it("ancestor traversal fallback", () => {
+    // python: test_ancestor_traversal_fallback
     const span = elementNode(300, "span");
     const button = elementNode(301, "button", {
       attributes: { id: "go" },
@@ -742,19 +778,23 @@ describe("descriptive-attribute priority ladder (TestDescriptionFallbacks)", () 
 // DOMTracker direct API
 // =============================================================================
 
-describe("DOMTracker direct exercises (TestDOMTrackerDirect)", () => {
-  it("test_sanitize_value_strips_and_drops_none_string", () => {
+describe("DOMTracker direct exercises", () => {
+  // python: TestDOMTrackerDirect
+  it("sanitize value strips and drops null string", () => {
+    // python: test_sanitize_value_strips_and_drops_none_string
     expect(DOMTracker.sanitizeValue("  ")).toBe("");
     expect(DOMTracker.sanitizeValue("None")).toBe("");
     expect(DOMTracker.sanitizeValue("hi  ")).toBe("hi");
     expect(DOMTracker.sanitizeValue(42)).toBe(42);
   });
 
-  it("test_describe_unknown_node_returns_element", () => {
+  it("describe unknown node returns element", () => {
+    // python: test_describe_unknown_node_returns_element
     expect(new DOMTracker().getNodeDescription(9999)).toBe("element");
   });
 
-  it("test_max_nodes_warning", () => {
+  it("max nodes warning", () => {
+    // python: test_max_nodes_warning
     const tracker = new DOMTracker({ maxNodes: 2 });
     tracker.addNode(elementNode(1, "div"));
     tracker.addNode(elementNode(2, "div"));
@@ -762,7 +802,8 @@ describe("DOMTracker direct exercises (TestDOMTrackerDirect)", () => {
     expect(tracker.reachedMaxNodes).toBe(true);
   });
 
-  it("test_max_nodes_caps_growth_after_trip", () => {
+  it("max nodes caps growth after trip", () => {
+    // python: test_max_nodes_caps_growth_after_trip
     const tracker = new DOMTracker({ maxNodes: 2 });
     for (let nodeId = 1; nodeId < 8; nodeId += 1) {
       tracker.addNode(elementNode(nodeId, "div"));
@@ -771,7 +812,8 @@ describe("DOMTracker direct exercises (TestDOMTrackerDirect)", () => {
     expect(tracker.nodes.size).toBe(2); // nodes 1 and 2 only
   });
 
-  it("test_max_nodes_still_updates_existing_nodes_at_cap", () => {
+  it("max nodes still updates existing nodes at cap", () => {
+    // python: test_max_nodes_still_updates_existing_nodes_at_cap
     const tracker = new DOMTracker({ maxNodes: 2 });
     tracker.addNode(elementNode(1, "button", { attributes: { id: "first" } }));
     tracker.addNode(elementNode(2, "div"));
@@ -788,20 +830,24 @@ describe("DOMTracker direct exercises (TestDOMTrackerDirect)", () => {
 // MarkdownReporter
 // =============================================================================
 
-describe("MarkdownReporter line rendering (TestMarkdownReporter)", () => {
-  it("test_empty_returns_no_actions_sentinel", () => {
+describe("MarkdownReporter line rendering", () => {
+  // python: TestMarkdownReporter
+  it("empty returns no actions sentinel", () => {
+    // python: test_empty_returns_no_actions_sentinel
     expect(new MarkdownReporter([]).generate()).toBe(
       "No user actions recorded.",
     );
   });
 
-  it("test_renders_seconds", () => {
+  it("renders seconds", () => {
+    // python: test_renders_seconds
     expect(new MarkdownReporter([[2500, "Did a thing"]]).generate()).toBe(
       "2: Did a thing",
     );
   });
 
-  it("test_multiple_lines_joined", () => {
+  it("multiple lines joined", () => {
+    // python: test_multiple_lines_joined
     expect(
       new MarkdownReporter([
         [1000, "a"],
@@ -810,7 +856,8 @@ describe("MarkdownReporter line rendering (TestMarkdownReporter)", () => {
     ).toBe("1: a\n2: b");
   });
 
-  it("test_collapses_consecutive_duplicates", () => {
+  it("collapses consecutive duplicates", () => {
+    // python: test_collapses_consecutive_duplicates
     expect(
       new MarkdownReporter([
         [1000, "Clicked X"],
@@ -820,7 +867,8 @@ describe("MarkdownReporter line rendering (TestMarkdownReporter)", () => {
     ).toBe("1: Clicked X (×3)");
   });
 
-  it("test_non_adjacent_duplicates_not_collapsed", () => {
+  it("non adjacent duplicates not collapsed", () => {
+    // python: test_non_adjacent_duplicates_not_collapsed
     expect(
       new MarkdownReporter([
         [1000, "Clicked X"],

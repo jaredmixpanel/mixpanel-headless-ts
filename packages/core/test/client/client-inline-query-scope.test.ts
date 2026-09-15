@@ -70,8 +70,10 @@ function makeCaptureClient(
   return client;
 }
 
-describe("TestExplicitWorkspaceOnInlineQueries", () => {
-  it("test_insights_query_explicit_workspace_on_unpinned_session", async () => {
+describe("Explicit workspace on inline queries", () => {
+  // python: TestExplicitWorkspaceOnInlineQueries
+  it("insights query explicit workspace on unpinned session", async () => {
+    // python: test_insights_query_explicit_workspace_on_unpinned_session
     const captured: CapturedFetchRequest[] = [];
     const client = makeCaptureClient(
       unpinnedSession(),
@@ -86,7 +88,8 @@ describe("TestExplicitWorkspaceOnInlineQueries", () => {
     expect(captured[0]?.params["workspace_id"]).toBe("75");
   });
 
-  it("test_insights_query_explicit_workspace_wins_over_pin", async () => {
+  it("insights query explicit workspace wins over pin", async () => {
+    // python: test_insights_query_explicit_workspace_wins_over_pin
     const captured: CapturedFetchRequest[] = [];
     const client = makeCaptureClient(pinnedSession(), captured, INSIGHTS_JSON);
     await client.insightsQuery(
@@ -97,7 +100,8 @@ describe("TestExplicitWorkspaceOnInlineQueries", () => {
     expect(captured[0]?.params["workspace_id"]).toBe("75");
   });
 
-  it("test_insights_query_without_workspace_keeps_pin_behavior", async () => {
+  it("insights query without workspace keeps pin behavior", async () => {
+    // python: test_insights_query_without_workspace_keeps_pin_behavior
     const captured: CapturedFetchRequest[] = [];
     const client = makeCaptureClient(
       unpinnedSession(),
@@ -114,7 +118,8 @@ describe("TestExplicitWorkspaceOnInlineQueries", () => {
     );
   });
 
-  it("test_arb_funnels_query_explicit_workspace", async () => {
+  it("arb funnels query explicit workspace", async () => {
+    // python: test_arb_funnels_query_explicit_workspace
     const captured: CapturedFetchRequest[] = [];
     const client = makeCaptureClient(
       unpinnedSession(),
@@ -131,8 +136,10 @@ describe("TestExplicitWorkspaceOnInlineQueries", () => {
   });
 });
 
-describe("TestInlineQueriesCanOptOutOfThePin", () => {
-  it("test_insights_query_opt_out_omits_pin", async () => {
+describe("Inline queries can opt out of the pin", () => {
+  // python: TestInlineQueriesCanOptOutOfThePin
+  it("insights query opt out omits pin", async () => {
+    // python: test_insights_query_opt_out_omits_pin
     const captured: CapturedFetchRequest[] = [];
     const client = makeCaptureClient(pinnedSession(), captured, INSIGHTS_JSON);
     await client.insightsQuery(
@@ -145,7 +152,8 @@ describe("TestInlineQueriesCanOptOutOfThePin", () => {
     );
   });
 
-  it("test_insights_query_explicit_workspace_survives_opt_out", async () => {
+  it("insights query explicit workspace survives opt out", async () => {
+    // python: test_insights_query_explicit_workspace_survives_opt_out
     const captured: CapturedFetchRequest[] = [];
     const client = makeCaptureClient(pinnedSession(), captured, INSIGHTS_JSON);
     await client.insightsQuery(
@@ -156,7 +164,8 @@ describe("TestInlineQueriesCanOptOutOfThePin", () => {
     expect(captured[0]?.params["workspace_id"]).toBe("75");
   });
 
-  it("test_arb_funnels_query_opt_out_omits_pin", async () => {
+  it("arb funnels query opt out omits pin", async () => {
+    // python: test_arb_funnels_query_opt_out_omits_pin
     const captured: CapturedFetchRequest[] = [];
     const client = makeCaptureClient(
       pinnedSession(),

@@ -27,8 +27,10 @@ function oauthCredentials(): Session {
 // Domain 10 — Custom Properties (US4)
 // ---------------------------------------------------------------------------
 
-describe("TestListCustomProperties", () => {
-  it("test_returns_list", async () => {
+describe("List custom properties", () => {
+  // python: TestListCustomProperties
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -43,7 +45,8 @@ describe("TestListCustomProperties", () => {
     expect(result[0]?.["name"]).toBe("Lifetime Value");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -53,7 +56,8 @@ describe("TestListCustomProperties", () => {
     expect(capturedUrls[0]).toContain("/custom_properties/");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -64,8 +68,10 @@ describe("TestListCustomProperties", () => {
   });
 });
 
-describe("TestCreateCustomProperty", () => {
-  it("test_returns_dict", async () => {
+describe("Create custom property", () => {
+  // python: TestCreateCustomProperty
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -81,7 +87,8 @@ describe("TestCreateCustomProperty", () => {
     expect(result["id"]).toBe("cp-new");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -92,8 +99,10 @@ describe("TestCreateCustomProperty", () => {
   });
 });
 
-describe("TestGetCustomProperty", () => {
-  it("test_returns_dict", async () => {
+describe("Get custom property", () => {
+  // python: TestGetCustomProperty
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { id: "cp-42", name: "My Prop" } },
@@ -105,7 +114,8 @@ describe("TestGetCustomProperty", () => {
     expect(result["name"]).toBe("My Prop");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -116,8 +126,10 @@ describe("TestGetCustomProperty", () => {
   });
 });
 
-describe("TestUpdateCustomProperty", () => {
-  it("test_returns_dict", async () => {
+describe("Update custom property", () => {
+  // python: TestUpdateCustomProperty
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -133,7 +145,8 @@ describe("TestUpdateCustomProperty", () => {
     expect(result["name"]).toBe("Updated Prop");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -144,8 +157,10 @@ describe("TestUpdateCustomProperty", () => {
   });
 });
 
-describe("TestDeleteCustomProperty", () => {
-  it("test_returns_none", async () => {
+describe("Delete custom property", () => {
+  // python: TestDeleteCustomProperty
+  it("returns null", async () => {
+    // python: test_returns_none
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -155,7 +170,8 @@ describe("TestDeleteCustomProperty", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -166,8 +182,10 @@ describe("TestDeleteCustomProperty", () => {
   });
 });
 
-describe("TestValidateCustomProperty", () => {
-  it("test_returns_dict", async () => {
+describe("Validate custom property", () => {
+  // python: TestValidateCustomProperty
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -180,7 +198,8 @@ describe("TestValidateCustomProperty", () => {
     expect(result["valid"]).toBe(true);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);

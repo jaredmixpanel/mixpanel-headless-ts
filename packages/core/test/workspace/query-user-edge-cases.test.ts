@@ -54,7 +54,8 @@ import {
 // TIER 1 — data corruption / silent wrong results
 // ===========================================================================
 
-describe("TestTier1DataCorruption", () => {
+describe("Tier 1 data corruption", () => {
+  // python: TestTier1DataCorruption
   it("T1.01: both paths pass the wrapped sort_key format", async () => {
     const total = 200;
     const pageSize = 100;
@@ -277,7 +278,8 @@ describe("TestTier1DataCorruption", () => {
 // TIER 2 — crash paths
 // ===========================================================================
 
-describe("TestTier2CrashPaths", () => {
+describe("Tier 2 crash paths", () => {
+  // python: TestTier2CrashPaths
   it("T2.01: a malformed cohort filter raises U_COHORT", async () => {
     // A Filter that passes the cohort-filter predicate but has the
     // wrong internal structure.
@@ -371,7 +373,8 @@ describe("TestTier2CrashPaths", () => {
 // TIER 3 — validation gaps
 // ===========================================================================
 
-describe("TestTier3ValidationGaps", () => {
+describe("Tier 3 validation gaps", () => {
+  // python: TestTier3ValidationGaps
   /** The `ws` the Tier-3 cases build. */
   function makeWs(): Workspace {
     return makeStubWorkspace(mockWorkspaceClient());

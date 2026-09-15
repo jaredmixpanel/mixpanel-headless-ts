@@ -37,17 +37,21 @@ function response(retryAfter?: string): {
 /** Fixed RNG: kills jitter (uniform(0, x) -> 0). */
 const zeroRandom = (): number => 0;
 
-describe("TestParseRetryAfter", () => {
-  it("test_parses_positive_integer", () => {
+describe("Parse retry after", () => {
+  // python: TestParseRetryAfter
+  it("parses positive integer", () => {
+    // python: test_parses_positive_integer
     expect(parseRetryAfter(response("7"))).toBe(7);
   });
 
-  it("test_parses_zero", () => {
+  it("parses zero", () => {
+    // python: test_parses_zero
     // "Retry-After: 0" means "retry immediately" and is preserved.
     expect(parseRetryAfter(response("0"))).toBe(0);
   });
 
-  it("test_missing_header_returns_none", () => {
+  it("missing header returns null", () => {
+    // python: test_missing_header_returns_none
     expect(parseRetryAfter(response())).toBeNull();
   });
 
@@ -81,8 +85,10 @@ describe("TestParseRetryAfter", () => {
   });
 });
 
-describe("TestRetryWaitSeconds", () => {
-  it("test_none_falls_back_to_backoff", () => {
+describe("Retry wait seconds", () => {
+  // python: TestRetryWaitSeconds
+  it("null falls back to backoff", () => {
+    // python: test_none_falls_back_to_backoff
     // Python: pytest.approx(client._calculate_backoff(0), rel=0.2) — with
     // the injected RNG both sides are deterministic and exactly equal.
     expect(retryWaitSeconds(null, 0, zeroRandom)).toBe(
@@ -90,11 +96,13 @@ describe("TestRetryWaitSeconds", () => {
     );
   });
 
-  it("test_honors_reasonable_header", () => {
+  it("honors reasonable header", () => {
+    // python: test_honors_reasonable_header
     expect(retryWaitSeconds(5, 3, zeroRandom)).toBe(5.0);
   });
 
-  it("test_zero_header_is_honored", () => {
+  it("zero header is honored", () => {
+    // python: test_zero_header_is_honored
     // "Retry-After: 0" sleeps zero seconds rather than backing off.
     expect(retryWaitSeconds(0, 5, zeroRandom)).toBe(0.0);
   });
@@ -106,7 +114,8 @@ describe("TestRetryWaitSeconds", () => {
     },
   );
 
-  it("test_wait_never_exceeds_cap_for_late_attempts", () => {
+  it("wait never exceeds cap for late attempts", () => {
+    // python: test_wait_never_exceeds_cap_for_late_attempts
     // The backoff fallback still honors its own ceiling plus jitter
     // (max jitter = 10% of the 60s cap).
     expect(retryWaitSeconds(null, 40, () => 1)).toBeLessThanOrEqual(66.0);

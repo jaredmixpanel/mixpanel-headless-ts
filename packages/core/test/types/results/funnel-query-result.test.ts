@@ -32,15 +32,18 @@ const BASE = {
   to_date: "2025-03-31",
 } as const;
 
-describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
-  it("test_construction_with_required_fields", () => {
+describe("FunnelQueryResult", () => {
+  // python: TestFunnelQueryResult
+  it("construction with required fields", () => {
+    // python: test_construction_with_required_fields
     const result = new FunnelQueryResult(BASE);
     expect(result.computed_at).toBe("2025-04-05T12:00:00Z");
     expect(result.from_date).toBe("2025-01-01");
     expect(result.to_date).toBe("2025-03-31");
   });
 
-  it("test_default_values", () => {
+  it("default values", () => {
+    // python: test_default_values
     const result = new FunnelQueryResult(BASE);
     expect(result.steps_data).toStrictEqual([]);
     expect(result.series).toStrictEqual({});
@@ -48,7 +51,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.meta).toStrictEqual({});
   });
 
-  it("test_construction_with_all_fields", () => {
+  it("construction with all fields", () => {
+    // python: test_construction_with_all_fields
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -62,7 +66,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.meta).toStrictEqual({ is_cached: true });
   });
 
-  it("test_overall_conversion_rate_with_steps", () => {
+  it("overall conversion rate with steps", () => {
+    // python: test_overall_conversion_rate_with_steps
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -70,12 +75,14 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.overall_conversion_rate).toBe(0.12);
   });
 
-  it("test_overall_conversion_rate_empty_steps", () => {
+  it("overall conversion rate empty steps", () => {
+    // python: test_overall_conversion_rate_empty_steps
     const result = new FunnelQueryResult(BASE);
     expect(result.overall_conversion_rate).toBe(0.0);
   });
 
-  it("test_overall_conversion_rate_single_step", () => {
+  it("overall conversion rate single step", () => {
+    // python: test_overall_conversion_rate_single_step
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: [
@@ -92,7 +99,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.overall_conversion_rate).toBe(1.0);
   });
 
-  it("test_overall_conversion_rate_missing_key", () => {
+  it("overall conversion rate missing key", () => {
+    // python: test_overall_conversion_rate_missing_key
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: [{ event: "Signup", count: 100 }],
@@ -100,7 +108,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.overall_conversion_rate).toBe(0.0);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -116,7 +125,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     ]);
   });
 
-  it("test_df_row_count_matches_steps", () => {
+  it("df row count matches steps", () => {
+    // python: test_df_row_count_matches_steps
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -124,7 +134,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.toRows()).toHaveLength(2);
   });
 
-  it("test_df_step_numbers_are_one_indexed", () => {
+  it("df step numbers are one indexed", () => {
+    // python: test_df_step_numbers_are_one_indexed
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -132,7 +143,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.toRows().map((row) => row["step"])).toStrictEqual([1, 2]);
   });
 
-  it("test_df_values_match_steps_data", () => {
+  it("df values match steps data", () => {
+    // python: test_df_values_match_steps_data
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -155,7 +167,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     ]);
   });
 
-  it("test_df_empty_steps_data", () => {
+  it("df empty steps data", () => {
+    // python: test_df_empty_steps_data
     const result = new FunnelQueryResult(BASE);
     expect(result.toRows()).toHaveLength(0);
     expect(result.rowColumns()).toStrictEqual([
@@ -169,7 +182,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     ]);
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -177,7 +191,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_df_handles_missing_keys_in_steps_data", () => {
+  it("df handles missing keys in steps data", () => {
+    // python: test_df_handles_missing_keys_in_steps_data
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: [{ event: "Signup" }],
@@ -192,7 +207,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(row?.["avg_time_from_start"]).toBe(0.0);
   });
 
-  it("test_df_handles_missing_event_name", () => {
+  it("df handles missing event name", () => {
+    // python: test_df_handles_missing_event_name
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: [{ count: 100 }],
@@ -200,7 +216,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(result.toRows()[0]?.["event"]).toBe("Step 1");
   });
 
-  it("test_to_dict_returns_all_fields", () => {
+  it("to dict returns all fields", () => {
+    // python: test_to_dict_returns_all_fields
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -218,7 +235,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(data["meta"]).toStrictEqual({ is_cached: false });
   });
 
-  it("test_to_dict_json_serializable", () => {
+  it("to dict JSON serializable", () => {
+    // python: test_to_dict_json_serializable
     const result = new FunnelQueryResult({
       ...BASE,
       steps_data: SAMPLE_STEPS_DATA,
@@ -230,7 +248,8 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
     expect(jsonStr).toContain("Purchase");
   });
 
-  it("test_to_dict_with_defaults", () => {
+  it("to dict with defaults", () => {
+    // python: test_to_dict_with_defaults
     const result = new FunnelQueryResult(BASE);
     const data = result.toJSON();
     expect(data["steps_data"]).toStrictEqual([]);

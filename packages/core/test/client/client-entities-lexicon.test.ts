@@ -27,8 +27,10 @@ function oauthCredentials(): Session {
 // Domain 9 — Data Definitions (US1 + US2)
 // ---------------------------------------------------------------------------
 
-describe("TestGetEventDefinitions", () => {
-  it("test_returns_list", async () => {
+describe("Get event definitions", () => {
+  // python: TestGetEventDefinitions
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -47,7 +49,8 @@ describe("TestGetEventDefinitions", () => {
     expect(result[1]?.["name"]).toBe("Login");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -57,7 +60,8 @@ describe("TestGetEventDefinitions", () => {
     expect(capturedUrls[0]).toContain("/data-definitions/events/");
   });
 
-  it("test_query_params", async () => {
+  it("query params", async () => {
+    // python: test_query_params
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -70,7 +74,8 @@ describe("TestGetEventDefinitions", () => {
     ).toBe(true);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -81,8 +86,10 @@ describe("TestGetEventDefinitions", () => {
   });
 });
 
-describe("TestUpdateEventDefinition", () => {
-  it("test_returns_dict", async () => {
+describe("Update event definition", () => {
+  // python: TestUpdateEventDefinition
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -101,7 +108,8 @@ describe("TestUpdateEventDefinition", () => {
     expect(result["description"]).toBe("Updated");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -115,8 +123,10 @@ describe("TestUpdateEventDefinition", () => {
   });
 });
 
-describe("TestDeleteEventDefinition", () => {
-  it("test_returns_none", async () => {
+describe("Delete event definition", () => {
+  // python: TestDeleteEventDefinition
+  it("returns null", async () => {
+    // python: test_returns_none
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -127,7 +137,8 @@ describe("TestDeleteEventDefinition", () => {
     expect(captured[0]?.[1]).toStrictEqual({ name: "Signup" });
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -138,8 +149,10 @@ describe("TestDeleteEventDefinition", () => {
   });
 });
 
-describe("TestBulkUpdateEventDefinitions", () => {
-  it("test_returns_list", async () => {
+describe("Bulk update event definitions", () => {
+  // python: TestBulkUpdateEventDefinitions
+  it("returns list", async () => {
+    // python: test_returns_list
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -163,7 +176,8 @@ describe("TestBulkUpdateEventDefinitions", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -174,8 +188,10 @@ describe("TestBulkUpdateEventDefinitions", () => {
   });
 });
 
-describe("TestGetPropertyDefinitions", () => {
-  it("test_returns_list", async () => {
+describe("Get property definitions", () => {
+  // python: TestGetPropertyDefinitions
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -190,7 +206,8 @@ describe("TestGetPropertyDefinitions", () => {
     expect(result[0]?.["name"]).toBe("plan_type");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -200,7 +217,8 @@ describe("TestGetPropertyDefinitions", () => {
     expect(capturedUrls[0]).toContain("/data-definitions/properties/");
   });
 
-  it("test_resource_type_param", async () => {
+  it("resource type param", async () => {
+    // python: test_resource_type_param
     // The App API honors only camelCase `resourceType` with a
     // capitalized value; the lowercase "event" is normalized to
     // "Event" (`_canonical_resource_type`).
@@ -215,8 +233,10 @@ describe("TestGetPropertyDefinitions", () => {
   });
 });
 
-describe("TestUpdatePropertyDefinition", () => {
-  it("test_returns_dict", async () => {
+describe("Update property definition", () => {
+  // python: TestUpdatePropertyDefinition
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -237,7 +257,8 @@ describe("TestUpdatePropertyDefinition", () => {
     expect(result["description"]).toBe("Updated");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -251,8 +272,10 @@ describe("TestUpdatePropertyDefinition", () => {
   });
 });
 
-describe("TestBulkUpdatePropertyDefinitions", () => {
-  it("test_returns_list", async () => {
+describe("Bulk update property definitions", () => {
+  // python: TestBulkUpdatePropertyDefinitions
+  it("returns list", async () => {
+    // python: test_returns_list
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -270,7 +293,8 @@ describe("TestBulkUpdatePropertyDefinitions", () => {
     expect(result).toHaveLength(1);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -281,8 +305,10 @@ describe("TestBulkUpdatePropertyDefinitions", () => {
   });
 });
 
-describe("TestListLexiconTags", () => {
-  it("test_returns_list", async () => {
+describe("List lexicon tags", () => {
+  // python: TestListLexiconTags
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -300,7 +326,8 @@ describe("TestListLexiconTags", () => {
     expect(result[0]?.["name"]).toBe("core");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -310,7 +337,8 @@ describe("TestListLexiconTags", () => {
     expect(capturedUrls[0]).toContain("/data-definitions/tags/");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -321,8 +349,10 @@ describe("TestListLexiconTags", () => {
   });
 });
 
-describe("TestCreateLexiconTag", () => {
-  it("test_returns_dict", async () => {
+describe("Create lexicon tag", () => {
+  // python: TestCreateLexiconTag
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -339,7 +369,8 @@ describe("TestCreateLexiconTag", () => {
     expect(result["name"]).toBe("new-tag");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -353,8 +384,10 @@ describe("TestCreateLexiconTag", () => {
   });
 });
 
-describe("TestUpdateLexiconTag", () => {
-  it("test_returns_dict", async () => {
+describe("Update lexicon tag", () => {
+  // python: TestUpdateLexiconTag
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -370,7 +403,8 @@ describe("TestUpdateLexiconTag", () => {
     expect(result["name"]).toBe("renamed-tag");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -384,8 +418,10 @@ describe("TestUpdateLexiconTag", () => {
   });
 });
 
-describe("TestDeleteLexiconTag", () => {
-  it("test_returns_none", async () => {
+describe("Delete lexicon tag", () => {
+  // python: TestDeleteLexiconTag
+  it("returns null", async () => {
+    // python: test_returns_none
     // Tag deletion is a POST with `{"delete": True, "name": ...}` —
     // the API uses POST, not DELETE, for tag removal.
     const captured: Array<[string, unknown]> = [];
@@ -398,7 +434,8 @@ describe("TestDeleteLexiconTag", () => {
     expect(captured[0]?.[1]).toStrictEqual({ delete: true, name: "old-tag" });
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -409,8 +446,10 @@ describe("TestDeleteLexiconTag", () => {
   });
 });
 
-describe("TestGetTrackingMetadata", () => {
-  it("test_returns_dict", async () => {
+describe("Get tracking metadata", () => {
+  // python: TestGetTrackingMetadata
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -425,7 +464,8 @@ describe("TestGetTrackingMetadata", () => {
     expect(result["is_tracked"]).toBe(true);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -439,8 +479,10 @@ describe("TestGetTrackingMetadata", () => {
   });
 });
 
-describe("TestGetEventHistory", () => {
-  it("test_returns_list", async () => {
+describe("Get event history", () => {
+  // python: TestGetEventHistory
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -455,7 +497,8 @@ describe("TestGetEventHistory", () => {
     expect(result[0]?.["action"]).toBe("created");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -468,8 +511,10 @@ describe("TestGetEventHistory", () => {
   });
 });
 
-describe("TestGetPropertyHistory", () => {
-  it("test_returns_list", async () => {
+describe("Get property history", () => {
+  // python: TestGetPropertyHistory
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [{ action: "created" }] },
@@ -481,7 +526,8 @@ describe("TestGetPropertyHistory", () => {
     expect(result[0]?.["action"]).toBe("created");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -495,8 +541,10 @@ describe("TestGetPropertyHistory", () => {
   });
 });
 
-describe("TestExportLexicon", () => {
-  it("test_returns_dict", async () => {
+describe("Export lexicon", () => {
+  // python: TestExportLexicon
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -515,7 +563,8 @@ describe("TestExportLexicon", () => {
     expect(Object.keys(result)).toContain("properties");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -525,7 +574,8 @@ describe("TestExportLexicon", () => {
     expect(capturedUrls[0]).toContain("/data-definitions/export/");
   });
 
-  it("test_export_types_param", async () => {
+  it("export types param", async () => {
+    // python: test_export_types_param
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -537,7 +587,8 @@ describe("TestExportLexicon", () => {
     expect(url).toContain("All"); // JSON-encoded value in URL
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -552,8 +603,10 @@ describe("TestExportLexicon", () => {
 // Error-Path Tests
 // ---------------------------------------------------------------------------
 
-describe("TestExportLexiconAsyncStringResponse", () => {
-  it("test_export_lexicon_async_string_response", async () => {
+describe("Export lexicon async string response", () => {
+  // python: TestExportLexiconAsyncStringResponse
+  it("export lexicon async string response", async () => {
+    // python: test_export_lexicon_async_string_response
     // A plain-string `results` (async export status) wraps into
     // `{status: "pending", message: ...}`.
     const { client } = createMockClient(oauthCredentials(), () => ({

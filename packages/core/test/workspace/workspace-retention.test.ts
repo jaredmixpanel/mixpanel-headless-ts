@@ -52,7 +52,8 @@ function retentionWs(): { ws: Workspace; mock: MockWorkspaceClient } {
 // T019: workspace integration
 // ===========================================================================
 
-describe("TestQueryRetentionIntegration", () => {
+describe("Query retention integration", () => {
+  // python: TestQueryRetentionIntegration
   it("sends a body with bookmark, project_id and queryLimits", async () => {
     const { ws, mock } = retentionWs();
     await ws.queryRetention("Signup", "Login");
@@ -107,7 +108,8 @@ describe("TestQueryRetentionIntegration", () => {
 // T-US2: per-event filters
 // ===========================================================================
 
-describe("TestQueryRetentionWithFilters", () => {
+describe("Query retention with filters", () => {
+  // python: TestQueryRetentionWithFilters
   it("per-event filters appear in the bookmark behaviors", async () => {
     const { ws, mock } = retentionWs();
     const born = new RetentionEvent({
@@ -133,7 +135,8 @@ describe("TestQueryRetentionWithFilters", () => {
 // T-US4: build_retention_params
 // ===========================================================================
 
-describe("TestBuildRetentionParams", () => {
+describe("Build retention params", () => {
+  // python: TestBuildRetentionParams
   it("returns a dict, not a RetentionQueryResult", async () => {
     const result = await makeStubWorkspace(
       mockWorkspaceClient(),
@@ -171,7 +174,8 @@ describe("TestBuildRetentionParams", () => {
 // T-US5: validation integration
 // ===========================================================================
 
-describe("TestQueryRetentionValidationIntegration", () => {
+describe("Query retention validation integration", () => {
+  // python: TestQueryRetentionValidationIntegration
   it("an empty born_event is caught before the API call", async () => {
     const mock = mockWorkspaceClient();
     await expect(

@@ -82,7 +82,8 @@ function mutationJson(
 // TestWorkspaceWebhookCRUD
 // =============================================================================
 
-describe("TestWorkspaceWebhookCRUD", () => {
+describe("Workspace webhook CRUD", () => {
+  // python: TestWorkspaceWebhookCRUD
   it("list_webhooks() returns list of ProjectWebhook objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([webhookJson("id-1", "Hook A"), webhookJson("id-2", "Hook B")]),
@@ -159,7 +160,8 @@ describe("TestWorkspaceWebhookCRUD", () => {
 // TestWorkspaceWebhookTest
 // =============================================================================
 
-describe("TestWorkspaceWebhookTest", () => {
+describe("Workspace webhook test", () => {
+  // python: TestWorkspaceWebhookTest
   it("test_webhook() returns WebhookTestResult on success", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ success: true, status_code: 200, message: "OK" }),

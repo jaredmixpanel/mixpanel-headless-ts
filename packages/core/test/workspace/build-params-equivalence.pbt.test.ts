@@ -130,7 +130,8 @@ function section(params: ParamsDict, name: string): unknown {
 // build_time_section wiring
 // ===========================================================================
 
-describe("TestTimeSectionEquivalence", () => {
+describe("Time section equivalence", () => {
+  // python: TestTimeSectionEquivalence
   it("relative range: the section matches the standalone builder", () => {
     fc.assert(
       fc.property(timeUnits, positiveInts, (unit, last) => {
@@ -170,7 +171,8 @@ describe("TestTimeSectionEquivalence", () => {
 // build_filter_section wiring
 // ===========================================================================
 
-describe("TestFilterSectionEquivalence", () => {
+describe("Filter section equivalence", () => {
+  // python: TestFilterSectionEquivalence
   it("a single filter: the section matches the standalone builder", () => {
     fc.assert(
       fc.property(propertyNames, propertyNames, (prop, value) => {
@@ -194,7 +196,8 @@ describe("TestFilterSectionEquivalence", () => {
 // build_group_section wiring
 // ===========================================================================
 
-describe("TestGroupSectionEquivalence", () => {
+describe("Group section equivalence", () => {
+  // python: TestGroupSectionEquivalence
   it("a string group_by: the section matches the standalone builder", () => {
     fc.assert(
       fc.property(propertyNames, (prop) => {

@@ -40,8 +40,10 @@ function makeResult(
   });
 }
 
-describe("RetentionQueryResult construction (TestRetentionQueryResultConstruction)", () => {
-  it("test_construct_with_all_fields", () => {
+describe("RetentionQueryResult construction", () => {
+  // python: TestRetentionQueryResultConstruction
+  it("construct with all fields", () => {
+    // python: test_construct_with_all_fields
     const r = makeResult();
     expect(r.computed_at).toBe("2025-01-15T12:00:00");
     expect(r.from_date).toBe("2025-01-01");
@@ -52,7 +54,8 @@ describe("RetentionQueryResult construction (TestRetentionQueryResultConstructio
     expect(r.meta["sampling_factor"]).toBe(1.0);
   });
 
-  it("test_default_cohorts_is_empty_dict", () => {
+  it("default cohorts is empty dict", () => {
+    // python: test_default_cohorts_is_empty_dict
     const r = new RetentionQueryResult({
       computed_at: "",
       from_date: "",
@@ -61,7 +64,8 @@ describe("RetentionQueryResult construction (TestRetentionQueryResultConstructio
     expect(r.cohorts).toStrictEqual({});
   });
 
-  it("test_default_average_is_empty_dict", () => {
+  it("default average is empty dict", () => {
+    // python: test_default_average_is_empty_dict
     const r = new RetentionQueryResult({
       computed_at: "",
       from_date: "",
@@ -70,7 +74,8 @@ describe("RetentionQueryResult construction (TestRetentionQueryResultConstructio
     expect(r.average).toStrictEqual({});
   });
 
-  it("test_default_params_is_empty_dict", () => {
+  it("default params is empty dict", () => {
+    // python: test_default_params_is_empty_dict
     const r = new RetentionQueryResult({
       computed_at: "",
       from_date: "",
@@ -79,7 +84,8 @@ describe("RetentionQueryResult construction (TestRetentionQueryResultConstructio
     expect(r.params).toStrictEqual({});
   });
 
-  it("test_default_meta_is_empty_dict", () => {
+  it("default meta is empty dict", () => {
+    // python: test_default_meta_is_empty_dict
     const r = new RetentionQueryResult({
       computed_at: "",
       from_date: "",
@@ -89,8 +95,10 @@ describe("RetentionQueryResult construction (TestRetentionQueryResultConstructio
   });
 });
 
-describe("RetentionQueryResult.df (TestRetentionQueryResultDataFrame)", () => {
-  it("test_df_columns", () => {
+describe("RetentionQueryResult.df", () => {
+  // python: TestRetentionQueryResultDataFrame
+  it("df columns", () => {
+    // python: test_df_columns
     expect(makeResult().rowColumns()).toStrictEqual([
       "cohort_date",
       "bucket",
@@ -99,17 +107,20 @@ describe("RetentionQueryResult.df (TestRetentionQueryResultDataFrame)", () => {
     ]);
   });
 
-  it("test_df_shape", () => {
+  it("df shape", () => {
+    // python: test_df_shape
     // 2 cohorts x 3 buckets each = 6 rows
     expect(makeResult().toRows()).toHaveLength(6);
   });
 
-  it("test_df_caching (determinism)", () => {
+  it("df caching (determinism)", () => {
+    // python: test_df_caching
     const r = makeResult();
     expect(r.toRows()).toStrictEqual(r.toRows());
   });
 
-  it("test_df_values_correct", () => {
+  it("df values correct", () => {
+    // python: test_df_values_correct
     const rows = makeResult().toRows();
     // First cohort, bucket 0
     const row = rows.filter(
@@ -120,7 +131,8 @@ describe("RetentionQueryResult.df (TestRetentionQueryResultDataFrame)", () => {
     expect(row[0]?.["rate"]).toBe(1.0);
   });
 
-  it("test_df_bucket_indices", () => {
+  it("df bucket indices", () => {
+    // python: test_df_bucket_indices
     const buckets = [
       ...new Set(
         makeResult()
@@ -131,7 +143,8 @@ describe("RetentionQueryResult.df (TestRetentionQueryResultDataFrame)", () => {
     expect(buckets).toStrictEqual([0, 1, 2]);
   });
 
-  it("test_empty_cohorts_produces_empty_df", () => {
+  it("empty cohorts produces empty df", () => {
+    // python: test_empty_cohorts_produces_empty_df
     const r = makeResult({ cohorts: {} });
     expect(r.toRows()).toHaveLength(0);
     expect(r.rowColumns()).toStrictEqual([
@@ -142,7 +155,8 @@ describe("RetentionQueryResult.df (TestRetentionQueryResultDataFrame)", () => {
     ]);
   });
 
-  it("test_rates_shorter_than_counts_uses_zero", () => {
+  it("rates shorter than counts uses zero", () => {
+    // python: test_rates_shorter_than_counts_uses_zero
     const r = makeResult({
       cohorts: {
         "2025-01-01": {
@@ -159,7 +173,8 @@ describe("RetentionQueryResult.df (TestRetentionQueryResultDataFrame)", () => {
     expect(rows[2]?.["rate"]).toBe(0.0);
   });
 
-  it("test_rates_empty_all_default_to_zero", () => {
+  it("rates empty all default to zero", () => {
+    // python: test_rates_empty_all_default_to_zero
     const r = makeResult({
       cohorts: {
         "2025-01-01": { first: 50, counts: [50, 25], rates: [] },
@@ -172,7 +187,8 @@ describe("RetentionQueryResult.df (TestRetentionQueryResultDataFrame)", () => {
   });
 });
 
-describe("RetentionQueryResult.df segmented (TestRetentionQueryResultDataFrameSegmented)", () => {
+describe("RetentionQueryResult.df segmented", () => {
+  // python: TestRetentionQueryResultDataFrameSegmented
   const segments = {
     iOS: {
       "2025-01-01": { first: 60, counts: [60, 30], rates: [1.0, 0.5] },
@@ -182,7 +198,8 @@ describe("RetentionQueryResult.df segmented (TestRetentionQueryResultDataFrameSe
     },
   };
 
-  it("test_df_with_segments_has_segment_column", () => {
+  it("df with segments has segment column", () => {
+    // python: test_df_with_segments_has_segment_column
     const r = makeResult({ segments });
     expect(r.rowColumns()).toStrictEqual([
       "segment",
@@ -193,13 +210,15 @@ describe("RetentionQueryResult.df segmented (TestRetentionQueryResultDataFrameSe
     ]);
   });
 
-  it("test_df_with_segments_row_count", () => {
+  it("df with segments row count", () => {
+    // python: test_df_with_segments_row_count
     const r = makeResult({ segments });
     // 2 segments x 1 cohort x 2 buckets = 4 rows
     expect(r.toRows()).toHaveLength(4);
   });
 
-  it("test_df_with_segments_values_correct", () => {
+  it("df with segments values correct", () => {
+    // python: test_df_with_segments_values_correct
     const r = makeResult({
       segments: {
         iOS: {
@@ -215,7 +234,8 @@ describe("RetentionQueryResult.df segmented (TestRetentionQueryResultDataFrameSe
     expect(row[0]?.["rate"]).toBe(1.0);
   });
 
-  it("test_df_without_segments_no_segment_column", () => {
+  it("df without segments no segment column", () => {
+    // python: test_df_without_segments_no_segment_column
     expect(makeResult().rowColumns()).toStrictEqual([
       "cohort_date",
       "bucket",
@@ -225,14 +245,17 @@ describe("RetentionQueryResult.df segmented (TestRetentionQueryResultDataFrameSe
   });
 });
 
-describe("RetentionQueryResult.to_dict (TestRetentionQueryResultToDict)", () => {
-  it("test_to_dict_returns_dict", () => {
+describe("RetentionQueryResult.to_dict", () => {
+  // python: TestRetentionQueryResultToDict
+  it("to dict returns dict", () => {
+    // python: test_to_dict_returns_dict
     const d = makeResult().toJSON();
     expect(typeof d).toBe("object");
     expect(Array.isArray(d)).toBe(false);
   });
 
-  it("test_to_dict_contains_all_fields", () => {
+  it("to dict contains all fields", () => {
+    // python: test_to_dict_contains_all_fields
     const d = makeResult().toJSON();
     for (const key of [
       "computed_at",
@@ -247,7 +270,8 @@ describe("RetentionQueryResult.to_dict (TestRetentionQueryResultToDict)", () => 
     }
   });
 
-  it("test_to_dict_includes_segments_when_present", () => {
+  it("to dict includes segments when present", () => {
+    // python: test_to_dict_includes_segments_when_present
     const r = makeResult({
       segments: {
         iOS: {
@@ -267,21 +291,25 @@ describe("RetentionQueryResult.to_dict (TestRetentionQueryResultToDict)", () => 
     expect(ios?.["2025-01-01"]?.["first"]).toBe(60);
   });
 
-  it("test_to_dict_excludes_segments_when_empty", () => {
+  it("to dict excludes segments when empty", () => {
+    // python: test_to_dict_excludes_segments_when_empty
     const d = makeResult().toJSON();
     expect(Object.hasOwn(d, "segments")).toBe(false);
     expect(Object.hasOwn(d, "segment_averages")).toBe(false);
   });
 });
 
-describe("RetentionQueryResult.average (TestRetentionQueryResultAverage)", () => {
-  it("test_average_is_preserved", () => {
+describe("RetentionQueryResult.average", () => {
+  // python: TestRetentionQueryResultAverage
+  it("average is preserved", () => {
+    // python: test_average_is_preserved
     const avg = { first: 90, counts: [90, 45], rates: [1.0, 0.5] };
     const r = makeResult({ average: avg });
     expect(r.average).toStrictEqual(avg);
   });
 
-  it("test_average_empty_dict_when_no_data", () => {
+  it("average empty dict when no data", () => {
+    // python: test_average_empty_dict_when_no_data
     const r = new RetentionQueryResult({
       computed_at: "",
       from_date: "",

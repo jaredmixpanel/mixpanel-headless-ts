@@ -45,7 +45,8 @@ function timegm(year: number, month: number, day: number): number {
 // 1. Filter translation to the engage `where` param
 // ===========================================================================
 
-describe("TestFilterTranslation", () => {
+describe("Filter translation", () => {
+  // python: TestFilterTranslation
   it("a single Filter.equals produces a selector string", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       where: Filter.equals("plan", "premium"),
@@ -158,7 +159,8 @@ describe("TestFilterTranslation", () => {
 // 2. Cohort routing
 // ===========================================================================
 
-describe("TestCohortRouting", () => {
+describe("Cohort routing", () => {
+  // python: TestCohortRouting
   it("an integer cohort id routes to filter_by_cohort with 'id'", async () => {
     const params = await makeStubWorkspace().buildUserParams({ cohort: 12345 });
     expect(Object.hasOwn(params, "filter_by_cohort")).toBe(true);
@@ -223,7 +225,8 @@ describe("TestCohortRouting", () => {
 // 3. Property selection -> output_properties
 // ===========================================================================
 
-describe("TestPropertySelection", () => {
+describe("Property selection", () => {
+  // python: TestPropertySelection
   it("properties map to output_properties", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       mode: "profiles",
@@ -256,7 +259,8 @@ describe("TestPropertySelection", () => {
 // 4. sort_by -> sort_key translation
 // ===========================================================================
 
-describe("TestSortByTranslation", () => {
+describe("Sort by translation", () => {
+  // python: TestSortByTranslation
   it("sort_by='ltv' translates to sort_key", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       mode: "profiles",
@@ -301,7 +305,8 @@ describe("TestSortByTranslation", () => {
 // 5. as_of string -> Unix timestamp conversion
 // ===========================================================================
 
-describe("TestAsOfConversion", () => {
+describe("As of conversion", () => {
+  // python: TestAsOfConversion
   it("as_of='2025-01-01' converts to midnight UTC", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       mode: "profiles",
@@ -338,7 +343,8 @@ describe("TestAsOfConversion", () => {
 // 6. distinct_id / distinct_ids handling
 // ===========================================================================
 
-describe("TestDistinctIdHandling", () => {
+describe("Distinct ID handling", () => {
+  // python: TestDistinctIdHandling
   it("distinct_id passes through", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       mode: "profiles",
@@ -370,7 +376,8 @@ describe("TestDistinctIdHandling", () => {
 // 7. group_id -> data_group_id
 // ===========================================================================
 
-describe("TestGroupIdTranslation", () => {
+describe("Group ID translation", () => {
+  // python: TestGroupIdTranslation
   it("group_id maps to data_group_id", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       group_id: "companies",
@@ -389,7 +396,8 @@ describe("TestGroupIdTranslation", () => {
 // 8. search passthrough
 // ===========================================================================
 
-describe("TestSearchPassthrough", () => {
+describe("Search passthrough", () => {
+  // python: TestSearchPassthrough
   it("search passes through", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       mode: "profiles",
@@ -408,7 +416,8 @@ describe("TestSearchPassthrough", () => {
 // 9. Raw string where passthrough
 // ===========================================================================
 
-describe("TestRawStringWhere", () => {
+describe("Raw string where", () => {
+  // python: TestRawStringWhere
   it("a raw selector string passes straight through", async () => {
     const raw = 'properties["plan"] == "premium" and properties["ltv"] > 100';
     const params = await makeStubWorkspace().buildUserParams({ where: raw });
@@ -426,7 +435,8 @@ describe("TestRawStringWhere", () => {
 // 10. Validation errors
 // ===========================================================================
 
-describe("TestValidationErrors", () => {
+describe("Validation errors", () => {
+  // python: TestValidationErrors
   it("distinct_id + distinct_ids raises U1", async () => {
     const error = await expectRejects(
       makeStubWorkspace().buildUserParams({
@@ -520,7 +530,8 @@ describe("TestValidationErrors", () => {
 // Aggregate mode param construction
 // ===========================================================================
 
-describe("TestAggregateModeParams", () => {
+describe("Aggregate mode params", () => {
+  // python: TestAggregateModeParams
   it("default count produces action='count()'", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       mode: "aggregate",
@@ -603,7 +614,8 @@ describe("TestAggregateModeParams", () => {
 // Mode-specific profile-only params
 // ===========================================================================
 
-describe("TestModeSpecificValidation", () => {
+describe("Mode specific validation", () => {
+  // python: TestModeSpecificValidation
   it("sort_by with mode='aggregate' raises U19", async () => {
     const error = await expectRejects(
       makeStubWorkspace().buildUserParams({
@@ -653,7 +665,8 @@ describe("TestModeSpecificValidation", () => {
 // Combined param scenarios
 // ===========================================================================
 
-describe("TestCombinedScenarios", () => {
+describe("Combined scenarios", () => {
+  // python: TestCombinedScenarios
   it("a full profile query produces all expected params", async () => {
     const params = await makeStubWorkspace().buildUserParams({
       mode: "profiles",

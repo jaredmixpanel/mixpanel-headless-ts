@@ -150,8 +150,10 @@ function catchParamError(fn: () => unknown): ParamValidationError {
   return caught as ParamValidationError;
 }
 
-describe("TestSlugInvariants", () => {
-  it("test_generate_slug_shape", () => {
+describe("Slug invariants", () => {
+  // python: TestSlugInvariants
+  it("generate slug shape", () => {
+    // python: test_generate_slug_shape
     fc.assert(
       fc.property(fc.integer(), () => {
         const slug = generateSlug();
@@ -164,7 +166,8 @@ describe("TestSlugInvariants", () => {
     );
   });
 
-  it("test_is_slug_matches_server_regex", () => {
+  it("is slug matches server regex", () => {
+    // python: test_is_slug_matches_server_regex
     fc.assert(
       fc.property(anyText, (value) => {
         expect(isSlug(value)).toBe(SERVER_RE.test(value));
@@ -172,7 +175,8 @@ describe("TestSlugInvariants", () => {
     );
   });
 
-  it("test_non_slugs_are_never_slugs", () => {
+  it("non slugs are never slugs", () => {
+    // python: test_non_slugs_are_never_slugs
     fc.assert(
       fc.property(
         anyText.filter(
@@ -188,8 +192,10 @@ describe("TestSlugInvariants", () => {
   });
 });
 
-describe("TestRoundTrips", () => {
-  it("test_slug_url_round_trip", () => {
+describe("Round trips", () => {
+  // python: TestRoundTrips
+  it("slug URL round trip", () => {
+    // python: test_slug_url_round_trip
     fc.assert(
       fc.property(
         regions,
@@ -217,7 +223,8 @@ describe("TestRoundTrips", () => {
     );
   });
 
-  it("test_bookmark_url_round_trip", () => {
+  it("bookmark URL round trip", () => {
+    // python: test_bookmark_url_round_trip
     fc.assert(
       fc.property(
         regions,
@@ -246,8 +253,10 @@ describe("TestRoundTrips", () => {
   });
 });
 
-describe("TestNonPositiveIds", () => {
-  it("test_slug_builder_rejects_non_positive_project", () => {
+describe("Non positive IDs", () => {
+  // python: TestNonPositiveIds
+  it("slug builder rejects non positive project", () => {
+    // python: test_slug_builder_rejects_non_positive_project
     fc.assert(
       fc.property(
         regions,
@@ -269,7 +278,8 @@ describe("TestNonPositiveIds", () => {
     );
   });
 
-  it("test_bookmark_builder_rejects_non_positive_workspace", () => {
+  it("bookmark builder rejects non positive workspace", () => {
+    // python: test_bookmark_builder_rejects_non_positive_workspace
     fc.assert(
       fc.property(
         regions,
@@ -293,7 +303,8 @@ describe("TestNonPositiveIds", () => {
     );
   });
 
-  it("test_bookmark_builder_rejects_non_positive_bookmark", () => {
+  it("bookmark builder rejects non positive bookmark", () => {
+    // python: test_bookmark_builder_rejects_non_positive_bookmark
     fc.assert(
       fc.property(
         regions,
@@ -316,8 +327,10 @@ describe("TestNonPositiveIds", () => {
   });
 });
 
-describe("TestDecorationInvariance", () => {
-  it("test_slug_url_decorations", () => {
+describe("Decoration invariance", () => {
+  // python: TestDecorationInvariance
+  it("slug URL decorations", () => {
+    // python: test_slug_url_decorations
     fc.assert(
       fc.property(
         regions,
@@ -343,7 +356,8 @@ describe("TestDecorationInvariance", () => {
     );
   });
 
-  it("test_bookmark_url_decorations", () => {
+  it("bookmark URL decorations", () => {
+    // python: test_bookmark_url_decorations
     fc.assert(
       fc.property(
         regions,
@@ -402,8 +416,10 @@ function assertKindFields(parsed: ParsedReportLink): void {
   }
 }
 
-describe("TestTotality", () => {
-  it("test_any_text", () => {
+describe("Totality", () => {
+  // python: TestTotality
+  it("any text", () => {
+    // python: test_any_text
     fc.assert(
       fc.property(anyText, (value) => {
         const result = parseTotal(value);
@@ -416,7 +432,8 @@ describe("TestTotality", () => {
     );
   });
 
-  it("test_mixpanel_host_with_random_path_and_hash", () => {
+  it("mixpanel host with random path and hash", () => {
+    // python: test_mixpanel_host_with_random_path_and_hash
     fc.assert(
       fc.property(
         fc.constantFrom("mixpanel.com", "eu.mixpanel.com", "in.mixpanel.com"),
@@ -440,7 +457,8 @@ describe("TestTotality", () => {
     );
   });
 
-  it("test_bare_slug_has_no_scope", () => {
+  it("bare slug has no scope", () => {
+    // python: test_bare_slug_has_no_scope
     fc.assert(
       // Python draws (region, pid, wid, slug, report_type) and uses only
       // the slug; the unused draws are moved ahead of it so the predicate

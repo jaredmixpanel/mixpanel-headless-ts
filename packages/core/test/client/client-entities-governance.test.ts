@@ -75,8 +75,10 @@ function deletionRequestJson(
 // Domain 14 — Schema Enforcement
 // ---------------------------------------------------------------------------
 
-describe("TestGetSchemaEnforcement", () => {
-  it("test_returns_dict", async () => {
+describe("Get schema enforcement", () => {
+  // python: TestGetSchemaEnforcement
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -100,7 +102,8 @@ describe("TestGetSchemaEnforcement", () => {
     expect(result["state"]).toBe("ingested");
   });
 
-  it("test_with_fields_param", async () => {
+  it("with fields param", async () => {
+    // python: test_with_fields_param
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -119,7 +122,8 @@ describe("TestGetSchemaEnforcement", () => {
     );
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -129,7 +133,8 @@ describe("TestGetSchemaEnforcement", () => {
     expect(capturedMethods[0]).toBe("GET");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -140,8 +145,10 @@ describe("TestGetSchemaEnforcement", () => {
   });
 });
 
-describe("TestInitSchemaEnforcement", () => {
-  it("test_returns_dict", async () => {
+describe("Init schema enforcement", () => {
+  // python: TestInitSchemaEnforcement
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -164,7 +171,8 @@ describe("TestInitSchemaEnforcement", () => {
     expect(captured[0]?.[1]["ruleEvent"]).toBe("Warn and Drop");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -175,8 +183,10 @@ describe("TestInitSchemaEnforcement", () => {
   });
 });
 
-describe("TestUpdateSchemaEnforcement", () => {
-  it("test_returns_dict", async () => {
+describe("Update schema enforcement", () => {
+  // python: TestUpdateSchemaEnforcement
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -201,7 +211,8 @@ describe("TestUpdateSchemaEnforcement", () => {
     expect(captured[0]?.[0]).toBe("PATCH");
   });
 
-  it("test_partial_body", async () => {
+  it("partial body", async () => {
+    // python: test_partial_body
     const capturedBodies: unknown[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedBodies.push(parseBody(request.bodyText));
@@ -216,8 +227,10 @@ describe("TestUpdateSchemaEnforcement", () => {
   });
 });
 
-describe("TestReplaceSchemaEnforcement", () => {
-  it("test_returns_dict", async () => {
+describe("Replace schema enforcement", () => {
+  // python: TestReplaceSchemaEnforcement
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, unknown]> = [];
     const fullBody = {
       ruleEvent: "Warn and Drop",
@@ -238,7 +251,8 @@ describe("TestReplaceSchemaEnforcement", () => {
     expect(captured[0]?.[1]).toStrictEqual(fullBody);
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -249,8 +263,10 @@ describe("TestReplaceSchemaEnforcement", () => {
   });
 });
 
-describe("TestDeleteSchemaEnforcement", () => {
-  it("test_returns_dict", async () => {
+describe("Delete schema enforcement", () => {
+  // python: TestDeleteSchemaEnforcement
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -266,7 +282,8 @@ describe("TestDeleteSchemaEnforcement", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -281,8 +298,10 @@ describe("TestDeleteSchemaEnforcement", () => {
 // Domain 15 — Data Auditing
 // ---------------------------------------------------------------------------
 
-describe("TestRunAudit", () => {
-  it("test_returns_parsed_response", async () => {
+describe("Run audit", () => {
+  // python: TestRunAudit
+  it("returns parsed response", async () => {
+    // python: test_returns_parsed_response
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -312,7 +331,8 @@ describe("TestRunAudit", () => {
     expect(result[1]["computed_at"]).toBe("2026-01-01T00:00:00Z");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -325,7 +345,8 @@ describe("TestRunAudit", () => {
     expect(capturedMethods[0]).toBe("GET");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -338,7 +359,8 @@ describe("TestRunAudit", () => {
     expect(capturedUrls[0]).toContain("/data-definitions/audit/");
   });
 
-  it("test_empty_violations", async () => {
+  it("empty violations", async () => {
+    // python: test_empty_violations
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -354,7 +376,8 @@ describe("TestRunAudit", () => {
     expect(result[1]["computed_at"]).toBe("2026-01-01T12:00:00Z");
   });
 
-  it("test_non_list_results_raises", async () => {
+  it("non list results raises", async () => {
+    // python: test_non_list_results_raises
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { unexpected: "dict" } },
@@ -366,8 +389,10 @@ describe("TestRunAudit", () => {
   });
 });
 
-describe("TestRunAuditEventsOnly", () => {
-  it("test_returns_parsed_response", async () => {
+describe("Run audit events only", () => {
+  // python: TestRunAuditEventsOnly
+  it("returns parsed response", async () => {
+    // python: test_returns_parsed_response
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -388,7 +413,8 @@ describe("TestRunAuditEventsOnly", () => {
     expect(result[1]["computed_at"]).toBe("2026-01-02T00:00:00Z");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -401,7 +427,8 @@ describe("TestRunAuditEventsOnly", () => {
     expect(capturedUrls[0]).toContain("/data-definitions/audit-events-only/");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -414,7 +441,8 @@ describe("TestRunAuditEventsOnly", () => {
     expect(capturedMethods[0]).toBe("GET");
   });
 
-  it("test_non_list_results_raises", async () => {
+  it("non list results raises", async () => {
+    // python: test_non_list_results_raises
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { unexpected: "dict" } },
@@ -430,8 +458,10 @@ describe("TestRunAuditEventsOnly", () => {
 // Domain 15 — Data Volume Anomalies
 // ---------------------------------------------------------------------------
 
-describe("TestListDataVolumeAnomalies", () => {
-  it("test_returns_list", async () => {
+describe("List data volume anomalies", () => {
+  // python: TestListDataVolumeAnomalies
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -449,7 +479,8 @@ describe("TestListDataVolumeAnomalies", () => {
     expect(result[1]?.["eventName"]).toBe("Login");
   });
 
-  it("test_with_query_params", async () => {
+  it("with query params", async () => {
+    // python: test_with_query_params
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -462,7 +493,8 @@ describe("TestListDataVolumeAnomalies", () => {
     expect(capturedUrls[0]).toContain("status=open");
   });
 
-  it("test_empty_list", async () => {
+  it("empty list", async () => {
+    // python: test_empty_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { anomalies: [] } },
@@ -471,7 +503,8 @@ describe("TestListDataVolumeAnomalies", () => {
     expect(result).toStrictEqual([]);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -484,7 +517,8 @@ describe("TestListDataVolumeAnomalies", () => {
     expect(capturedMethods[0]).toBe("GET");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -499,7 +533,8 @@ describe("TestListDataVolumeAnomalies", () => {
     );
   });
 
-  it("test_missing_anomalies_key_raises", async () => {
+  it("missing anomalies key raises", async () => {
+    // python: test_missing_anomalies_key_raises
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { items: [] } },
@@ -513,8 +548,10 @@ describe("TestListDataVolumeAnomalies", () => {
   });
 });
 
-describe("TestUpdateAnomaly", () => {
-  it("test_returns_dict", async () => {
+describe("Update anomaly", () => {
+  // python: TestUpdateAnomaly
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -540,7 +577,8 @@ describe("TestUpdateAnomaly", () => {
     expect(captured[0]?.[1]["anomalyClass"]).toBe("Event");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -557,8 +595,10 @@ describe("TestUpdateAnomaly", () => {
   });
 });
 
-describe("TestBulkUpdateAnomalies", () => {
-  it("test_returns_dict", async () => {
+describe("Bulk update anomalies", () => {
+  // python: TestBulkUpdateAnomalies
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const captured: Array<[string, Record<string, unknown>]> = [];
     const body = {
       anomalies: [
@@ -582,7 +622,8 @@ describe("TestBulkUpdateAnomalies", () => {
     expect(captured[0]?.[1]["anomalies"]).toHaveLength(2);
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -602,8 +643,10 @@ describe("TestBulkUpdateAnomalies", () => {
 // Domain 15 — Event Deletion Requests
 // ---------------------------------------------------------------------------
 
-describe("TestListDeletionRequests", () => {
-  it("test_returns_list", async () => {
+describe("List deletion requests", () => {
+  // python: TestListDeletionRequests
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -622,7 +665,8 @@ describe("TestListDeletionRequests", () => {
     expect(result[1]?.["eventName"]).toBe("event_b");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -632,7 +676,8 @@ describe("TestListDeletionRequests", () => {
     expect(capturedMethods[0]).toBe("GET");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -645,8 +690,10 @@ describe("TestListDeletionRequests", () => {
   });
 });
 
-describe("TestCreateDeletionRequest", () => {
-  it("test_returns_list", async () => {
+describe("Create deletion request", () => {
+  // python: TestCreateDeletionRequest
+  it("returns list", async () => {
+    // python: test_returns_list
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -676,7 +723,8 @@ describe("TestCreateDeletionRequest", () => {
     expect(captured[0]?.[1]["eventName"]).toBe("new_event");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -693,8 +741,10 @@ describe("TestCreateDeletionRequest", () => {
   });
 });
 
-describe("TestCancelDeletionRequest", () => {
-  it("test_returns_list", async () => {
+describe("Cancel deletion request", () => {
+  // python: TestCancelDeletionRequest
+  it("returns list", async () => {
+    // python: test_returns_list
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -714,7 +764,8 @@ describe("TestCancelDeletionRequest", () => {
     expect(captured[0]?.[1]["id"]).toBe(42);
   });
 
-  it("test_sends_json_body_with_id", async () => {
+  it("sends JSON body with ID", async () => {
+    // python: test_sends_json_body_with_id
     const capturedBodies: unknown[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedBodies.push(parseBody(request.bodyText));
@@ -724,7 +775,8 @@ describe("TestCancelDeletionRequest", () => {
     expect(capturedBodies[0]).toStrictEqual({ id: 99 });
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -737,8 +789,10 @@ describe("TestCancelDeletionRequest", () => {
   });
 });
 
-describe("TestPreviewDeletionFilters", () => {
-  it("test_returns_list", async () => {
+describe("Preview deletion filters", () => {
+  // python: TestPreviewDeletionFilters
+  it("returns list", async () => {
+    // python: test_returns_list
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -769,7 +823,8 @@ describe("TestPreviewDeletionFilters", () => {
     expect(captured[0]?.[1]["eventName"]).toBe("Signup");
   });
 
-  it("test_uses_correct_path", async () => {
+  it("uses correct path", async () => {
+    // python: test_uses_correct_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);

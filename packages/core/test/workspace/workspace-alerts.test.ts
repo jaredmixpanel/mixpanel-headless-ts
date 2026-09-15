@@ -78,7 +78,8 @@ function alertJson(id = 1, name = "Test Alert"): Record<string, unknown> {
 // TestWorkspaceAlertCRUD
 // =============================================================================
 
-describe("TestWorkspaceAlertCRUD", () => {
+describe("Workspace alert CRUD", () => {
+  // python: TestWorkspaceAlertCRUD
   it("list_alerts() returns list of CustomAlert objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([alertJson(1, "Alert A"), alertJson(2, "Alert B")]),
@@ -157,7 +158,8 @@ describe("TestWorkspaceAlertCRUD", () => {
 // TestWorkspaceAlertOperations
 // =============================================================================
 
-describe("TestWorkspaceAlertOperations", () => {
+describe("Workspace alert operations", () => {
+  // python: TestWorkspaceAlertOperations
   it("get_alert_count() returns AlertCount", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ anomaly_alerts_count: 5, alert_limit: 100, is_below_limit: true }),

@@ -51,29 +51,36 @@ function buildAction(
   });
 }
 
-describe("url_normalizer collapses parameterized URLs (TestUrlNormalizer)", () => {
-  it("test_strips_query_string", () => {
+describe("url_normalizer collapses parameterized URLs", () => {
+  // python: TestUrlNormalizer
+  it("strips query string", () => {
+    // python: test_strips_query_string
     expect(urlNormalizer("/x?a=1&b=2")).toBe("/x");
   });
 
-  it("test_replaces_numeric_segments", () => {
+  it("replaces numeric segments", () => {
+    // python: test_replaces_numeric_segments
     expect(urlNormalizer("/users/12345/profile")).toBe("/users/:id/profile");
   });
 
-  it("test_preserves_host", () => {
+  it("preserves host", () => {
+    // python: test_preserves_host
     const out = urlNormalizer(
       "https://app.example.com/users/12345/profile?ref=x",
     );
     expect(out).toBe("https://app.example.com/users/:id/profile");
   });
 
-  it("test_empty_url", () => {
+  it("empty URL", () => {
+    // python: test_empty_url
     expect(urlNormalizer("")).toBe("");
   });
 });
 
-describe("default_label_fn produces the canonical action:tag@url shape (TestDefaultLabelFn)", () => {
-  it("test_label_shape", () => {
+describe("default_label_fn produces the canonical action:tag@url shape", () => {
+  // python: TestDefaultLabelFn
+  it("label shape", () => {
+    // python: test_label_shape
     const action = buildAction({
       target_desc: 'button "Sign in"',
       url: "/users/12345/profile?ref=x",
@@ -83,14 +90,17 @@ describe("default_label_fn produces the canonical action:tag@url shape (TestDefa
     );
   });
 
-  it("test_no_url", () => {
+  it("no URL", () => {
+    // python: test_no_url
     const action = buildAction({ url: null });
     expect(defaultLabelFn(action)).toContain("@(no-url)");
   });
 });
 
-describe("selector_label_fn prefers stable attributes when present (TestSelectorLabelFn)", () => {
-  it("test_uses_data_testid_when_present", () => {
+describe("selector_label_fn prefers stable attributes when present", () => {
+  // python: TestSelectorLabelFn
+  it("uses data testid when present", () => {
+    // python: test_uses_data_testid_when_present
     const fn = selectorLabelFn("data-testid");
     const action = buildAction({
       target_desc: "some long ugly description",
@@ -102,7 +112,8 @@ describe("selector_label_fn prefers stable attributes when present (TestSelector
     expect(out).not.toContain("ugly description");
   });
 
-  it("test_falls_back_to_default", () => {
+  it("falls back to default", () => {
+    // python: test_falls_back_to_default
     const fn = selectorLabelFn("data-testid");
     const action = buildAction({ target_desc: "button", url: "/login" });
     expect(fn(action)).toBe(defaultLabelFn(action));

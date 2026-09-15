@@ -75,7 +75,8 @@ function mockClient(): MockApiClient {
   };
 }
 
-describe("TestQueryFlows", () => {
+describe("Query flows", () => {
+  // python: TestQueryFlows
   it("returns FlowsResult", async () => {
     const mock = mockClient();
     mock.setReturnValue({
@@ -215,7 +216,8 @@ describe("TestQueryFlows", () => {
   });
 });
 
-describe("TestQuerySavedReportNormalization", () => {
+describe("Query saved report normalization", () => {
+  // python: TestQuerySavedReportNormalization
   it("insights responses preserve headers and series", async () => {
     const mock = mockClient();
     mock.setReturnValue({

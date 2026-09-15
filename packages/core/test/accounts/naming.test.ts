@@ -19,7 +19,8 @@ function meWithOrg(orgId: string, name: string): MeResponse {
   });
 }
 
-describe("TestSlugify (test_naming.py:24)", () => {
+describe("Slugify", () => {
+  // python: TestSlugify
   const table: ReadonlyArray<readonly [string | null, string]> = [
     ["Acme Corp", "acme-corp"],
     ["ACME, Inc.", "acme-inc"],
@@ -85,7 +86,8 @@ describe("TestSlugify (test_naming.py:24)", () => {
   });
 });
 
-describe("TestDefaultAccountName (test_naming.py:100)", () => {
+describe("Default account name", () => {
+  // python: TestDefaultAccountName
   it("empty existing set returns the base slug unchanged", () => {
     const me = meWithOrg("100", "Acme Corp");
     expect(defaultAccountName(me, new Set())).toBe("acme-corp");

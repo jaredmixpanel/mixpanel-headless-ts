@@ -65,7 +65,8 @@ function stepsOf(
 // T020: _build_flow_params
 // ===========================================================================
 
-describe("TestBuildFlowParams", () => {
+describe("Build flow params", () => {
+  // python: TestBuildFlowParams
   it("a single-step flow produces the flat structure", () => {
     const params = buildFlowParams({
       ...BASE_BUILD,
@@ -199,7 +200,8 @@ describe("TestBuildFlowParams", () => {
 // T021: filter integration in _build_flow_params
 // ===========================================================================
 
-describe("TestBuildFlowParamsFilters", () => {
+describe("Build flow params filters", () => {
+  // python: TestBuildFlowParamsFilters
   it("a FlowStep with filters produces the segfilter list", () => {
     const step = new FlowStep({
       event: "Purchase",
@@ -249,7 +251,8 @@ describe("TestBuildFlowParamsFilters", () => {
 // T028-T029: workspace public methods
 // ===========================================================================
 
-describe("TestWorkspaceFlowPublicMethods", () => {
+describe("Workspace flow public methods", () => {
+  // python: TestWorkspaceFlowPublicMethods
   /** A minimal sankey response the transform accepts. */
   const SANKEY_OK: Record<string, unknown> = {
     computed_at: "2025-01-15T10:00:00",
@@ -334,7 +337,8 @@ describe("TestWorkspaceFlowPublicMethods", () => {
 // T040-T042: multi-step normalization
 // ===========================================================================
 
-describe("TestMultiStepNormalization", () => {
+describe("Multi step normalization", () => {
+  // python: TestMultiStepNormalization
   it("a list of strings produces N steps with the defaults", async () => {
     const params = await makeStubWorkspace().buildFlowParams(["A", "B"]);
     const steps = stepsOf(params);
@@ -428,7 +432,8 @@ describe("TestMultiStepNormalization", () => {
 // T042: anchor_position
 // ===========================================================================
 
-describe("TestMultiStepAnchorPosition", () => {
+describe("Multi step anchor position", () => {
+  // python: TestMultiStepAnchorPosition
   it("anchor_position is 1", async () => {
     const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(params["anchor_position"]).toBe(1);
@@ -439,7 +444,8 @@ describe("TestMultiStepAnchorPosition", () => {
 // T043: FL5 respects per-step overrides
 // ===========================================================================
 
-describe("TestPerStepDirectionValidation", () => {
+describe("Per step direction validation", () => {
+  // python: TestPerStepDirectionValidation
   it("a per-step forward override is not rejected when top-level is 0", async () => {
     const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "Login", forward: 3 }),
@@ -495,7 +501,8 @@ describe("TestPerStepDirectionValidation", () => {
 // T044: datetime filter -> segfilter operator mapping
 // ===========================================================================
 
-describe("TestFlowStepDatetimeFilters", () => {
+describe("Flow step datetime filters", () => {
+  // python: TestFlowStepDatetimeFilters
   it("Filter.before produces segfilter operator '>'", async () => {
     const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({
@@ -573,7 +580,8 @@ function sampleTreeApiResponse(): Record<string, unknown> {
   };
 }
 
-describe("TestQueryFlowTreeIntegration", () => {
+describe("Query flow tree integration", () => {
+  // python: TestQueryFlowTreeIntegration
   it("query_flow(mode='tree') returns a structured result", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(sampleTreeApiResponse());
@@ -623,7 +631,8 @@ describe("TestQueryFlowTreeIntegration", () => {
 // T032: data_group_id
 // ===========================================================================
 
-describe("TestDataGroupIdFlow", () => {
+describe("Data group ID flow", () => {
+  // python: TestDataGroupIdFlow
   it("data_group_id=5 is emitted snake_case for flows", async () => {
     const result = await makeStubWorkspace().buildFlowParams("Login", {
       data_group_id: 5,
@@ -641,7 +650,8 @@ describe("TestDataGroupIdFlow", () => {
 // T038: session_event
 // ===========================================================================
 
-describe("TestFlowSessionEvent", () => {
+describe("Flow session event", () => {
+  // python: TestFlowSessionEvent
   it("session_event='start' is emitted in the step dict", async () => {
     const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "$session_start", session_event: "start" }),
@@ -666,7 +676,8 @@ describe("TestFlowSessionEvent", () => {
 // T038: segments
 // ===========================================================================
 
-describe("TestFlowSegments", () => {
+describe("Flow segments", () => {
+  // python: TestFlowSegments
   it("segments=GroupBy('country') produces segments", async () => {
     const params = await makeStubWorkspace().buildFlowParams("Login", {
       segments: new GroupBy({ property: "country" }),
@@ -706,7 +717,8 @@ describe("TestFlowSegments", () => {
 // T038: exclusions
 // ===========================================================================
 
-describe("TestFlowExclusions", () => {
+describe("Flow exclusions", () => {
+  // python: TestFlowExclusions
   it("a single exclusion produces the exclusions list", async () => {
     const params = await makeStubWorkspace().buildFlowParams("Login", {
       exclusions: ["Error Event"],
@@ -731,7 +743,8 @@ describe("TestFlowExclusions", () => {
 // T038: property filters (filter_by_event)
 // ===========================================================================
 
-describe("TestFlowPropertyFilters", () => {
+describe("Flow property filters", () => {
+  // python: TestFlowPropertyFilters
   it("where=Filter.equals produces filter_by_event", async () => {
     const params = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.equals("country", "US"),

@@ -104,7 +104,8 @@ const RAW_PROFILE_PREMIUM_2 = makeRawProfile("user_004", undefined, {
 // T020: behavioural filtering — all_of
 // ===========================================================================
 
-describe("TestBehavioralFilteringAllOf", () => {
+describe("Behavioral filtering all of", () => {
+  // python: TestBehavioralFilteringAllOf
   it("all_of(did_event) sets filter_by_cohort with raw_cohort", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
@@ -181,7 +182,8 @@ describe("TestBehavioralFilteringAllOf", () => {
 // T020: behavioural filtering — any_of
 // ===========================================================================
 
-describe("TestBehavioralFilteringAnyOf", () => {
+describe("Behavioral filtering any of", () => {
+  // python: TestBehavioralFilteringAnyOf
   it("any_of produces a selector with the OR operator", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -248,7 +250,8 @@ describe("TestBehavioralFilteringAnyOf", () => {
 // T020: behavioural filtering — saved cohort
 // ===========================================================================
 
-describe("TestBehavioralFilteringSavedCohort", () => {
+describe("Behavioral filtering saved cohort", () => {
+  // python: TestBehavioralFilteringSavedCohort
   it("an integer cohort sets filter_by_cohort with id", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
@@ -298,7 +301,8 @@ describe("TestBehavioralFilteringSavedCohort", () => {
 // T020: combined cohort + where
 // ===========================================================================
 
-describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
+describe("Behavioral filtering combined cohort and where", () => {
+  // python: TestBehavioralFilteringCombinedCohortAndWhere
   it("cohort + where filter sends both", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
@@ -357,7 +361,8 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
 // T020: cohort + in_cohort -> U2
 // ===========================================================================
 
-describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
+describe("Behavioral filtering cohort plus in cohort error", () => {
+  // python: TestBehavioralFilteringCohortPlusInCohortError
   it("cohort param + Filter.in_cohort raises U2", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -412,7 +417,8 @@ describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
 // T020: cohort serialization failure -> U24
 // ===========================================================================
 
-describe("TestBehavioralFilteringCohortSerializationError", () => {
+describe("Behavioral filtering cohort serialization error", () => {
+  // python: TestBehavioralFilteringCohortSerializationError
   it("a to_dict failure produces U24", async () => {
     const brokenCohort = CohortDefinition.allOf(
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
@@ -455,7 +461,8 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
 // T024: cross-engine distinct_ids
 // ===========================================================================
 
-describe("TestCrossEngineDistinctIds", () => {
+describe("Cross engine distinct IDs", () => {
+  // python: TestCrossEngineDistinctIds
   it("distinct_ids is a list of strings", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -539,7 +546,8 @@ describe("TestCrossEngineDistinctIds", () => {
 // T024: frame composition (pandas ops -> row-list equivalents)
 // ===========================================================================
 
-describe("TestCrossEngineDataFrameComposition", () => {
+describe("Cross engine data frame composition", () => {
+  // python: TestCrossEngineDataFrameComposition
   it("rows can be grouped by a property column", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -666,7 +674,8 @@ describe("TestCrossEngineDataFrameComposition", () => {
 // T024: Filter consistency
 // ===========================================================================
 
-describe("TestCrossEngineFilterConsistency", () => {
+describe("Cross engine filter consistency", () => {
+  // python: TestCrossEngineFilterConsistency
   it("Filter.equals is accepted by query_user", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
@@ -742,7 +751,8 @@ describe("TestCrossEngineFilterConsistency", () => {
 // T024: cohort ID from funnel analysis
 // ===========================================================================
 
-describe("TestCrossEngineCohortIdFromFunnel", () => {
+describe("Cross engine cohort ID from funnel", () => {
+  // python: TestCrossEngineCohortIdFromFunnel
   it("a funnel cohort id works with query_user", async () => {
     const mock = mockWorkspaceClient();
     returnValue(
@@ -829,7 +839,8 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
 // U_FILTER wrap preservation over converted ES* guards (RR-4)
 // ===========================================================================
 
-describe("TestUFilterWrapPreservation", () => {
+describe("U filter wrap preservation", () => {
+  // python: TestUFilterWrapPreservation
   it("a converted ES11 raise surfaces as U_FILTER", async () => {
     const bad = new Filter({
       _property: "prop",

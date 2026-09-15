@@ -279,7 +279,8 @@ const throwingSink: WarningSink = (message) => {
 // _parse_lexicon_metadata properties
 // =============================================================================
 
-describe("TestParseLexiconMetadataProperties", () => {
+describe("Parse lexicon metadata properties", () => {
+  // python: TestParseLexiconMetadataProperties
   it("returns null iff the input lacks valid com.mixpanel", () => {
     fc.assert(
       fc.property(lexiconMetadataInputArb, (data) => {
@@ -352,7 +353,8 @@ describe("TestParseLexiconMetadataProperties", () => {
 // _parse_lexicon_property properties
 // =============================================================================
 
-describe("TestParseLexiconPropertyProperties", () => {
+describe("Parse lexicon property properties", () => {
+  // python: TestParseLexiconPropertyProperties
   it("always returns a valid LexiconProperty", () => {
     fc.assert(
       fc.property(lexiconPropertyInputArb, (data) => {
@@ -395,7 +397,8 @@ describe("TestParseLexiconPropertyProperties", () => {
 // _parse_lexicon_schema properties
 // =============================================================================
 
-describe("TestParseLexiconSchemaProperties", () => {
+describe("Parse lexicon schema properties", () => {
+  // python: TestParseLexiconSchemaProperties
   it("preserves entity_type exactly", () => {
     fc.assert(
       fc.property(lexiconSchemaInputArb, (data) => {
@@ -454,7 +457,8 @@ describe("TestParseLexiconSchemaProperties", () => {
 // _parse_bookmark_info properties
 // =============================================================================
 
-describe("TestParseBookmarkInfoProperties", () => {
+describe("Parse bookmark info properties", () => {
+  // python: TestParseBookmarkInfoProperties
   it("preserves the required fields exactly", () => {
     fc.assert(
       fc.property(bookmarkInfoInputArb, (data) => {
@@ -529,7 +533,8 @@ function subkeyDict<T>(
 const DATE_SHAPE =
   /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
 
-describe("TestInferSubpropertiesInvariants", () => {
+describe("Infer subproperties invariants", () => {
+  // python: TestInferSubpropertiesInvariants
   it("reports always-non-ISO string values as 'string'", () => {
     fc.assert(
       fc.property(

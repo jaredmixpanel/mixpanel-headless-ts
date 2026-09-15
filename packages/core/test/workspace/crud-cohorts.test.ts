@@ -48,8 +48,9 @@ function cohortJson(id = 1, name = "Test Cohort"): Record<string, unknown> {
 // TestWorkspaceCohortCRUD (test_workspace_crud.py)
 // =============================================================================
 
-describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
-  it("list_cohorts_full() returns list of Cohort objects (:1322)", async () => {
+describe("Workspace cohort CRUD", () => {
+  // python: TestWorkspaceCohortCRUD
+  it("list_cohorts_full() returns list of Cohort objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([cohortJson(1, "Cohort A"), cohortJson(2, "Cohort B")]),
     );
@@ -62,12 +63,12 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohorts[1]?.id).toBe(2);
   });
 
-  it("list_cohorts_full() returns empty list when none exist (:1347)", async () => {
+  it("list_cohorts_full() returns empty list when none exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listCohortsFull()).resolves.toStrictEqual([]);
   });
 
-  it("list_cohorts_full(data_group_id='abc') passes filter (:1359)", async () => {
+  it("list_cohorts_full(data_group_id='abc') passes filter", async () => {
     const capturedUrl: string[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       capturedUrl.push(request.url);
@@ -77,7 +78,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohorts).toHaveLength(1);
   });
 
-  it("list_cohorts_full() preserves API response order (:1379)", async () => {
+  it("list_cohorts_full() preserves API response order", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([cohortJson(3, "C"), cohortJson(1, "A"), cohortJson(2, "B")]),
     );
@@ -85,7 +86,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohorts.map((c) => c.id)).toStrictEqual([3, 1, 2]);
   });
 
-  it("get_cohort() returns a single Cohort by ID (:1401)", async () => {
+  it("get_cohort() returns a single Cohort by ID", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(cohortJson(1, "My Cohort")));
     const cohort = await ws.getCohort(1);
 
@@ -94,7 +95,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.name).toBe("My Cohort");
   });
 
-  it("get_cohort() preserves extra fields (:1421)", async () => {
+  it("get_cohort() preserves extra fields", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...cohortJson(5, "Detailed"),
@@ -108,14 +109,14 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.data_group_id).toBe("group-1");
   });
 
-  it("get_cohort() preserves the count field (:1437)", async () => {
+  it("get_cohort() preserves the count field", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(1, "Counted"), count: 42 }),
     );
     expect((await ws.getCohort(1)).count).toBe(42);
   });
 
-  it("create_cohort() returns the created Cohort (:1451)", async () => {
+  it("create_cohort() returns the created Cohort", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(cohortJson(10, "New Cohort")));
     const cohort = await ws.createCohort(
       new CreateCohortParams({ name: "New Cohort" }),
@@ -126,7 +127,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.name).toBe("New Cohort");
   });
 
-  it("create_cohort() sends description when provided (:1472)", async () => {
+  it("create_cohort() sends description when provided", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(11, "Described"), description: "A test cohort" }),
     );
@@ -139,7 +140,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.description).toBe("A test cohort");
   });
 
-  it("create_cohort() sends definition when provided (:1487)", async () => {
+  it("create_cohort() sends definition when provided", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(cohortJson(12, "Defined")));
     const cohort = await ws.createCohort(
       new CreateCohortParams({
@@ -150,7 +151,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.id).toBe(12);
   });
 
-  it("create_cohort() sends data_group_id when provided (:1509)", async () => {
+  it("create_cohort() sends data_group_id when provided", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(13, "Grouped"), data_group_id: "group-x" }),
     );
@@ -160,7 +161,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.data_group_id).toBe("group-x");
   });
 
-  it("update_cohort() returns the updated Cohort (:1524)", async () => {
+  it("update_cohort() returns the updated Cohort", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(cohortJson(1, "Updated Name")));
     const cohort = await ws.updateCohort(
       1,
@@ -171,7 +172,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.name).toBe("Updated Name");
   });
 
-  it("update_cohort() can update description (:1544)", async () => {
+  it("update_cohort() can update description", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(1, "Same"), description: "New desc" }),
     );
@@ -182,7 +183,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.description).toBe("New desc");
   });
 
-  it("update_cohort() can toggle visibility (:1559)", async () => {
+  it("update_cohort() can toggle visibility", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(1, "Toggle"), is_visible: false }),
     );
@@ -193,7 +194,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.is_visible).toBe(false);
   });
 
-  it("update_cohort() can update the definition (:1574)", async () => {
+  it("update_cohort() can update the definition", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(cohortJson(1, "Redefined")));
     const cohort = await ws.updateCohort(
       1,
@@ -202,33 +203,33 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.id).toBe(1);
   });
 
-  it("delete_cohort() returns None on success (:1593)", async () => {
+  it("delete_cohort() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteCohort(1)).resolves.toBeUndefined();
   });
 
-  it("delete_cohort() handles a 200 response (:1603)", async () => {
+  it("delete_cohort() handles a 200 response", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(ws.deleteCohort(1)).resolves.toBeUndefined();
   });
 
-  it("bulk_delete_cohorts() returns None on success (:1613)", async () => {
+  it("bulk_delete_cohorts() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.bulkDeleteCohorts([1, 2])).resolves.toBeUndefined();
   });
 
-  it("bulk_delete_cohorts() works with a single ID (:1623)", async () => {
+  it("bulk_delete_cohorts() works with a single ID", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.bulkDeleteCohorts([42])).resolves.toBeUndefined();
   });
 
-  it("bulk_delete_cohorts() sends multiple IDs (:1633)", async () => {
+  it("bulk_delete_cohorts() sends multiple IDs", async () => {
     const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
     await ws.bulkDeleteCohorts([10, 20, 30]);
     expect(transport.captures).toHaveLength(1);
   });
 
-  it("bulk_update_cohorts() returns None on success (:1647)", async () => {
+  it("bulk_update_cohorts() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateCohorts([
@@ -237,7 +238,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("bulk_update_cohorts() handles multiple entries (:1658)", async () => {
+  it("bulk_update_cohorts() handles multiple entries", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateCohorts([
@@ -248,7 +249,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("bulk_update_cohorts() can update definitions (:1673)", async () => {
+  it("bulk_update_cohorts() can update definitions", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateCohorts([
@@ -260,7 +261,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("list_cohorts_full() preserves count on each cohort (:1686)", async () => {
+  it("list_cohorts_full() preserves count on each cohort", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         { ...cohortJson(1, "Small"), count: 10 },
@@ -272,7 +273,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohorts[1]?.count).toBe(10000);
   });
 
-  it("get_cohort() result has correct field types (:1708)", async () => {
+  it("get_cohort() result has correct field types", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...cohortJson(1, "Typed"),
@@ -289,7 +290,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.verified).toBe(true);
   });
 
-  it("create_cohort() can create a locked cohort (:1727)", async () => {
+  it("create_cohort() can create a locked cohort", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(14, "Locked"), is_locked: true }),
     );
@@ -299,7 +300,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
     expect(cohort.is_locked).toBe(true);
   });
 
-  it("update_cohort() can toggle lock state (:1742)", async () => {
+  it("update_cohort() can toggle lock state", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(1, "Unlocked"), is_locked: false }),
     );

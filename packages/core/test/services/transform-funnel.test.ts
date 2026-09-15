@@ -84,7 +84,8 @@ const noWarn = (): void => {};
 // TestExtractFunnelStepsFromSeries (T020b)
 // ===========================================================================
 
-describe("TestExtractFunnelStepsFromSeries", () => {
+describe("Extract funnel steps from series", () => {
+  // python: TestExtractFunnelStepsFromSeries
   it("direct list input is returned unchanged", () => {
     const steps = [{ event: "Signup", count: 100 }];
     expect(extractFunnelStepsFromSeries(steps, noWarn)).toBe(steps);
@@ -309,7 +310,8 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 // TestTransformFunnelResult (T020)
 // ===========================================================================
 
-describe("TestTransformFunnelResult", () => {
+describe("Transform funnel result", () => {
+  // python: TestTransformFunnelResult
   it("return type is FunnelQueryResult", () => {
     const result = transformFunnelResult(
       MOCK_RESPONSE,

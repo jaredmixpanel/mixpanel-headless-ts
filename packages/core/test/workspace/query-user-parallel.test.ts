@@ -53,7 +53,8 @@ import {
 // Single-page result skips parallel overhead
 // ===========================================================================
 
-describe("TestParallelSinglePageSkip", () => {
+describe("Parallel single page skip", () => {
+  // python: TestParallelSinglePageSkip
   it("returns all profiles without parallel dispatch", async () => {
     const mock = mockWorkspaceClient();
     const profiles = makeProfilesBatch(0, 3);
@@ -127,7 +128,8 @@ describe("TestParallelSinglePageSkip", () => {
 // Multi-page parallel fetch collects all profiles
 // ===========================================================================
 
-describe("TestParallelMultiPageFetch", () => {
+describe("Parallel multi page fetch", () => {
+  // python: TestParallelMultiPageFetch
   it("collects all profiles across pages", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(250, 100));
@@ -248,7 +250,8 @@ describe("TestParallelMultiPageFetch", () => {
 // Limit-aware dispatch
 // ===========================================================================
 
-describe("TestParallelLimitAwareDispatch", () => {
+describe("Parallel limit aware dispatch", () => {
+  // python: TestParallelLimitAwareDispatch
   it("limit below total dispatches fewer pages", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(500, 100));
@@ -338,7 +341,8 @@ describe("TestParallelLimitAwareDispatch", () => {
 // Failed page handling
 // ===========================================================================
 
-describe("TestParallelFailedPageHandling", () => {
+describe("Parallel failed page handling", () => {
+  // python: TestParallelFailedPageHandling
   it("a failed page still returns the remaining profiles", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(
@@ -461,7 +465,8 @@ describe("TestParallelFailedPageHandling", () => {
 // Worker cap enforcement
 // ===========================================================================
 
-describe("TestParallelWorkerCap", () => {
+describe("Parallel worker cap", () => {
+  // python: TestParallelWorkerCap
   it("workers > 5 triggers validation error U23", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -538,7 +543,8 @@ describe("TestParallelWorkerCap", () => {
 // Rate-limit warning when pages > 48
 // ===========================================================================
 
-describe("TestParallelRateLimitWarning", () => {
+describe("Parallel rate limit warning", () => {
+  // python: TestParallelRateLimitWarning
   it("49 pages emits a rate-limit warning", async () => {
     const mock = mockWorkspaceClient();
     // 49 pages of 100 = 4900 total profiles
@@ -599,7 +605,8 @@ describe("TestParallelRateLimitWarning", () => {
 // parallel=True with mode="aggregate" produces U18
 // ===========================================================================
 
-describe("TestParallelAggregateValidation", () => {
+describe("Parallel aggregate validation", () => {
+  // python: TestParallelAggregateValidation
   it("parallel + aggregate raises U18", async () => {
     const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
@@ -643,7 +650,8 @@ describe("TestParallelAggregateValidation", () => {
 // Early exit when the limit is reached mid-fetch
 // ===========================================================================
 
-describe("TestParallelEarlyExitOnLimit", () => {
+describe("Parallel early exit on limit", () => {
+  // python: TestParallelEarlyExitOnLimit
   it("truncates after parallel collection", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(500, 100));
@@ -721,7 +729,8 @@ describe("TestParallelEarlyExitOnLimit", () => {
 // computed_at and result structure
 // ===========================================================================
 
-describe("TestParallelResultStructure", () => {
+describe("Parallel result structure", () => {
+  // python: TestParallelResultStructure
   it("includes a non-empty computed_at timestamp", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));
@@ -797,7 +806,8 @@ describe("TestParallelResultStructure", () => {
 // Systemic exceptions propagate immediately
 // ===========================================================================
 
-describe("TestParallelErrorPropagation", () => {
+describe("Parallel error propagation", () => {
+  // python: TestParallelErrorPropagation
   /**
    * The `side_effect = [page0, <error>]` twin: page 0 succeeds, every
    * later page raises the coded error.

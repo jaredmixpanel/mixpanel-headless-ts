@@ -137,7 +137,8 @@ function nullClient(member: string, value: unknown): MixpanelClient {
 // TestWorkspaceDashboardCRUD
 // ===========================================================================
 
-describe("TestWorkspaceDashboardCRUD (:189)", () => {
+describe("Workspace dashboard CRUD", () => {
+  // python: TestWorkspaceDashboardCRUD
   it("list_dashboards() returns list of Dashboard objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([dashboardJson(1, "Dash A"), dashboardJson(2, "Dash B")]),
@@ -381,7 +382,8 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
 // TestWorkspaceBlueprintCohorts
 // ===========================================================================
 
-describe("TestWorkspaceBlueprintCohorts (:1763)", () => {
+describe("Workspace blueprint cohorts", () => {
+  // python: TestWorkspaceBlueprintCohorts
   it("update_blueprint_cohorts() delegates to API client", async () => {
     const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
@@ -399,7 +401,8 @@ describe("TestWorkspaceBlueprintCohorts (:1763)", () => {
 // TestRemoveReportFromDashboard
 // ===========================================================================
 
-describe("TestRemoveReportFromDashboard (:1785)", () => {
+describe("Remove report from dashboard", () => {
+  // python: TestRemoveReportFromDashboard
   it("remove_report_from_dashboard() sends PATCH and returns updated dashboard", async () => {
     const { ws, transport } = makeFacadeWorkspace(() =>
       ok({ id: 1, title: "Updated Dashboard" }),
@@ -420,7 +423,8 @@ describe("TestRemoveReportFromDashboard (:1785)", () => {
 // TestAddReportToDashboard
 // ===========================================================================
 
-describe("TestAddReportToDashboard (:1812)", () => {
+describe("Add report to dashboard", () => {
+  // python: TestAddReportToDashboard
   it("add_report_to_dashboard() sends PATCH and returns updated dashboard", async () => {
     const { ws, transport } = makeFacadeWorkspace(() =>
       ok({ id: 1, title: "Updated Dashboard" }),

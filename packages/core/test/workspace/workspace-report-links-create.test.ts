@@ -96,8 +96,10 @@ function funnelParams(ws: Workspace): Promise<Record<string, unknown>> {
 // create_report_link (US1)
 // =============================================================================
 
-describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", () => {
-  it("test_dict_defaults_to_insights", async () => {
+describe("Create report link from dict", () => {
+  // python: TestCreateReportLinkFromDict
+  it("dict defaults to insights", async () => {
+    // python: test_dict_defaults_to_insights
     const { ws, mock } = makeWorkspace();
     const params = await ws.buildParams("Login", { last: 7 });
 
@@ -113,7 +115,8 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
     expect(link.project_id).toBe(12345);
   });
 
-  it("test_explicit_type_on_dict", async () => {
+  it("explicit type on dict", async () => {
+    // python: test_explicit_type_on_dict
     const { ws, mock } = makeWorkspace();
     const params = await funnelParams(ws);
 
@@ -123,7 +126,8 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
     expect(link.report_type).toBe("funnels");
   });
 
-  it("test_url_uses_resolved_workspace", async () => {
+  it("URL uses resolved workspace", async () => {
+    // python: test_url_uses_resolved_workspace
     const { ws, mock } = makeWorkspace({ generateSlug: fixedSlug });
 
     const link = await ws.createReportLink(
@@ -138,7 +142,8 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
     expect(String(link)).toBe(link.url);
   });
 
-  it("test_created_at_name_description_bookmark_id", async () => {
+  it("created at name description bookmark ID", async () => {
+    // python: test_created_at_name_description_bookmark_id
     const { ws, mock } = makeWorkspace();
 
     const link = await ws.createReportLink(
@@ -156,7 +161,8 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
     expect(link.created_at).toBe("2026-09-02T10:00:00");
   });
 
-  it("test_body_omits_empty_optionals_and_workspace_id", async () => {
+  it("body omits empty optionals and workspace ID", async () => {
+    // python: test_body_omits_empty_optionals_and_workspace_id
     const { ws, mock } = makeWorkspace();
 
     await ws.createReportLink(await ws.buildParams("Login", { last: 7 }), {
@@ -167,7 +173,8 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
     expect(Object.keys(body).sort()).toStrictEqual(["params", "slug", "type"]);
   });
 
-  it("test_missing_created_at_is_none", async () => {
+  it("missing created at is null", async () => {
+    // python: test_missing_created_at_is_none
     const { ws, mock } = makeWorkspace();
     mock.setCreateBookmarkUrl((body) => ({ ...body }));
 
@@ -179,8 +186,10 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
   });
 });
 
-describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)", () => {
-  it("test_query_result_is_insights", async () => {
+describe("Create report link from results", () => {
+  // python: TestCreateReportLinkFromResults
+  it("query result is insights", async () => {
+    // python: test_query_result_is_insights
     const { ws, mock } = makeWorkspace();
     const params = await ws.buildParams("Login", { last: 7 });
     const result = new QueryResult({
@@ -198,7 +207,8 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
     expect(link.report_type).toBe("insights");
   });
 
-  it("test_funnel_result_is_funnels", async () => {
+  it("funnel result is funnels", async () => {
+    // python: test_funnel_result_is_funnels
     const { ws, mock } = makeWorkspace();
     const params = await funnelParams(ws);
     const result = new FunnelQueryResult({
@@ -215,7 +225,8 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
     expect(link.url).toContain("/app/insights#");
   });
 
-  it("test_retention_result_is_retention", async () => {
+  it("retention result is retention", async () => {
+    // python: test_retention_result_is_retention
     const { ws, mock } = makeWorkspace();
     const params = await ws.buildRetentionParams("Login", "Purchase", {
       last: 30,
@@ -233,7 +244,8 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
     expect(link.report_type).toBe("retention");
   });
 
-  it("test_flow_result_is_flows", async () => {
+  it("flow result is flows", async () => {
+    // python: test_flow_result_is_flows
     const { ws, mock } = makeWorkspace();
     const params = await ws.buildFlowParams("Login", { last: 30 });
     const result = new FlowQueryResult({
@@ -248,7 +260,8 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
     expect(link.url).toContain("/app/flows#");
   });
 
-  it("test_matching_explicit_type_is_accepted", async () => {
+  it("matching explicit type is accepted", async () => {
+    // python: test_matching_explicit_type_is_accepted
     const { ws } = makeWorkspace();
     const result = new FlowQueryResult({
       computed_at: "2026-09-02T10:00:00",
@@ -260,7 +273,8 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
     expect(link.report_type).toBe("flows");
   });
 
-  it("test_contradicting_type_raises_rl4_before_post", async () => {
+  it("contradicting type raises RL4 before post", async () => {
+    // python: test_contradicting_type_raises_rl4_before_post
     const { ws, mock } = makeWorkspace();
     const result = new FunnelQueryResult({
       computed_at: "2026-09-02T10:00:00",
@@ -284,8 +298,10 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
   });
 });
 
-describe("TestCreateReportLinkValidation (test_workspace_report_links.py:310)", () => {
-  it("test_validation_failure_raises_before_post", async () => {
+describe("Create report link validation", () => {
+  // python: TestCreateReportLinkValidation
+  it("validation failure raises before post", async () => {
+    // python: test_validation_failure_raises_before_post
     const { ws, mock } = makeWorkspace();
 
     const exc = await expectRaises(
@@ -297,7 +313,8 @@ describe("TestCreateReportLinkValidation (test_workspace_report_links.py:310)", 
     expect(mock.bookmarkUrlCreateCalls).toHaveLength(0);
   });
 
-  it("test_validate_false_skips_validation", async () => {
+  it("validate false skips validation", async () => {
+    // python: test_validate_false_skips_validation
     const { ws, mock } = makeWorkspace();
 
     const link = await ws.createReportLink({ bogus: 1 }, { validate: false });
@@ -306,7 +323,8 @@ describe("TestCreateReportLinkValidation (test_workspace_report_links.py:310)", 
     expect(link.report_type).toBe("insights");
   });
 
-  it("test_validation_warnings_do_not_block", async () => {
+  it("validation warnings do not block", async () => {
+    // python: test_validation_warnings_do_not_block
     // No seam for `patch.object(Workspace, "_validate_bookmark_params_schema")`:
     // drive the REAL validator to a warning-only outcome instead (an
     // unknown chart type under `sorting` is `S4_UNKNOWN_CHART_TYPE`
@@ -326,8 +344,10 @@ describe("TestCreateReportLinkValidation (test_workspace_report_links.py:310)", 
   });
 });
 
-describe("TestCreateReportLinkWorkspacePrecedence (test_workspace_report_links.py:347)", () => {
-  it("test_explicit_wins", async () => {
+describe("Create report link workspace precedence", () => {
+  // python: TestCreateReportLinkWorkspacePrecedence
+  it("explicit wins", async () => {
+    // python: test_explicit_wins
     const { ws, mock } = makeWorkspace({ generateSlug: fixedSlug });
 
     const link = await ws.createReportLink(
@@ -340,7 +360,8 @@ describe("TestCreateReportLinkWorkspacePrecedence (test_workspace_report_links.p
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   });
 
-  it("test_pinned_session_workspace", async () => {
+  it("pinned session workspace", async () => {
+    // python: test_pinned_session_workspace
     const { ws, mock } = makeWorkspace({
       session: PINNED_SESSION,
       generateSlug: fixedSlug,
@@ -355,7 +376,8 @@ describe("TestCreateReportLinkWorkspacePrecedence (test_workspace_report_links.p
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   });
 
-  it("test_explicit_beats_pinned", async () => {
+  it("explicit beats pinned", async () => {
+    // python: test_explicit_beats_pinned
     const { ws } = makeWorkspace({
       session: PINNED_SESSION,
       generateSlug: fixedSlug,
@@ -369,7 +391,8 @@ describe("TestCreateReportLinkWorkspacePrecedence (test_workspace_report_links.p
     expect(link.workspace_id).toBe(5);
   });
 
-  it("test_scope_error_falls_back_to_project_only", async () => {
+  it("scope error falls back to project only", async () => {
+    // python: test_scope_error_falls_back_to_project_only
     const { ws, mock } = makeWorkspace({ generateSlug: fixedSlug });
     mock.setResolveWorkspaceId(() => {
       throw new WorkspaceScopeError("no workspaces");
@@ -386,13 +409,15 @@ describe("TestCreateReportLinkWorkspacePrecedence (test_workspace_report_links.p
   });
 });
 
-describe("TestCreateReportLinkUrlShape (test_workspace_report_links.py:407)", () => {
+describe("Create report link URL shape", () => {
+  // python: TestCreateReportLinkUrlShape
   it.each<[ReportLinkType, string]>([
     ["insights", "insights"],
     ["funnels", "insights"],
     ["retention", "insights"],
     ["flows", "flows"],
-  ])("test_eu_session_per_type[%s-%s]", async (reportType, app) => {
+  ])("EU session per type[%s-%s]", async (reportType, app) => {
+    // python: test_eu_session_per_type
     const { ws } = makeWorkspace({
       session: EU_SESSION,
       generateSlug: fixedSlug,
@@ -410,9 +435,10 @@ describe("TestCreateReportLinkUrlShape (test_workspace_report_links.py:407)", ()
   });
 });
 
-describe("TestCreateReportLinkValidatesBeforePost (test_workspace_report_links.py:1433)", () => {
+describe("Create report link validates before post", () => {
+  // python: TestCreateReportLinkValidatesBeforePost
   it.each([0, -1])(
-    "test_non_positive_workspace_id_raises_before_post[%i]",
+    "non positive workspace ID raises before post[%i]", // python: test_non_positive_workspace_id_raises_before_post
     async (workspaceId) => {
       const { ws, mock } = makeWorkspace();
 

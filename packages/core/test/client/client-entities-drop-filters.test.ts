@@ -27,8 +27,10 @@ function oauthCredentials(): Session {
 // Domain 11 — Drop Filters (US5)
 // ---------------------------------------------------------------------------
 
-describe("TestListDropFilters", () => {
-  it("test_returns_list", async () => {
+describe("List drop filters", () => {
+  // python: TestListDropFilters
+  it("returns list", async () => {
+    // python: test_returns_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -43,7 +45,8 @@ describe("TestListDropFilters", () => {
     expect(result[0]?.["event_name"]).toBe("debug_event");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -53,7 +56,8 @@ describe("TestListDropFilters", () => {
     expect(capturedUrls[0]).toContain("/data-definitions/events/drop-filters/");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -64,8 +68,10 @@ describe("TestListDropFilters", () => {
   });
 });
 
-describe("TestCreateDropFilter", () => {
-  it("test_returns_list", async () => {
+describe("Create drop filter", () => {
+  // python: TestCreateDropFilter
+  it("returns list", async () => {
+    // python: test_returns_list
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -84,7 +90,8 @@ describe("TestCreateDropFilter", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -95,8 +102,10 @@ describe("TestCreateDropFilter", () => {
   });
 });
 
-describe("TestUpdateDropFilter", () => {
-  it("test_returns_list", async () => {
+describe("Update drop filter", () => {
+  // python: TestUpdateDropFilter
+  it("returns list", async () => {
+    // python: test_returns_list
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -112,7 +121,8 @@ describe("TestUpdateDropFilter", () => {
     expect(result).toHaveLength(1);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -123,8 +133,10 @@ describe("TestUpdateDropFilter", () => {
   });
 });
 
-describe("TestDeleteDropFilter", () => {
-  it("test_returns_list", async () => {
+describe("Delete drop filter", () => {
+  // python: TestDeleteDropFilter
+  it("returns list", async () => {
+    // python: test_returns_list
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -139,7 +151,8 @@ describe("TestDeleteDropFilter", () => {
     expect(result).toHaveLength(1);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -150,8 +163,10 @@ describe("TestDeleteDropFilter", () => {
   });
 });
 
-describe("TestGetDropFilterLimits", () => {
-  it("test_returns_dict", async () => {
+describe("Get drop filter limits", () => {
+  // python: TestGetDropFilterLimits
+  it("returns dict", async () => {
+    // python: test_returns_dict
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: { max_filters: 10, current_count: 3 } },
@@ -164,7 +179,8 @@ describe("TestGetDropFilterLimits", () => {
     expect(result["current_count"]).toBe(3);
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -176,7 +192,8 @@ describe("TestGetDropFilterLimits", () => {
     );
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);

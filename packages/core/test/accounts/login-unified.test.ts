@@ -68,7 +68,8 @@ function bundleWithSpiedMe(
   return makeEffects({ env, fetchImpl: spied });
 }
 
-describe("TestLoginUnifiedActivation (test_accounts_namespace.py:993)", () => {
+describe("Login unified activation", () => {
+  // python: TestLoginUnifiedActivation
   it("new credential account promotes to active", async () => {
     const bundle = makeEffects({
       env: { MP_USERNAME: "svc", MP_SECRET: "secret" },
@@ -158,7 +159,8 @@ describe("TestLoginUnifiedActivation (test_accounts_namespace.py:993)", () => {
   });
 });
 
-describe("TestLoginUnifiedMeCacheWrite (test_accounts_namespace.py:1137)", () => {
+describe("Login unified me cache write", () => {
+  // python: TestLoginUnifiedMeCacheWrite
   it("the credential path persists /me to the account cache", async () => {
     const bundle = makeEffects({
       env: { MP_USERNAME: "svc", MP_SECRET: "secret" },
@@ -213,7 +215,8 @@ describe("TestLoginUnifiedMeCacheWrite (test_accounts_namespace.py:1137)", () =>
   });
 });
 
-describe("TestLoginUnifiedFlagValidation (test_accounts_namespace.py:1228)", () => {
+describe("Login unified flag validation", () => {
+  // python: TestLoginUnifiedFlagValidation
   it("service_account + token_env → mutually_exclusive", async () => {
     const bundle = makeEffects();
     const accounts = createAccountsNamespace(bundle.effects);
@@ -300,7 +303,8 @@ describe("TestLoginUnifiedFlagValidation (test_accounts_namespace.py:1228)", () 
   });
 });
 
-describe("TestLoginUnifiedSummaryFields (test_accounts_namespace.py:1285)", () => {
+describe("Login unified summary fields", () => {
+  // python: TestLoginUnifiedSummaryFields
   it("SA login populates user_email + project_id + project_name", async () => {
     const bundle = makeEffects({
       env: { MP_USERNAME: "svc", MP_SECRET: "secret" },
@@ -349,7 +353,8 @@ describe("TestLoginUnifiedSummaryFields (test_accounts_namespace.py:1285)", () =
   });
 });
 
-describe("TestLoginUnifiedProgressHook (test_accounts_namespace.py:1358)", () => {
+describe("Login unified progress hook", () => {
+  // python: TestLoginUnifiedProgressHook
   it("progress wraps /me on the credential path (enter → fetch → exit)", async () => {
     const { messages, events, factory } = makeTrackingProgress();
     const bundle = bundleWithSpiedMe(
@@ -436,7 +441,8 @@ describe("TestLoginUnifiedProgressHook (test_accounts_namespace.py:1358)", () =>
   });
 });
 
-describe("TestLoginUnifiedPickerSortOrder (test_accounts_namespace.py:1544)", () => {
+describe("Login unified picker sort order", () => {
+  // python: TestLoginUnifiedPickerSortOrder
   it("picker receives projects grouped by org name, alphabetized within", async () => {
     const bundle = makeEffects({
       env: { MP_USERNAME: "svc", MP_SECRET: "secret" },
@@ -521,7 +527,7 @@ describe("TestLoginUnifiedPickerSortOrder (test_accounts_namespace.py:1544)", ()
 // `login_unified(token_env="")` with MP_OAUTH_TOKEN set raises
 // ConfigError "--token-env '' is unset; cannot probe region.").
 describe("B7-ARB-A resolution locks (b7-reviewA-resolution.md SEM-F1/SEM-F2)", () => {
-  it('token_env="" falls back to MP_OAUTH_TOKEN and fails at the PROBE like Python (accounts.py:1812)', async () => {
+  it('token_env="" falls back to MP_OAUTH_TOKEN and fails at the PROBE like Python', async () => {
     const bundle = makeEffects({ env: { MP_OAUTH_TOKEN: "tok-x" } });
     const accounts = createAccountsNamespace(bundle.effects);
 
@@ -541,7 +547,7 @@ describe("B7-ARB-A resolution locks (b7-reviewA-resolution.md SEM-F1/SEM-F2)", (
     );
   });
 
-  it("browser flow refuses an ORPHANED per-account state for the final name (accounts.py:1704-1708)", async () => {
+  it("browser flow refuses an ORPHANED per-account state for the final name", async () => {
     const orphaned = new OAuthTokens({
       access_token: new Secret("orphan-tok"),
       refresh_token: new Secret("orphan-refresh"),

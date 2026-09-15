@@ -50,7 +50,8 @@ function bookmarkStub(): BookmarkStub {
   };
 }
 
-describe("TestListBookmarks", () => {
+describe("List bookmarks", () => {
+  // python: TestListBookmarks
   it("returns a list of BookmarkInfo", async () => {
     const stub = bookmarkStub();
     stub.setResponse({

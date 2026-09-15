@@ -51,8 +51,10 @@ function retentionBookmark(math: string, filters: Dict[]): Dict {
 // Layer 2: B20/B21 filter validation (via validate_bookmark)
 // =============================================================================
 
-describe("TestValidateBookmarkRetentionB20", () => {
-  it("test_empty_filter_value_list_rejected", () => {
+describe("Validate bookmark retention B20", () => {
+  // python: TestValidateBookmarkRetentionB20
+  it("empty filter value list rejected", () => {
+    // python: test_empty_filter_value_list_rejected
     const bookmark = retentionBookmark("retention_rate", [
       {
         filterType: "string",
@@ -68,8 +70,10 @@ describe("TestValidateBookmarkRetentionB20", () => {
   });
 });
 
-describe("TestValidateBookmarkRetentionB21", () => {
-  it("test_filter_value_too_many_rejected", () => {
+describe("Validate bookmark retention B21", () => {
+  // python: TestValidateBookmarkRetentionB21
+  it("filter value too many rejected", () => {
+    // python: test_filter_value_too_many_rejected
     const filterValue = Array.from(
       { length: 1001 },
       (_unused, i) => `val_${String(i)}`,
@@ -95,14 +99,17 @@ describe("TestValidateBookmarkRetentionB21", () => {
 // Layer 2: B9 retention math dispatch
 // =============================================================================
 
-describe("TestValidateBookmarkRetentionB9MathDispatch", () => {
-  it("test_insights_only_math_rejected_for_retention", () => {
+describe("Validate bookmark retention B9 math dispatch", () => {
+  // python: TestValidateBookmarkRetentionB9MathDispatch
+  it("insights only math rejected for retention", () => {
+    // python: test_insights_only_math_rejected_for_retention
     const bookmark = retentionBookmark("dau", []);
     const errors = validateBookmark(bookmark, { bookmark_type: "retention" });
     expect(errors.some((e) => e.code === "B9_INVALID_MATH")).toBe(true);
   });
 
-  it("test_valid_retention_math_accepted", () => {
+  it("valid retention math accepted", () => {
+    // python: test_valid_retention_math_accepted
     const bookmark = retentionBookmark("retention_rate", []);
     const errors = validateBookmark(bookmark, { bookmark_type: "retention" });
     expect(errors.some((e) => e.code === "B9_INVALID_MATH")).toBe(false);

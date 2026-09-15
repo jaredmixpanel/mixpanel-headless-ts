@@ -181,8 +181,9 @@ function sameCodes(
 // Funnel/Retention Delegation Equivalence
 // =============================================================================
 
-describe("TestFunnelDelegation (test_delegation_equivalence_pbt.py:102)", () => {
-  it("time error codes from standalone match the funnel validator (:111)", () => {
+describe("Funnel delegation", () => {
+  // python: TestFunnelDelegation
+  it("time error codes from standalone match the funnel validator", () => {
     fc.assert(
       fc.property(
         maybeDatesArb,
@@ -219,8 +220,9 @@ describe("TestFunnelDelegation (test_delegation_equivalence_pbt.py:102)", () => 
   });
 });
 
-describe("TestRetentionDelegation (test_delegation_equivalence_pbt.py:152)", () => {
-  it("time error codes from standalone match the retention validator (:161)", () => {
+describe("Retention delegation", () => {
+  // python: TestRetentionDelegation
+  it("time error codes from standalone match the retention validator", () => {
     fc.assert(
       fc.property(
         maybeDatesArb,
@@ -258,8 +260,9 @@ describe("TestRetentionDelegation (test_delegation_equivalence_pbt.py:152)", () 
 // Math/Property Compatibility Matrix
 // =============================================================================
 
-describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () => {
-  it("V1 fires iff math requires a property; V2 iff it rejects one (:212)", () => {
+describe("Math property matrix", () => {
+  // python: TestMathPropertyMatrix
+  it("V1 fires iff math requires a property; V2 iff it rejects one", () => {
     fc.assert(
       fc.property(insightsMathArb, fc.boolean(), (math, hasProperty) => {
         const mathProperty = hasProperty ? "revenue" : null;
@@ -303,7 +306,7 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
     );
   });
 
-  it("F10 fires iff funnel math requires a property; F11 iff it rejects one (:273)", () => {
+  it("F10 fires iff funnel math requires a property; F11 iff it rejects one", () => {
     fc.assert(
       fc.property(funnelMathArb, fc.boolean(), (math, hasProperty) => {
         const mathProperty = hasProperty ? "revenue" : null;
@@ -351,8 +354,9 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
 // Event Name Validation Consistency
 // =============================================================================
 
-describe("TestEventNameConsistency (test_delegation_equivalence_pbt.py:337)", () => {
-  it("all four validators detect control chars in event names (:350)", () => {
+describe("Event name consistency", () => {
+  // python: TestEventNameConsistency
+  it("all four validators detect control chars in event names", () => {
     fc.assert(
       fc.property(
         safeTextArb,
@@ -424,7 +428,7 @@ describe("TestEventNameConsistency (test_delegation_equivalence_pbt.py:337)", ()
     );
   });
 
-  it("all four validators detect invisible-only event names (:430)", () => {
+  it("all four validators detect invisible-only event names", () => {
     fc.assert(
       fc.property(
         fc.array(fc.constantFrom(...INVISIBLE_CHARS), {

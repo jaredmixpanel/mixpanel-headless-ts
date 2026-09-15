@@ -69,8 +69,10 @@ import {
   slugRecord,
 } from "./workspace-report-links-fixtures.js";
 
-describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
-  it("test_insights", async () => {
+describe("Query report link", () => {
+  // python: TestQueryReportLink
+  it("insights", async () => {
+    // python: test_insights
     const { ws, mock } = makeWorkspace();
 
     const result = await ws.queryReportLink(
@@ -86,7 +88,8 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
-  it("test_funnels", async () => {
+  it("funnels", async () => {
+    // python: test_funnels
     const { ws, mock } = makeWorkspace();
 
     const result = await ws.queryReportLink(
@@ -102,7 +105,8 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
-  it("test_retention", async () => {
+  it("retention", async () => {
+    // python: test_retention
     const { ws, mock } = makeWorkspace();
 
     const result = await ws.queryReportLink(
@@ -132,7 +136,7 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     [{ chartType: "bar" }, "sankey"],
     [{}, "sankey"],
   ])(
-    "test_flows_mode_derived_from_params[%j-%s]",
+    "flows mode derived from params[%j-%s]", // python: test_flows_mode_derived_from_params
     async (params, expectedMode) => {
       const { ws, mock } = makeWorkspace();
 
@@ -150,7 +154,8 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     },
   );
 
-  it("test_flows_explicit_mode_wins", async () => {
+  it("flows explicit mode wins", async () => {
+    // python: test_flows_explicit_mode_wins
     const { ws, mock } = makeWorkspace();
 
     const result = await ws.queryReportLink(
@@ -167,7 +172,8 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     expect(call.scope).toStrictEqual(PROJECT_WIDE_SCOPE);
   });
 
-  it("test_launch_analysis_unsupported", async () => {
+  it("launch analysis unsupported", async () => {
+    // python: test_launch_analysis_unsupported
     const { ws, mock } = makeWorkspace();
 
     const exc = await expectRaises(
@@ -183,7 +189,8 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     expect(mock.arbFunnelsCalls).toHaveLength(0);
   });
 
-  it("test_resolved_input_does_not_refetch", async () => {
+  it("resolved input does not refetch", async () => {
+    // python: test_resolved_input_does_not_refetch
     const { ws, mock } = makeWorkspace();
 
     await ws.queryReportLink(resolvedReport("insights", INSIGHTS_PARAMS));
@@ -192,7 +199,8 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     expect(mock.bookmarkGetCalls).toHaveLength(0);
   });
 
-  it("test_str_input_resolves_first", async () => {
+  it("str input resolves first", async () => {
+    // python: test_str_input_resolves_first
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord());
 
@@ -212,14 +220,16 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
 // saved_report_link (US5)
 // =============================================================================
 
-describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
+describe("Saved report link", () => {
+  // python: TestSavedReportLink
   it.each<[BookmarkType, string]>([
     ["insights", "insights#report/123"],
     ["funnels", "funnels#view/123"],
     ["retention", "retention#report/123"],
     ["flows", "flows#report/123"],
     ["launch-analysis", "impact#report/123"],
-  ])("test_url_shape_per_type[%s]", (reportType, tail) => {
+  ])("URL shape per type[%s]", (reportType, tail) => {
+    // python: test_url_shape_per_type
     const { ws, mock } = makeWorkspace();
 
     const url = ws.savedReportLink(123, { report_type: reportType });
@@ -228,7 +238,8 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     expect(mock.methodCalls).toStrictEqual([]);
   });
 
-  it("test_default_type_is_insights", () => {
+  it("default type is insights", () => {
+    // python: test_default_type_is_insights
     const { ws } = makeWorkspace();
 
     expect(ws.savedReportLink(123)).toBe(
@@ -236,7 +247,8 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     );
   });
 
-  it("test_singular_funnel_normalizes", () => {
+  it("singular funnel normalizes", () => {
+    // python: test_singular_funnel_normalizes
     const { ws } = makeWorkspace();
 
     expect(ws.savedReportLink(456, { report_type: "funnel" })).toBe(
@@ -244,7 +256,8 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     );
   });
 
-  it("test_explicit_workspace", () => {
+  it("explicit workspace", () => {
+    // python: test_explicit_workspace
     const { ws, mock } = makeWorkspace();
 
     const url = ws.savedReportLink(123, { workspace_id: 5 });
@@ -255,7 +268,8 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   });
 
-  it("test_pinned_workspace", () => {
+  it("pinned workspace", () => {
+    // python: test_pinned_workspace
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
 
     const url = ws.savedReportLink(123);
@@ -264,13 +278,15 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   });
 
-  it("test_explicit_beats_pinned", () => {
+  it("explicit beats pinned", () => {
+    // python: test_explicit_beats_pinned
     const { ws } = makeWorkspace({ session: PINNED_SESSION });
 
     expect(ws.savedReportLink(123, { workspace_id: 5 })).toContain("/view/5/");
   });
 
-  it("test_no_workspace_is_omitted_never_resolved", () => {
+  it("no workspace is omitted never resolved", () => {
+    // python: test_no_workspace_is_omitted_never_resolved
     const { ws, mock } = makeWorkspace();
 
     const url = ws.savedReportLink(123);
@@ -279,7 +295,8 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   });
 
-  it("test_eu_session_host", () => {
+  it("EU session host", () => {
+    // python: test_eu_session_host
     const { ws } = makeWorkspace({ session: EU_SESSION });
 
     expect(ws.savedReportLink(123).startsWith("https://eu.mixpanel.com/")).toBe(
@@ -287,7 +304,8 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     );
   });
 
-  it("test_unknown_type_raises_rl1", () => {
+  it("unknown type raises RL1", () => {
+    // python: test_unknown_type_raises_rl1
     const { ws } = makeWorkspace();
 
     let caught: unknown = null;
@@ -306,7 +324,8 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
     );
   });
 
-  it("test_client_records_zero_calls", () => {
+  it("client records zero calls", () => {
+    // python: test_client_records_zero_calls
     const { ws, mock } = makeWorkspace();
 
     ws.savedReportLink(1);
@@ -320,8 +339,10 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
 // review follow-ups (PR #223)
 // =============================================================================
 
-describe("TestQueryReportLinkScopeOnResolvedInput (test_workspace_report_links.py:1360)", () => {
-  it("test_project_mismatch_raises_before_query", async () => {
+describe("Query report link scope on resolved input", () => {
+  // python: TestQueryReportLinkScopeOnResolvedInput
+  it("project mismatch raises before query", async () => {
+    // python: test_project_mismatch_raises_before_query
     const { ws, mock } = makeWorkspace();
     const resolved = resolvedReport("insights", INSIGHTS_PARAMS, {
       project_id: 3,
@@ -340,7 +361,8 @@ describe("TestQueryReportLinkScopeOnResolvedInput (test_workspace_report_links.p
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
-  it("test_region_mismatch_raises_before_query", async () => {
+  it("region mismatch raises before query", async () => {
+    // python: test_region_mismatch_raises_before_query
     const { ws, mock } = makeWorkspace();
     const resolved = resolvedReport("insights", INSIGHTS_PARAMS, {
       region: "eu",
@@ -355,7 +377,8 @@ describe("TestQueryReportLinkScopeOnResolvedInput (test_workspace_report_links.p
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
-  it("test_matching_scope_runs", async () => {
+  it("matching scope runs", async () => {
+    // python: test_matching_scope_runs
     const { ws, mock } = makeWorkspace();
 
     const result = await ws.queryReportLink(
@@ -366,7 +389,8 @@ describe("TestQueryReportLinkScopeOnResolvedInput (test_workspace_report_links.p
     expect(mock.insightsCalls).toHaveLength(1);
   });
 
-  it("test_scope_checked_after_use_switch", async () => {
+  it("scope checked after use switch", async () => {
+    // python: test_scope_checked_after_use_switch
     // The Python fixture shares ONE mock client between both Workspaces.
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord());

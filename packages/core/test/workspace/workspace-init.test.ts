@@ -39,7 +39,8 @@ import {
   makeEffects,
 } from "../accounts/fake-auth-effects.js";
 
-describe("TestSessionBypass (test_workspace_init.py:115)", () => {
+describe("Session bypass", () => {
+  // python: TestSessionBypass
   it("a pre-built Session is used as-is, ignoring config", () => {
     const account: Account = {
       type: "service_account",
@@ -106,7 +107,8 @@ describe("TestSessionBypass (test_workspace_init.py:115)", () => {
   });
 });
 
-describe("TestReadOnlyProperties (test_workspace_init.py:151)", () => {
+describe("Read only properties", () => {
+  // python: TestReadOnlyProperties
   it("assignment to ws.account throws (getter with no setter)", () => {
     const session = makeSession();
     const { client } = createMockClient(session, () => ({
@@ -145,7 +147,7 @@ describe("TestReadOnlyProperties (test_workspace_init.py:151)", () => {
     expect(ws.workspace?.id).toBe(4242);
   });
 
-  it("ws.api is the escape hatch onto the bound client (workspace.py:4464)", () => {
+  it("ws.api is the escape hatch onto the bound client", () => {
     const session = makeSession();
     const { client } = createMockClient(session, () => ({
       status: 200,
@@ -183,7 +185,8 @@ async function twoAccounts(): Promise<EffectsBundle> {
   return bundle;
 }
 
-describe("TestActiveResolution (test_workspace_init.py:66)", () => {
+describe("Active resolution", () => {
+  // python: TestActiveResolution
   it("no axes → ws.account/project come from [active]", async () => {
     const bundle = await twoAccounts();
 
@@ -196,7 +199,8 @@ describe("TestActiveResolution (test_workspace_init.py:66)", () => {
   });
 });
 
-describe("TestExplicitOverrides (test_workspace_init.py:76)", () => {
+describe("Explicit overrides", () => {
+  // python: TestExplicitOverrides
   it("Workspace({account: 'other'}) switches account", async () => {
     const bundle = await twoAccounts();
 
@@ -233,7 +237,8 @@ describe("TestExplicitOverrides (test_workspace_init.py:76)", () => {
   });
 });
 
-describe("TestTarget (test_workspace_init.py:96)", () => {
+describe("Target", () => {
+  // python: TestTarget
   it("Workspace({target}) applies the target's three axes", async () => {
     const bundle = await twoAccounts();
     const targets = createTargetsNamespace(bundle.effects);
@@ -270,11 +275,12 @@ describe("TestTarget (test_workspace_init.py:96)", () => {
   });
 });
 
-describe("TestCodedWorkspaceGuardCodes — B7 constructor rows (test_workspace.py:969)", () => {
+describe("Coded workspace guard codes — B7 constructor rows", () => {
+  // python: TestCodedWorkspaceGuardCodes
   // De-deferred from `workspace-facade.test.ts` (the ":969/:975/:1021 →
   // B7" header rows): all three call the CONSTRUCTOR guard, which now
   // exists (`b7-packets.md` §3.4 / Caution #18).
-  it("Workspace({target, account}) raises WS1 before resolution (:969)", () => {
+  it("Workspace({target, account}) raises WS1 before resolution", () => {
     let caught: unknown = null;
     try {
       // No sources on purpose: the guard must fire BEFORE the
@@ -289,7 +295,7 @@ describe("TestCodedWorkspaceGuardCodes — B7 constructor rows (test_workspace.p
     );
   });
 
-  it("Workspace({target, workspace}) raises WS1 before resolution (:975)", () => {
+  it("Workspace({target, workspace}) raises WS1 before resolution", () => {
     let caught: unknown = null;
     try {
       new Workspace({ target: "ecom", workspace: 123 });
@@ -302,7 +308,7 @@ describe("TestCodedWorkspaceGuardCodes — B7 constructor rows (test_workspace.p
     );
   });
 
-  it("the WS1 guard stays catchable via its base classes (:1021)", () => {
+  it("the WS1 guard stays catchable via its base classes", () => {
     // Python catches bare ValueError; the TS ParamValidationError's
     // nearest "bare" ancestor is Error (R5 — the code is the contract).
     let caught: unknown = null;
@@ -319,7 +325,8 @@ describe("TestCodedWorkspaceGuardCodes — B7 constructor rows (test_workspace.p
   });
 });
 
-describe("TestSessionBypass::test_session_use_chain_equivalence — FULL twin (test_workspace_init.py:130)", () => {
+describe("Session bypass: session use chain equivalence — FULL twin", () => {
+  // python: TestSessionBypass::test_session_use_chain_equivalence
   it("Workspace().use(...) matches Workspace({session}) over real seams", async () => {
     const bundle = await twoAccounts();
     const teamAccount: Account = {

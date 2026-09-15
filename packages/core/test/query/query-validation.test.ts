@@ -37,8 +37,10 @@ import { GroupBy } from "../../src/types/index.js";
 // T007: Time range validation rules (V7-V11) — validator-direct members
 // =============================================================================
 
-describe("TestTimeRangeValidation", () => {
-  it("test_v10_default_last_with_dates_ok", () => {
+describe("Time range validation", () => {
+  // python: TestTimeRangeValidation
+  it("V10 default last with dates ok", () => {
+    // python: test_v10_default_last_with_dates_ok
     // V10: Default last (30) with explicit dates is OK (last is ignored).
     const errors = validateQueryArgs({
       events: ["Login"],
@@ -56,7 +58,8 @@ describe("TestTimeRangeValidation", () => {
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_valid_date_range_passes", () => {
+  it("valid date range passes", () => {
+    // python: test_valid_date_range_passes
     const errors = validateQueryArgs({
       events: ["Login"],
       math: "total",
@@ -73,7 +76,8 @@ describe("TestTimeRangeValidation", () => {
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_valid_last_passes", () => {
+  it("valid last passes", () => {
+    // python: test_valid_last_passes
     const errors = validateQueryArgs({
       events: ["Login"],
       math: "total",
@@ -95,8 +99,10 @@ describe("TestTimeRangeValidation", () => {
 // T016: Aggregation validation rules V1-V3 — validator-direct members
 // =============================================================================
 
-describe("TestAggregationValidation", () => {
-  it("test_valid_property_math_with_property", () => {
+describe("Aggregation validation", () => {
+  // python: TestAggregationValidation
+  it("valid property math with property", () => {
+    // python: test_valid_property_math_with_property
     const errors = validateQueryArgs({
       events: ["Purchase"],
       math: "average",
@@ -113,7 +119,8 @@ describe("TestAggregationValidation", () => {
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_valid_per_user_with_property", () => {
+  it("valid per user with property", () => {
+    // python: test_valid_per_user_with_property
     const errors = validateQueryArgs({
       events: ["Purchase"],
       math: "total",
@@ -130,7 +137,8 @@ describe("TestAggregationValidation", () => {
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_per_user_without_property_raises", () => {
+  it("per user without property raises", () => {
+    // python: test_per_user_without_property_raises
     const errors = validateQueryArgs({
       events: ["Purchase"],
       math: "total",
@@ -149,7 +157,8 @@ describe("TestAggregationValidation", () => {
     ).toBe(true);
   });
 
-  it("test_per_user_with_unique_raises", () => {
+  it("per user with unique raises", () => {
+    // python: test_per_user_with_unique_raises
     const errors = validateQueryArgs({
       events: ["Login"],
       math: "unique",
@@ -173,8 +182,10 @@ describe("TestAggregationValidation", () => {
 // T029: Formula validation V4 — validator-direct member
 // =============================================================================
 
-describe("TestFormulaValidation", () => {
-  it("test_v4_formula_with_two_events_ok", () => {
+describe("Formula validation", () => {
+  // python: TestFormulaValidation
+  it("V4 formula with two events ok", () => {
+    // python: test_v4_formula_with_two_events_ok
     const errors = validateQueryArgs({
       events: ["Login", "Signup"],
       math: "total",
@@ -196,8 +207,10 @@ describe("TestFormulaValidation", () => {
 // Reusable validate_time_args() (US2 shared-infra) — test_query_validation.py
 // =============================================================================
 
-describe("TestValidateTimeArgs", () => {
-  it("test_v7_last_zero", () => {
+describe("Validate time args", () => {
+  // python: TestValidateTimeArgs
+  it("V7 last zero", () => {
+    // python: test_v7_last_zero
     const errors = validateTimeArgs({
       from_date: null,
       to_date: null,
@@ -207,7 +220,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors[0]!.code).toBe("V7_LAST_POSITIVE");
   });
 
-  it("test_v7_last_negative", () => {
+  it("V7 last negative", () => {
+    // python: test_v7_last_negative
     const errors = validateTimeArgs({
       from_date: null,
       to_date: null,
@@ -217,7 +231,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors[0]!.code).toBe("V7_LAST_POSITIVE");
   });
 
-  it("test_v8_from_date_bad_format", () => {
+  it("V8 from date bad format", () => {
+    // python: test_v8_from_date_bad_format
     const errors = validateTimeArgs({
       from_date: "01/01/2024",
       to_date: null,
@@ -226,7 +241,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors.some((e) => e.code === "V8_DATE_FORMAT")).toBe(true);
   });
 
-  it("test_v8_to_date_bad_format", () => {
+  it("V8 to date bad format", () => {
+    // python: test_v8_to_date_bad_format
     const errors = validateTimeArgs({
       from_date: "2024-01-01",
       to_date: "Jan 31 2024",
@@ -235,7 +251,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors.some((e) => e.code === "V8_DATE_FORMAT")).toBe(true);
   });
 
-  it("test_v8_invalid_calendar_date", () => {
+  it("V8 invalid calendar date", () => {
+    // python: test_v8_invalid_calendar_date
     const errors = validateTimeArgs({
       from_date: "2024-02-30",
       to_date: null,
@@ -244,7 +261,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors.some((e) => e.code === "V8_DATE_INVALID")).toBe(true);
   });
 
-  it("test_v9_to_date_without_from_date", () => {
+  it("V9 to date without from date", () => {
+    // python: test_v9_to_date_without_from_date
     const errors = validateTimeArgs({
       from_date: null,
       to_date: "2024-01-31",
@@ -253,7 +271,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors.some((e) => e.code === "V9_TO_REQUIRES_FROM")).toBe(true);
   });
 
-  it("test_v10_from_date_with_non_default_last", () => {
+  it("V10 from date with non default last", () => {
+    // python: test_v10_from_date_with_non_default_last
     const errors = validateTimeArgs({
       from_date: "2024-01-01",
       to_date: "2024-01-31",
@@ -262,7 +281,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors.some((e) => e.code === "V10_DATE_LAST_EXCLUSIVE")).toBe(true);
   });
 
-  it("test_v10_from_date_with_default_last_ok", () => {
+  it("V10 from date with default last ok", () => {
+    // python: test_v10_from_date_with_default_last_ok
     const errors = validateTimeArgs({
       from_date: "2024-01-01",
       to_date: "2024-01-31",
@@ -273,7 +293,8 @@ describe("TestValidateTimeArgs", () => {
     );
   });
 
-  it("test_v15_from_date_after_to_date", () => {
+  it("V15 from date after to date", () => {
+    // python: test_v15_from_date_after_to_date
     const errors = validateTimeArgs({
       from_date: "2024-02-01",
       to_date: "2024-01-01",
@@ -282,7 +303,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors.some((e) => e.code === "V15_DATE_ORDER")).toBe(true);
   });
 
-  it("test_v20_last_too_large", () => {
+  it("V20 last too large", () => {
+    // python: test_v20_last_too_large
     const errors = validateTimeArgs({
       from_date: null,
       to_date: null,
@@ -291,7 +313,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors.some((e) => e.code === "V20_LAST_TOO_LARGE")).toBe(true);
   });
 
-  it("test_valid_date_range", () => {
+  it("valid date range", () => {
+    // python: test_valid_date_range
     const errors = validateTimeArgs({
       from_date: "2024-01-01",
       to_date: "2024-01-31",
@@ -300,7 +323,8 @@ describe("TestValidateTimeArgs", () => {
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_valid_last_only", () => {
+  it("valid last only", () => {
+    // python: test_valid_last_only
     const errors = validateTimeArgs({
       from_date: null,
       to_date: null,
@@ -314,8 +338,10 @@ describe("TestValidateTimeArgs", () => {
 // Reusable validate_group_by_args() (US2 shared-infra) — :743
 // =============================================================================
 
-describe("TestValidateGroupByArgs", () => {
-  it("test_v11_bucket_min_without_bucket_size", () => {
+describe("Validate group by args", () => {
+  // python: TestValidateGroupByArgs
+  it("V11 bucket min without bucket size", () => {
+    // python: test_v11_bucket_min_without_bucket_size
     const errors = validateGroupByArgs({
       group_by: new GroupBy({ property: "amount", bucket_min: 0 }),
     });
@@ -324,7 +350,8 @@ describe("TestValidateGroupByArgs", () => {
     );
   });
 
-  it("test_v12_bucket_size_zero", () => {
+  it("V12 bucket size zero", () => {
+    // python: test_v12_bucket_size_zero
     // V12: bucket_size=0 is rejected by GroupBy's constructor guard
     // (Python `__post_init__` → ValueError; TS ParamValidationError).
     expect(() => new GroupBy({ property: "amount", bucket_size: 0 })).toThrow(
@@ -335,13 +362,15 @@ describe("TestValidateGroupByArgs", () => {
     );
   });
 
-  it("test_v12_bucket_size_negative", () => {
+  it("V12 bucket size negative", () => {
+    // python: test_v12_bucket_size_negative
     expect(() => new GroupBy({ property: "amount", bucket_size: -5 })).toThrow(
       /bucket_size must be positive/,
     );
   });
 
-  it("test_v12b_bucket_size_wrong_property_type", () => {
+  it("V12b bucket size wrong property type", () => {
+    // python: test_v12b_bucket_size_wrong_property_type
     const errors = validateGroupByArgs({
       group_by: new GroupBy({
         property: "amount",
@@ -354,7 +383,8 @@ describe("TestValidateGroupByArgs", () => {
     );
   });
 
-  it("test_v12c_bucket_size_without_bounds", () => {
+  it("V12c bucket size without bounds", () => {
+    // python: test_v12c_bucket_size_without_bounds
     const errors = validateGroupByArgs({
       group_by: new GroupBy({
         property: "amount",
@@ -367,7 +397,8 @@ describe("TestValidateGroupByArgs", () => {
     );
   });
 
-  it("test_v18_bucket_min_gte_bucket_max", () => {
+  it("V18 bucket min gte bucket max", () => {
+    // python: test_v18_bucket_min_gte_bucket_max
     expect(
       () =>
         new GroupBy({
@@ -380,14 +411,16 @@ describe("TestValidateGroupByArgs", () => {
     ).toThrow(/bucket_min.*must be less than/);
   });
 
-  it("test_v24_bucket_size_nan", () => {
+  it("V24 bucket size NaN", () => {
+    // python: test_v24_bucket_size_nan
     const errors = validateGroupByArgs({
       group_by: new GroupBy({ property: "amount", bucket_size: Number.NaN }),
     });
     expect(errors.some((e) => e.code === "V24_BUCKET_NOT_FINITE")).toBe(true);
   });
 
-  it("test_v24_bucket_min_inf", () => {
+  it("V24 bucket min inf", () => {
+    // python: test_v24_bucket_min_inf
     const errors = validateGroupByArgs({
       group_by: new GroupBy({
         property: "amount",
@@ -397,17 +430,20 @@ describe("TestValidateGroupByArgs", () => {
     expect(errors.some((e) => e.code === "V24_BUCKET_NOT_FINITE")).toBe(true);
   });
 
-  it("test_valid_none_group_by", () => {
+  it("valid null group by", () => {
+    // python: test_valid_none_group_by
     const errors = validateGroupByArgs({ group_by: null });
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_valid_string_group_by", () => {
+  it("valid string group by", () => {
+    // python: test_valid_string_group_by
     const errors = validateGroupByArgs({ group_by: "country" });
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_valid_group_by_with_buckets", () => {
+  it("valid group by with buckets", () => {
+    // python: test_valid_group_by_with_buckets
     const errors = validateGroupByArgs({
       group_by: new GroupBy({
         property: "revenue",

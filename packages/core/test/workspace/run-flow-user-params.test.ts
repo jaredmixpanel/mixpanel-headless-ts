@@ -143,7 +143,8 @@ describe("flowModeFromParams", () => {
 // TestRunFlowParams (test file :168-406)
 // ===========================================================================
 
-describe("TestRunFlowParams", () => {
+describe("Run flow params", () => {
+  // python: TestRunFlowParams
   it("returns a flow result and posts params as bookmark", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(MOCK_SANKEY_RESPONSE);
@@ -269,7 +270,8 @@ describe("TestRunFlowParams", () => {
 // TestRunUserParams (test file :409-544)
 // ===========================================================================
 
-describe("TestRunUserParams", () => {
+describe("Run user params", () => {
+  // python: TestRunUserParams
   it("aggregate params route to engage stats", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(MOCK_STATS_RESPONSE);

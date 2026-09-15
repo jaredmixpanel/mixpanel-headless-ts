@@ -48,7 +48,8 @@ function section(params: Record<string, unknown>, name: string): unknown[] {
 // T007: query_flow where= parameter
 // ===========================================================================
 
-describe("TestQueryFlowWhere", () => {
+describe("Query flow where", () => {
+  // python: TestQueryFlowWhere
   it("build_flow_params accepts a cohort filter in where=", async () => {
     const result = await makeStubWorkspace(
       mockWorkspaceClient(),
@@ -125,7 +126,8 @@ describe("TestQueryFlowWhere", () => {
 // T041: _resolve_and_build_params type guard for CohortMetric
 // ===========================================================================
 
-describe("TestResolveAndBuildParamsCohortMetric", () => {
+describe("Resolve and build params cohort metric", () => {
+  // python: TestResolveAndBuildParamsCohortMetric
   it("a CohortMetric alone produces a valid params dict", async () => {
     const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams(
       new CohortMetric({ cohort: 123, name: "Power Users" }),

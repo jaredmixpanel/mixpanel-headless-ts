@@ -138,8 +138,10 @@ const GROUP_ERROR_CODES: ReadonlySet<string> = new Set([
 // Time Validation Equivalence
 // =============================================================================
 
-describe("TestTimeValidationEquivalence", () => {
-  it("test_time_errors_match", () => {
+describe("Time validation equivalence", () => {
+  // python: TestTimeValidationEquivalence
+  it("time errors match", () => {
+    // python: test_time_errors_match
     fc.assert(
       fc.property(
         maybeDatesArb,
@@ -186,8 +188,10 @@ describe("TestTimeValidationEquivalence", () => {
 // GroupBy Validation Equivalence
 // =============================================================================
 
-describe("TestGroupByValidationEquivalence", () => {
-  it("test_groupby_errors_match", () => {
+describe("Group by validation equivalence", () => {
+  // python: TestGroupByValidationEquivalence
+  it("groupby errors match", () => {
+    // python: test_groupby_errors_match
     fc.assert(
       fc.property(
         propertyNamesArb,
@@ -248,12 +252,14 @@ describe("TestGroupByValidationEquivalence", () => {
     );
   });
 
-  it("test_none_groupby_no_errors", () => {
+  it("null groupby no errors", () => {
+    // python: test_none_groupby_no_errors
     const errors = validateGroupByArgs({ group_by: null });
     expect(errors).toStrictEqual([]);
   });
 
-  it("test_string_groupby_no_errors", () => {
+  it("string groupby no errors", () => {
+    // python: test_string_groupby_no_errors
     const errors = validateGroupByArgs({ group_by: "country" });
     expect(errors).toStrictEqual([]);
   });

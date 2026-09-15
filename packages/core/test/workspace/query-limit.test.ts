@@ -125,7 +125,8 @@ function lastBody(mock: MockWorkspaceClient): Record<string, unknown> {
 // TestQueryLimitsValidator (test file :150-212)
 // ===========================================================================
 
-describe("TestQueryLimitsValidator", () => {
+describe("Query limits validator", () => {
+  // python: TestQueryLimitsValidator
   it("none yields the default", () => {
     expect(queryLimits(null)).toStrictEqual({
       limit: DEFAULT_SEGMENTATION_LIMIT,
@@ -190,7 +191,8 @@ describe("TestQueryLimitsValidator", () => {
 // TestServiceLimitPassthrough (test file :215-321)
 // ===========================================================================
 
-describe("TestServiceLimitPassthrough", () => {
+describe("Service limit passthrough", () => {
+  // python: TestServiceLimitPassthrough
   /**
    * The `service` fixture (test file :218-228).
    *
@@ -267,7 +269,8 @@ describe("TestServiceLimitPassthrough", () => {
 // TestWorkspaceLimitPassthrough (test file :324-409)
 // ===========================================================================
 
-describe("TestWorkspaceLimitPassthrough", () => {
+describe("Workspace limit passthrough", () => {
+  // python: TestWorkspaceLimitPassthrough
   it("query forwards limit", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);
@@ -327,7 +330,8 @@ describe("TestWorkspaceLimitPassthrough", () => {
 // TestRunParams (test file :412-568)
 // ===========================================================================
 
-describe("TestRunParams", () => {
+describe("Run params", () => {
+  // python: TestRunParams
   it("run_params returns a query result", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);

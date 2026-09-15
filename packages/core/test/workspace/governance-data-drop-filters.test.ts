@@ -72,7 +72,8 @@ function dropFilterJson(
 // US3: Drop Filters
 // =============================================================================
 
-describe("TestListDropFilters", () => {
+describe("List drop filters", () => {
+  // python: TestListDropFilters
   it("list_drop_filters() returns list of DropFilter objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([dropFilterJson(1, "debug_log"), dropFilterJson(2, "test_event")]),
@@ -91,7 +92,8 @@ describe("TestListDropFilters", () => {
   });
 });
 
-describe("TestCreateDropFilter", () => {
+describe("Create drop filter", () => {
+  // python: TestCreateDropFilter
   it("create_drop_filter() returns the full list of DropFilter objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([dropFilterJson(1, "debug_log"), dropFilterJson(2, "new_filter")]),
@@ -108,7 +110,8 @@ describe("TestCreateDropFilter", () => {
   });
 });
 
-describe("TestUpdateDropFilter", () => {
+describe("Update drop filter", () => {
+  // python: TestUpdateDropFilter
   it("update_drop_filter() returns the full list of DropFilter objects", async () => {
     const { ws } = makeWorkspace(() => ok([dropFilterJson(1, "debug_log")]));
     const params = new UpdateDropFilterParams({ id: 1, active: false });
@@ -119,7 +122,8 @@ describe("TestUpdateDropFilter", () => {
   });
 });
 
-describe("TestDeleteDropFilter", () => {
+describe("Delete drop filter", () => {
+  // python: TestDeleteDropFilter
   it("delete_drop_filter() returns the remaining list of DropFilter objects", async () => {
     const { ws } = makeWorkspace(() => ok([dropFilterJson(2, "kept_filter")]));
     const result = await ws.deleteDropFilter(1);
@@ -129,7 +133,8 @@ describe("TestDeleteDropFilter", () => {
   });
 });
 
-describe("TestGetDropFilterLimits", () => {
+describe("Get drop filter limits", () => {
+  // python: TestGetDropFilterLimits
   it("get_drop_filter_limits() returns DropFilterLimitsResponse", async () => {
     const { ws } = makeWorkspace(() => ok({ filter_limit: 10 }));
     const limits = await ws.getDropFilterLimits();

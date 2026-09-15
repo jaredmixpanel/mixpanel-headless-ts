@@ -38,16 +38,20 @@ const PARAMS = {
   displayOptions: { chartType: "line" },
 } as const;
 
-describe("TestReportLinkType", () => {
-  it("test_members", () => {
+describe("Report link type", () => {
+  // python: TestReportLinkType
+  it("members", () => {
+    // python: test_members
     expect(new Set(REPORT_LINK_TYPE_VALUES)).toStrictEqual(
       new Set(["insights", "funnels", "retention", "flows"]),
     );
   });
 });
 
-describe("TestBookmarkUrl", () => {
-  it("test_parses_server_record_with_type_alias", () => {
+describe("Bookmark URL", () => {
+  // python: TestBookmarkUrl
+  it("parses server record with type alias", () => {
+    // python: test_parses_server_record_with_type_alias
     const record = BookmarkUrl.fromDict({
       slug: SLUG,
       type: "funnels",
@@ -69,12 +73,14 @@ describe("TestBookmarkUrl", () => {
     expect(record.bookmark).toBeNull();
   });
 
-  it("test_params_default_empty_dict", () => {
+  it("params default empty dict", () => {
+    // python: test_params_default_empty_dict
     const record = BookmarkUrl.fromDict({ slug: SLUG, type: "insights" });
     expect(record.params).toStrictEqual({});
   });
 
-  it("test_populate_by_name", () => {
+  it("populate by name", () => {
+    // python: test_populate_by_name
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "retention" });
     expect(record.bookmark_type).toBe("retention");
     // populate_by_name also applies on the strict decode seam.
@@ -84,7 +90,8 @@ describe("TestBookmarkUrl", () => {
     ).toBe("retention");
   });
 
-  it("test_embedded_bookmark", () => {
+  it("embedded bookmark", () => {
+    // python: test_embedded_bookmark
     const record = BookmarkUrl.fromDict({
       slug: SLUG,
       type: "insights",
@@ -103,7 +110,8 @@ describe("TestBookmarkUrl", () => {
     expect(record.overrides).toStrictEqual({ originDashboard: 555 });
   });
 
-  it("test_extra_keys_kept", () => {
+  it("extra keys kept", () => {
+    // python: test_extra_keys_kept
     const record = BookmarkUrl.fromDict({
       slug: SLUG,
       type: "insights",
@@ -118,9 +126,10 @@ describe("TestBookmarkUrl", () => {
   // (PORTING.md "Runtime immutability"). Only the compile-time `readonly`
   // contract holds — pinned in `report-links.test-d.ts`. Once `EntityModel`
   // freezes, assert `Object.isFrozen` plus a throwing write here.
-  it.todo("test_frozen");
+  it.todo("frozen"); // python: test_frozen
 
-  it("test_dump_by_alias", () => {
+  it("dump by alias", () => {
+    // python: test_dump_by_alias
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "flows" });
     const dumped = record.modelDump({ byAlias: true });
     expect(dumped["type"]).toBe("flows");
@@ -128,7 +137,8 @@ describe("TestBookmarkUrl", () => {
   });
 });
 
-describe("TestReportLink", () => {
+describe("Report link", () => {
+  // python: TestReportLink
   /**
    * Construct a ReportLink with every field set (`_build`).
    *
@@ -148,7 +158,8 @@ describe("TestReportLink", () => {
     });
   }
 
-  it("test_to_dict_returns_every_field", () => {
+  it("to dict returns every field", () => {
+    // python: test_to_dict_returns_every_field
     const link = build();
     const d = link.toDict();
     expect(d).toStrictEqual({
@@ -165,7 +176,8 @@ describe("TestReportLink", () => {
     expect(() => JSON.stringify(d)).not.toThrow();
   });
 
-  it("test_defaults", () => {
+  it("defaults", () => {
+    // python: test_defaults
     const link = new ReportLink({
       url: `https://mixpanel.com/project/3/app/flows#${SLUG}`,
       slug: SLUG,
@@ -179,14 +191,16 @@ describe("TestReportLink", () => {
     expect(link.created_at).toBeNull();
   });
 
-  it("test_str_is_url", () => {
+  it("str is URL", () => {
+    // python: test_str_is_url
     const link = build();
     expect(String(link)).toBe(link.url);
     // eslint-disable-next-line unicorn/no-useless-template-literals, @typescript-eslint/restrict-template-expressions -- test_str_is_url exercises template-literal rendering of a ReportLink
     expect(`${link}`).toBe(link.url);
   });
 
-  it("test_frozen", () => {
+  it("frozen", () => {
+    // python: test_frozen
     const link = build();
     expect(Object.isFrozen(link)).toBe(true);
     // A strict-mode write to a frozen object throws; the compile-time
@@ -196,7 +210,8 @@ describe("TestReportLink", () => {
   });
 });
 
-describe("TestResolvedReport", () => {
+describe("Resolved report", () => {
+  // python: TestResolvedReport
   /**
    * Field bag for a slug-link ResolvedReport (`_build` inputs), so twins of
    * `dataclasses.replace` can spread and override.
@@ -234,7 +249,8 @@ describe("TestResolvedReport", () => {
     return new ResolvedReport(fields(bookmark));
   }
 
-  it("test_to_dict_serializes_bookmark_by_alias", () => {
+  it("to dict serializes bookmark by alias", () => {
+    // python: test_to_dict_serializes_bookmark_by_alias
     const bookmark = new Bookmark({
       id: 123,
       name: "Weekly",
@@ -249,7 +265,8 @@ describe("TestResolvedReport", () => {
     expect(() => JSON.stringify(d)).not.toThrow();
   });
 
-  it("test_to_dict_passes_none_bookmark_through", () => {
+  it("to dict passes null bookmark through", () => {
+    // python: test_to_dict_passes_none_bookmark_through
     const d = build(null).toDict();
     expect(d["bookmark"]).toBeNull();
     expect(d["source"]).toBe("slug");
@@ -286,14 +303,16 @@ describe("TestResolvedReport", () => {
     );
   });
 
-  it("test_frozen", () => {
+  it("frozen", () => {
+    // python: test_frozen
     const resolved = build(null);
     expect(Object.isFrozen(resolved)).toBe(true);
     expect(() => Object.assign(resolved, { params: {} })).toThrow(TypeError);
     expect(resolved.params).toStrictEqual(PARAMS);
   });
 
-  it("test_slug_source_requires_slug", () => {
+  it("slug source requires slug", () => {
+    // python: test_slug_source_requires_slug
     let caught: unknown;
     try {
       new ResolvedReport({ ...fields(null), slug: null });
@@ -306,7 +325,8 @@ describe("TestResolvedReport", () => {
     expect(exc.details).toStrictEqual({ source: "slug", missing: "slug" });
   });
 
-  it("test_bookmark_source_requires_bookmark_id", () => {
+  it("bookmark source requires bookmark ID", () => {
+    // python: test_bookmark_source_requires_bookmark_id
     let caught: unknown;
     try {
       new ResolvedReport({ ...fields(null), source: "bookmark", slug: null });
@@ -322,7 +342,8 @@ describe("TestResolvedReport", () => {
     });
   });
 
-  it("test_bookmark_source_with_id_is_fine", () => {
+  it("bookmark source with ID is fine", () => {
+    // python: test_bookmark_source_with_id_is_fine
     const resolved = new ResolvedReport({
       ...fields(null),
       source: "bookmark",

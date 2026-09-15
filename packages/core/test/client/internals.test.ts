@@ -154,8 +154,10 @@ async function run(
   });
 }
 
-describe("TestRateLimiting", () => {
-  it("test_retry_on_429_with_retry_after", async () => {
+describe("Rate limiting", () => {
+  // python: TestRateLimiting
+  it("retry on 429 with retry after", async () => {
+    // python: test_retry_on_429_with_retry_after
     const h = harness([
       res(429, "", { "Retry-After": "0" }),
       res(200, ["event1"]),
@@ -165,7 +167,8 @@ describe("TestRateLimiting", () => {
     expect(result).toStrictEqual(["event1"]);
   });
 
-  it("test_exponential_backoff_without_retry_after", async () => {
+  it("exponential backoff without retry after", async () => {
+    // python: test_exponential_backoff_without_retry_after
     const h = harness([res(429), res(200, ["event1"])], { maxRetries: 2 });
     const result = await run(h);
     expect(h.calls).toHaveLength(2);
@@ -175,7 +178,8 @@ describe("TestRateLimiting", () => {
     expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
-  it("test_rate_limit_error_after_max_retries", async () => {
+  it("rate limit error after max retries", async () => {
+    // python: test_rate_limit_error_after_max_retries
     const h = harness([res(429, "", { "Retry-After": "0" })], {
       maxRetries: 1,
     });
@@ -186,7 +190,8 @@ describe("TestRateLimiting", () => {
     expect((error as RateLimitError).projectId).toBe("12345");
   });
 
-  it("test_execute_with_retry_fallthrough_carries_project_id", async () => {
+  it("execute with retry fallthrough carries project ID", async () => {
+    // python: test_execute_with_retry_fallthrough_carries_project_id
     // max_retries below zero: the loop body never runs and the
     // type-checker-satisfying fallthrough raise fires — locking its
     // project_id wiring (and its reduced constructor shape, FF4).
@@ -200,7 +205,8 @@ describe("TestRateLimiting", () => {
     expect(h.calls).toHaveLength(0);
   });
 
-  it("test_successful_response_after_retry", async () => {
+  it("successful response after retry", async () => {
+    // python: test_successful_response_after_retry
     const h = harness(
       [
         res(429, "", { "Retry-After": "0" }),
@@ -215,15 +221,18 @@ describe("TestRateLimiting", () => {
   });
 });
 
-describe("TestPublicRequest (B0-observable subset)", () => {
-  it("test_request_auto_injects_query_origin", async () => {
+describe("Public request (B0-observable subset)", () => {
+  // python: TestPublicRequest
+  it("request auto injects query origin", async () => {
+    // python: test_request_auto_injects_query_origin
     const h = harness([res(200, {})]);
     await run(h);
     expect(h.calls[0]?.params["query_origin"]).toBe("mixpanel-headless");
     expect(QUERY_ORIGIN).toBe("mixpanel-headless");
   });
 
-  it("test_canonical_query_origin_wins_over_caller", async () => {
+  it("canonical query origin wins over caller", async () => {
+    // python: test_canonical_query_origin_wins_over_caller
     const h = harness([res(200, {})]);
     await run(h, { params: { query_origin: "spoofed-by-caller" } });
     expect(h.calls[0]?.params["query_origin"]).toBe("mixpanel-headless");
@@ -238,13 +247,15 @@ describe("TestPublicRequest (B0-observable subset)", () => {
     expect(params["query_origin"]).toBe("mixpanel-headless");
   });
 
-  it("test_request_does_not_inject_project_id", async () => {
+  it("request does not inject project ID", async () => {
+    // python: test_request_does_not_inject_project_id
     const h = harness([res(200, {})]);
     await run(h);
     expect(h.calls[0]?.params["project_id"]).toBeUndefined();
   });
 
-  it("test_request_returns_json_response", async () => {
+  it("request returns JSON response", async () => {
+    // python: test_request_returns_json_response
     const h = harness([
       res(200, { data: { events: ["A", "B"] }, status: "ok" }),
     ]);
@@ -254,19 +265,22 @@ describe("TestPublicRequest (B0-observable subset)", () => {
     });
   });
 
-  it("test_request_handles_401", async () => {
+  it("request handles 401", async () => {
+    // python: test_request_handles_401
     const h = harness([res(401, { error: "Invalid token" })]);
     await expect(run(h)).rejects.toBeInstanceOf(AuthenticationError);
   });
 
-  it("test_request_handles_400", async () => {
+  it("request handles 400", async () => {
+    // python: test_request_handles_400
     const h = harness([res(400, { error: "Bad request" })]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect(String(error)).toContain("Bad request");
   });
 
-  it("test_request_handles_429_with_retry", async () => {
+  it("request handles 429 with retry", async () => {
+    // python: test_request_handles_429_with_retry
     const h = harness([
       res(429, "", { "Retry-After": "0" }),
       res(200, { success: true }),
@@ -276,7 +290,8 @@ describe("TestPublicRequest (B0-observable subset)", () => {
     expect(result).toStrictEqual({ success: true });
   });
 
-  it("test_request_raises_rate_limit_after_max_retries", async () => {
+  it("request raises rate limit after max retries", async () => {
+    // python: test_request_raises_rate_limit_after_max_retries
     const h = harness([res(429, "", { "Retry-After": "0" })], {
       maxRetries: 1,
     });
@@ -286,22 +301,26 @@ describe("TestPublicRequest (B0-observable subset)", () => {
   });
 });
 
-describe("TestErrorHandling", () => {
-  it("test_query_error_on_400", async () => {
+describe("Error handling", () => {
+  // python: TestErrorHandling
+  it("query error on 400", async () => {
+    // python: test_query_error_on_400
     const h = harness([res(400, { error: "Invalid query" })]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect(String(error)).toContain("Invalid query");
   });
 
-  it("test_query_error_on_400_with_plain_text", async () => {
+  it("query error on 400 with plain text", async () => {
+    // python: test_query_error_on_400_with_plain_text
     const h = harness([res(400, "Bad request: missing required field")]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect(String(error)).toContain("Bad request: missing required field");
   });
 
-  it("test_query_error_on_412_preserves_body", async () => {
+  it("query error on 412 preserves body", async () => {
+    // python: test_query_error_on_412_preserves_body
     const h = harness([res(412, { error: "Precondition failed" })]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
@@ -313,8 +332,10 @@ describe("TestErrorHandling", () => {
   });
 });
 
-describe("TestServerErrors", () => {
-  it("test_server_error_with_dict_body", async () => {
+describe("Server errors", () => {
+  // python: TestServerErrors
+  it("server error with dict body", async () => {
+    // python: test_server_error_with_dict_body
     const h = harness([res(500, { error: "Internal database error" })]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ServerError);
@@ -322,7 +343,8 @@ describe("TestServerErrors", () => {
     expect((error as ServerError).statusCode).toBe(500);
   });
 
-  it("test_server_error_with_string_body", async () => {
+  it("server error with string body", async () => {
+    // python: test_server_error_with_string_body
     const h = harness([res(503, "Service temporarily unavailable")]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ServerError);
@@ -330,7 +352,8 @@ describe("TestServerErrors", () => {
     expect((error as ServerError).statusCode).toBe(503);
   });
 
-  it("test_server_error_with_empty_body", async () => {
+  it("server error with empty body", async () => {
+    // python: test_server_error_with_empty_body
     const h = harness([res(502, "")]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ServerError);
@@ -338,8 +361,10 @@ describe("TestServerErrors", () => {
   });
 });
 
-describe("TestRetryAfterHardening (execute_with_retry half)", () => {
-  it("test_negative_retry_after_uses_backoff", async () => {
+describe("Retry after hardening (execute_with_retry half)", () => {
+  // python: TestRetryAfterHardening
+  it("negative retry after uses backoff", async () => {
+    // python: test_negative_retry_after_uses_backoff
     // Python pins _calculate_backoff to 0.125s via monkeypatch; here the
     // zero-jitter RNG makes attempt-0 backoff exactly 1s → 1000ms. The
     // assertion content: the NEGATIVE header is rejected and the backoff
@@ -352,7 +377,8 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
     expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
-  it("test_huge_retry_after_is_capped", async () => {
+  it("huge retry after is capped", async () => {
+    // python: test_huge_retry_after_is_capped
     const h = harness(
       [res(429, "", { "Retry-After": "86400" }), res(200, ["event1"])],
       { maxRetries: 2 },
@@ -361,7 +387,8 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
     expect(h.sleepsMs).toStrictEqual([60000]);
   });
 
-  it("test_garbage_retry_after_uses_backoff", async () => {
+  it("garbage retry after uses backoff", async () => {
+    // python: test_garbage_retry_after_uses_backoff
     const h = harness(
       [res(429, "", { "Retry-After": "soon" }), res(200, ["event1"])],
       { maxRetries: 2 },
@@ -370,7 +397,8 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
     expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
-  it("test_negative_retry_after_omitted_from_error", async () => {
+  it("negative retry after omitted from error", async () => {
+    // python: test_negative_retry_after_omitted_from_error
     const h = harness([res(429, "", { "Retry-After": "-5" })], {
       maxRetries: 0,
     });
@@ -380,7 +408,8 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
     expect(String(error)).not.toContain("Retry after");
   });
 
-  it("test_huge_retry_after_reported_verbatim_on_error", async () => {
+  it("huge retry after reported verbatim on error", async () => {
+    // python: test_huge_retry_after_reported_verbatim_on_error
     // The cap applies to sleeping, not to what the server said.
     const h = harness([res(429, "", { "Retry-After": "3600" })], {
       maxRetries: 0,
@@ -390,8 +419,10 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
   });
 });
 
-describe("TestBlankErrorBodyFallbacks", () => {
-  it("test_400_with_blank_text_body", async () => {
+describe("Blank error body fallbacks", () => {
+  // python: TestBlankErrorBodyFallbacks
+  it("400 with blank text body", async () => {
+    // python: test_400_with_blank_text_body
     const h = harness([res(400, " ".repeat(3))]);
     const error = (await run(h).catch(
       (error_: unknown) => error_,
@@ -400,7 +431,8 @@ describe("TestBlankErrorBodyFallbacks", () => {
     expect(error.message.trim()).toBe("Unknown error");
   });
 
-  it("test_400_with_blank_error_field", async () => {
+  it("400 with blank error field", async () => {
+    // python: test_400_with_blank_error_field
     const h = harness([res(400, { error: "" })]);
     const error = (await run(h).catch(
       (error_: unknown) => error_,
@@ -408,7 +440,8 @@ describe("TestBlankErrorBodyFallbacks", () => {
     expect(error.message).toBe("Unknown error");
   });
 
-  it("test_403_with_blank_error_field", async () => {
+  it("403 with blank error field", async () => {
+    // python: test_403_with_blank_error_field
     const h = harness([res(403, { error: "" })]);
     const error = (await run(h).catch(
       (error_: unknown) => error_,
@@ -417,7 +450,8 @@ describe("TestBlankErrorBodyFallbacks", () => {
     expect(error.message).toBe("Permission denied");
   });
 
-  it("test_404_with_blank_error_field", async () => {
+  it("404 with blank error field", async () => {
+    // python: test_404_with_blank_error_field
     const h = harness([res(404, { error: "" })]);
     const error = (await run(h).catch(
       (error_: unknown) => error_,
@@ -425,7 +459,8 @@ describe("TestBlankErrorBodyFallbacks", () => {
     expect(error.message).toBe("Resource not found");
   });
 
-  it("test_generic_4xx_with_blank_error_field", async () => {
+  it("generic 4xx with blank error field", async () => {
+    // python: test_generic_4xx_with_blank_error_field
     const h = harness([res(412, { error: "" })]);
     const error = (await run(h).catch(
       (error_: unknown) => error_,
@@ -433,7 +468,8 @@ describe("TestBlankErrorBodyFallbacks", () => {
     expect(error.message).toBe("Request failed");
   });
 
-  it("test_400_with_structured_error_value", async () => {
+  it("400 with structured error value", async () => {
+    // python: test_400_with_structured_error_value
     // A non-string `error` value is stringified, never leaked as a dict.
     const h = harness([res(400, { error: { code: "BAD_SEGMENT" } })]);
     const error = (await run(h).catch(
@@ -443,7 +479,8 @@ describe("TestBlankErrorBodyFallbacks", () => {
     expect(error.message).toContain("BAD_SEGMENT");
   });
 
-  it("test_500_with_blank_error_field", async () => {
+  it("500 with blank error field", async () => {
+    // python: test_500_with_blank_error_field
     const h = harness([res(500, { error: "" })]);
     const error = (await run(h).catch(
       (error_: unknown) => error_,
@@ -452,7 +489,8 @@ describe("TestBlankErrorBodyFallbacks", () => {
     expect(error.message).toBe("Server error: 500");
   });
 
-  it("test_400_message_preserved_when_present", async () => {
+  it("400 message preserved when present", async () => {
+    // python: test_400_message_preserved_when_present
     // A usable message passes through untouched (no stripping).
     const h = harness([res(400, { error: " boom " })]);
     const error = (await run(h).catch(
@@ -462,8 +500,10 @@ describe("TestBlankErrorBodyFallbacks", () => {
   });
 });
 
-describe("TestErrorContextSymmetry (execute_with_retry half)", () => {
-  it("test_401_carries_request_body", async () => {
+describe("Error context symmetry (execute_with_retry half)", () => {
+  // python: TestErrorContextSymmetry
+  it("401 carries request body", async () => {
+    // python: test_401_carries_request_body
     const h = harness([res(401, { error: "nope" })]);
     const error = (await run(h, {
       method: "POST",
@@ -477,14 +517,16 @@ describe("TestErrorContextSymmetry (execute_with_retry half)", () => {
   });
 });
 
-describe("TestSensitiveDataMapping (403 branch — R10.8 founding example)", () => {
+describe("Sensitive data mapping (403 branch — R10.8 founding example)", () => {
+  // python: TestSensitiveDataMapping
   const flagBody = {
     error:
       "Your project has sensitive replay data. Set " +
       "SESSION_RECORDING_SENSITIVE_DATA to access.",
   };
 
-  it("test_403_with_flag_raises_session_replay_access_error", async () => {
+  it("403 with flag raises session replay access error", async () => {
+    // python: test_403_with_flag_raises_session_replay_access_error
     const h = harness([res(403, flagBody)]);
     const error = (await run(h).catch(
       (error_: unknown) => error_,
@@ -497,7 +539,8 @@ describe("TestSensitiveDataMapping (403 branch — R10.8 founding example)", () 
     expect(error.details["permission_required"]).toBe("sensitive_data_replay");
   });
 
-  it("test_403_without_flag_passes_through_to_query_error", async () => {
+  it("403 without flag passes through to query error", async () => {
+    // python: test_403_without_flag_passes_through_to_query_error
     const h = harness([res(403, { error: "Permission denied" })]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
@@ -520,7 +563,8 @@ describe("TestSensitiveDataMapping (403 branch — R10.8 founding example)", () 
 // the old R10.7 element-membership / TypeError twins retired with the
 // Python-first fix (fix-of-record:
 // docs/history/phase3/bug-reports/python-handle-response-403-typeerror.md).
-describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
+describe("Sensitive data 403 body shapes (bug (c) fix)", () => {
+  // python: TestSensitiveData403BodyShapes
   it("403 LIST body: uniform SUBSTRING semantics (exact element AND substring match)", async () => {
     // Python post-FIX-2 serializes every non-str body for the sniff —
     // element-membership retired (test_api_client_sign_replays.py::
@@ -578,18 +622,22 @@ describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
   });
 });
 
-describe("TestOtherHttpErrors", () => {
-  it("test_400_raises_query_error", async () => {
+describe("Other HTTP errors", () => {
+  // python: TestOtherHttpErrors
+  it("400 raises query error", async () => {
+    // python: test_400_raises_query_error
     const h = harness([res(400, { error: "Bad request" })]);
     await expect(run(h)).rejects.toBeInstanceOf(QueryError);
   });
 
-  it("test_500_raises_server_error", async () => {
+  it("500 raises server error", async () => {
+    // python: test_500_raises_server_error
     const h = harness([res(500, { error: "Internal server error" })]);
     await expect(run(h)).rejects.toBeInstanceOf(ServerError);
   });
 
-  it("test_non_replay_403_is_not_session_replay_access_error", async () => {
+  it("non replay 403 is not session replay access error", async () => {
+    // python: test_non_replay_403_is_not_session_replay_access_error
     const h = harness([res(403, { error: "Generic permission denied" })]);
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(APIError);
