@@ -330,13 +330,19 @@ Commands (all root npm scripts; `scripts/README.md` lists them too):
 - `npm run docs:build` — the same, then `vitepress build docs` into
   `docs/.vitepress/dist/` (the site, `llms.txt`, `llms-full.txt`, and a
   Markdown twin next to every page); `npm run docs:preview` serves that.
-- The three VitePress aliases run Node with `--max-old-space-size=10240`:
-  the full site (24 pages, ~450 twoslash blocks) peaks at about 9 GB RSS
-  because every hover is compiled as a Vue component and Vite holds the
-  client, server and lean variants of each page at once; Node's default
-  heap (~4 GB) runs out during the bundle step. The twoslash results are
-  cached under `docs/.vitepress/cache/twoslash/` (keyed by snippet text),
-  which makes rebuilds faster but does not lower the peak.
+- The three VitePress aliases run Node with `--max-old-space-size=8192`.
+  Measured on the full site (24 pages, ~445 twoslash blocks): the build
+  fails under Node's default ~4 GB heap and under a 5 GB cap, and passes
+  at 6 GB (8.1 GB RSS); 8 GB is the headroom setting. The cost is not the
+  TypeScript work — a build that serves every block from the cache still
+  fails at 4 GB — but the hover markup: the floating-vue renderer emits a
+  Vue component per hover, so the big guide pages compile to ~3 MB render
+  functions whose client, server and lean variants Vite holds at once. The
+  static `rendererRich` from `@shikijs/twoslash` builds the same site in the
+  default heap (3.7 GB RSS, 2.6× faster) at the price of CSS-only hover
+  popups. Twoslash results are cached under
+  `docs/.vitepress/cache/twoslash/` (keyed by snippet text, so wipe it after
+  changing the compiler options); that makes rebuilds faster, not smaller.
 - `npm run docs:api` regenerates the reference; `npm run docs:api:check`
   validates it without writing (`--emit none --treatWarningsAsErrors`, with
   `notExported`, `invalidLink`, `notDocumented` and `rewrittenLink` on).
