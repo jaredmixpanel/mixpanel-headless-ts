@@ -33,8 +33,6 @@ import {
   parseAccount,
   parseOAuthTokens,
   pythonInt,
-  pythonStr,
-  type PythonValue,
   Secret,
   sortedByCodepoint,
 } from "@mixpanel-headless/core";
@@ -47,6 +45,7 @@ import {
   readCredentialText,
   rejectIfSymlink,
 } from "../io-utils.js";
+import { jsonPythonStr } from "./json-str.js";
 import {
   coerceLaxExpiresAt,
   pydanticJsonDatetimeText,
@@ -373,11 +372,9 @@ function readBrowserTokens(name: string): OAuthTokens {
     access_token: new Secret(accessToken),
     refresh_token: refreshToken,
     expires_at: expiresRaw,
-    // TODO(Ω): replace the `as PythonValue` casts with core `isPythonValue` once internal.ts exports it (frozen during Phase 6).
-    // JSON-decoded values are inside the PythonValue domain by
-    // construction (the cast is a typing formality).
-    scope: pythonStr((record["scope"] ?? "") as PythonValue),
-    token_type: pythonStr((record["token_type"] ?? "Bearer") as PythonValue),
+    // Python `str()` over the decoded members, defaults as in the reader.
+    scope: jsonPythonStr(record["scope"] ?? "", "scope"),
+    token_type: jsonPythonStr(record["token_type"] ?? "Bearer", "token_type"),
   });
 }
 

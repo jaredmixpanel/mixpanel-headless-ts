@@ -54,7 +54,6 @@ import { createInterface } from "node:readline";
 import {
   buildAuthorizeUrl,
   type CallbackResult,
-  OAUTH_BASE_URLS,
   type OAuthClientInfo,
   OAuthError,
   type OAuthTokens,
@@ -62,6 +61,7 @@ import {
   PkceChallenge,
   postTokenRequest,
 } from "@mixpanel-headless/core";
+import { requireOAuthBaseUrl } from "@mixpanel-headless/core/internal";
 
 import { errorMessage } from "../errors.js";
 import {
@@ -310,7 +310,7 @@ export class OAuthFlow {
   /** Epoch-ms clock. */
   readonly #now: () => number;
 
-  /** Region base URL (`OAUTH_BASE_URLS[region]`). */
+  /** Region base URL (`requireOAuthBaseUrl(region)`). */
   readonly #baseUrl: string;
 
   /** Browser-launch effect (login half). */
@@ -344,22 +344,12 @@ export class OAuthFlow {
    */
   constructor(options: OAuthFlowOptions = {}) {
     const region = options.region ?? "us";
-    // TODO(Ω): replace this gate + the `#baseUrl` read with core `requireOAuthBaseUrl(region)` once internal.ts exports it (frozen during Phase 6).
-    if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
-      throw new OAuthError(
-        `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(
-          OAUTH_BASE_URLS,
-        )
-          .sort()
-          .join(", ")}`,
-        "OAUTH_CONFIG_ERROR",
-      );
-    }
+    // The region gate runs before any other wiring, as in Python.
+    this.#baseUrl = requireOAuthBaseUrl(region);
     this.#region = region;
     this.#storage = options.storage ?? new OAuthStorage();
     this.#fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.#now = options.now ?? Date.now;
-    this.#baseUrl = OAUTH_BASE_URLS[region] as string;
     this.#openBrowser = options.openBrowser ?? defaultOpenBrowser;
     this.#startCallbackServer =
       options.startCallbackServer ?? startCallbackServer;

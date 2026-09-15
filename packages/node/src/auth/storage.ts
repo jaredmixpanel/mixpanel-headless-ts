@@ -43,8 +43,6 @@ import {
   OAuthTokens,
   ParamValidationError,
   parseOAuthClientInfo,
-  pythonStr,
-  type PythonValue,
   Secret,
 } from "@mixpanel-headless/core";
 
@@ -54,6 +52,7 @@ import {
   readCredentialText,
   rejectIfSymlink,
 } from "../io-utils.js";
+import { jsonPythonStr } from "./json-str.js";
 import {
   coerceLaxExpiresAt,
   pydanticJsonDatetimeText,
@@ -443,22 +442,20 @@ export class OAuthStorage {
       const refreshToken =
         rawRefresh === null || rawRefresh === undefined
           ? null
-          : new Secret(pythonStr(rawRefresh as PythonValue));
+          : new Secret(jsonPythonStr(rawRefresh, "refresh_token"));
       const expiresAt = coerceLaxExpiresAt(data["expires_at"]);
       if (!Object.hasOwn(data, "scope") || !Object.hasOwn(data, "token_type")) {
         throw new ParamValidationError("missing scope/token_type");
       }
       return new OAuthTokens({
-        // TODO(Ω): replace the `as PythonValue` casts with core `isPythonValue` once internal.ts exports it (frozen during Phase 6).
-        // JSON-decoded values are PythonValue by construction (the
-        // `str()` coercion mirror of `storage.py:511-517`).
+        // The `str()` coercion mirror of `storage.py:511-517`.
         access_token: new Secret(
-          pythonStr(data["access_token"] as PythonValue),
+          jsonPythonStr(data["access_token"], "access_token"),
         ),
         refresh_token: refreshToken,
         expires_at: expiresAt,
-        scope: pythonStr(data["scope"] as PythonValue),
-        token_type: pythonStr(data["token_type"] as PythonValue),
+        scope: jsonPythonStr(data["scope"], "scope"),
+        token_type: jsonPythonStr(data["token_type"], "token_type"),
       });
     } catch (error) {
       if (
