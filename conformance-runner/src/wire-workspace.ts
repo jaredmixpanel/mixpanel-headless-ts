@@ -467,6 +467,7 @@ export async function runFacade(
  *   recorder guarantees the kwarg names — a bad bag is a vector bug and
  *   surfaces as the member's own validation error).
  */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- a deliberate cast-in-disguise: the return-only T names the member's option type at each of the ~66 binding sites
 export function optionsBag<T>(
   context: InvocationContext,
   positionals: readonly string[],

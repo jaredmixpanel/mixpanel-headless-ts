@@ -1296,7 +1296,7 @@ export function createMixpanelClient(
         getCustomHeaderEnv,
         endpointOverrides: endpointOverridesSource,
       });
-      if (newWorkspaceId !== null && newWorkspaceId !== undefined) {
+      if (newWorkspaceId !== null) {
         newClient.setWorkspaceId(newWorkspaceId);
       }
       return newClient;

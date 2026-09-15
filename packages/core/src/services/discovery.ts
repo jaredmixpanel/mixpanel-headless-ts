@@ -155,6 +155,7 @@ function dictIndex(
  * @param value - The raw API value.
  * @returns The same value at the declared field type.
  */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- a deliberate cast-in-disguise: T is inferred from the declared field type at each call site (see the docstring)
 function passthrough<T>(value: unknown): T {
   return value as T;
 }

@@ -134,7 +134,9 @@ describe("TestProfileExport", () => {
     );
     expect(capturedBody["filter_by_cohort"]).toBe('{"id": "cohort_abc"}');
     expect(
-      JSON.parse((capturedBody["output_properties"] as string) ?? "[]"),
+      JSON.parse(
+        (capturedBody["output_properties"] as string | undefined) ?? "[]",
+      ),
     ).toEqual(["$email"]);
   });
 
@@ -237,7 +239,7 @@ describe("TestEngageParameterEdgeCases", () => {
       }),
     );
     const sentIds = JSON.parse(
-      (capturedBody["distinct_ids"] as string) ?? "[]",
+      (capturedBody["distinct_ids"] as string | undefined) ?? "[]",
     ) as string[];
     expect(sentIds).toHaveLength(3);
     expect(new Set(sentIds)).toEqual(new Set(["user_1", "user_2", "user_3"]));
@@ -314,7 +316,7 @@ describe("TestEngageDistinctIdParameter", () => {
       client.exportProfiles({ distinct_ids: ["user_1", "user_2"] }),
     );
     const sentIds = JSON.parse(
-      (capturedBody["distinct_ids"] as string) ?? "[]",
+      (capturedBody["distinct_ids"] as string | undefined) ?? "[]",
     ) as string[];
     expect(new Set(sentIds)).toEqual(new Set(["user_1", "user_2"]));
     expect(profiles).toHaveLength(2);

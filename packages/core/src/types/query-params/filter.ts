@@ -81,7 +81,10 @@ export class PropertyInput {
     // #3: `{ property: "x" }` typo) previously crashed lazily inside
     // `pythonStrip` at first use. Missing-field check only — Python
     // dataclasses do not type-check values, so neither does this.
-    if (fields?.name === undefined) {
+    // Widened on purpose (an `as`, since a typed `const` would narrow
+    // straight back): the guard exists for callers outside the type.
+    const raw = fields as { readonly name?: string } | undefined;
+    if (raw?.name === undefined) {
       throw new TypeError(
         "PropertyInput.__init__() missing 1 required positional argument: 'name'",
       );
@@ -1408,7 +1411,8 @@ export class Filter {
       > | null;
     },
   ): Filter {
-    const quantifier = options?.quantifier ?? "any";
+    // `string` on purpose: LC4 below is a runtime guard for untyped callers.
+    const quantifier: string = options?.quantifier ?? "any";
     const resourceType = options?.resource_type ?? "events";
     const equalsEntries = Object.entries(options?.equals ?? {});
     // LC3_MIXED_ARGS: positional inner filters XOR keyword shorthand.

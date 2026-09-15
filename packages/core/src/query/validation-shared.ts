@@ -1309,7 +1309,7 @@ export function _scanCustomProperties(
   }
 
   // Scan events (Metric.property AND Metric.filters)
-  if (events !== null && events !== undefined) {
+  if (events !== null) {
     for (const [idx, item] of events.entries()) {
       if (!(item instanceof Metric)) {
         continue;
@@ -1335,7 +1335,7 @@ export function _scanCustomProperties(
   }
 
   // Scan funnel steps (FunnelStep.filters) — instanceof-gated in source
-  if (funnel_steps !== null && funnel_steps !== undefined) {
+  if (funnel_steps !== null) {
     for (const [idx, step] of funnel_steps.entries()) {
       if (
         step instanceof FunnelStep &&
@@ -1353,7 +1353,7 @@ export function _scanCustomProperties(
   }
 
   // Scan flow steps (FlowStep.filters)
-  if (flow_steps !== null && flow_steps !== undefined) {
+  if (flow_steps !== null) {
     for (const [idx, flow_step] of flow_steps.entries()) {
       const fstep = flow_step;
       if (fstep.filters !== null && fstep.filters.length > 0) {
@@ -1369,7 +1369,7 @@ export function _scanCustomProperties(
 
   // Scan retention events (RetentionEvent.filters)
   // retention_events is always [born_event, return_event]
-  if (retention_events !== null && retention_events !== undefined) {
+  if (retention_events !== null) {
     for (const [idx, retention_event] of retention_events.entries()) {
       const rev = retention_event;
       if (rev.filters !== null && rev.filters.length > 0) {

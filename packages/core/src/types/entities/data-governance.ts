@@ -473,7 +473,7 @@ export interface UpdateDropFilterParamsInit {
   /** New event name. */
   readonly event_name?: string | null | undefined;
   /** New filter condition JSON. */
-  readonly filters?: unknown | null | undefined;
+  readonly filters?: unknown;
   /** Whether the filter is active. */
   readonly active?: boolean | null | undefined;
 }
@@ -504,7 +504,7 @@ export class UpdateDropFilterParams extends EntityModel {
   /** New event name. */
   declare readonly event_name: string | null;
   /** New filter condition JSON. */
-  declare readonly filters: unknown | null;
+  declare readonly filters: unknown;
   /** Whether the filter is active. */
   declare readonly active: boolean | null;
 
@@ -627,7 +627,7 @@ export interface ComposedPropertyValueInit {
   readonly property_default_type?:
     "string" | "number" | "boolean" | "datetime" | null | undefined;
   /** Behavior specification. */
-  readonly behavior?: unknown | null | undefined;
+  readonly behavior?: unknown;
   /** Join property type. */
   readonly join_property_type?: string | null | undefined;
 }
@@ -695,7 +695,7 @@ export class ComposedPropertyValue extends EntityModel {
   declare readonly property_default_type:
     "string" | "number" | "boolean" | "datetime" | null;
   /** Behavior specification. */
-  declare readonly behavior: unknown | null;
+  declare readonly behavior: unknown;
   /** Join property type. */
   declare readonly join_property_type: string | null;
 
@@ -950,7 +950,7 @@ export interface CreateCustomPropertyParamsInit {
   /** Data group identifier. */
   readonly data_group_id?: string | null | undefined;
   /** Behavior specification (mutually exclusive with display_formula). */
-  readonly behavior?: unknown | null | undefined;
+  readonly behavior?: unknown;
 }
 
 /**
@@ -1054,7 +1054,7 @@ export class CreateCustomPropertyParams extends EntityModel {
   /** Data group identifier. */
   declare readonly data_group_id: string | null;
   /** Behavior specification (mutually exclusive with display_formula). */
-  declare readonly behavior: unknown | null;
+  declare readonly behavior: unknown;
 
   /**
    * Construct a validated CreateCustomPropertyParams (Pydantic-construction mirror).

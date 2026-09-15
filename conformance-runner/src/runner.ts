@@ -95,9 +95,7 @@ export interface InvocationContext {
 }
 
 /** A bound TS entry point: invoked with the context, returns the output. */
-export type Implementation = (
-  context: InvocationContext,
-) => unknown | Promise<unknown>;
+export type Implementation = (context: InvocationContext) => unknown;
 
 /**
  * Thrown errors that carry their own vector `expect.error` encoding.

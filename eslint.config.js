@@ -879,31 +879,6 @@ const config = defineConfig([
   // configuration lives above, so landing a lane is "delete the block".
   // -------------------------------------------------------------------------
 
-  // --- Phase 4 lane L2: unnecessary conditions / types — pending; delete this block when the lane lands ---
-  ...lane("L2", {
-    // no-unnecessary-type-assertion's fixer leaves the cast's type import
-    // unused and no-confusing-void-expression's breaks `(): unknown =>`
-    // arrows, so both are applied in this lane (`MP_LINT_UNPARK=L2
-    // eslint --fix`) with the fallout fixed by hand, not mechanically.
-    rules: {
-      "@typescript-eslint/no-unnecessary-condition": "off",
-      "@typescript-eslint/prefer-nullish-coalescing": "off",
-      "@typescript-eslint/no-redundant-type-constituents": "off",
-      "@typescript-eslint/no-unnecessary-type-parameters": "off",
-      "@typescript-eslint/prefer-optional-chain": "off",
-      "@typescript-eslint/no-unnecessary-type-assertion": "off",
-      "@typescript-eslint/no-confusing-void-expression": "off",
-      "@typescript-eslint/prefer-find": "off",
-      // Its fixer (`x as T` → `x!`) produces `a?.b!`, which
-      // no-non-null-asserted-optional-chain then rejects — apply by hand.
-      "@typescript-eslint/non-nullable-type-assertion-style": "off",
-      "unicorn/prefer-else-if": "off",
-      "unicorn/prefer-logical-operator-over-ternary": "off",
-      "unicorn/prefer-minimal-ternary": "off",
-      "unicorn/no-duplicate-if-branches": "off",
-    },
-  }),
-
   // --- Phase 4 lane L3: exhaustiveness, throw/async hygiene, misc — pending; delete this block when the lane lands ---
   ...lane("L3", {
     rules: {

@@ -364,7 +364,12 @@ function stringifyOrdered(value: unknown, depth: number): string {
       depth,
     );
   }
-  return JSON.stringify(value === undefined ? null : value) ?? "null";
+  // lib.d.ts types `JSON.stringify` as `string`, but functions/symbols
+  // really do come back `undefined` at runtime (an `as`, since a typed
+  // `const` would narrow straight back).
+  const text = JSON.stringify(value === undefined ? null : value) as
+    string | undefined;
+  return text ?? "null";
 }
 
 /**

@@ -123,6 +123,6 @@ export function pythonFloatCoerce(value: unknown): number {
   }
   throw new TypeError(
     "float() argument must be a string or a real number, not " +
-      `'${value.constructor?.name ?? "object"}'`,
+      `'${(value as { constructor?: { name?: string } }).constructor?.name ?? "object"}'`,
   );
 }

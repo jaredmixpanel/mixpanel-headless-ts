@@ -203,14 +203,12 @@ export function resolveProjectForLogin(
 
   const sortKey = (info: MeProjectInfo): readonly [string, string] => {
     const org = me.organizations.get(String(info.organization_id));
-    // TODO(port): a null org NAME would raise AttributeError in Python
-    // (`org.name.lower()` via the tuple key) — unreachable in practice
-    // (/me org names are strings); the TS twin folds null to "".
+    // Org and project names are required `str` fields of the /me models
+    // (the parser rejects null before this runs), so `.toLowerCase()`
+    // is total here, as `.lower()` is in Python.
     const orgName =
-      org === undefined
-        ? `~org ${String(info.organization_id)}`
-        : (org.name ?? "");
-    return [orgName.toLowerCase(), (info.name ?? "").toLowerCase()];
+      org === undefined ? `~org ${String(info.organization_id)}` : org.name;
+    return [orgName.toLowerCase(), info.name.toLowerCase()];
   };
   // Stable sort over insertion-order entries: picker-list tie order
   // for case-folded (org, name) collisions now matches Python's

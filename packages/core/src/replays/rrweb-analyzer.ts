@@ -689,11 +689,7 @@ export class DOMTracker {
       const parentDesc =
         this.descriptionCache.get(parentId) ??
         this.buildNodeDescription(parentId);
-      if (
-        parentDesc !== null &&
-        parentDesc !== undefined &&
-        parentDesc !== ""
-      ) {
+      if (parentDesc !== null && parentDesc !== "") {
         return `${tag} in ${parentDesc}`;
       }
 

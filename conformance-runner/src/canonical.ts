@@ -214,7 +214,11 @@ function serializeArray(value: JsonValue[], context: Context): string {
       ? { operand: "element", operandActive: false }
       : PLAIN_CONTEXT;
   const parts: string[] = [];
-  for (const element of value) {
+  // Widened on purpose: live outputs from the library under test are
+  // untyped, and a stray `undefined` must fail loudly here rather than
+  // serialize as the token `undefined` and surface as a puzzling diff.
+  const elements: ReadonlyArray<JsonValue | undefined> = value;
+  for (const element of elements) {
     if (element === undefined) {
       throw new CanonicalizationError("array elements must not be undefined");
     }
