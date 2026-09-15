@@ -27,8 +27,8 @@
  */
 
 import { pythonStr, type PythonValue } from "../compat/python-str.js";
-import type { UserAction } from "../types/results/replays.js";
 import { pyTruthy } from "../types/results/result-base.js";
+import type { UserAction } from "./user-action.js";
 
 /**
  * Numeric path segments — IDs, version numbers, year/month/day pieces —

@@ -55,6 +55,8 @@ export function decodeFail(
   );
 }
 
+// TODO(Ω): `describeValue` duplicates `types/entities/model-base.ts`; fold
+// both into Lane D's `types/entities/decode-utils.ts` once it lands.
 /**
  * Describe a value's JSON kind for strict-decode error messages.
  *

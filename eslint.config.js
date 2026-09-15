@@ -712,6 +712,7 @@ const config = defineConfig([
       "packages/core/src/client/pagination.ts",
       "packages/core/src/replays/aggregators.ts",
       "packages/core/src/replays/rrweb-analyzer.ts",
+      "packages/core/src/replays/user-action.ts",
       "packages/core/src/report-links.ts",
       "packages/browser/src/redirect-flow.ts",
     ],

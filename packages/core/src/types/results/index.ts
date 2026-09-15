@@ -11,6 +11,10 @@
  */
 
 export {
+  UserAction,
+  type UserActionFields,
+} from "../../replays/user-action.js";
+export {
   BookmarkInfo,
   type BookmarkInfoFields,
   FunnelInfo,
@@ -34,6 +38,7 @@ export {
   TopEvent,
   type TopEventFields,
 } from "./discovery.js";
+export { FlowTreeNode, type FlowTreeNodeFields } from "./flow-tree.js";
 export {
   ActivityFeedResult,
   type ActivityFeedResultFields,
@@ -69,8 +74,6 @@ export {
 export {
   FlowQueryResult,
   type FlowQueryResultFields,
-  FlowTreeNode,
-  type FlowTreeNodeFields,
   FunnelQueryResult,
   type FunnelQueryResultFields,
   QueryResult,
@@ -83,8 +86,6 @@ export {
 } from "./query-engine.js";
 export {
   Replay,
-  ReplayBundle,
-  type ReplayBundleFields,
   ReplayEvent,
   type ReplayEventFields,
   type ReplayFields,
@@ -92,9 +93,8 @@ export {
   type ReplaySummaryFields,
   SignedReplay,
   type SignedReplayFields,
-  UserAction,
-  type UserActionFields,
-} from "./replays.js";
+} from "./replay-models.js";
+export { ReplayBundle, type ReplayBundleFields } from "./replays.js";
 export type {
   FlowEdge,
   FlowStepNode,

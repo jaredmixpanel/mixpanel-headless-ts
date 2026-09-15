@@ -31,18 +31,24 @@ import {
   type FilterOperatorInput,
   type FilterPropertyType,
 } from "../literals.js";
-// Runtime import cycle note: cohort.ts imports Filter for its selector
-// builders and filter.ts imports sanitizeRawCohort for inline-definition
-// cohort filters. Both modules only USE the other's bindings inside
-// function bodies (never during module evaluation), which ESM live
-// bindings resolve safely.
-import { type CohortDefinition, sanitizeRawCohort } from "./cohort.js";
 import {
   isPyIntOrBool,
   isRealCalendarDate,
   matchesDateFormat,
+  sanitizeRawCohort,
   validateCohortArgs,
 } from "./guards.js";
+
+/**
+ * The inline-cohort argument of {@link Filter.inCohort} /
+ * {@link Filter.notInCohort}: the `toDict()` half of `CohortDefinition`,
+ * stated structurally so this module does not import `cohort.ts`
+ * (which imports `Filter` for its `instanceof` checks).
+ */
+export interface CohortDefinitionLike {
+  /** Serialize to the raw cohort definition dict. */
+  readonly toDict: () => Record<string, unknown>;
+}
 
 /**
  * A raw property reference mapping a formula variable to a named
@@ -998,7 +1004,7 @@ export class Filter {
    *   is empty while provided.
    */
   static inCohort(
-    cohort: number | CohortDefinition,
+    cohort: number | CohortDefinitionLike,
     name?: string | null,
   ): Filter {
     return Filter.buildCohortFilter(cohort, name ?? null, false);
@@ -1016,7 +1022,7 @@ export class Filter {
    *   is empty while provided.
    */
   static notInCohort(
-    cohort: number | CohortDefinition,
+    cohort: number | CohortDefinitionLike,
     name?: string | null,
   ): Filter {
     return Filter.buildCohortFilter(cohort, name ?? null, true);
@@ -1033,7 +1039,7 @@ export class Filter {
    * @throws ParamValidationError - On CF1/CF2 violations.
    */
   private static buildCohortFilter(
-    cohort: number | CohortDefinition,
+    cohort: number | CohortDefinitionLike,
     name: string | null,
     negated: boolean,
   ): Filter {
