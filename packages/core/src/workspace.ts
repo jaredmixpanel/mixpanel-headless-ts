@@ -264,201 +264,63 @@ import {
   type ReplaySummary,
   type SignedReplay,
 } from "./types/results/replays.js";
-import {
-  bulkDeleteAlerts as bulkDeleteAlertsMember,
-  createAlert as createAlertMember,
-  createAnnotation as createAnnotationMember,
-  createAnnotationTag as createAnnotationTagMember,
-  createWebhook as createWebhookMember,
-  deleteAlert as deleteAlertMember,
-  deleteAnnotation as deleteAnnotationMember,
-  deleteWebhook as deleteWebhookMember,
-  getAlert as getAlertMember,
-  getAlertCount as getAlertCountMember,
-  getAlertHistory as getAlertHistoryMember,
-  getAlertScreenshotUrl as getAlertScreenshotUrlMember,
-  getAnnotation as getAnnotationMember,
-  listAlerts as listAlertsMember,
-  listAnnotations as listAnnotationsMember,
-  listAnnotationTags as listAnnotationTagsMember,
-  listWebhooks as listWebhooksMember,
-  testAlert as testAlertMember,
-  testWebhook as testWebhookMember,
-  updateAlert as updateAlertMember,
-  updateAnnotation as updateAnnotationMember,
-  updateWebhook as updateWebhookMember,
-  validateAlertsForBookmark as validateAlertsForBookmarkMember,
-  type WorkspaceGetAlertCountOptions,
-  type WorkspaceGetAlertHistoryOptions,
-  type WorkspaceListAlertsOptions,
-  type WorkspaceListAnnotationsOptions,
+import type {
+  WorkspaceGetAlertCountOptions,
+  WorkspaceGetAlertHistoryOptions,
+  WorkspaceListAlertsOptions,
+  WorkspaceListAnnotationsOptions,
 } from "./workspace-members/annotations-webhooks-alerts.js";
+import * as annotationsWebhooksAlerts from "./workspace-members/annotations-webhooks-alerts.js";
+import * as bookmarksCohorts from "./workspace-members/bookmarks-cohorts.js";
 import {
-  bookmarkLinkedDashboardIds as bookmarkLinkedDashboardIdsMember,
-  bulkDeleteBookmarks as bulkDeleteBookmarksMember,
-  bulkDeleteCohorts as bulkDeleteCohortsMember,
-  bulkUpdateBookmarks as bulkUpdateBookmarksMember,
-  bulkUpdateCohorts as bulkUpdateCohortsMember,
-  createBookmark as createBookmarkMember,
-  createCohort as createCohortMember,
-  deleteBookmark as deleteBookmarkMember,
-  deleteCohort as deleteCohortMember,
-  getBookmark as getBookmarkMember,
-  getBookmarkHistory as getBookmarkHistoryMember,
-  getCohort as getCohortMember,
-  listBookmarksV2 as listBookmarksV2Member,
-  listCohortsFull as listCohortsFullMember,
-  updateBookmark as updateBookmarkMember,
-  updateCohort as updateCohortMember,
   validateBookmarkParamsSchema,
   type WorkspaceGetBookmarkHistoryOptions,
   type WorkspaceListBookmarksV2Options,
   type WorkspaceListCohortsFullOptions,
 } from "./workspace-members/bookmarks-cohorts.js";
-import {
-  addReportToDashboard as addReportToDashboardMember,
-  bulkDeleteDashboards as bulkDeleteDashboardsMember,
-  createBlueprint as createBlueprintMember,
-  createDashboard as createDashboardMember,
-  createRcaDashboard as createRcaDashboardMember,
-  deleteDashboard as deleteDashboardMember,
-  favoriteDashboard as favoriteDashboardMember,
-  finalizeBlueprint as finalizeBlueprintMember,
-  getBlueprintConfig as getBlueprintConfigMember,
-  getBookmarkDashboardIds as getBookmarkDashboardIdsMember,
-  getDashboard as getDashboardMember,
-  getDashboardErf as getDashboardErfMember,
-  listBlueprintTemplates as listBlueprintTemplatesMember,
-  listDashboards as listDashboardsMember,
-  pinDashboard as pinDashboardMember,
-  removeReportFromDashboard as removeReportFromDashboardMember,
-  unfavoriteDashboard as unfavoriteDashboardMember,
-  unpinDashboard as unpinDashboardMember,
-  updateBlueprintCohorts as updateBlueprintCohortsMember,
-  updateDashboard as updateDashboardMember,
-  updateReportLink as updateReportLinkMember,
-  updateTextCard as updateTextCardMember,
-  type WorkspaceListBlueprintTemplatesOptions,
-  type WorkspaceListDashboardsOptions,
+import type {
+  WorkspaceListBlueprintTemplatesOptions,
+  WorkspaceListDashboardsOptions,
 } from "./workspace-members/dashboards.js";
-import {
-  archiveExperiment as archiveExperimentMember,
-  archiveFeatureFlag as archiveFeatureFlagMember,
-  concludeExperiment as concludeExperimentMember,
-  createExperiment as createExperimentMember,
-  createFeatureFlag as createFeatureFlagMember,
-  decideExperiment as decideExperimentMember,
-  deleteExperiment as deleteExperimentMember,
-  deleteFeatureFlag as deleteFeatureFlagMember,
-  duplicateExperiment as duplicateExperimentMember,
-  duplicateFeatureFlag as duplicateFeatureFlagMember,
-  getExperiment as getExperimentMember,
-  getFeatureFlag as getFeatureFlagMember,
-  getFlagHistory as getFlagHistoryMember,
-  getFlagLimits as getFlagLimitsMember,
-  launchExperiment as launchExperimentMember,
-  listErfExperiments as listErfExperimentsMember,
-  listExperiments as listExperimentsMember,
-  listFeatureFlags as listFeatureFlagsMember,
-  restoreExperiment as restoreExperimentMember,
-  restoreFeatureFlag as restoreFeatureFlagMember,
-  setFlagTestUsers as setFlagTestUsersMember,
-  updateExperiment as updateExperimentMember,
-  updateFeatureFlag as updateFeatureFlagMember,
-  type WorkspaceConcludeExperimentOptions,
-  type WorkspaceGetFlagHistoryOptions,
-  type WorkspaceListExperimentsOptions,
-  type WorkspaceListFeatureFlagsOptions,
+import * as dashboards from "./workspace-members/dashboards.js";
+import type {
+  WorkspaceConcludeExperimentOptions,
+  WorkspaceGetFlagHistoryOptions,
+  WorkspaceListExperimentsOptions,
+  WorkspaceListFeatureFlagsOptions,
 } from "./workspace-members/flags-experiments.js";
+import * as flagsExperiments from "./workspace-members/flags-experiments.js";
+import * as governanceData from "./workspace-members/governance-data.js";
 import {
-  createCustomEvent as createCustomEventMember,
-  createCustomProperty as createCustomPropertyMember,
-  createDropFilter as createDropFilterMember,
   defaultMonotonic,
-  deleteCustomEvent as deleteCustomEventMember,
-  deleteCustomProperty as deleteCustomPropertyMember,
-  deleteDropFilter as deleteDropFilterMember,
-  deleteLookupTables as deleteLookupTablesMember,
-  downloadLookupTable as downloadLookupTableMember,
-  getCustomProperty as getCustomPropertyMember,
-  getDropFilterLimits as getDropFilterLimitsMember,
-  getLookupDownloadUrl as getLookupDownloadUrlMember,
-  getLookupUploadStatus as getLookupUploadStatusMember,
-  getLookupUploadUrl as getLookupUploadUrlMember,
-  listCustomEvents as listCustomEventsMember,
-  listCustomProperties as listCustomPropertiesMember,
-  listDropFilters as listDropFiltersMember,
-  listLookupTables as listLookupTablesMember,
   type LookupUploadSeams,
-  markLookupTableReady as markLookupTableReadyMember,
   unportedReadFile,
-  updateCustomEvent as updateCustomEventMember,
-  updateCustomProperty as updateCustomPropertyMember,
-  updateDropFilter as updateDropFilterMember,
-  updateLookupTable as updateLookupTableMember,
-  uploadLookupTable as uploadLookupTableMember,
-  validateCustomProperty as validateCustomPropertyMember,
   type WorkspaceDownloadLookupTableOptions,
   type WorkspaceListLookupTablesOptions,
   type WorkspaceUploadLookupTableOptions,
 } from "./workspace-members/governance-data.js";
-import {
-  bulkUpdateEventDefinitions as bulkUpdateEventDefinitionsMember,
-  bulkUpdatePropertyDefinitions as bulkUpdatePropertyDefinitionsMember,
-  createLexiconTag as createLexiconTagMember,
-  deleteEventDefinition as deleteEventDefinitionMember,
-  deleteLexiconTag as deleteLexiconTagMember,
-  exportLexicon as exportLexiconMember,
-  getEventDefinitions as getEventDefinitionsMember,
-  getEventHistory as getEventHistoryMember,
-  getPropertyDefinitions as getPropertyDefinitionsMember,
-  getPropertyHistory as getPropertyHistoryMember,
-  getTrackingMetadata as getTrackingMetadataMember,
-  listLexiconTags as listLexiconTagsMember,
-  updateEventDefinition as updateEventDefinitionMember,
-  updateLexiconTag as updateLexiconTagMember,
-  updatePropertyDefinition as updatePropertyDefinitionMember,
-  type WorkspaceExportLexiconOptions,
-  type WorkspaceGetEventDefinitionsOptions,
-  type WorkspaceGetPropertyDefinitionsOptions,
+import type {
+  WorkspaceExportLexiconOptions,
+  WorkspaceGetEventDefinitionsOptions,
+  WorkspaceGetPropertyDefinitionsOptions,
 } from "./workspace-members/lexicon-tracking.js";
+import * as lexiconTracking from "./workspace-members/lexicon-tracking.js";
+import * as lifecycle from "./workspace-members/lifecycle.js";
 import {
   type BusinessContextHost,
   type BusinessContextScopeOptions,
-  getBusinessContext as getBusinessContextMember,
-  getBusinessContextChain as getBusinessContextChainMember,
   guardTargetExclusivity,
   mergeResolverSeams,
   noProjectError,
   type ResolverSeams,
-  setBusinessContext as setBusinessContextMember,
 } from "./workspace-members/lifecycle.js";
-import {
-  bulkUpdateAnomalies as bulkUpdateAnomaliesMember,
-  cancelDeletionRequest as cancelDeletionRequestMember,
-  createDeletionRequest as createDeletionRequestMember,
-  createSchema as createSchemaMember,
-  createSchemasBulk as createSchemasBulkMember,
-  deleteSchemaEnforcement as deleteSchemaEnforcementMember,
-  deleteSchemas as deleteSchemasMember,
-  getSchemaEnforcement as getSchemaEnforcementMember,
-  initSchemaEnforcement as initSchemaEnforcementMember,
-  listDataVolumeAnomalies as listDataVolumeAnomaliesMember,
-  listDeletionRequests as listDeletionRequestsMember,
-  listSchemaRegistry as listSchemaRegistryMember,
-  previewDeletionFilters as previewDeletionFiltersMember,
-  replaceSchemaEnforcement as replaceSchemaEnforcementMember,
-  runAudit as runAuditMember,
-  runAuditEventsOnly as runAuditEventsOnlyMember,
-  updateAnomaly as updateAnomalyMember,
-  updateSchema as updateSchemaMember,
-  updateSchemaEnforcement as updateSchemaEnforcementMember,
-  updateSchemasBulk as updateSchemasBulkMember,
-  type WorkspaceDeleteSchemasOptions,
-  type WorkspaceGetSchemaEnforcementOptions,
-  type WorkspaceListDataVolumeAnomaliesOptions,
-  type WorkspaceListSchemaRegistryOptions,
+import type {
+  WorkspaceDeleteSchemasOptions,
+  WorkspaceGetSchemaEnforcementOptions,
+  WorkspaceListDataVolumeAnomaliesOptions,
+  WorkspaceListSchemaRegistryOptions,
 } from "./workspace-members/schemas-audit.js";
+import * as schemasAudit from "./workspace-members/schemas-audit.js";
 import { requireEntityId, requireInt64Id } from "./workspace-members/shared.js";
 import {
   buildPageKwargs,
@@ -3753,7 +3615,7 @@ export class Workspace {
   async getBusinessContext(
     options: BusinessContextScopeOptions = {},
   ): Promise<BusinessContext> {
-    return getBusinessContextMember(this.#businessContextHost(), options);
+    return lifecycle.getBusinessContext(this.#businessContextHost(), options);
   }
 
   /**
@@ -3771,7 +3633,7 @@ export class Workspace {
     content: string,
     options: BusinessContextScopeOptions = {},
   ): Promise<BusinessContext> {
-    return setBusinessContextMember(
+    return lifecycle.setBusinessContext(
       this.#businessContextHost(),
       content,
       options,
@@ -3804,7 +3666,7 @@ export class Workspace {
    *   `project_context`.
    */
   async getBusinessContextChain(): Promise<BusinessContextChain> {
-    return getBusinessContextChainMember(this.#businessContextHost());
+    return lifecycle.getBusinessContextChain(this.#businessContextHost());
   }
 
   /**
@@ -3850,7 +3712,7 @@ export class Workspace {
   async listDashboards(
     options: WorkspaceListDashboardsOptions = {},
   ): Promise<Dashboard[]> {
-    return listDashboardsMember(this.client, options);
+    return dashboards.listDashboards(this.client, options);
   }
 
   /**
@@ -3863,7 +3725,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createDashboard(params: CreateDashboardParams): Promise<Dashboard> {
-    return createDashboardMember(this.client, params);
+    return dashboards.createDashboard(this.client, params);
   }
 
   /**
@@ -3879,7 +3741,7 @@ export class Workspace {
    */
   async getDashboard(dashboardId: number): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
-    return getDashboardMember(this.client, dashboardId);
+    return dashboards.getDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3899,7 +3761,7 @@ export class Workspace {
     params: UpdateDashboardParams,
   ): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
-    return updateDashboardMember(this.client, dashboardId, params);
+    return dashboards.updateDashboard(this.client, dashboardId, params);
   }
 
   /**
@@ -3915,7 +3777,7 @@ export class Workspace {
    */
   async deleteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return deleteDashboardMember(this.client, dashboardId);
+    return dashboards.deleteDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3926,7 +3788,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async bulkDeleteDashboards(ids: readonly number[]): Promise<void> {
-    return bulkDeleteDashboardsMember(this.client, ids);
+    return dashboards.bulkDeleteDashboards(this.client, ids);
   }
 
   /**
@@ -3940,7 +3802,7 @@ export class Workspace {
    */
   async favoriteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return favoriteDashboardMember(this.client, dashboardId);
+    return dashboards.favoriteDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3954,7 +3816,7 @@ export class Workspace {
    */
   async unfavoriteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return unfavoriteDashboardMember(this.client, dashboardId);
+    return dashboards.unfavoriteDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3967,7 +3829,7 @@ export class Workspace {
    */
   async pinDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return pinDashboardMember(this.client, dashboardId);
+    return dashboards.pinDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3981,7 +3843,7 @@ export class Workspace {
    */
   async unpinDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return unpinDashboardMember(this.client, dashboardId);
+    return dashboards.unpinDashboard(this.client, dashboardId);
   }
 
   /**
@@ -4001,7 +3863,7 @@ export class Workspace {
   ): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
     requireEntityId("bookmark_id", bookmarkId);
-    return removeReportFromDashboardMember(
+    return dashboards.removeReportFromDashboard(
       this.client,
       dashboardId,
       bookmarkId,
@@ -4027,7 +3889,11 @@ export class Workspace {
   ): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
     requireEntityId("bookmark_id", bookmarkId);
-    return addReportToDashboardMember(this.client, dashboardId, bookmarkId);
+    return dashboards.addReportToDashboard(
+      this.client,
+      dashboardId,
+      bookmarkId,
+    );
   }
 
   /**
@@ -4041,7 +3907,7 @@ export class Workspace {
   async listBlueprintTemplates(
     options: WorkspaceListBlueprintTemplatesOptions = {},
   ): Promise<BlueprintTemplate[]> {
-    return listBlueprintTemplatesMember(this.client, options);
+    return dashboards.listBlueprintTemplates(this.client, options);
   }
 
   /**
@@ -4054,7 +3920,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createBlueprint(templateType: string): Promise<Dashboard> {
-    return createBlueprintMember(this.client, templateType);
+    return dashboards.createBlueprint(this.client, templateType);
   }
 
   /**
@@ -4070,7 +3936,7 @@ export class Workspace {
    */
   async getBlueprintConfig(dashboardId: number): Promise<BlueprintConfig> {
     requireEntityId("dashboard_id", dashboardId);
-    return getBlueprintConfigMember(this.client, dashboardId);
+    return dashboards.getBlueprintConfig(this.client, dashboardId);
   }
 
   /**
@@ -4083,7 +3949,7 @@ export class Workspace {
   async updateBlueprintCohorts(
     cohorts: ReadonlyArray<Record<string, unknown>>,
   ): Promise<void> {
-    return updateBlueprintCohortsMember(this.client, cohorts);
+    return dashboards.updateBlueprintCohorts(this.client, cohorts);
   }
 
   /**
@@ -4096,7 +3962,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async finalizeBlueprint(params: BlueprintFinishParams): Promise<Dashboard> {
-    return finalizeBlueprintMember(this.client, params);
+    return dashboards.finalizeBlueprint(this.client, params);
   }
 
   /**
@@ -4111,7 +3977,7 @@ export class Workspace {
   async createRcaDashboard(
     params: CreateRcaDashboardParams,
   ): Promise<Dashboard> {
-    return createRcaDashboardMember(this.client, params);
+    return dashboards.createRcaDashboard(this.client, params);
   }
 
   /**
@@ -4125,7 +3991,7 @@ export class Workspace {
    */
   async getBookmarkDashboardIds(bookmarkId: number): Promise<number[]> {
     requireEntityId("bookmark_id", bookmarkId);
-    return getBookmarkDashboardIdsMember(this.client, bookmarkId);
+    return dashboards.getBookmarkDashboardIds(this.client, bookmarkId);
   }
 
   /**
@@ -4139,7 +4005,7 @@ export class Workspace {
    */
   async getDashboardErf(dashboardId: number): Promise<Record<string, unknown>> {
     requireEntityId("dashboard_id", dashboardId);
-    return getDashboardErfMember(this.client, dashboardId);
+    return dashboards.getDashboardErf(this.client, dashboardId);
   }
 
   /**
@@ -4160,7 +4026,7 @@ export class Workspace {
   ): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
     requireEntityId("report_link_id", reportLinkId);
-    return updateReportLinkMember(
+    return dashboards.updateReportLink(
       this.client,
       dashboardId,
       reportLinkId,
@@ -4186,7 +4052,12 @@ export class Workspace {
   ): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
     requireEntityId("text_card_id", textCardId);
-    return updateTextCardMember(this.client, dashboardId, textCardId, params);
+    return dashboards.updateTextCard(
+      this.client,
+      dashboardId,
+      textCardId,
+      params,
+    );
   }
 
   // === B6-W3 bookmark/report + cohort members (W3 owns; append-only) ===
@@ -4211,7 +4082,7 @@ export class Workspace {
   async listBookmarksV2(
     options: WorkspaceListBookmarksV2Options = {},
   ): Promise<Bookmark[]> {
-    return listBookmarksV2Member(this.client, options);
+    return bookmarksCohorts.listBookmarksV2(this.client, options);
   }
 
   /**
@@ -4228,7 +4099,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createBookmark(params: CreateBookmarkParams): Promise<Bookmark> {
-    return createBookmarkMember(
+    return bookmarksCohorts.createBookmark(
       this.client,
       params,
       (dashboardId, bookmarkId) =>
@@ -4250,7 +4121,7 @@ export class Workspace {
    */
   async getBookmark(bookmarkId: number): Promise<Bookmark> {
     requireEntityId("bookmark_id", bookmarkId);
-    return getBookmarkMember(this.client, bookmarkId);
+    return bookmarksCohorts.getBookmark(this.client, bookmarkId);
   }
 
   /**
@@ -4272,7 +4143,12 @@ export class Workspace {
     params: UpdateBookmarkParams,
   ): Promise<Bookmark> {
     requireEntityId("bookmark_id", bookmarkId);
-    return updateBookmarkMember(this.client, bookmarkId, params, this.#logger);
+    return bookmarksCohorts.updateBookmark(
+      this.client,
+      bookmarkId,
+      params,
+      this.#logger,
+    );
   }
 
   /**
@@ -4287,7 +4163,7 @@ export class Workspace {
    */
   async deleteBookmark(bookmarkId: number): Promise<void> {
     requireEntityId("bookmark_id", bookmarkId);
-    return deleteBookmarkMember(this.client, bookmarkId);
+    return bookmarksCohorts.deleteBookmark(this.client, bookmarkId);
   }
 
   /**
@@ -4298,7 +4174,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async bulkDeleteBookmarks(ids: readonly number[]): Promise<void> {
-    return bulkDeleteBookmarksMember(this.client, ids);
+    return bookmarksCohorts.bulkDeleteBookmarks(this.client, ids);
   }
 
   /**
@@ -4311,7 +4187,7 @@ export class Workspace {
   async bulkUpdateBookmarks(
     entries: readonly BulkUpdateBookmarkEntry[],
   ): Promise<void> {
-    return bulkUpdateBookmarksMember(this.client, entries);
+    return bookmarksCohorts.bulkUpdateBookmarks(this.client, entries);
   }
 
   /**
@@ -4325,7 +4201,7 @@ export class Workspace {
    */
   async bookmarkLinkedDashboardIds(bookmarkId: number): Promise<number[]> {
     requireEntityId("bookmark_id", bookmarkId);
-    return bookmarkLinkedDashboardIdsMember(this.client, bookmarkId);
+    return bookmarksCohorts.bookmarkLinkedDashboardIds(this.client, bookmarkId);
   }
 
   /**
@@ -4344,7 +4220,11 @@ export class Workspace {
     options: WorkspaceGetBookmarkHistoryOptions = {},
   ): Promise<BookmarkHistoryResponse> {
     requireEntityId("bookmark_id", bookmarkId);
-    return getBookmarkHistoryMember(this.client, bookmarkId, options);
+    return bookmarksCohorts.getBookmarkHistory(
+      this.client,
+      bookmarkId,
+      options,
+    );
   }
 
   /**
@@ -4358,7 +4238,7 @@ export class Workspace {
   async listCohortsFull(
     options: WorkspaceListCohortsFullOptions = {},
   ): Promise<Cohort[]> {
-    return listCohortsFullMember(this.client, options);
+    return bookmarksCohorts.listCohortsFull(this.client, options);
   }
 
   /**
@@ -4374,7 +4254,7 @@ export class Workspace {
    */
   async getCohort(cohortId: number): Promise<Cohort> {
     requireEntityId("cohort_id", cohortId);
-    return getCohortMember(this.client, cohortId);
+    return bookmarksCohorts.getCohort(this.client, cohortId);
   }
 
   /**
@@ -4386,7 +4266,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createCohort(params: CreateCohortParams): Promise<Cohort> {
-    return createCohortMember(this.client, params);
+    return bookmarksCohorts.createCohort(this.client, params);
   }
 
   /**
@@ -4406,7 +4286,7 @@ export class Workspace {
     params: UpdateCohortParams,
   ): Promise<Cohort> {
     requireEntityId("cohort_id", cohortId);
-    return updateCohortMember(this.client, cohortId, params);
+    return bookmarksCohorts.updateCohort(this.client, cohortId, params);
   }
 
   /**
@@ -4419,7 +4299,7 @@ export class Workspace {
    */
   async deleteCohort(cohortId: number): Promise<void> {
     requireEntityId("cohort_id", cohortId);
-    return deleteCohortMember(this.client, cohortId);
+    return bookmarksCohorts.deleteCohort(this.client, cohortId);
   }
 
   /**
@@ -4430,7 +4310,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async bulkDeleteCohorts(ids: readonly number[]): Promise<void> {
-    return bulkDeleteCohortsMember(this.client, ids);
+    return bookmarksCohorts.bulkDeleteCohorts(this.client, ids);
   }
 
   /**
@@ -4443,7 +4323,7 @@ export class Workspace {
   async bulkUpdateCohorts(
     entries: readonly BulkUpdateCohortEntry[],
   ): Promise<void> {
-    return bulkUpdateCohortsMember(this.client, entries);
+    return bookmarksCohorts.bulkUpdateCohorts(this.client, entries);
   }
 
   // === B6-W4 feature-flag + experiment members (W4 owns; append-only) ===
@@ -4468,7 +4348,7 @@ export class Workspace {
   async listFeatureFlags(
     options: WorkspaceListFeatureFlagsOptions = {},
   ): Promise<FeatureFlag[]> {
-    return listFeatureFlagsMember(this.client, options);
+    return flagsExperiments.listFeatureFlags(this.client, options);
   }
 
   /**
@@ -4489,7 +4369,7 @@ export class Workspace {
   async createFeatureFlag(
     params: CreateFeatureFlagParams,
   ): Promise<FeatureFlag> {
-    return createFeatureFlagMember(this.client, params);
+    return flagsExperiments.createFeatureFlag(this.client, params);
   }
 
   /**
@@ -4502,7 +4382,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getFeatureFlag(flagId: string): Promise<FeatureFlag> {
-    return getFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.getFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4519,7 +4399,7 @@ export class Workspace {
     flagId: string,
     params: UpdateFeatureFlagParams,
   ): Promise<FeatureFlag> {
-    return updateFeatureFlagMember(this.client, flagId, params);
+    return flagsExperiments.updateFeatureFlag(this.client, flagId, params);
   }
 
   /**
@@ -4532,7 +4412,7 @@ export class Workspace {
    *   failures.
    */
   async deleteFeatureFlag(flagId: string): Promise<void> {
-    return deleteFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.deleteFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4543,7 +4423,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async archiveFeatureFlag(flagId: string): Promise<void> {
-    return archiveFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.archiveFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4555,7 +4435,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async restoreFeatureFlag(flagId: string): Promise<FeatureFlag> {
-    return restoreFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.restoreFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4567,7 +4447,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async duplicateFeatureFlag(flagId: string): Promise<FeatureFlag> {
-    return duplicateFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.duplicateFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4582,7 +4462,7 @@ export class Workspace {
     flagId: string,
     params: SetTestUsersParams,
   ): Promise<void> {
-    return setFlagTestUsersMember(this.client, flagId, params);
+    return flagsExperiments.setFlagTestUsers(this.client, flagId, params);
   }
 
   /**
@@ -4598,7 +4478,7 @@ export class Workspace {
     flagId: string,
     options: WorkspaceGetFlagHistoryOptions = {},
   ): Promise<FlagHistoryResponse> {
-    return getFlagHistoryMember(this.client, flagId, options);
+    return flagsExperiments.getFlagHistory(this.client, flagId, options);
   }
 
   /**
@@ -4609,7 +4489,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getFlagLimits(): Promise<FlagLimitsResponse> {
-    return getFlagLimitsMember(this.client);
+    return flagsExperiments.getFlagLimits(this.client);
   }
 
   /**
@@ -4623,7 +4503,7 @@ export class Workspace {
   async listExperiments(
     options: WorkspaceListExperimentsOptions = {},
   ): Promise<Experiment[]> {
-    return listExperimentsMember(this.client, options);
+    return flagsExperiments.listExperiments(this.client, options);
   }
 
   /**
@@ -4636,7 +4516,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createExperiment(params: CreateExperimentParams): Promise<Experiment> {
-    return createExperimentMember(this.client, params);
+    return flagsExperiments.createExperiment(this.client, params);
   }
 
   /**
@@ -4649,7 +4529,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getExperiment(experimentId: string): Promise<Experiment> {
-    return getExperimentMember(this.client, experimentId);
+    return flagsExperiments.getExperiment(this.client, experimentId);
   }
 
   /**
@@ -4666,7 +4546,7 @@ export class Workspace {
     experimentId: string,
     params: UpdateExperimentParams,
   ): Promise<Experiment> {
-    return updateExperimentMember(this.client, experimentId, params);
+    return flagsExperiments.updateExperiment(this.client, experimentId, params);
   }
 
   /**
@@ -4677,7 +4557,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async deleteExperiment(experimentId: string): Promise<void> {
-    return deleteExperimentMember(this.client, experimentId);
+    return flagsExperiments.deleteExperiment(this.client, experimentId);
   }
 
   /**
@@ -4689,7 +4569,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async launchExperiment(experimentId: string): Promise<Experiment> {
-    return launchExperimentMember(this.client, experimentId);
+    return flagsExperiments.launchExperiment(this.client, experimentId);
   }
 
   /**
@@ -4706,7 +4586,11 @@ export class Workspace {
     experimentId: string,
     options: WorkspaceConcludeExperimentOptions = {},
   ): Promise<Experiment> {
-    return concludeExperimentMember(this.client, experimentId, options);
+    return flagsExperiments.concludeExperiment(
+      this.client,
+      experimentId,
+      options,
+    );
   }
 
   /**
@@ -4722,7 +4606,7 @@ export class Workspace {
     experimentId: string,
     params: ExperimentDecideParams,
   ): Promise<Experiment> {
-    return decideExperimentMember(this.client, experimentId, params);
+    return flagsExperiments.decideExperiment(this.client, experimentId, params);
   }
 
   /**
@@ -4733,7 +4617,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async archiveExperiment(experimentId: string): Promise<void> {
-    return archiveExperimentMember(this.client, experimentId);
+    return flagsExperiments.archiveExperiment(this.client, experimentId);
   }
 
   /**
@@ -4745,7 +4629,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async restoreExperiment(experimentId: string): Promise<Experiment> {
-    return restoreExperimentMember(this.client, experimentId);
+    return flagsExperiments.restoreExperiment(this.client, experimentId);
   }
 
   /**
@@ -4762,7 +4646,11 @@ export class Workspace {
     experimentId: string,
     params: DuplicateExperimentParams,
   ): Promise<Experiment> {
-    return duplicateExperimentMember(this.client, experimentId, params);
+    return flagsExperiments.duplicateExperiment(
+      this.client,
+      experimentId,
+      params,
+    );
   }
 
   /**
@@ -4772,7 +4660,7 @@ export class Workspace {
    * @returns The ERF experiment dicts, verbatim.
    */
   async listErfExperiments(): Promise<Array<Record<string, unknown>>> {
-    return listErfExperimentsMember(this.client);
+    return flagsExperiments.listErfExperiments(this.client);
   }
 
   // === B6-W5 annotation + webhook + alert members (W5 owns; append-only) ===
@@ -4798,7 +4686,7 @@ export class Workspace {
   async listAnnotations(
     options: WorkspaceListAnnotationsOptions = {},
   ): Promise<Annotation[]> {
-    return listAnnotationsMember(this.client, options);
+    return annotationsWebhooksAlerts.listAnnotations(this.client, options);
   }
 
   /**
@@ -4820,7 +4708,7 @@ export class Workspace {
    * ```
    */
   async createAnnotation(params: CreateAnnotationParams): Promise<Annotation> {
-    return createAnnotationMember(this.client, params);
+    return annotationsWebhooksAlerts.createAnnotation(this.client, params);
   }
 
   /**
@@ -4835,7 +4723,7 @@ export class Workspace {
    */
   async getAnnotation(annotationId: number): Promise<Annotation> {
     requireEntityId("annotation_id", annotationId);
-    return getAnnotationMember(this.client, annotationId);
+    return annotationsWebhooksAlerts.getAnnotation(this.client, annotationId);
   }
 
   /**
@@ -4854,7 +4742,11 @@ export class Workspace {
     params: UpdateAnnotationParams,
   ): Promise<Annotation> {
     requireEntityId("annotation_id", annotationId);
-    return updateAnnotationMember(this.client, annotationId, params);
+    return annotationsWebhooksAlerts.updateAnnotation(
+      this.client,
+      annotationId,
+      params,
+    );
   }
 
   /**
@@ -4870,7 +4762,10 @@ export class Workspace {
    */
   async deleteAnnotation(annotationId: number): Promise<void> {
     requireEntityId("annotation_id", annotationId);
-    return deleteAnnotationMember(this.client, annotationId);
+    return annotationsWebhooksAlerts.deleteAnnotation(
+      this.client,
+      annotationId,
+    );
   }
 
   /**
@@ -4881,7 +4776,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listAnnotationTags(): Promise<AnnotationTag[]> {
-    return listAnnotationTagsMember(this.client);
+    return annotationsWebhooksAlerts.listAnnotationTags(this.client);
   }
 
   /**
@@ -4895,7 +4790,7 @@ export class Workspace {
   async createAnnotationTag(
     params: CreateAnnotationTagParams,
   ): Promise<AnnotationTag> {
-    return createAnnotationTagMember(this.client, params);
+    return annotationsWebhooksAlerts.createAnnotationTag(this.client, params);
   }
 
   /**
@@ -4912,7 +4807,7 @@ export class Workspace {
    * ```
    */
   async listWebhooks(): Promise<ProjectWebhook[]> {
-    return listWebhooksMember(this.client);
+    return annotationsWebhooksAlerts.listWebhooks(this.client);
   }
 
   /**
@@ -4926,7 +4821,7 @@ export class Workspace {
   async createWebhook(
     params: CreateWebhookParams,
   ): Promise<WebhookMutationResult> {
-    return createWebhookMember(this.client, params);
+    return annotationsWebhooksAlerts.createWebhook(this.client, params);
   }
 
   /**
@@ -4942,7 +4837,11 @@ export class Workspace {
     webhookId: string,
     params: UpdateWebhookParams,
   ): Promise<WebhookMutationResult> {
-    return updateWebhookMember(this.client, webhookId, params);
+    return annotationsWebhooksAlerts.updateWebhook(
+      this.client,
+      webhookId,
+      params,
+    );
   }
 
   /**
@@ -4954,7 +4853,7 @@ export class Workspace {
    *   failures.
    */
   async deleteWebhook(webhookId: string): Promise<void> {
-    return deleteWebhookMember(this.client, webhookId);
+    return annotationsWebhooksAlerts.deleteWebhook(this.client, webhookId);
   }
 
   /**
@@ -4966,7 +4865,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async testWebhook(params: WebhookTestParams): Promise<WebhookTestResult> {
-    return testWebhookMember(this.client, params);
+    return annotationsWebhooksAlerts.testWebhook(this.client, params);
   }
 
   /**
@@ -4987,7 +4886,7 @@ export class Workspace {
   async listAlerts(
     options: WorkspaceListAlertsOptions = {},
   ): Promise<CustomAlert[]> {
-    return listAlertsMember(this.client, options);
+    return annotationsWebhooksAlerts.listAlerts(this.client, options);
   }
 
   /**
@@ -4999,7 +4898,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createAlert(params: CreateAlertParams): Promise<CustomAlert> {
-    return createAlertMember(this.client, params);
+    return annotationsWebhooksAlerts.createAlert(this.client, params);
   }
 
   /**
@@ -5014,7 +4913,7 @@ export class Workspace {
    */
   async getAlert(alertId: number): Promise<CustomAlert> {
     requireEntityId("alert_id", alertId);
-    return getAlertMember(this.client, alertId);
+    return annotationsWebhooksAlerts.getAlert(this.client, alertId);
   }
 
   /**
@@ -5033,7 +4932,7 @@ export class Workspace {
     params: UpdateAlertParams,
   ): Promise<CustomAlert> {
     requireEntityId("alert_id", alertId);
-    return updateAlertMember(this.client, alertId, params);
+    return annotationsWebhooksAlerts.updateAlert(this.client, alertId, params);
   }
 
   /**
@@ -5049,7 +4948,7 @@ export class Workspace {
    */
   async deleteAlert(alertId: number): Promise<void> {
     requireEntityId("alert_id", alertId);
-    return deleteAlertMember(this.client, alertId);
+    return annotationsWebhooksAlerts.deleteAlert(this.client, alertId);
   }
 
   /**
@@ -5062,7 +4961,7 @@ export class Workspace {
    *   failures.
    */
   async bulkDeleteAlerts(ids: readonly number[]): Promise<void> {
-    return bulkDeleteAlertsMember(this.client, ids);
+    return annotationsWebhooksAlerts.bulkDeleteAlerts(this.client, ids);
   }
 
   /**
@@ -5076,7 +4975,7 @@ export class Workspace {
   async getAlertCount(
     options: WorkspaceGetAlertCountOptions = {},
   ): Promise<AlertCount> {
-    return getAlertCountMember(this.client, options);
+    return annotationsWebhooksAlerts.getAlertCount(this.client, options);
   }
 
   /**
@@ -5096,7 +4995,11 @@ export class Workspace {
     options: WorkspaceGetAlertHistoryOptions = {},
   ): Promise<AlertHistoryResponse> {
     requireEntityId("alert_id", alertId);
-    return getAlertHistoryMember(this.client, alertId, options);
+    return annotationsWebhooksAlerts.getAlertHistory(
+      this.client,
+      alertId,
+      options,
+    );
   }
 
   /**
@@ -5111,7 +5014,7 @@ export class Workspace {
    *   failures.
    */
   async testAlert(params: CreateAlertParams): Promise<Record<string, unknown>> {
-    return testAlertMember(this.client, params);
+    return annotationsWebhooksAlerts.testAlert(this.client, params);
   }
 
   /**
@@ -5125,7 +5028,7 @@ export class Workspace {
   async getAlertScreenshotUrl(
     gcsKey: string,
   ): Promise<AlertScreenshotResponse> {
-    return getAlertScreenshotUrlMember(this.client, gcsKey);
+    return annotationsWebhooksAlerts.getAlertScreenshotUrl(this.client, gcsKey);
   }
 
   /**
@@ -5139,7 +5042,10 @@ export class Workspace {
   async validateAlertsForBookmark(
     params: ValidateAlertsForBookmarkParams,
   ): Promise<ValidateAlertsForBookmarkResponse> {
-    return validateAlertsForBookmarkMember(this.client, params);
+    return annotationsWebhooksAlerts.validateAlertsForBookmark(
+      this.client,
+      params,
+    );
   }
 
   // === B6-W6 lexicon + tracking/history members (W6 owns; append-only) ===
@@ -5167,7 +5073,7 @@ export class Workspace {
   async getEventDefinitions(
     options: WorkspaceGetEventDefinitionsOptions,
   ): Promise<EventDefinition[]> {
-    return getEventDefinitionsMember(this.client, options);
+    return lexiconTracking.getEventDefinitions(this.client, options);
   }
 
   /**
@@ -5191,7 +5097,11 @@ export class Workspace {
     eventName: string,
     params: UpdateEventDefinitionParams,
   ): Promise<EventDefinition> {
-    return updateEventDefinitionMember(this.client, eventName, params);
+    return lexiconTracking.updateEventDefinition(
+      this.client,
+      eventName,
+      params,
+    );
   }
 
   /**
@@ -5204,7 +5114,7 @@ export class Workspace {
    *   failures.
    */
   async deleteEventDefinition(eventName: string): Promise<void> {
-    return deleteEventDefinitionMember(this.client, eventName);
+    return lexiconTracking.deleteEventDefinition(this.client, eventName);
   }
 
   /**
@@ -5219,7 +5129,7 @@ export class Workspace {
   async bulkUpdateEventDefinitions(
     params: BulkUpdateEventsParams,
   ): Promise<EventDefinition[]> {
-    return bulkUpdateEventDefinitionsMember(this.client, params);
+    return lexiconTracking.bulkUpdateEventDefinitions(this.client, params);
   }
 
   /**
@@ -5241,7 +5151,7 @@ export class Workspace {
   async getPropertyDefinitions(
     options: WorkspaceGetPropertyDefinitionsOptions,
   ): Promise<PropertyDefinition[]> {
-    return getPropertyDefinitionsMember(this.client, options);
+    return lexiconTracking.getPropertyDefinitions(this.client, options);
   }
 
   /**
@@ -5259,7 +5169,11 @@ export class Workspace {
     propertyName: string,
     params: UpdatePropertyDefinitionParams,
   ): Promise<PropertyDefinition> {
-    return updatePropertyDefinitionMember(this.client, propertyName, params);
+    return lexiconTracking.updatePropertyDefinition(
+      this.client,
+      propertyName,
+      params,
+    );
   }
 
   /**
@@ -5276,7 +5190,7 @@ export class Workspace {
   async bulkUpdatePropertyDefinitions(
     params: BulkUpdatePropertiesParams,
   ): Promise<PropertyDefinition[]> {
-    return bulkUpdatePropertyDefinitionsMember(this.client, params);
+    return lexiconTracking.bulkUpdatePropertyDefinitions(this.client, params);
   }
 
   /**
@@ -5292,7 +5206,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listLexiconTags(): Promise<LexiconTag[]> {
-    return listLexiconTagsMember(this.client);
+    return lexiconTracking.listLexiconTags(this.client);
   }
 
   /**
@@ -5304,7 +5218,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createLexiconTag(params: CreateTagParams): Promise<LexiconTag> {
-    return createLexiconTagMember(this.client, params);
+    return lexiconTracking.createLexiconTag(this.client, params);
   }
 
   /**
@@ -5323,7 +5237,7 @@ export class Workspace {
     params: UpdateTagParams,
   ): Promise<LexiconTag> {
     requireEntityId("tag_id", tagId);
-    return updateLexiconTagMember(this.client, tagId, params);
+    return lexiconTracking.updateLexiconTag(this.client, tagId, params);
   }
 
   /**
@@ -5336,7 +5250,7 @@ export class Workspace {
    *   failures.
    */
   async deleteLexiconTag(tagName: string): Promise<void> {
-    return deleteLexiconTagMember(this.client, tagName);
+    return lexiconTracking.deleteLexiconTag(this.client, tagName);
   }
 
   /**
@@ -5351,7 +5265,7 @@ export class Workspace {
   async getTrackingMetadata(
     eventName: string,
   ): Promise<Record<string, unknown>> {
-    return getTrackingMetadataMember(this.client, eventName);
+    return lexiconTracking.getTrackingMetadata(this.client, eventName);
   }
 
   /**
@@ -5367,7 +5281,7 @@ export class Workspace {
   async getEventHistory(
     eventName: string,
   ): Promise<Array<Record<string, unknown>>> {
-    return getEventHistoryMember(this.client, eventName);
+    return lexiconTracking.getEventHistory(this.client, eventName);
   }
 
   /**
@@ -5385,7 +5299,11 @@ export class Workspace {
     propertyName: string,
     entityType: string,
   ): Promise<Array<Record<string, unknown>>> {
-    return getPropertyHistoryMember(this.client, propertyName, entityType);
+    return lexiconTracking.getPropertyHistory(
+      this.client,
+      propertyName,
+      entityType,
+    );
   }
 
   /**
@@ -5407,7 +5325,7 @@ export class Workspace {
   async exportLexicon(
     options: WorkspaceExportLexiconOptions = {},
   ): Promise<Record<string, unknown>> {
-    return exportLexiconMember(this.client, options);
+    return lexiconTracking.exportLexicon(this.client, options);
   }
 
   // === B6-W7 drop-filter / custom-property / lookup-table /
@@ -5447,7 +5365,7 @@ export class Workspace {
    * ```
    */
   async listDropFilters(): Promise<DropFilter[]> {
-    return listDropFiltersMember(this.client);
+    return governanceData.listDropFilters(this.client);
   }
 
   /**
@@ -5470,7 +5388,7 @@ export class Workspace {
   async createDropFilter(
     params: CreateDropFilterParams,
   ): Promise<DropFilter[]> {
-    return createDropFilterMember(this.client, params);
+    return governanceData.createDropFilter(this.client, params);
   }
 
   /**
@@ -5484,7 +5402,7 @@ export class Workspace {
   async updateDropFilter(
     params: UpdateDropFilterParams,
   ): Promise<DropFilter[]> {
-    return updateDropFilterMember(this.client, params);
+    return governanceData.updateDropFilter(this.client, params);
   }
 
   /**
@@ -5499,7 +5417,7 @@ export class Workspace {
    */
   async deleteDropFilter(dropFilterId: number): Promise<DropFilter[]> {
     requireEntityId("drop_filter_id", dropFilterId);
-    return deleteDropFilterMember(this.client, dropFilterId);
+    return governanceData.deleteDropFilter(this.client, dropFilterId);
   }
 
   /**
@@ -5510,7 +5428,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getDropFilterLimits(): Promise<DropFilterLimitsResponse> {
-    return getDropFilterLimitsMember(this.client);
+    return governanceData.getDropFilterLimits(this.client);
   }
 
   /**
@@ -5528,7 +5446,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listCustomProperties(): Promise<CustomProperty[]> {
-    return listCustomPropertiesMember(this.client);
+    return governanceData.listCustomProperties(this.client);
   }
 
   /**
@@ -5543,7 +5461,7 @@ export class Workspace {
   async createCustomProperty(
     params: CreateCustomPropertyParams,
   ): Promise<CustomProperty> {
-    return createCustomPropertyMember(this.client, params);
+    return governanceData.createCustomProperty(this.client, params);
   }
 
   /**
@@ -5555,7 +5473,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getCustomProperty(propertyId: string): Promise<CustomProperty> {
-    return getCustomPropertyMember(this.client, propertyId);
+    return governanceData.getCustomProperty(this.client, propertyId);
   }
 
   /**
@@ -5571,7 +5489,7 @@ export class Workspace {
     propertyId: string,
     params: UpdateCustomPropertyParams,
   ): Promise<CustomProperty> {
-    return updateCustomPropertyMember(this.client, propertyId, params);
+    return governanceData.updateCustomProperty(this.client, propertyId, params);
   }
 
   /**
@@ -5584,7 +5502,7 @@ export class Workspace {
    *   failures.
    */
   async deleteCustomProperty(propertyId: string): Promise<void> {
-    return deleteCustomPropertyMember(this.client, propertyId);
+    return governanceData.deleteCustomProperty(this.client, propertyId);
   }
 
   /**
@@ -5599,7 +5517,7 @@ export class Workspace {
   async validateCustomProperty(
     params: CreateCustomPropertyParams,
   ): Promise<Record<string, unknown>> {
-    return validateCustomPropertyMember(this.client, params);
+    return governanceData.validateCustomProperty(this.client, params);
   }
 
   /**
@@ -5618,7 +5536,7 @@ export class Workspace {
   async listLookupTables(
     options: WorkspaceListLookupTablesOptions = {},
   ): Promise<LookupTable[]> {
-    return listLookupTablesMember(this.client, options);
+    return governanceData.listLookupTables(this.client, options);
   }
 
   /**
@@ -5657,7 +5575,7 @@ export class Workspace {
     params: UploadLookupTableParams,
     options: WorkspaceUploadLookupTableOptions = {},
   ): Promise<LookupTable> {
-    return uploadLookupTableMember(
+    return governanceData.uploadLookupTable(
       this.client,
       params,
       options,
@@ -5678,7 +5596,7 @@ export class Workspace {
   async markLookupTableReady(
     params: MarkLookupTableReadyParams,
   ): Promise<LookupTable> {
-    return markLookupTableReadyMember(this.client, params);
+    return governanceData.markLookupTableReady(this.client, params);
   }
 
   /**
@@ -5693,7 +5611,7 @@ export class Workspace {
   async getLookupUploadUrl(
     contentType = "text/csv",
   ): Promise<LookupTableUploadUrl> {
-    return getLookupUploadUrlMember(this.client, contentType);
+    return governanceData.getLookupUploadUrl(this.client, contentType);
   }
 
   /**
@@ -5709,7 +5627,7 @@ export class Workspace {
   async getLookupUploadStatus(
     uploadId: string,
   ): Promise<Record<string, unknown>> {
-    return getLookupUploadStatusMember(this.client, uploadId);
+    return governanceData.getLookupUploadStatus(this.client, uploadId);
   }
 
   /**
@@ -5733,7 +5651,7 @@ export class Workspace {
     params: UpdateLookupTableParams,
   ): Promise<LookupTable> {
     requireInt64Id("data_group_id", dataGroupId);
-    return updateLookupTableMember(this.client, dataGroupId, params);
+    return governanceData.updateLookupTable(this.client, dataGroupId, params);
   }
 
   /**
@@ -5756,7 +5674,7 @@ export class Workspace {
     for (const dataGroupId of dataGroupIds) {
       requireInt64Id("data_group_ids", dataGroupId);
     }
-    return deleteLookupTablesMember(this.client, dataGroupIds);
+    return governanceData.deleteLookupTables(this.client, dataGroupIds);
   }
 
   /**
@@ -5782,7 +5700,11 @@ export class Workspace {
     options: WorkspaceDownloadLookupTableOptions = {},
   ): Promise<Uint8Array> {
     requireInt64Id("data_group_id", dataGroupId);
-    return downloadLookupTableMember(this.client, dataGroupId, options);
+    return governanceData.downloadLookupTable(
+      this.client,
+      dataGroupId,
+      options,
+    );
   }
 
   /**
@@ -5802,7 +5724,7 @@ export class Workspace {
    */
   async getLookupDownloadUrl(dataGroupId: number | bigint): Promise<string> {
     requireInt64Id("data_group_id", dataGroupId);
-    return getLookupDownloadUrlMember(this.client, dataGroupId);
+    return governanceData.getLookupDownloadUrl(this.client, dataGroupId);
   }
 
   /**
@@ -5830,7 +5752,7 @@ export class Workspace {
   async createCustomEvent(
     params: CreateCustomEventParams,
   ): Promise<CustomEvent> {
-    return createCustomEventMember(this.client, params);
+    return governanceData.createCustomEvent(this.client, params);
   }
 
   /**
@@ -5841,7 +5763,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listCustomEvents(): Promise<EventDefinition[]> {
-    return listCustomEventsMember(this.client);
+    return governanceData.listCustomEvents(this.client);
   }
 
   /**
@@ -5868,7 +5790,7 @@ export class Workspace {
     params: UpdateEventDefinitionParams,
   ): Promise<EventDefinition> {
     requireEntityId("custom_event_id", customEventId);
-    return updateCustomEventMember(this.client, customEventId, params);
+    return governanceData.updateCustomEvent(this.client, customEventId, params);
   }
 
   /**
@@ -5888,7 +5810,7 @@ export class Workspace {
    */
   async deleteCustomEvent(customEventId: number): Promise<void> {
     requireEntityId("custom_event_id", customEventId);
-    return deleteCustomEventMember(this.client, customEventId);
+    return governanceData.deleteCustomEvent(this.client, customEventId);
   }
 
   // === B6-W8 schema-registry / schema-enforcement / audit / anomaly /
@@ -5915,7 +5837,7 @@ export class Workspace {
   async listSchemaRegistry(
     options: WorkspaceListSchemaRegistryOptions = {},
   ): Promise<SchemaEntry[]> {
-    return listSchemaRegistryMember(this.client, options);
+    return schemasAudit.listSchemaRegistry(this.client, options);
   }
 
   /**
@@ -5940,7 +5862,12 @@ export class Workspace {
     entityName: string,
     schemaJson: Readonly<Record<string, unknown>>,
   ): Promise<Record<string, unknown>> {
-    return createSchemaMember(this.client, entityType, entityName, schemaJson);
+    return schemasAudit.createSchema(
+      this.client,
+      entityType,
+      entityName,
+      schemaJson,
+    );
   }
 
   /**
@@ -5957,7 +5884,7 @@ export class Workspace {
   async createSchemasBulk(
     params: BulkCreateSchemasParams,
   ): Promise<BulkCreateSchemasResponse> {
-    return createSchemasBulkMember(this.client, params);
+    return schemasAudit.createSchemasBulk(this.client, params);
   }
 
   /**
@@ -5976,7 +5903,12 @@ export class Workspace {
     entityName: string,
     schemaJson: Readonly<Record<string, unknown>>,
   ): Promise<Record<string, unknown>> {
-    return updateSchemaMember(this.client, entityType, entityName, schemaJson);
+    return schemasAudit.updateSchema(
+      this.client,
+      entityType,
+      entityName,
+      schemaJson,
+    );
   }
 
   /**
@@ -5990,7 +5922,7 @@ export class Workspace {
   async updateSchemasBulk(
     params: BulkCreateSchemasParams,
   ): Promise<BulkPatchResult[]> {
-    return updateSchemasBulkMember(this.client, params);
+    return schemasAudit.updateSchemasBulk(this.client, params);
   }
 
   /**
@@ -6017,7 +5949,7 @@ export class Workspace {
   async deleteSchemas(
     options: WorkspaceDeleteSchemasOptions = {},
   ): Promise<DeleteSchemasResponse> {
-    return deleteSchemasMember(this.client, options);
+    return schemasAudit.deleteSchemas(this.client, options);
   }
 
   /**
@@ -6032,7 +5964,7 @@ export class Workspace {
   async getSchemaEnforcement(
     options: WorkspaceGetSchemaEnforcementOptions = {},
   ): Promise<SchemaEnforcementConfig> {
-    return getSchemaEnforcementMember(this.client, options);
+    return schemasAudit.getSchemaEnforcement(this.client, options);
   }
 
   /**
@@ -6046,7 +5978,7 @@ export class Workspace {
   async initSchemaEnforcement(
     params: InitSchemaEnforcementParams,
   ): Promise<Record<string, unknown>> {
-    return initSchemaEnforcementMember(this.client, params);
+    return schemasAudit.initSchemaEnforcement(this.client, params);
   }
 
   /**
@@ -6060,7 +5992,7 @@ export class Workspace {
   async updateSchemaEnforcement(
     params: UpdateSchemaEnforcementParams,
   ): Promise<Record<string, unknown>> {
-    return updateSchemaEnforcementMember(this.client, params);
+    return schemasAudit.updateSchemaEnforcement(this.client, params);
   }
 
   /**
@@ -6074,7 +6006,7 @@ export class Workspace {
   async replaceSchemaEnforcement(
     params: ReplaceSchemaEnforcementParams,
   ): Promise<Record<string, unknown>> {
-    return replaceSchemaEnforcementMember(this.client, params);
+    return schemasAudit.replaceSchemaEnforcement(this.client, params);
   }
 
   /**
@@ -6085,7 +6017,7 @@ export class Workspace {
    * @throws QueryError - No enforcement configured (404).
    */
   async deleteSchemaEnforcement(): Promise<Record<string, unknown>> {
-    return deleteSchemaEnforcementMember(this.client);
+    return schemasAudit.deleteSchemaEnforcement(this.client);
   }
 
   /**
@@ -6105,7 +6037,7 @@ export class Workspace {
    * ```
    */
   async runAudit(): Promise<AuditResponse> {
-    return runAuditMember(this.client);
+    return schemasAudit.runAudit(this.client);
   }
 
   /**
@@ -6118,7 +6050,7 @@ export class Workspace {
    * @throws QueryError - No schemas defined (400).
    */
   async runAuditEventsOnly(): Promise<AuditResponse> {
-    return runAuditEventsOnlyMember(this.client);
+    return schemasAudit.runAuditEventsOnly(this.client);
   }
 
   /**
@@ -6139,7 +6071,7 @@ export class Workspace {
   async listDataVolumeAnomalies(
     options: WorkspaceListDataVolumeAnomaliesOptions = {},
   ): Promise<DataVolumeAnomaly[]> {
-    return listDataVolumeAnomaliesMember(this.client, options);
+    return schemasAudit.listDataVolumeAnomalies(this.client, options);
   }
 
   /**
@@ -6153,7 +6085,7 @@ export class Workspace {
   async updateAnomaly(
     params: UpdateAnomalyParams,
   ): Promise<Record<string, unknown>> {
-    return updateAnomalyMember(this.client, params);
+    return schemasAudit.updateAnomaly(this.client, params);
   }
 
   /**
@@ -6167,7 +6099,7 @@ export class Workspace {
   async bulkUpdateAnomalies(
     params: BulkUpdateAnomalyParams,
   ): Promise<Record<string, unknown>> {
-    return bulkUpdateAnomaliesMember(this.client, params);
+    return schemasAudit.bulkUpdateAnomalies(this.client, params);
   }
 
   /**
@@ -6178,7 +6110,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listDeletionRequests(): Promise<EventDeletionRequest[]> {
-    return listDeletionRequestsMember(this.client);
+    return schemasAudit.listDeletionRequests(this.client);
   }
 
   /**
@@ -6194,7 +6126,7 @@ export class Workspace {
   async createDeletionRequest(
     params: CreateDeletionRequestParams,
   ): Promise<EventDeletionRequest[]> {
-    return createDeletionRequestMember(this.client, params);
+    return schemasAudit.createDeletionRequest(this.client, params);
   }
 
   /**
@@ -6212,7 +6144,7 @@ export class Workspace {
     requestId: number,
   ): Promise<EventDeletionRequest[]> {
     requireEntityId("request_id", requestId);
-    return cancelDeletionRequestMember(this.client, requestId);
+    return schemasAudit.cancelDeletionRequest(this.client, requestId);
   }
 
   /**
@@ -6229,7 +6161,7 @@ export class Workspace {
   async previewDeletionFilters(
     params: PreviewDeletionFiltersParams,
   ): Promise<Array<Record<string, unknown>>> {
-    return previewDeletionFiltersMember(this.client, params);
+    return schemasAudit.previewDeletionFilters(this.client, params);
   }
 
   // === 045 report links (Python PR #223 twin; `workspace.py` REPORT
