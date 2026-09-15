@@ -8,8 +8,8 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
+import { cpLength } from "../../compat/codepoint.js";
 import {
-  codepointLength,
   type ComputedFieldSpec,
   type EntityFieldSpecs,
   EntityModel,
@@ -79,7 +79,7 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
     },
     {
       name: "character_count",
-      get: (instance) => codepointLength((instance as BusinessContext).content),
+      get: (instance) => cpLength((instance as BusinessContext).content),
     },
   ];
 
@@ -108,7 +108,7 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
    * `character_count`); see {@link is_empty} for the accessor note.
    */
   get character_count(): number {
-    return codepointLength(this.content);
+    return cpLength(this.content);
   }
 
   /**

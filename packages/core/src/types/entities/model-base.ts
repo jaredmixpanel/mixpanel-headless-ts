@@ -49,9 +49,18 @@ import {
   coerceInt64,
   coerceStr,
 } from "../../coerce.js";
-import { cpLength } from "../../compat/codepoint.js";
 import { isPythonDict, setOwn } from "../../compat/python-dict.js";
 import { ResponseValidationError } from "../../errors.js";
+import { modelFail, requireIsoText } from "./decode-utils.js";
+
+// The model-boundary failure lives in the leaf `decode-utils.ts` (shared
+// with the result models); entity classes keep importing it from here,
+// next to the base they extend.
+export { modelFail } from "./decode-utils.js";
+// TODO(Ω): shim — `workspace-members/lifecycle.ts` still imports
+// `codepointLength` from here; repoint it to `compat/codepoint.ts` and
+// delete this line.
+export { cpLength as codepointLength } from "../../compat/codepoint.js";
 
 /**
  * Lax scalar coercion kinds (R4.12) applied to non-null present values.
@@ -215,86 +224,6 @@ export interface EntityModelStatics<F extends object = never> {
 }
 
 /**
- * Raise the model-boundary validation error.
- *
- * @param path - `Model.field` style location.
- * @param message - What was violated (message text out of contract,
- *   R5.4).
- * @returns Never returns.
- * @throws ResponseValidationError - Always.
- * @internal
- */
-export function modelFail(path: string, message: string): never {
-  throw new ResponseValidationError(`${path}: ${message}`);
-}
-
-/**
- * Count Unicode codepoints (R11.6 — never UTF-16 units).
- *
- * @param text - The string to measure.
- * @returns The codepoint count.
- * @internal
- */
-export function codepointLength(text: string): number {
-  return cpLength(text);
-}
-
-/**
- * Extract preserved iso text from a datetime-valued input: raw string,
- * or the runner's duck-typed `PyDatetime` wrapper (an object carrying a
- * string `iso` field — this module cannot import the runner class;
- * dependency direction is runner -> core).
- *
- * @param value - The decoded child value.
- * @param path - `Model.field` location for errors.
- * @returns The iso-8601 text.
- * @throws ResponseValidationError - When neither shape matches.
- * @internal
- */
-export function requireIsoText(value: unknown, path: string): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "iso" in value &&
-    typeof value.iso === "string"
-  ) {
-    return (value as { iso: string }).iso;
-  }
-  return modelFail(path, `expected a datetime, got ${describeValue(value)}`);
-}
-
-/**
- * Describe a value's JSON kind for error messages.
- *
- * @param value - Any value.
- * @returns A short kind label.
- * @internal
- */
-function describeValue(value: unknown): string {
-  if (value === null) {
-    return "null";
-  }
-  if (Array.isArray(value)) {
-    return "array";
-  }
-  return typeof value;
-}
-
-/**
- * Whether a value is a plain object (candidate nested-model payload).
- *
- * @param value - Any value.
- * @returns True for non-null non-array objects.
- * @internal
- */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/**
  * Apply one field's lax scalar coercion (R4.12 response-lax tables).
  *
  * @param kind - The declared scalar kind.
@@ -361,7 +290,7 @@ function reconstructNested(
     if (item instanceof EntityModel) {
       return item;
     }
-    if (isPlainObject(item)) {
+    if (isPythonDict(item)) {
       return nested.fromDict(item);
     }
     return modelFail(where, `expected a ${nested.modelName} payload`);
@@ -373,7 +302,7 @@ function reconstructNested(
     return value.map((item, index) => one(item, `${path}[${String(index)}]`));
   }
   if (spec.container === "dict") {
-    if (!isPlainObject(value)) {
+    if (!isPythonDict(value)) {
       return modelFail(path, "expected an object");
     }
     const out: Record<string, unknown> = {};
@@ -391,7 +320,7 @@ function reconstructNested(
       entries = [...(value as ReadonlyMap<unknown, unknown>)].map(
         ([k, item]) => [String(k), item],
       );
-    } else if (isPlainObject(value)) {
+    } else if (isPythonDict(value)) {
       entries = orderedEntries(value);
     } else {
       modelFail(path, "expected an object");
@@ -476,7 +405,7 @@ export function prepareInit<F extends object>(
   cls: EntityModelStatics<F>,
   raw: unknown,
 ): F {
-  if (!isPlainObject(raw)) {
+  if (!isPythonDict(raw)) {
     return modelFail(cls.modelName, "expected a mapping payload");
   }
   const { keyToField, computed } = classIndex(cls);
@@ -908,7 +837,7 @@ function serializeValue(value: unknown, mode: "json" | "vector"): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => serializeValue(item, mode));
   }
-  if (isPlainObject(value)) {
+  if (isPythonDict(value)) {
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
       setOwn(out, key, serializeValue(item, mode));
