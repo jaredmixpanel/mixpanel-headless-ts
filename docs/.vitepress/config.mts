@@ -243,9 +243,12 @@ export default defineConfig({
         }),
         twoslashOptions: {
           compilerOptions: {
-            // Snippets are consumer code: modern Node, the repo's strict
-            // flags, DOM libs so browser examples compile in the same
-            // environment, and NodeNext resolution so the packages' `exports`
+            // Snippets are consumer code: modern Node, the strict family and
+            // the DOM libs so browser examples compile in the same environment
+            // — but not the repository's source-hygiene flags
+            // (verbatimModuleSyntax, noPropertyAccessFromIndexSignature,
+            // erasableSyntaxOnly), which shape how this code base is written,
+            // not how it is used — and NodeNext resolution so the packages' `exports`
             // maps are honoured. Top-level `await` needs an ES module, which
             // the repo root's `"type": "module"` makes the virtual file.
             // `noUnusedLocals` / `noUnusedParameters` stay off on purpose:
