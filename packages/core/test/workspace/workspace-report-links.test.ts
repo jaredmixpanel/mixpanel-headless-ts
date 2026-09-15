@@ -103,11 +103,11 @@ interface MockApiClient {
   /** The stub cast to the client type the facade consumes. */
   readonly client: MixpanelClient;
   /** Every `create_bookmark_url` body, in order. */
-  readonly createBookmarkUrlCalls: Array<Record<string, unknown>>;
+  readonly bookmarkUrlCreateCalls: Array<Record<string, unknown>>;
   /** Every `get_bookmark_url` slug, in order. */
-  readonly getBookmarkUrlCalls: string[];
+  readonly bookmarkUrlGetCalls: string[];
   /** Every `get_bookmark` id, in order. */
-  readonly getBookmarkCalls: number[];
+  readonly bookmarkGetCalls: number[];
   /** Every `resolve_short_link` code, in order. */
   readonly resolveShortLinkCalls: string[];
   /** Number of `resolve_workspace_id` calls. */
@@ -143,9 +143,9 @@ interface MockApiClient {
  * @returns The stub client plus its call logs and behaviour setters.
  */
 function mockApiClient(): MockApiClient {
-  const createBookmarkUrlCalls: Array<Record<string, unknown>> = [];
-  const getBookmarkUrlCalls: string[] = [];
-  const getBookmarkCalls: number[] = [];
+  const bookmarkUrlCreateCalls: Array<Record<string, unknown>> = [];
+  const bookmarkUrlGetCalls: string[] = [];
+  const bookmarkGetCalls: number[] = [];
   const resolveShortLinkCalls: string[] = [];
   const resolveWorkspaceIdCalls: number[] = [];
   const insightsCalls: InlineCall[] = [];
@@ -201,17 +201,17 @@ function mockApiClient(): MockApiClient {
       body: Record<string, unknown>,
     ): Promise<Record<string, unknown>> =>
       wrap("create_bookmark_url", () => {
-        createBookmarkUrlCalls.push(body);
+        bookmarkUrlCreateCalls.push(body);
         return createBookmarkUrl(body);
       }),
     getBookmarkUrl: (slug: string): Promise<unknown> =>
       wrap("get_bookmark_url", () => {
-        getBookmarkUrlCalls.push(slug);
+        bookmarkUrlGetCalls.push(slug);
         return getBookmarkUrl(slug);
       }),
     getBookmark: (id: number): Promise<unknown> =>
       wrap("get_bookmark", () => {
-        getBookmarkCalls.push(id);
+        bookmarkGetCalls.push(id);
         return getBookmark(id);
       }),
     resolveShortLink: (code: string): Promise<string> =>
@@ -244,9 +244,9 @@ function mockApiClient(): MockApiClient {
 
   return {
     client: stub as unknown as MixpanelClient,
-    createBookmarkUrlCalls,
-    getBookmarkUrlCalls,
-    getBookmarkCalls,
+    bookmarkUrlCreateCalls,
+    bookmarkUrlGetCalls,
+    bookmarkGetCalls,
     resolveShortLinkCalls,
     resolveWorkspaceIdCalls,
     insightsCalls,
@@ -332,8 +332,8 @@ const fixedSlug = (): string => SLUG;
  * @returns The posted body dict.
  */
 function postedBody(mock: MockApiClient): Record<string, unknown> {
-  expect(mock.createBookmarkUrlCalls).toHaveLength(1);
-  return mock.createBookmarkUrlCalls[0]!;
+  expect(mock.bookmarkUrlCreateCalls).toHaveLength(1);
+  return mock.bookmarkUrlCreateCalls[0]!;
 }
 
 /** `ws.build_funnel_params([FunnelStep("Login"), FunnelStep("Purchase")], last=30)`. */
@@ -562,7 +562,7 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
       inferred: "funnels",
       result_class: "FunnelQueryResult",
     });
-    expect(mock.createBookmarkUrlCalls).toHaveLength(0);
+    expect(mock.bookmarkUrlCreateCalls).toHaveLength(0);
   });
 });
 
@@ -576,7 +576,7 @@ describe("TestCreateReportLinkValidation (test_workspace_report_links.py:310)", 
     );
 
     expect(exc.errorCount).toBeGreaterThanOrEqual(1);
-    expect(mock.createBookmarkUrlCalls).toHaveLength(0);
+    expect(mock.bookmarkUrlCreateCalls).toHaveLength(0);
   });
 
   it("test_validate_false_skips_validation", async () => {
@@ -601,7 +601,7 @@ describe("TestCreateReportLinkValidation (test_workspace_report_links.py:310)", 
 
     await ws.createReportLink(params);
 
-    expect(mock.createBookmarkUrlCalls).toHaveLength(1);
+    expect(mock.bookmarkUrlCreateCalls).toHaveLength(1);
     expect(log.warnings.some((m) => m.includes("S4_UNKNOWN_CHART_TYPE"))).toBe(
       true,
     );
@@ -736,7 +736,7 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
 
     const resolved = await ws.resolveReportLink(SLUG);
 
-    expect(mock.getBookmarkUrlCalls).toStrictEqual([SLUG]);
+    expect(mock.bookmarkUrlGetCalls).toStrictEqual([SLUG]);
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
     expect(resolved).toBeInstanceOf(ResolvedReport);
     expect(resolved.source).toBe("slug");
@@ -815,7 +815,7 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     expect(resolved.bookmark_id).toBe(123);
     expect(resolved.params).toStrictEqual(INSIGHTS_PARAMS);
     expect(resolved.overrides).toStrictEqual({ originDashboard: 555 });
-    expect(mock.getBookmarkCalls).toHaveLength(0);
+    expect(mock.bookmarkGetCalls).toHaveLength(0);
   });
 
   it("test_flows_record_rebuilds_under_flows_app", async () => {
@@ -876,7 +876,7 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     );
 
     expect(resolved.slug).toBe(SLUG);
-    expect(mock.getBookmarkUrlCalls).toStrictEqual([SLUG]);
+    expect(mock.bookmarkUrlGetCalls).toStrictEqual([SLUG]);
   });
 });
 
@@ -889,8 +889,8 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
       "https://mixpanel.com/project/12345/app/insights#report/123",
     );
 
-    expect(mock.getBookmarkCalls).toStrictEqual([123]);
-    expect(mock.getBookmarkUrlCalls).toHaveLength(0);
+    expect(mock.bookmarkGetCalls).toStrictEqual([123]);
+    expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
     expect(resolved.source).toBe("bookmark");
     expect(resolved.report_type).toBe("funnels");
     expect(resolved.params).toStrictEqual({ steps: [{ event: "Login" }] });
@@ -1046,8 +1046,8 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
    * @param mock - The mocked client.
    */
   function assertNoClientCalls(mock: MockApiClient): void {
-    expect(mock.getBookmarkUrlCalls).toHaveLength(0);
-    expect(mock.getBookmarkCalls).toHaveLength(0);
+    expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
+    expect(mock.bookmarkGetCalls).toHaveLength(0);
     expect(mock.resolveWorkspaceIdCalls).toHaveLength(0);
   }
 
@@ -1319,8 +1319,8 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
 
     await ws.queryReportLink(resolvedReport("insights", INSIGHTS_PARAMS));
 
-    expect(mock.getBookmarkUrlCalls).toHaveLength(0);
-    expect(mock.getBookmarkCalls).toHaveLength(0);
+    expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
+    expect(mock.bookmarkGetCalls).toHaveLength(0);
   });
 
   it("test_str_input_resolves_first", async () => {
@@ -1330,7 +1330,7 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
     const result = await ws.queryReportLink(SLUG);
 
     expect(result).toBeInstanceOf(QueryResult);
-    expect(mock.getBookmarkUrlCalls).toStrictEqual([SLUG]);
+    expect(mock.bookmarkUrlGetCalls).toStrictEqual([SLUG]);
     expect(mock.insightsCalls).toHaveLength(1);
     const call = mock.insightsCalls[0]!;
     expect(call.body["bookmark"]).toStrictEqual(INSIGHTS_PARAMS);
@@ -1396,7 +1396,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     expect(details["hint"]).toBe("Resolve the target shortlink directly.");
     expect(details["target"]).toBe("https://mixpanel.com/s/XyZ");
     expect(mock.resolveShortLinkCalls).toHaveLength(1);
-    expect(mock.getBookmarkUrlCalls).toHaveLength(0);
+    expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
   });
 
   it("test_short_link_to_dashboard_unsupported", async () => {
@@ -1411,7 +1411,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     );
 
     expect(exc.code).toBe("UNSUPPORTED_DASHBOARD_LINK");
-    expect(mock.getBookmarkUrlCalls).toHaveLength(0);
+    expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
   });
 
   it("test_short_link_target_in_other_project", async () => {
@@ -1426,8 +1426,8 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     );
 
     expect(exc.code).toBe("REPORT_LINK_PROJECT_MISMATCH");
-    expect(mock.getBookmarkUrlCalls).toHaveLength(0);
-    expect(mock.getBookmarkCalls).toHaveLength(0);
+    expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
+    expect(mock.bookmarkGetCalls).toHaveLength(0);
   });
 
   it("test_short_link_region_mismatch_before_network", async () => {
@@ -1671,7 +1671,7 @@ describe("TestCreateReportLinkValidatesBeforePost (test_workspace_report_links.p
       );
 
       expect(exc.code).toBe("RL6_INVALID_ID");
-      expect(mock.createBookmarkUrlCalls).toHaveLength(0);
+      expect(mock.bookmarkUrlCreateCalls).toHaveLength(0);
     },
   );
 });
@@ -1747,7 +1747,7 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
     expect(details["hint"]).toBe(
       "Switch with ws.use(workspace=9) (CLI: mp --workspace 9 ...) and retry.",
     );
-    expect(mock.getBookmarkUrlCalls).toHaveLength(0);
+    expect(mock.bookmarkUrlGetCalls).toHaveLength(0);
   });
 
   it("test_url_workspace_equal_to_pinned_is_fine", async () => {

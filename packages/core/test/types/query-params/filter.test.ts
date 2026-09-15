@@ -510,12 +510,12 @@ describe("ListItemGroupMode guards", () => {
   });
 
   it("LG2_INVALID_SUB_TYPE on unknown scalar types", () => {
-    for (const subType of ["bogus", "list", "object"]) {
+    for (const subtype of ["bogus", "list", "object"]) {
       expectGuard(
         () =>
           new ListItemGroupMode({
             sub: "Brand",
-            sub_type: subType as "string",
+            sub_type: subtype as "string",
           }),
         ParamValidationError,
         "LG2_INVALID_SUB_TYPE",

@@ -366,12 +366,12 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
   });
 
   it("getAnnotation / deleteAnnotation / listAnnotationTags forward positionally", async () => {
-    const getCalls: unknown[][] = [];
+    const annotationGetCalls: unknown[][] = [];
     await getAnnotationMember(
-      stubClient("getAnnotation", annotationJson(), getCalls),
+      stubClient("getAnnotation", annotationJson(), annotationGetCalls),
       7,
     );
-    expect(getCalls[0]?.[0]).toBe(7);
+    expect(annotationGetCalls[0]?.[0]).toBe(7);
 
     const delCalls: unknown[][] = [];
     await deleteAnnotationMember(

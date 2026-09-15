@@ -970,15 +970,6 @@ const config = defineConfig([
     },
   }),
 
-  // --- Phase 4 lane L6: naming (D1) — pending; delete this block when the lane lands ---
-  ...lane("L6", {
-    rules: {
-      "@typescript-eslint/naming-convention": "off",
-      "unicorn/no-non-function-verb-prefix": "off",
-      "unicorn/consistent-compound-words": "off",
-    },
-  }),
-
   // --- Phase 4 lane L7: size / complexity / real import cycles — lands after Phase 6 ---
   ...lane("L7", {
     rules: {

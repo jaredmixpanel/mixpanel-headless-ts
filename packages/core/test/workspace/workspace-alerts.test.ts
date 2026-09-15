@@ -384,9 +384,9 @@ describe("ADDITIVE: alert member delegation contracts", () => {
   });
 
   it("createAlert / updateAlert send the exclude_none dump", async () => {
-    const createCalls: unknown[][] = [];
+    const alertCreateCalls: unknown[][] = [];
     await createAlertMember(
-      stubClient("createAlert", alertJson(), createCalls),
+      stubClient("createAlert", alertJson(), alertCreateCalls),
       new CreateAlertParams({
         bookmark_id: 1,
         name: "A",
@@ -397,7 +397,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
       }),
     );
     // `notification_windows` is None → ABSENT, not null (R3.5).
-    expect(createCalls[0]?.[0]).toStrictEqual({
+    expect(alertCreateCalls[0]?.[0]).toStrictEqual({
       bookmark_id: 1,
       name: "A",
       condition: {},
@@ -466,9 +466,9 @@ describe("ADDITIVE: alert member delegation contracts", () => {
   });
 
   it("getAlert / deleteAlert / bulkDeleteAlerts / getAlertScreenshotUrl forward positionally", async () => {
-    const getCalls: unknown[][] = [];
-    await getAlertMember(stubClient("getAlert", alertJson(), getCalls), 7);
-    expect(getCalls[0]?.[0]).toBe(7);
+    const alertGetCalls: unknown[][] = [];
+    await getAlertMember(stubClient("getAlert", alertJson(), alertGetCalls), 7);
+    expect(alertGetCalls[0]?.[0]).toBe(7);
 
     const delCalls: unknown[][] = [];
     await deleteAlertMember(stubClient("deleteAlert", undefined, delCalls), 9);

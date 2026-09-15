@@ -400,16 +400,16 @@ export class CohortCriteria {
       ["at_most", atMost],
       ["exactly", exactly],
     ];
-    const setFreqs = freqParams.filter(
+    const chosenFreqs = freqParams.filter(
       ([, value]) => value !== null,
     ) as ReadonlyArray<readonly [string, number]>;
-    if (setFreqs.length !== 1) {
+    if (chosenFreqs.length !== 1) {
       throw new ParamValidationError(
         "exactly one of at_least, at_most, exactly must be set",
         "CD1_FREQUENCY_PARAM_REQUIRED",
       );
     }
-    const [freqName, freqValue] = setFreqs[0] as readonly [string, number];
+    const [freqName, freqValue] = chosenFreqs[0] as readonly [string, number];
 
     // CD2_FREQUENCY_NEGATIVE: frequency param must be non-negative.
     if (freqValue < 0) {
@@ -434,26 +434,26 @@ export class CohortCriteria {
       ["within_weeks", withinWeeks],
       ["within_months", withinMonths],
     ];
-    const setRolling = rollingParams.filter(
+    const chosenRolling = rollingParams.filter(
       ([, value]) => value !== null,
     ) as ReadonlyArray<readonly [string, number]>;
     const hasDateRange = fromDate !== null || toDate !== null;
 
-    if (setRolling.length === 0 && !hasDateRange) {
+    if (chosenRolling.length === 0 && !hasDateRange) {
       throw new ParamValidationError(
         "exactly one time constraint required " +
           "(within_days/weeks/months or from_date+to_date)",
         "CD3_TIME_CONSTRAINT_REQUIRED",
       );
     }
-    if (setRolling.length > 0 && hasDateRange) {
+    if (chosenRolling.length > 0 && hasDateRange) {
       throw new ParamValidationError(
         "exactly one time constraint required " +
           "(within_days/weeks/months or from_date+to_date)",
         "CD3_TIME_CONSTRAINT_REQUIRED",
       );
     }
-    if (setRolling.length > 1) {
+    if (chosenRolling.length > 1) {
       throw new ParamValidationError(
         "exactly one time constraint required " +
           "(within_days/weeks/months or from_date+to_date)",
@@ -492,8 +492,8 @@ export class CohortCriteria {
       count: countDict,
     };
 
-    if (setRolling.length > 0) {
-      const [rollingName, rollingValue] = setRolling[0] as readonly [
+    if (chosenRolling.length > 0) {
+      const [rollingName, rollingValue] = chosenRolling[0] as readonly [
         string,
         number,
       ];

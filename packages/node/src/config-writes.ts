@@ -151,16 +151,16 @@ export function createNodeConfigSource(
      * Remove an account (`config.py:652-692`).
      *
      * @param name - Account to remove.
-     * @param removeOptions - `force` removes despite target refs.
+     * @param removalOptions - `force` removes despite target refs.
      * @returns Sorted names of targets that referenced the account.
      * @throws ConfigError - Missing account.
      * @throws AccountInUseError - Referenced and `force` not set.
      */
     removeAccount(
       name: string,
-      removeOptions: { readonly force?: boolean } = {},
+      removalOptions: { readonly force?: boolean } = {},
     ): string[] {
-      return manager.removeAccount(name, removeOptions);
+      return manager.removeAccount(name, removalOptions);
     },
 
     /**

@@ -23,9 +23,9 @@
  */
 export function cpLength(text: string): number {
   let count = 0;
-  // for..of iterates by code point, never splitting surrogate pairs.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  for (const _ch of text) {
+  // The string iterator steps by code point, never splitting surrogate pairs.
+  const codePoints = text[Symbol.iterator]();
+  while (!codePoints.next().done) {
     count += 1;
   }
   return count;
