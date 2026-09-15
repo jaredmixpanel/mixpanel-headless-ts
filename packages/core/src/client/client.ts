@@ -34,6 +34,7 @@ import {
   QueryError,
   WorkspaceScopeError,
 } from "../errors.js";
+import { defined } from "../invariant.js";
 import {
   type AlertMethods,
   createAlertMethods,
@@ -952,7 +953,11 @@ async function resolveWorkspace(ctx: ClientContext): Promise<WorkspaceRef> {
       `Project ${state.session.project.id} has no accessible workspaces.`,
     );
   }
-  const chosen = workspaces.find((ws) => ws.id === chosenId) as PublicWorkspace;
+  // `selectWorkspaceId` picked the id out of this very list.
+  const chosen = defined(
+    workspaces.find((ws) => ws.id === chosenId),
+    "selected workspace",
+  );
   const ref: WorkspaceRef = {
     id: chosen.id,
     name: chosen.name,
