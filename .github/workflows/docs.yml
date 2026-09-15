@@ -71,10 +71,9 @@ jobs:
           echo "DOCS_BASE=/${REPOSITORY#*/}/" >> "$GITHUB_ENV"
           echo "DOCS_ORIGIN=https://${REPOSITORY%%/*}.github.io" >> "$GITHUB_ENV"
 
-      # docs:build runs VitePress with an 8 GB heap: measured on ~445 twoslash
-      # blocks, the build fails at Node's default 4 GB and at 5 GB and passes
-      # at 6 GB (8.1 GB RSS) — CONTRIBUTING.md "Documentation". Standard
-      # runners have 16 GB.
+      # Runs in Node's default heap: measured at 3.5 GB RSS for ~890 twoslash
+      # blocks with the static hover renderer (CONTRIBUTING.md
+      # "Documentation"); private-repository standard runners have 7 GB.
       - name: Build site
         run: npm run docs:build
 

@@ -1,13 +1,12 @@
 // Site theme: VitePress's default theme plus the pieces the plugins need on
-// the client — floating-vue for twoslash hovers, the prose-tabs runtime, and
+// the client — twoslash's static hover styles, the prose-tabs runtime, and
 // the llms plugin's "copy / open as Markdown" buttons above every page. Plain
 // TypeScript with `h()` rather than an SFC, so no Vue tooling joins the lint
 // chain.
 
-import "@shikijs/vitepress-twoslash/style.css";
+import "@shikijs/twoslash/style-rich.css";
 import "./mixpanel.css";
 
-import TwoslashFloatingVue from "@shikijs/vitepress-twoslash/client";
 import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme";
 import CopyOrDownloadAsMarkdownButtons from "vitepress-plugin-llms/vitepress-components/CopyOrDownloadAsMarkdownButtons.vue";
@@ -21,7 +20,6 @@ const theme: Theme = {
       "doc-before": () => h(CopyOrDownloadAsMarkdownButtons),
     }),
   enhanceApp({ app }) {
-    app.use(TwoslashFloatingVue);
     enhanceAppWithTabs(app);
   },
 };

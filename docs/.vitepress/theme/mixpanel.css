@@ -181,3 +181,22 @@
   border-color: rgba(255, 255, 255, 0.3);
   color: rgba(255, 255, 255, 0.9);
 }
+
+/* --- Twoslash hover popups (static renderer) ---------------------------- */
+/*
+ * The rich style places a popup absolutely at its static position inside
+ * the hovered token, where `pre { overflow-x: auto }` clips anything past
+ * the block's right edge. Fixed positioning keeps the same static
+ * placement (no offsets are set) but escapes the scroll container; the
+ * viewport bound stops wide option-bag types from running off screen.
+ */
+.vp-doc .twoslash .twoslash-popup-container {
+  position: fixed;
+  max-width: min(40rem, calc(100vw - 2rem));
+  z-index: 40;
+}
+
+.vp-doc .twoslash .twoslash-popup-container .twoslash-popup-code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

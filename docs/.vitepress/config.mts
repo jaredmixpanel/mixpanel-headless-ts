@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 
 import githubDark from "@shikijs/themes/github-dark";
 import githubLight from "@shikijs/themes/github-light";
+import { rendererRich } from "@shikijs/twoslash";
 import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 import { createFileSystemTypesCache } from "@shikijs/vitepress-twoslash/cache-fs";
 import ts from "typescript";
@@ -45,7 +46,9 @@ const origin = process.env["DOCS_ORIGIN"];
 // declarations only.
 type CodeTransformer = NonNullable<MarkdownOptions["codeTransformers"]>[number];
 type MarkdownPlugin = Parameters<MarkdownRenderer["use"]>[0];
-type VitePlugins = NonNullable<NonNullable<UserConfig["vite"]>["plugins"]>;
+type VitePlugin = NonNullable<
+  NonNullable<UserConfig["vite"]>["plugins"]
+>[number];
 
 const SIDEBAR_FILE = fileURLToPath(
   new URL("../reference/typedoc-sidebar.json", import.meta.url),
@@ -227,6 +230,12 @@ export default defineConfig({
     },
     codeTransformers: [
       transformerTwoslash({
+        // Static CSS hover popups instead of the package's floating-vue
+        // renderer: floating-vue emits a Vue component per hover, and with
+        // ~900 blocks that pushed the build past Node's default heap (see
+        // CONTRIBUTING.md "Documentation" for the measurements); the static
+        // markup is hoisted as strings and builds in the default heap.
+        renderer: rendererRich(),
         // Twoslash results keyed by snippet hash, under the git-ignored Vite
         // cache: a rebuild re-compiles only the blocks that changed.
         typesCache: createFileSystemTypesCache({
@@ -287,7 +296,7 @@ export default defineConfig({
           { text: "API reference", items: [apiOverview] },
           architecture,
         ],
-      }) as unknown as VitePlugins,
+      }) as unknown as VitePlugin,
     ],
   },
 

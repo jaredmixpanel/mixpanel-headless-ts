@@ -334,20 +334,17 @@ Commands (all root npm scripts; `scripts/README.md` lists them too):
 - `npm run docs:build` — the same, then `vitepress build docs` into
   `docs/.vitepress/dist/` (the site, `llms.txt`, `llms-full.txt`, and a
   Markdown twin next to every page); `npm run docs:preview` serves that.
-- The three VitePress aliases run Node with `--max-old-space-size=8192`.
-  Measured on the full site (24 pages, ~445 twoslash blocks): the build
-  fails under Node's default ~4 GB heap and under a 5 GB cap, and passes
-  at 6 GB (8.1 GB RSS); 8 GB is the headroom setting. The cost is not the
-  TypeScript work — a build that serves every block from the cache still
-  fails at 4 GB — but the hover markup: the floating-vue renderer emits a
-  Vue component per hover, so the big guide pages compile to ~3 MB render
-  functions whose client, server and lean variants Vite holds at once. If CI ever
-  gets tight, the lever is `renderer: rendererRich()` from `@shikijs/twoslash`
-  (static CSS hover popups instead of floating-vue): measured on the same
-  site it builds inside the default heap at 3.7 GB RSS in 41 s, versus
-  108 s at a 6 GB cap; the trade-off is that CSS popups can be clipped by
-  the code block's horizontal scroll on the wide option-bag hovers, which is
-  why floating-vue stays the default. Twoslash results are cached under
+- Code blocks use twoslash's static `rendererRich` (CSS hover popups), not
+  `@shikijs/vitepress-twoslash`'s floating-vue renderer. Measured on the full
+  site (24 pages, ~890 twoslash blocks): floating-vue emits a Vue component
+  per hover, which needed 6 GB of V8 heap (8.1 GB RSS) for half as many
+  blocks and fails under Node's default ~4 GB; the static renderer builds
+  the whole site in the default heap at 3.5 GB RSS in 42 s. Standard GitHub
+  runners for a private repository have 7 GB, so the static renderer is the
+  one that fits; floating-vue (hover UI with smarter placement) is the
+  alternative once the repository is public and 16 GB runners apply. The
+  static popups get `position: fixed` in `mixpanel.css` so the code block's
+  horizontal scroll cannot clip them. Twoslash results are cached under
   `docs/.vitepress/cache/twoslash/` (keyed by snippet text, so wipe it after
   changing the compiler options); that makes rebuilds faster, not smaller.
 - `npm run docs:api` regenerates the reference; `npm run docs:api:check`
