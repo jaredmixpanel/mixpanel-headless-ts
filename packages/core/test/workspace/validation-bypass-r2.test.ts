@@ -1,15 +1,8 @@
-// Translated round-2 validation-bypass tests (B5-S2, packet §3 + §8):
-// the B2-M2 WHOLE-FILE deferral — assertion-for-assertion port of
-// tests/test_validation_bypass_r2.py, ALL 5 classes
-// (TestR2V1FlowStepFiltersCPFixed :67,
-// TestR2V2RetentionEventFiltersCPFixed :124, TestR2V3NaNFilterFixed
-// :185, TestR2V4InfFilterFixed :223, TestR2CombinedFixes :259).
-//
-// Translation notes: identical to the sibling `validation-bypass.test.ts`
-// header (the `ws` fixture, the message-substring assertions).
-// `float("nan")` / `float("inf")` / `float("-inf")` are the JS
-// `Number.NaN` / `Infinity` / `-Infinity` literals — the same IEEE
-// doubles the B20b guard rejects.
+// Round-2 validation-bypass regressions through the Workspace facade:
+// CustomPropertyRef ids inside FlowStep and RetentionEvent filters, and NaN /
+// Infinity filter values. Mirrors tests/test_validation_bypass_r2.py (all five
+// classes). `float("nan"|"inf"|"-inf")` are `Number.NaN` / `Infinity` /
+// `-Infinity`; failures are asserted as error class plus message substring.
 
 import { describe, expect, it } from "vitest";
 
@@ -25,9 +18,7 @@ import { Metric } from "../../src/types/query-params/metric.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
 import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
-// ===========================================================================
-// FIXED: R2-V1 — FlowStep.filters custom-property scanning
-// ===========================================================================
+// --- R2-V1 — FlowStep.filters custom-property scanning ---
 
 describe("R2 V1 flow step filters CP fixed", () => {
   // python: TestR2V1FlowStepFiltersCPFixed
@@ -104,9 +95,7 @@ describe("R2 V1 flow step filters CP fixed", () => {
   });
 });
 
-// ===========================================================================
-// FIXED: R2-V2 — RetentionEvent.filters custom-property scanning
-// ===========================================================================
+// --- R2-V2 — RetentionEvent.filters custom-property scanning ---
 
 describe("R2 V2 retention event filters CP fixed", () => {
   // python: TestR2V2RetentionEventFiltersCPFixed
@@ -190,9 +179,7 @@ describe("R2 V2 retention event filters CP fixed", () => {
   });
 });
 
-// ===========================================================================
-// FIXED: R2-V3 — NaN filter values
-// ===========================================================================
+// --- R2-V3 — NaN filter values ---
 
 describe("R2 V3 na n filter fixed", () => {
   // python: TestR2V3NaNFilterFixed
@@ -241,9 +228,7 @@ describe("R2 V3 na n filter fixed", () => {
   });
 });
 
-// ===========================================================================
-// FIXED: R2-V4 — Inf filter values
-// ===========================================================================
+// --- R2-V4 — Inf filter values ---
 
 describe("R2 V4 inf filter fixed", () => {
   // python: TestR2V4InfFilterFixed
@@ -286,9 +271,7 @@ describe("R2 V4 inf filter fixed", () => {
   });
 });
 
-// ===========================================================================
-// FIXED: combined
-// ===========================================================================
+// --- Combined ---
 
 describe("R2 combined fixes", () => {
   // python: TestR2CombinedFixes

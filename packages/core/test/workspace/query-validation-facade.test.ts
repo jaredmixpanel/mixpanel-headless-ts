@@ -1,36 +1,8 @@
-// Translated facade-driven query-validation tests (B5-S2, packet §3 +
-// §8): the B2-M1 deferral named in the
-// `test/query/query-validation.test.ts:5-15` header — assertion-for-
-// assertion port of the FACADE halves of
-// tests/unit/test_query_validation.py, ALL 11 classes
-// (TestTimeRangeValidation :61, TestAggregationValidation :161,
-// TestPerMetricValidation :287, TestFormulaValidation :344,
-// TestAnalysisModeValidation :377, TestGroupByValidation :405,
-// TestEmptyEventsValidation :494, TestFormulaInListValidation :521,
-// TestBuildParamsValidation :558, TestPercentileValidation :586,
-// TestHistogramValidation :622).
-//
-// HEADER EXCLUSIONS (already translated at B2 — do NOT re-translate):
-// - Every case in the classes above that calls `validate_query_args(...)`
-//   DIRECTLY rather than going through the facade
-//   (`test_v10_default_last_with_dates_ok` :104,
-//   `test_valid_date_range_passes` :120, `test_valid_last_passes` :137,
-//   `test_valid_property_math_with_property` :204,
-//   `test_valid_per_user_with_property` :221,
-//   `test_per_user_without_property_raises` :239,
-//   `test_per_user_with_unique_raises` :256,
-//   `test_v4_formula_with_two_events_ok` :353): the B2-M1 translation
-//   covers the validator directly.
-// - `TestValidateTimeArgs` :658 and `TestValidateGroupByArgs` :743 were
-//   translated in FULL at B2 (same header).
-//
-// Translation notes:
-// - `pytest.raises(ValueError, …)` on a CONSTRUCTOR (V13, V12, V26) names
-//   Python's dual-inheriting `ParamValidationError`; the TS twin carries
-//   the same message.
-// - `ws._api_client = mock_api_client` mid-test becomes a facade built
-//   with that stub from the start (the assignment is Python's way of
-//   swapping in a response; nothing observes the pre-swap client).
+// Query-parameter validation (V0–V27) exercised through the Workspace facade.
+// Mirrors the facade halves of all eleven classes in
+// tests/unit/test_query_validation.py; the cases that call validate_query_args
+// directly, plus TestValidateTimeArgs / TestValidateGroupByArgs, live in
+// test/query/query-validation.test.ts. Constructor ValueErrors are ParamValidationError.
 
 import { describe, expect, it } from "vitest";
 
@@ -54,9 +26,7 @@ const EMPTY_OK: Record<string, unknown> = {
   meta: {},
 };
 
-// ===========================================================================
-// T007: time range validation (V7-V11)
-// ===========================================================================
+// --- Time range validation (V7-V11) ---
 
 describe("Time range validation", () => {
   // python: TestTimeRangeValidation
@@ -129,9 +99,7 @@ describe("Time range validation", () => {
   });
 });
 
-// ===========================================================================
-// T016: aggregation validation (V1-V3)
-// ===========================================================================
+// --- Aggregation validation (V1-V3) ---
 
 describe("Aggregation validation", () => {
   // python: TestAggregationValidation
@@ -222,9 +190,7 @@ describe("Aggregation validation", () => {
   });
 });
 
-// ===========================================================================
-// T018: per-Metric validation (V13-V14)
-// ===========================================================================
+// --- Per-Metric validation (V13-V14) ---
 
 describe("Per metric validation", () => {
   // python: TestPerMetricValidation
@@ -288,9 +254,7 @@ describe("Per metric validation", () => {
   });
 });
 
-// ===========================================================================
-// T035: formula validation (V4)
-// ===========================================================================
+// --- Formula validation (V4) ---
 
 describe("Formula validation", () => {
   // python: TestFormulaValidation
@@ -304,9 +268,7 @@ describe("Formula validation", () => {
   });
 });
 
-// ===========================================================================
-// T040: analysis mode validation (V5-V6)
-// ===========================================================================
+// --- Analysis mode validation (V5-V6) ---
 
 describe("Analysis mode validation", () => {
   // python: TestAnalysisModeValidation
@@ -338,9 +300,7 @@ describe("Analysis mode validation", () => {
   });
 });
 
-// ===========================================================================
-// GroupBy validation (V11-V12)
-// ===========================================================================
+// --- GroupBy validation (V11-V12) ---
 
 describe("Group by validation", () => {
   // python: TestGroupByValidation
@@ -440,9 +400,7 @@ describe("Group by validation", () => {
   });
 });
 
-// ===========================================================================
-// V0: empty events
-// ===========================================================================
+// --- V0: empty events ---
 
 describe("Empty events validation", () => {
   // python: TestEmptyEventsValidation
@@ -468,9 +426,7 @@ describe("Empty events validation", () => {
   });
 });
 
-// ===========================================================================
-// Formula-in-list validation
-// ===========================================================================
+// --- Formula-in-list validation ---
 
 describe("Formula in list validation", () => {
   // python: TestFormulaInListValidation
@@ -522,9 +478,7 @@ describe("Formula in list validation", () => {
   });
 });
 
-// ===========================================================================
-// T054c: build_params() validation parity
-// ===========================================================================
+// --- build_params() validation parity ---
 
 describe("Build params validation", () => {
   // python: TestBuildParamsValidation
@@ -556,9 +510,7 @@ describe("Build params validation", () => {
   });
 });
 
-// ===========================================================================
-// T064: percentile validation
-// ===========================================================================
+// --- Percentile validation ---
 
 describe("Percentile validation", () => {
   // python: TestPercentileValidation
@@ -621,9 +573,7 @@ describe("Percentile validation", () => {
   });
 });
 
-// ===========================================================================
-// T068: histogram validation
-// ===========================================================================
+// --- Histogram validation ---
 
 describe("Histogram validation", () => {
   // python: TestHistogramValidation

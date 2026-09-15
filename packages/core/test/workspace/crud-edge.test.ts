@@ -1,27 +1,8 @@
-// B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of
-// `tests/unit/test_workspace_crud_edge.py` — the WHOLE file:
-// `TestRequestBodySerialization`, `TestEmptyResponseHandling`
-// (:247), `TestWorkspaceMethodDelegation` (:298) and
-// `TestCodedResponseValidationCodes`.
-//
-// This is one of the two CROSS-ENTITY suites W3 owns (the reason the
-// packet sequences W3 last): its cases are parametrized over members
-// belonging to every entity shard.
-//
-// SHARD-ORDER DEFERRAL — RESOLVED AT B6-ARB: the orchestrator
-// dispatched W3 BEFORE W4–W8, so W3 carried the 26 W4–W8-owned
-// `TestCodedResponseValidationCodes` cases as `it.todo(...)` stubs with
-// a per-shard conversion protocol. None of W4–W8 executed it (the B6
-// review pair's shared MAJOR finding), so the arbiter fix task
-// converted ALL 26 into the two-line bodies below
-// (`b6-review-resolution.md` Finding A; charged to the owning shards
-// per P3-3). Zero todos remain.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// and `_make_results_workspace(results, workspace_id=…)`
-// become the like-named TS helpers. `temp_dir` has no TS analog and is
-// dropped.
+// Cross-entity edge cases of the `Workspace` CRUD members: `by_alias`
+// request-body serialization, empty-response handling, delegation shapes
+// and the `RESPONSE_VALIDATION_ERROR` contract across every entity family.
+// Mirrors `tests/unit/test_workspace_crud_edge.py` (whole file);
+// `httpx.MockTransport` becomes the injected-fetch seam, `temp_dir` is dropped.
 
 import { describe, expect, it } from "vitest";
 
@@ -58,13 +39,13 @@ import { MINIMAL_FUNNEL_PARAMS } from "./bookmark-fixtures.js";
 
 /**
  * Build a Workspace whose transport always returns `results`
- * (`_make_results_workspace`, :389-413).
+ * (`_make_results_workspace`).
  *
  * @param results - The JSON value placed under the `results` envelope
  *   key for every request.
  * @param options - `workspaceId` pins a workspace ID on the client so
  *   workspace-scoped methods skip workspace resolution (the Python
- *   helper's `workspace_id=` keyword, :390).
+ *   helper's `workspace_id=` keyword).
  * @returns The facade.
  */
 function makeResultsWorkspace(
@@ -82,8 +63,8 @@ function makeResultsWorkspace(
 }
 
 /**
- * Assert the generic response-validation contract (`_assert_coded`,
- * :423-429) — class + `.code` only, never message text (R5.4).
+ * Assert the generic response-validation contract (`_assert_coded`) —
+ * class + `.code` only, never message text.
  *
  * @param call - The awaited facade call.
  * @returns Nothing.
@@ -100,7 +81,7 @@ async function assertCoded(call: Promise<unknown>): Promise<void> {
 }
 
 // =============================================================================
-// TestRequestBodySerialization (test_workspace_crud_edge.py)
+// Request body serialization
 // =============================================================================
 
 describe("Request body serialization", () => {
@@ -224,7 +205,7 @@ describe("Request body serialization", () => {
 });
 
 // =============================================================================
-// TestEmptyResponseHandling (test_workspace_crud_edge.py)
+// Empty response handling
 // =============================================================================
 
 describe("Empty response handling", () => {
@@ -248,7 +229,7 @@ describe("Empty response handling", () => {
 });
 
 // =============================================================================
-// TestWorkspaceMethodDelegation (test_workspace_crud_edge.py)
+// Workspace method delegation
 // =============================================================================
 
 describe("Workspace method delegation", () => {
@@ -334,7 +315,7 @@ describe("Workspace method delegation", () => {
 });
 
 // =============================================================================
-// TestCodedResponseValidationCodes (test_workspace_crud_edge.py)
+// Coded response validation codes
 // =============================================================================
 
 describe("Coded response validation codes", () => {
@@ -355,9 +336,8 @@ describe("Coded response validation codes", () => {
     await assertCoded(makeResultsWorkspace([{}]).listCohortsFull());
   });
 
-  // ---- W4–W8 members (todo conversion executed at B6-ARB, Finding A) ----
-  // The two flags cases pin `workspace_id=777` exactly as Python does
-  // (:461, :468) — feature flags are workspace-scoped.
+  // The two flags cases pin `workspace_id=777` exactly as Python does —
+  // feature flags are workspace-scoped.
   it("flags family (single member): {} response is wrapped", async () => {
     await assertCoded(
       makeResultsWorkspace({}, { workspaceId: 777 }).getFeatureFlag("f1"),

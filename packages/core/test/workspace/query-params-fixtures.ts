@@ -1,3 +1,9 @@
+// Shared helpers for the `buildQueryParams` suites split from
+// `tests/unit/test_query_params.py`: the `BASE` keyword bag every Python
+// `_build_query_params` call spells (same default values), `build()` to
+// override part of it, and the `sections` / `measurement` / `behavior` /
+// `displayOptions` accessors.
+
 import {
   buildQueryParams,
   type BuildQueryParamsOptions,

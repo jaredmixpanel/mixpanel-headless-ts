@@ -1,46 +1,8 @@
-// B6-W7 Layer-3 translation (packet `b6-packets.md` §9) — the class
-// split of `tests/unit/test_workspace_data_governance.py` (1,842 lines)
-// that W7 owns:
-//
-//   drop filters      : `TestListDropFilters`,
-//     `TestCreateDropFilter`, `TestUpdateDropFilter`,
-//     `TestDeleteDropFilter`, `TestGetDropFilterLimits`
-//   custom properties : `TestListCustomProperties`,
-//     `TestCreateCustomProperty`, `TestGetCustomProperty`,
-//     `TestUpdateCustomProperty`, `TestDeleteCustomProperty`
-//     (:891), `TestValidateCustomProperty` (:905)
-//   custom events     : `TestCreateCustomEvent`,
-//     `TestListCustomEvents`, `TestUpdateCustomEvent`,
-//     `TestDeleteCustomEvent`
-//   lookup tables     : `TestListLookupTables`,
-//     `TestUploadLookupTable`, `TestMarkLookupTableReady`
-//     (:1648), `TestGetLookupUploadUrl` (:1672),
-//     `TestGetLookupUploadStatus`, `TestUpdateLookupTable`
-//     (:1751), `TestDeleteLookupTables` (:1775),
-//     `TestDownloadLookupTable`, `TestGetLookupDownloadUrl`
-//
-// The lexicon / tags / tracking-history classes in the same Python file
-// belong to W6 (`b6-packets.md` §8) and are NOT re-translated here.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the OAuth
-// session (`_make_oauth_credentials`, :82-88) while the facade carries
-// the service-account `_TEST_SESSION`, exactly as Python does.
-// `temp_dir` has no TS analog EXCEPT in `TestUploadLookupTable`, where
-// Python writes a real CSV and the facade reads it with
-// `Path(...).read_bytes()`; the TS twin injects the W7-D1 `readFile`
-// seam with the same bytes (packet §9 W7-D1: `packages/core` is
-// runtime-agnostic, so `node:fs` is a B8 wiring job).
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local branches Python's suite does not cover — the
-// `displayFormula` corruption re-raise, the
-// `to_form_body` JSON spelling, the `readFile` seam default, the
-// `REVOKED` / `NOTFOUND` / non-dict-result poll arms
-// (`workspace.py`) and the per-member delegation contracts
-// (which client method, with which arguments).
+// `Workspace` lookup-table members: list, the three-step upload with its
+// async status polling, mark-ready, upload URL/status, update, delete and
+// download. Mirrors the `Test*LookupTable*` classes of
+// `tests/unit/test_workspace_data_governance.py`; Python's tmp CSV becomes
+// the injected `readFile` seam. `ADDITIVE:` covers poll arms and int64 ids.
 
 import { describe, expect, it } from "vitest";
 
@@ -76,8 +38,7 @@ import {
 /**
  * A virtual monotonic clock whose `sleep` advances it — the
  * deterministic twin of Python's `time.sleep` + `time.monotonic` in
- * `_poll_lookup_upload`. Real timers are
- * banned in Layer-3 (playbook risk #4).
+ * `_poll_lookup_upload`, so no real timer ever runs.
  *
  * @returns The `monotonic` seam plus the matching client `sleep`.
  */
@@ -122,7 +83,7 @@ function fakeReadFile(
 
 describe("List lookup tables", () => {
   // python: TestListLookupTables
-  it("list_lookup_tables() returns list of LookupTable objects", async () => {
+  it("listLookupTables() returns list of LookupTable objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([lookupTableJson(1, "Products"), lookupTableJson(2, "Categories")]),
     );
@@ -134,12 +95,12 @@ describe("List lookup tables", () => {
     expect(tables[1]?.id).toBe(2);
   });
 
-  it("list_lookup_tables() returns empty list when none exist", async () => {
+  it("listLookupTables() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
     await expect(ws.listLookupTables()).resolves.toStrictEqual([]);
   });
 
-  it("list_lookup_tables(data_group_id=5) passes param to API", async () => {
+  it("listLookupTables(data_group_id=5) passes param to API", async () => {
     const capturedUrls: string[] = [];
     const { ws } = makeWorkspace((request) => {
       capturedUrls.push(request.url);
@@ -148,9 +109,8 @@ describe("List lookup tables", () => {
     const tables = await ws.listLookupTables({ data_group_id: 5 });
 
     expect(tables).toHaveLength(1);
-    // ADDITIVE: Python captures the URL but only asserts the length
-    // (:1402-1420); the `data-group-id` param spelling is the B4
-    // client's contract.
+    // ADDITIVE: Python captures the URL but only asserts the length;
+    // the `data-group-id` param spelling is the client's contract.
     expect(capturedUrls[0]).toContain("data-group-id=5");
   });
 });
@@ -158,12 +118,13 @@ describe("List lookup tables", () => {
 describe("Upload lookup table", () => {
   // python: TestUploadLookupTable
   /**
-   * The three-step upload handler (`:1430-1460`).
+   * The three-step upload handler (the Python `handler` closure).
    *
    * @param registerResult - The `results` payload of step 3.
    * @param statusResults - Successive `results` payloads of the status
    *   polls.
-   * @param log - Counters mutated by the handler.
+   * @param counters - Counters mutated by the handler (`requests` seen
+   *   and status `polls` seen).
    * @returns The handler.
    */
   function uploadHandler(
@@ -194,7 +155,7 @@ describe("Upload lookup table", () => {
     };
   }
 
-  it("upload_lookup_table() handles get URL, upload, register steps", async () => {
+  it("uploadLookupTable() handles get URL, upload, register steps", async () => {
     const log = { requests: 0, polls: 0 };
     const paths: string[] = [];
     const { ws } = makeWorkspace(
@@ -213,11 +174,11 @@ describe("Upload lookup table", () => {
     expect(result.name).toBe("Products");
     expect(result.id).toBe(99);
     expect(log.requests).toBeGreaterThanOrEqual(2);
-    // ADDITIVE (W7-D1): the CSV is read through the injected seam.
+    // ADDITIVE: the CSV is read through the injected seam.
     expect(paths).toStrictEqual(["/tmp/products.csv"]);
   });
 
-  it("upload_lookup_table() polls status for async uploads (>= 5 MB)", async () => {
+  it("uploadLookupTable() polls status for async uploads (>= 5 MB)", async () => {
     const log = { requests: 0, polls: 0 };
     const clock = virtualClock();
     const { ws } = makeWorkspace(
@@ -250,7 +211,7 @@ describe("Upload lookup table", () => {
     expect(log.polls).toBeGreaterThanOrEqual(2);
   });
 
-  it("upload_lookup_table() raises MixpanelHeadlessError on async timeout", async () => {
+  it("uploadLookupTable() raises MixpanelHeadlessError on async timeout", async () => {
     const clock = virtualClock();
     const { ws } = makeWorkspace(
       uploadHandler({ uploadId: "task-timeout" }, [
@@ -271,14 +232,13 @@ describe("Upload lookup table", () => {
       poll_interval: 0.01,
       max_poll_seconds: 0.05,
     });
-    // B6-ARB (assertions Finding C): Python asserts BOTH the class and
-    // the message (`pytest.raises(MixpanelHeadlessError, match="timed out")`,
-    // test_workspace_data_governance.py).
+    // Python asserts both the class and the message
+    // (`pytest.raises(MixpanelHeadlessError, match="timed out")`).
     await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
     await expect(call).rejects.toThrow(/timed out/);
   });
 
-  it("upload_lookup_table() raises MixpanelHeadlessError on async failure", async () => {
+  it("uploadLookupTable() raises MixpanelHeadlessError on async failure", async () => {
     const clock = virtualClock();
     const { ws } = makeWorkspace(
       uploadHandler({ uploadId: "task-fail" }, [{ uploadStatus: "FAILURE" }]),
@@ -294,9 +254,8 @@ describe("Upload lookup table", () => {
     });
 
     const call = ws.uploadLookupTable(params, { poll_interval: 0.01 });
-    // B6-ARB (assertions Finding C): Python asserts BOTH the class and
-    // the message (`pytest.raises(MixpanelHeadlessError, match="failed")`,
-    // test_workspace_data_governance.py).
+    // Python asserts both the class and the message
+    // (`pytest.raises(MixpanelHeadlessError, match="failed")`).
     await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
     await expect(call).rejects.toThrow(/failed/);
   });
@@ -304,7 +263,7 @@ describe("Upload lookup table", () => {
 
 describe("Mark lookup table ready", () => {
   // python: TestMarkLookupTableReady
-  it("mark_lookup_table_ready() returns a LookupTable", async () => {
+  it("markLookupTableReady() returns a LookupTable", async () => {
     const { ws } = makeWorkspace(() => ok(lookupTableJson(1, "Products")));
     const params = new MarkLookupTableReadyParams({
       name: "Products",
@@ -319,7 +278,7 @@ describe("Mark lookup table ready", () => {
 
 describe("Get lookup upload URL", () => {
   // python: TestGetLookupUploadUrl
-  it("get_lookup_upload_url() returns LookupTableUploadUrl", async () => {
+  it("getLookupUploadUrl() returns LookupTableUploadUrl", async () => {
     const { ws } = makeWorkspace(() =>
       ok({
         url: "https://storage.googleapis.com/upload",
@@ -333,7 +292,7 @@ describe("Get lookup upload URL", () => {
     expect(result.url).toContain("storage.googleapis.com");
   });
 
-  it("get_lookup_upload_url(content_type='text/csv') passes param", async () => {
+  it("getLookupUploadUrl(content_type='text/csv') passes param", async () => {
     const capturedUrls: string[] = [];
     const { ws } = makeWorkspace((request) => {
       capturedUrls.push(request.url);
@@ -346,15 +305,14 @@ describe("Get lookup upload URL", () => {
     const result = await ws.getLookupUploadUrl("text/csv");
 
     expect(result).toBeInstanceOf(LookupTableUploadUrl);
-    // ADDITIVE: Python captures the URL but asserts only the type
-    // (:1698-1720).
+    // ADDITIVE: Python captures the URL but asserts only the type.
     expect(capturedUrls[0]).toContain("content-type=text%2Fcsv");
   });
 });
 
 describe("Get lookup upload status", () => {
   // python: TestGetLookupUploadStatus
-  it("get_lookup_upload_status() returns an opaque dict", async () => {
+  it("getLookupUploadStatus() returns an opaque dict", async () => {
     const { ws } = makeWorkspace(() =>
       ok({ upload_id: "abc123", state: "completed", rows_imported: 1000 }),
     );
@@ -368,7 +326,7 @@ describe("Get lookup upload status", () => {
 
 describe("Update lookup table", () => {
   // python: TestUpdateLookupTable
-  it("update_lookup_table() returns the updated LookupTable", async () => {
+  it("updateLookupTable() returns the updated LookupTable", async () => {
     const { ws } = makeWorkspace(() =>
       ok(lookupTableJson(1, "Renamed Catalog")),
     );
@@ -382,7 +340,7 @@ describe("Update lookup table", () => {
 
 describe("Delete lookup tables", () => {
   // python: TestDeleteLookupTables
-  it("delete_lookup_tables() returns None on success", async () => {
+  it("deleteLookupTables() returns None on success", async () => {
     const { ws } = makeWorkspace(() => okBare());
     await expect(ws.deleteLookupTables([1, 2])).resolves.toBeUndefined();
   });
@@ -390,7 +348,7 @@ describe("Delete lookup tables", () => {
 
 describe("Download lookup table", () => {
   // python: TestDownloadLookupTable
-  it("download_lookup_table() returns raw bytes", async () => {
+  it("downloadLookupTable() returns raw bytes", async () => {
     const csvContent = "product_id,name\n1,Widget\n2,Gadget\n";
     const { ws } = makeWorkspace(() => ({ status: 200, text: csvContent }));
     const result = await ws.downloadLookupTable(1);
@@ -401,7 +359,7 @@ describe("Download lookup table", () => {
     expect(decoded).toContain("Widget");
   });
 
-  it("download_lookup_table() accepts optional file_name and limit", async () => {
+  it("downloadLookupTable() accepts optional file_name and limit", async () => {
     const capturedUrls: string[] = [];
     const { ws } = makeWorkspace((request) => {
       capturedUrls.push(request.url);
@@ -413,8 +371,7 @@ describe("Download lookup table", () => {
     });
 
     expect(result).toBeInstanceOf(Uint8Array);
-    // ADDITIVE: Python captures the URL but asserts only the type
-    // (:1807-1819).
+    // ADDITIVE: Python captures the URL but asserts only the type.
     expect(capturedUrls[0]).toContain("file-name=export.csv");
     expect(capturedUrls[0]).toContain("limit=100");
   });
@@ -422,7 +379,7 @@ describe("Download lookup table", () => {
 
 describe("Get lookup download URL", () => {
   // python: TestGetLookupDownloadUrl
-  it("get_lookup_download_url() returns a signed download URL string", async () => {
+  it("getLookupDownloadUrl() returns a signed download URL string", async () => {
     const { ws } = makeWorkspace(() =>
       ok("https://storage.googleapis.com/download/abc"),
     );
@@ -548,15 +505,15 @@ describe("ADDITIVE: upload_lookup_table seams and poll arms", () => {
     expect(table.id).toBe(7);
   });
 
-  it("hands a non-dict register payload to validation untouched (B6-ARB FID-F2)", async () => {
-    // ADDITIVE (B6-ARB red-first lock, fidelity F2): Python guards BOTH
-    // register-response reads with `isinstance(raw, dict)`
-    // (`workspace.py:8060` uploadId read, `:8072` name-inject). Through
-    // an INJECTED client delivering a non-dict payload (the real B4
-    // client raises `expected dict` first — api_client.py:7741-7746),
-    // the raw value must reach `validate_response_model` UNTOUCHED and
-    // fail as a pydantic `model_type` error on the list itself, never
-    // as a spread-mangled `{0: …, name: …}` object missing `id`.
+  it("hands a non-dict register payload to validation untouched", async () => {
+    // ADDITIVE: Python guards both register-response reads (the uploadId
+    // read and the name-inject in
+    // `mixpanel_headless.workspace.Workspace.upload_lookup_table`) with
+    // `isinstance(raw, dict)`. Through an injected client delivering a
+    // non-dict payload (the real client raises `expected dict` first),
+    // the raw value must reach `validate_response_model` untouched and
+    // fail as a pydantic `model_type` error on the list itself, never as
+    // a spread-mangled `{0: …, name: …}` object missing `id`.
     const client = uploadStub(["oops"]);
     const clock = virtualClock();
 
@@ -638,7 +595,7 @@ describe("ADDITIVE: upload_lookup_table seams and poll arms", () => {
     expect(table.id).toBe(3);
   });
 
-  it("the default readFile seam throws UNPORTED_FILE_READ_SEAM (B8 owns the wiring)", async () => {
+  it("the core default readFile seam throws UNPORTED_FILE_READ_SEAM (node wires the real one)", async () => {
     // Step 1 (the signed-URL call) must succeed so the failure lands on
     // the step-2 read, exactly where Python's `read_bytes()` sits.
     const { ws } = makeWorkspace(() => ok(urlInfo));

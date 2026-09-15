@@ -1,31 +1,8 @@
-// Translated workspace-flow tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_workspace_flow.py — ALL 13
-// classes (TestBuildFlowParams :77, TestBuildFlowParamsFilters :360,
-// TestWorkspaceFlowPublicMethods :490, TestMultiStepNormalization :605,
-// TestMultiStepAnchorPosition :759, TestPerStepDirectionValidation :781,
-// TestFlowStepDatetimeFilters :846, TestQueryFlowTreeIntegration :937,
-// TestDataGroupIdFlow :991, TestFlowSessionEvent :1018,
-// TestFlowSegments :1065, TestFlowExclusions :1130,
-// TestFlowPropertyFilters :1176).
-//
-// The Python file also carries a REMOVAL comment for
-// `test_query_flow_raises_on_no_credentials` — nothing to
-// translate.
-//
-// Translation notes:
-// - `ws._build_flow_params(...)` (the private method) is the exported
-//   free function {@link buildFlowParams} in
-//   `src/workspace-query-params.ts` (R7.2 split; it is `self`-free in
-//   Python too).
-// - `ws._live_query = MagicMock()` (swapping the service to observe the
-//   delegation) becomes a stub `arbFunnelsQuery` on the shared client
-//   plus assertions on the recorded BODY — the same three facts
-//   (`project_id`, `query_type` from `mode`, and a bookmark payload),
-//   read one layer lower because `Workspace.liveQueryService` is a lazy
-//   getter with no setter (the TS field is `#`-private).
-// - `result.df` / `result.to_dict()` / `result.anytree` in the tree
-//   round-trip become `toRows()` / `toJSON()` / `anytree()` (C6 + the
-//   B5-S2 closure of the Phase-2 anytree TODO(port)).
+// Workspace flow queries: buildFlowParams (filters, multi-step normalization,
+// anchor/direction/datetime rules, segments, exclusions), the public queryFlow
+// methods and the tree round-trip. Mirrors all 13 classes of
+// tests/unit/test_workspace_flow.py; `_build_flow_params` is the exported
+// buildFlowParams, `ws._live_query = MagicMock()` a stubbed arbFunnelsQuery.
 
 import { describe, expect, it } from "vitest";
 
@@ -61,9 +38,7 @@ function stepsOf(
   return params["steps"] as Array<Record<string, unknown>>;
 }
 
-// ===========================================================================
-// T020: _build_flow_params
-// ===========================================================================
+// --- _build_flow_params ---
 
 describe("Build flow params", () => {
   // python: TestBuildFlowParams
@@ -196,9 +171,7 @@ describe("Build flow params", () => {
   });
 });
 
-// ===========================================================================
-// T021: filter integration in _build_flow_params
-// ===========================================================================
+// --- Filter integration in _build_flow_params ---
 
 describe("Build flow params filters", () => {
   // python: TestBuildFlowParamsFilters
@@ -247,9 +220,7 @@ describe("Build flow params filters", () => {
   });
 });
 
-// ===========================================================================
-// T028-T029: workspace public methods
-// ===========================================================================
+// --- Workspace public methods ---
 
 describe("Workspace flow public methods", () => {
   // python: TestWorkspaceFlowPublicMethods
@@ -333,9 +304,7 @@ describe("Workspace flow public methods", () => {
   });
 });
 
-// ===========================================================================
-// T040-T042: multi-step normalization
-// ===========================================================================
+// --- Multi-step normalization ---
 
 describe("Multi step normalization", () => {
   // python: TestMultiStepNormalization
@@ -428,9 +397,7 @@ describe("Multi step normalization", () => {
   });
 });
 
-// ===========================================================================
-// T042: anchor_position
-// ===========================================================================
+// --- anchor_position ---
 
 describe("Multi step anchor position", () => {
   // python: TestMultiStepAnchorPosition
@@ -440,9 +407,7 @@ describe("Multi step anchor position", () => {
   });
 });
 
-// ===========================================================================
-// T043: FL5 respects per-step overrides
-// ===========================================================================
+// --- FL5 respects per-step overrides ---
 
 describe("Per step direction validation", () => {
   // python: TestPerStepDirectionValidation
@@ -497,9 +462,7 @@ describe("Per step direction validation", () => {
   });
 });
 
-// ===========================================================================
-// T044: datetime filter -> segfilter operator mapping
-// ===========================================================================
+// --- Datetime filter -> segfilter operator mapping ---
 
 describe("Flow step datetime filters", () => {
   // python: TestFlowStepDatetimeFilters
@@ -535,11 +498,9 @@ describe("Flow step datetime filters", () => {
   });
 });
 
-// ===========================================================================
-// T053: end-to-end tree mode
-// ===========================================================================
+// --- End-to-end tree mode ---
 
-/** `_sample_tree_api_response()` (test file :890-935). */
+/** `_sample_tree_api_response()` . */
 function sampleTreeApiResponse(): Record<string, unknown> {
   return {
     computed_at: "2025-01-15T10:00:00",
@@ -617,7 +578,7 @@ describe("Query flow tree integration", () => {
     expect(trees).toHaveLength(1);
     expect(trees[0]!["event"]).toBe("Login");
 
-    // The anytree view works (B5-S2 closure of the Phase-2 TODO)
+    // The anytree view of the same tree.
     const atRoots = result.anytree();
     expect(atRoots).toHaveLength(1);
     expect(atRoots[0]!.event).toBe("Login");
@@ -627,9 +588,7 @@ describe("Query flow tree integration", () => {
   });
 });
 
-// ===========================================================================
-// T032: data_group_id
-// ===========================================================================
+// --- data_group_id ---
 
 describe("Data group ID flow", () => {
   // python: TestDataGroupIdFlow
@@ -646,9 +605,7 @@ describe("Data group ID flow", () => {
   });
 });
 
-// ===========================================================================
-// T038: session_event
-// ===========================================================================
+// --- session_event ---
 
 describe("Flow session event", () => {
   // python: TestFlowSessionEvent
@@ -672,9 +629,7 @@ describe("Flow session event", () => {
   });
 });
 
-// ===========================================================================
-// T038: segments
-// ===========================================================================
+// --- Segments ---
 
 describe("Flow segments", () => {
   // python: TestFlowSegments
@@ -713,9 +668,7 @@ describe("Flow segments", () => {
   });
 });
 
-// ===========================================================================
-// T038: exclusions
-// ===========================================================================
+// --- Exclusions ---
 
 describe("Flow exclusions", () => {
   // python: TestFlowExclusions
@@ -739,9 +692,7 @@ describe("Flow exclusions", () => {
   });
 });
 
-// ===========================================================================
-// T038: property filters (filter_by_event)
-// ===========================================================================
+// --- Property filters (filter_by_event) ---
 
 describe("Flow property filters", () => {
   // python: TestFlowPropertyFilters

@@ -1,22 +1,8 @@
-// B6-W1 Layer-3 translation of
-// `tests/unit/test_workspace_business_context.py` (WHOLE file, 583
-// lines — packet §3 table): `TestGetBusinessContextProject`,
-// `TestSetBusinessContextProject`,
-// `TestClearBusinessContextProject`,
-// `TestGetBusinessContextOrganization`,
-// `TestSetBusinessContextOrganization`,
-// `TestGetBusinessContextChain`.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(handler)` becomes
-// `makeWorkspace(handler)`; `_stub_me(ws, …)` installs a canned
-// MeService through the facade's `meService` accessor (Python assigns
-// `ws._me_service` directly).
-//
-// R5.4: message assertions in the Python file (`missing required field
-// 'content'`) are kept as CODE + shape assertions plus the message
-// regex, matching the Python intent without promoting the text to
-// contract.
+// `Workspace.getBusinessContext` / `setBusinessContext` /
+// `clearBusinessContext` / `getBusinessContextChain` at project and
+// organization level. Mirrors `tests/unit/test_workspace_business_context.py`
+// (whole file). `httpx.MockTransport` becomes the injected-fetch seam and
+// `_stub_me` a spied `meService`; message asserts stay code + regex.
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -51,7 +37,7 @@ const SESSION = makeSession({
 });
 
 /**
- * Build a 200 App-API response wrapping `results` (`_ok`, :133).
+ * Build a 200 App-API response wrapping `results` (`_ok`).
  *
  * @param results - The `results` payload.
  * @returns The canned response.
@@ -62,7 +48,7 @@ function ok(results: Record<string, unknown>): CannedResponse {
 
 /**
  * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :63-74).
+ * (`_make_workspace`).
  *
  * @param handler - The canned-response handler.
  * @returns The facade plus the transport capture log.
@@ -76,10 +62,13 @@ function makeWorkspace(
 
 /**
  * Pre-populate the facade's MeService with a canned MeResponse
- * (`_stub_me`, :77-131).
+ * (`_stub_me`).
  *
  * @param ws - The facade.
- * @param options - Which orgs/projects the canned `/me` carries.
+ * @param options - Which orgs/projects the canned `/me` carries:
+ *   `projectOrg` (the active project's org id; default 100, `null` for
+ *   none), `extraOrgs` (extra `organizations` entries keyed as `/me` keys
+ *   them) and `noActiveProject` (omit the active project from `projects`).
  */
 function stubMe(
   ws: Workspace,
@@ -462,9 +451,9 @@ describe("Get business context chain", () => {
     const { ws } = makeWorkspace(() => ok({ project_context: "# Project" }));
 
     const call = ws.getBusinessContextChain();
-    // B6-ARB (assertions Finding C): Python asserts BOTH the class and
-    // the message (`pytest.raises(MixpanelHeadlessError)` + str-contains,
-    // test_workspace_business_context.py TestGetBusinessContextChain).
+    // Python asserts both the class and the message
+    // (`pytest.raises(MixpanelHeadlessError)` plus a str-contains), so
+    // both are locked.
     await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
     await expect(call).rejects.toThrow(/missing required field 'org_context'/);
   });

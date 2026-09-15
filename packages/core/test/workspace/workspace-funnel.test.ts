@@ -1,21 +1,8 @@
-// Translated workspace-funnel tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_funnel.py — ALL 3
-// classes (TestQueryFunnelValidation :108, TestQueryFunnelExecution
-// :233, TestBuildFunnelParamsVsQueryFunnel :381).
-//
-// The Python file also carries a `TestQueryFunnelConfigError` REMOVAL
-// comment — nothing to translate.
-//
-// Translation notes:
-// - `insights_query.call_args[0][0]` becomes `mock.insightsCalls[0]`.
-// - `pytest.raises(ValueError, match="FunnelStep.event must be a
-//   non-empty")` names Python's `ParamValidationError`, which
-//   dual-inherits `ValueError`; the TS twin is `ParamValidationError`
-//   with the same message.
-// - `result.overall_conversion_rate == pytest.approx(0.12)` becomes
-//   `toBeCloseTo(0.12)`.
-// - `assert not isinstance(params, FunnelQueryResult)` translates
-//   directly.
+// Workspace.queryFunnel: validation, execution against the stubbed insights
+// client, and buildFunnelParams vs queryFunnel parity. Mirrors all three classes
+// of tests/test_workspace_funnel.py. `call_args[0][0]` reads become
+// `mock.insightsCalls[0]`; the `ValueError` on FunnelStep.event is the
+// dual-inheriting ParamValidationError with the same message.
 
 import { describe, expect, it } from "vitest";
 
@@ -58,9 +45,7 @@ const MOCK_FUNNEL_RESPONSE: Record<string, unknown> = {
   meta: { sampling_factor: 1.0 },
 };
 
-// ===========================================================================
-// T021: validation integration
-// ===========================================================================
+// --- Validation integration ---
 
 describe("Query funnel validation", () => {
   // python: TestQueryFunnelValidation
@@ -132,9 +117,7 @@ describe("Query funnel validation", () => {
   });
 });
 
-// ===========================================================================
-// T022: execution path
-// ===========================================================================
+// --- Execution path ---
 
 describe("Query funnel execution", () => {
   // python: TestQueryFunnelExecution
@@ -222,9 +205,7 @@ describe("Query funnel execution", () => {
   });
 });
 
-// ===========================================================================
-// T023: build_funnel_params vs query_funnel
-// ===========================================================================
+// --- buildFunnelParams vs queryFunnel ---
 
 describe("Build funnel params vs query funnel", () => {
   // python: TestBuildFunnelParamsVsQueryFunnel

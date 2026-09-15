@@ -1,17 +1,8 @@
-// Translated workspace-cohort tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_cohort.py — BOTH
-// classes (TestQueryFlowWhere :114,
-// TestResolveAndBuildParamsCohortMetric :250).
-//
-// Translation notes:
-// - `mock_api_client.request.assert_not_called()` /
-//   `insights_query.assert_not_called()` become empty call logs on the
-//   shared stub (which records `insightsQuery` and `arbFunnelsQuery`;
-//   the generic `request` has no facade caller here).
-// - `pytest.raises(ValueError, match="CohortMetric does not support
-//   inline CohortDefinition")` names Python's dual-inheriting
-//   `ParamValidationError`; the TS twin carries the same message and the
-//   `CM5_INLINE_COHORT_METRIC` code.
+// Workspace cohort handling: queryFlow `where` cohort filters and cohort
+// metrics through resolve-and-build-params. Mirrors both classes of
+// tests/test_workspace_cohort.py. `assert_not_called()` becomes an empty call
+// log on the shared stub; the inline-CohortDefinition `ValueError` is the
+// ParamValidationError carrying code CM5_INLINE_COHORT_METRIC.
 
 import { describe, expect, it } from "vitest";
 
@@ -31,7 +22,7 @@ import {
   mockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
-/** `_simple_cohort_def()` (test file :95-105). */
+/** `_simple_cohort_def()` . */
 function simpleCohortDef(): CohortDefinition {
   return new CohortDefinition(
     CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
@@ -44,9 +35,7 @@ function section(params: Record<string, unknown>, name: string): unknown[] {
   return sections[name] as unknown[];
 }
 
-// ===========================================================================
-// T007: query_flow where= parameter
-// ===========================================================================
+// --- query_flow where= parameter ---
 
 describe("Query flow where", () => {
   // python: TestQueryFlowWhere
@@ -122,9 +111,7 @@ describe("Query flow where", () => {
   });
 });
 
-// ===========================================================================
-// T041: _resolve_and_build_params type guard for CohortMetric
-// ===========================================================================
+// --- _resolve_and_build_params type guard for CohortMetric ---
 
 describe("Resolve and build params cohort metric", () => {
   // python: TestResolveAndBuildParamsCohortMetric

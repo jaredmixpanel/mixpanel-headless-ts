@@ -1,33 +1,8 @@
-// B6-W8 Layer-3 translation (packet `b6-packets.md` §10) — the WHOLE
-// of `tests/unit/test_workspace_governance.py` (781 lines, 14 classes
-// :194-:781):
-//
-//   enforcement : `TestGetSchemaEnforcement`,
-//     `TestInitSchemaEnforcement`,
-//     `TestUpdateSchemaEnforcement`,
-//     `TestReplaceSchemaEnforcement`,
-//     `TestDeleteSchemaEnforcement`
-//   auditing    : `TestRunAudit`, `TestRunAuditEventsOnly`
-//   anomalies   : `TestListDataVolumeAnomalies`,
-//     `TestUpdateAnomaly`, `TestBulkUpdateAnomalies`
-//   deletion    : `TestListDeletionRequests`,
-//     `TestCreateDeletionRequest`,
-//     `TestCancelDeletionRequest`,
-//     `TestPreviewDeletionFilters`
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeFacadeWorkspace(handler)`. `temp_dir` has no TS analog and is
-// dropped (the W6/W7 precedent).
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local branches Python's suite does not reach — the two
-// `run_audit*` composite bodies branch-for-branch
-// (`workspace.py:9050-9067`, `:9088-9104`), the delegation contracts,
-// and the two dump spellings (`model_dump(by_alias=True)` at `:9169`
-// / `:9198` vs `model_dump(exclude_none=True, by_alias=True)`
-// everywhere else).
+// Workspace governance members: schema enforcement (get/init/update/replace/
+// delete), runAudit / runAuditEventsOnly, data-volume anomalies and deletion
+// requests, over the injected fetch seam. Mirrors all 14 classes of
+// tests/unit/test_workspace_governance.py. Additive: the run_audit composite
+// branches, the delegation contracts and the two model_dump spellings.
 
 import { describe, expect, it } from "vitest";
 
@@ -68,7 +43,7 @@ import { ok } from "../../test-support/client-test-helpers.js";
 import { makeFacadeWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 /**
- * A minimal enforcement config dict (`_enforcement_json`, :101-116).
+ * A minimal enforcement config dict (`_enforcement_json`).
  *
  * @returns The payload record.
  */
@@ -85,7 +60,7 @@ function enforcementJson(): Record<string, unknown> {
 }
 
 /**
- * A minimal anomaly dict (`_anomaly_json`, :119-153).
+ * A minimal anomaly dict (`_anomaly_json`).
  *
  * @param id - Anomaly ID.
  * @param eventName - Event name.
@@ -122,8 +97,7 @@ function anomalyJson(
 }
 
 /**
- * A minimal deletion request dict (`_deletion_request_json`,
- * :156-186).
+ * A minimal deletion request dict (`_deletion_request_json`).
  *
  * @param id - Request ID.
  * @param eventName - Event name to delete.
@@ -149,9 +123,7 @@ function deletionRequestJson(
   };
 }
 
-// ===========================================================================
-// Schema Enforcement
-// ===========================================================================
+// --- Schema Enforcement ---
 
 describe("Workspace.getSchemaEnforcement", () => {
   it("returns a SchemaEnforcementConfig", async () => {
@@ -251,9 +223,7 @@ describe("Workspace.deleteSchemaEnforcement", () => {
   });
 });
 
-// ===========================================================================
-// Data Auditing
-// ===========================================================================
+// --- Data Auditing ---
 
 describe("Workspace.runAudit", () => {
   it("returns an AuditResponse with parsed violations", async () => {
@@ -337,9 +307,7 @@ describe("Workspace.runAuditEventsOnly", () => {
   });
 });
 
-// ===========================================================================
-// Data Volume Anomalies
-// ===========================================================================
+// --- Data Volume Anomalies ---
 
 describe("Workspace.listDataVolumeAnomalies", () => {
   it("returns a list of DataVolumeAnomaly", async () => {
@@ -418,9 +386,7 @@ describe("Workspace.bulkUpdateAnomalies", () => {
   });
 });
 
-// ===========================================================================
-// Event Deletion Requests
-// ===========================================================================
+// --- Event Deletion Requests ---
 
 describe("Workspace.listDeletionRequests", () => {
   it("returns a list of EventDeletionRequest", async () => {
@@ -525,11 +491,8 @@ describe("Workspace.previewDeletionFilters", () => {
   });
 });
 
-// ===========================================================================
-// ADDITIVE (B5 Caution #13): the `run_audit*` composite branches and the
-// facade-local delegation contracts. These do NOT substitute for any
-// translated Python assertion.
-// ===========================================================================
+// --- Additive: the run_audit composite branches and the facade-local
+// delegation contracts Python's wire suite does not reach ---
 
 /** One recorded delegation call. */
 interface DelegationCall {
@@ -576,7 +539,7 @@ function delegationStub(returns: Readonly<Record<string, unknown>>): {
   return { client: stub as unknown as MixpanelClient, calls };
 }
 
-describe("ADDITIVE: run_audit composite branches (`workspace.py:9050-9067`)", () => {
+describe("ADDITIVE: runAudit composite branches", () => {
   it("raises when the first element is not a list (both members)", async () => {
     const { client } = delegationStub({
       runAudit: [{ computed_at: "x" }],
@@ -609,7 +572,7 @@ describe("ADDITIVE: run_audit composite branches (`workspace.py:9050-9067`)", ()
     expect(result.violations).toStrictEqual([]);
   });
 
-  it("falls back to {} metadata when raw[1] is not a dict (watchlist #13)", async () => {
+  it("falls back to {} metadata when raw[1] is not a dict", async () => {
     const { client } = delegationStub({ runAudit: [[], ["not", "a", "dict"]] });
 
     expect((await runAuditMember(client)).computed_at).toBe("");
@@ -674,7 +637,7 @@ describe("ADDITIVE: delegation contracts", () => {
       { method: "getSchemaEnforcement", args: [{ fields: "ruleEvent" }] },
       { method: "getSchemaEnforcement", args: [{ fields: null }] },
       // `exclude_none=True` drops every unset field; `by_alias=True`
-      // camel-cases what remains (`workspace.py:8940`, `:8970`, `:9002`).
+      // camel-cases what remains.
       {
         method: "initSchemaEnforcement",
         args: [{ ruleEvent: "Warn and Drop" }],
@@ -699,7 +662,7 @@ describe("ADDITIVE: delegation contracts", () => {
     ]);
   });
 
-  it("the anomaly writers use the PLAIN by_alias dump (:9169, :9198)", async () => {
+  it("the anomaly writers use the plain by_alias dump", async () => {
     const { client, calls } = delegationStub({
       listDataVolumeAnomalies: [],
       updateAnomaly: {},

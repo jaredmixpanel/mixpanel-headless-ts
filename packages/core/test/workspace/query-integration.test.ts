@@ -1,25 +1,8 @@
-// Translated insights-query integration tests (B5-S2, packet §3):
-// assertion-for-assertion port of tests/unit/test_query_integration.py
-// — ALL 9 classes (TestQueryTimeseries :109,
-// TestQueryNonExistentEvent :191, TestMultiEventIntegration :233,
-// TestFormulaIntegration :266, TestTotalModeIntegration :290,
-// TestQueryPersistence :310, TestTransformQueryResultValidation :330,
-// TestFormulaInListIntegration :374, TestBuildParamsNoApiCall :430).
-//
-// Translation notes:
-// - `mock_api_client` / `ws` come from the shared
-//   `workspace-test-helpers.ts` stub; the Python `ws` fixture builds a
-//   real Workspace and then assigns `_api_client`, which is the injected
-//   `client` option here.
-// - `insights_query.call_args` becomes the recorded body
-//   (`mock.insightsCalls[0]`).
-// - `.df` asserts become `toRows()` / `rowColumns()` (C6);
-//   `df.iloc[0]["count"]` becomes `toRows()[0]["count"]`.
-// - `test_works_without_credentials` builds a Workspace with NO injected
-//   client. In TS the constructor would build a real one from the
-//   session, which is exactly Python's behaviour (a client object exists
-//   but is never called) — the case still proves `build_params` issues
-//   no request, asserted through the fake transport's empty capture log.
+// `Workspace.query` end to end over a canned insights response: result
+// shape, rows/columns, request body, formula and total modes, transform
+// validation and `buildParams` issuing no request. Mirrors all 9 classes
+// of `tests/unit/test_query_integration.py`; `insights_query.call_args`
+// becomes `mock.insightsCalls[0]` and `.df` asserts become `toRows()`.
 
 import { describe, expect, it } from "vitest";
 

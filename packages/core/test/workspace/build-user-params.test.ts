@@ -1,23 +1,8 @@
-// Translated build_user_params tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_build_user_params.py —
-// ALL 13 classes (TestFilterTranslation :107, TestCohortRouting :226,
-// TestPropertySelection :299, TestSortByTranslation :340,
-// TestAsOfConversion :375, TestDistinctIdHandling :408,
-// TestGroupIdTranslation :437, TestSearchPassthrough :456,
-// TestRawStringWhere :472, TestValidationErrors :490,
-// TestAggregateModeParams :607, TestModeSpecificValidation :686,
-// TestCombinedScenarios :735).
-//
-// Translation notes:
-// - `ws` / `workspace_factory` come from the shared
-//   `workspace-test-helpers.ts`.
-// - `calendar.timegm(date(Y, M, D).timetuple())` is midnight UTC of the
-//   calendar date; the expected values are computed the same way in TS
-//   (`Date.UTC(...) / 1000`), never parsed out of the produced param.
-// - The Python `if isinstance(fbc, str): fbc = json.loads(fbc)`
-//   defensive unwraps stay: the TS builder always emits the JSON TEXT
-//   (`pythonJsonDumps`), so the parse branch is the one that runs.
-// - `assert isinstance(params, dict)` becomes an object/non-null check.
+// `Workspace.buildUserParams`: Filter translation to the engage `where`
+// selector, cohort routing, profile/aggregate params and the U* validation
+// codes. Mirrors all 13 classes of `tests/test_workspace_build_user_params.py`.
+// `calendar.timegm(date(...).timetuple())` is computed as `Date.UTC(...)/1000`;
+// the TS builder always emits JSON text, so Python's `json.loads` arm runs.
 
 import { describe, expect, it } from "vitest";
 

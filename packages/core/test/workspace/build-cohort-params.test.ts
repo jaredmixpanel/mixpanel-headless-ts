@@ -1,28 +1,8 @@
-// Translated cohort-params tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_build_cohort_params.py — ALL 17
-// classes (TestBuildFilterEntryCohort :94, TestBuildFilterSectionMixed
-// :171, TestBuildFlowCohortFilter :206, TestBuildGroupSectionCohort
-// :255, TestBuildGroupSectionMixed :344, TestBuildParamsCohortFilter
-// :375, TestBuildFunnelParamsCohortFilter :399,
-// TestBuildRetentionParamsCohortFilter :426,
-// TestBuildParamsCohortBreakdown :455,
-// TestBuildFunnelParamsCohortBreakdown :481,
-// TestBuildRetentionParamsCohortBreakdown :507,
-// TestBuildParamsCohortMetric :546, TestBuildParamsCohortMetricMixed
-// :621, TestBuildParamsCohortMetricMathIgnored :663,
-// TestQueryFlowCohortFilter :791, TestBuildFlowCohortFilterDirect :841,
-// TestCodedFlowCohortFilterCodes :927).
-//
-// Per the packet: the builder-DIRECT classes (:94-:344, :841-:927)
-// assert B3 functions THROUGH the facade path and stay facade-driven
-// here; B3-K2's corpus-mirror describe block is additive, never a
-// substitute (`B3-K2-notes.md:125-128`). The two classes that call
-// `build_flow_cohort_filter` directly keep doing so (they exercise
-// guards unreachable through the facade).
-//
-// Translation note: `pytest.raises(ValueError, …)` names Python's
-// dual-inheriting `ParamValidationError`; the TS twin carries the same
-// message and `.code`.
+// Cohort filters, breakdowns and metrics through the facade builders
+// (`buildParams` / `buildFunnelParams` / `buildRetentionParams` /
+// `buildFlowParams`) plus the direct `buildFlowCohortFilter` guards. Mirrors
+// all 17 classes of `tests/test_build_cohort_params.py`. Python's
+// `pytest.raises(ValueError)` targets `ParamValidationError` here.
 
 import { describe, expect, it } from "vitest";
 
@@ -46,7 +26,7 @@ import {
 import { expectRejects, expectThrows } from "../../test-support/raises.js";
 import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
-/** `_simple_cohort_def()` (test file :78-87). */
+/** `_simple_cohort_def()`. */
 function simpleCohortDef(): CohortDefinition {
   return new CohortDefinition(
     CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
@@ -81,7 +61,7 @@ function measurementOf(
 
 /**
  * Build a cohort filter with a deliberately malformed `_value`
- * (`_malformed_cohort_filter`, test file :902-918).
+ * (`_malformed_cohort_filter`).
  *
  * @param value - The raw `_value` payload to install.
  * @returns A directly-constructed `$cohorts` filter.

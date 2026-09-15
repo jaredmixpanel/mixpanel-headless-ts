@@ -1,29 +1,8 @@
-// B6-W5 Layer-3 translation (packet `b6-packets.md` §7) of the WHOLE
-// of `tests/unit/test_workspace_annotations.py` (387 lines, 2 classes):
-// `TestWorkspaceAnnotationCRUD` and
-// `TestWorkspaceAnnotationTags`.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeFacadeWorkspace(handler)` — the client is built over the
-// OAuth session (`_make_oauth_credentials`, :50) while the facade
-// carries the service-account `_TEST_SESSION`, exactly as
-// Python does. `temp_dir` has no TS analog (no config file is ever
-// touched) and is dropped.
-//
-// `annotation.model_extra` is the Phase-2 `__extras` spillover
-// bag (`model-base.ts`, `extra='allow'`).
-//
-// Dates are STRINGS end-to-end (packet Caution #12 / watchlist #5):
-// `from_date` / `to_date` / `CreateAnnotationParams.date` never become
-// a `Date` anywhere in the request path.
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local delegation contracts Python's wire suite cannot see —
-// which client method each member calls, with which arguments, and the
-// `model_dump(exclude_none=True)` body spelling (`workspace.py`,
-// `:6596`, `:6674`).
+// Workspace annotation and annotation-tag members over the injected fetch
+// seam. Mirrors tests/unit/test_workspace_annotations.py (both classes).
+// `model_extra` is the `__extras` spillover bag; dates stay strings end-to-end
+// (never a `Date` in the request path). Additive: facade-to-client delegation
+// contracts (argument spelling, exclude_none bodies) the wire suite cannot see.
 
 import { describe, expect, it } from "vitest";
 
@@ -51,7 +30,7 @@ import {
 
 /**
  * A minimal annotation dict matching the API shape
- * (`_annotation_json`, :90-109).
+ * (`_annotation_json`).
  *
  * @param id - Annotation ID.
  * @param description - Annotation text.
@@ -71,7 +50,7 @@ function annotationJson(
 }
 
 /**
- * A minimal annotation-tag dict (`_tag_json`, :112-123).
+ * A minimal annotation-tag dict (`_tag_json`).
  *
  * @param id - Tag ID.
  * @param name - Tag name.
@@ -81,13 +60,11 @@ function tagJson(id = 1, name = "releases"): Record<string, unknown> {
   return { id, name };
 }
 
-// =============================================================================
-// TestWorkspaceAnnotationCRUD
-// =============================================================================
+// --- Workspace annotation CRUD ---
 
 describe("Workspace annotation CRUD", () => {
   // python: TestWorkspaceAnnotationCRUD
-  it("list_annotations() returns list of Annotation objects", async () => {
+  it("listAnnotations() returns list of Annotation objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([annotationJson(1, "First"), annotationJson(2, "Second")]),
     );
@@ -100,12 +77,12 @@ describe("Workspace annotation CRUD", () => {
     expect(annotations[1]?.id).toBe(2);
   });
 
-  it("list_annotations() returns empty list when no annotations exist", async () => {
+  it("listAnnotations() returns empty list when no annotations exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listAnnotations()).resolves.toStrictEqual([]);
   });
 
-  it("list_annotations() passes filter params to API", async () => {
+  it("listAnnotations() passes filter params to API", async () => {
     const { ws, transport } = makeFacadeWorkspace(() => ok([annotationJson()]));
     const annotations = await ws.listAnnotations({
       from_date: "2026-01-01",
@@ -119,7 +96,7 @@ describe("Workspace annotation CRUD", () => {
     expect(transport.captures[0]?.url).toContain("toDate=2026-03-31");
   });
 
-  it("create_annotation() returns the created Annotation", async () => {
+  it("createAnnotation() returns the created Annotation", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(annotationJson(10, "New annotation")),
     );
@@ -134,7 +111,7 @@ describe("Workspace annotation CRUD", () => {
     expect(annotation.description).toBe("New annotation");
   });
 
-  it("create_annotation() sends optional fields when provided", async () => {
+  it("createAnnotation() sends optional fields when provided", async () => {
     const { ws } = makeFacadeWorkspace(() => {
       const data = annotationJson(10, "Tagged");
       data["tags"] = [{ id: 1, name: "releases" }];
@@ -152,7 +129,7 @@ describe("Workspace annotation CRUD", () => {
     expect(annotation.tags[0]?.name).toBe("releases");
   });
 
-  it("get_annotation() returns a single Annotation by ID", async () => {
+  it("getAnnotation() returns a single Annotation by ID", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(annotationJson(42, "Found it")),
     );
@@ -163,7 +140,7 @@ describe("Workspace annotation CRUD", () => {
     expect(annotation.description).toBe("Found it");
   });
 
-  it("get_annotation() preserves extra fields from the API", async () => {
+  it("getAnnotation() preserves extra fields from the API", async () => {
     const { ws } = makeFacadeWorkspace(() => {
       const data = annotationJson();
       data["custom_field"] = "extra_value";
@@ -174,7 +151,7 @@ describe("Workspace annotation CRUD", () => {
     expect(annotation.__extras["custom_field"]).toBe("extra_value");
   });
 
-  it("update_annotation() returns the updated Annotation", async () => {
+  it("updateAnnotation() returns the updated Annotation", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(annotationJson(42, "Updated text")),
     );
@@ -185,26 +162,24 @@ describe("Workspace annotation CRUD", () => {
     expect(annotation.description).toBe("Updated text");
   });
 
-  it("delete_annotation() returns None on success", async () => {
+  it("deleteAnnotation() resolves to undefined on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     // Should not raise.
     await expect(ws.deleteAnnotation(42)).resolves.toBeUndefined();
   });
 
-  it("delete_annotation() handles 200 response too", async () => {
+  it("deleteAnnotation() handles 200 response too", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     // Should not raise.
     await expect(ws.deleteAnnotation(42)).resolves.toBeUndefined();
   });
 });
 
-// =============================================================================
-// TestWorkspaceAnnotationTags
-// =============================================================================
+// --- Workspace annotation tags ---
 
 describe("Workspace annotation tags", () => {
   // python: TestWorkspaceAnnotationTags
-  it("list_annotation_tags() returns list of AnnotationTag objects", async () => {
+  it("listAnnotationTags() returns list of AnnotationTag objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([tagJson(1, "releases"), tagJson(2, "deployments")]),
     );
@@ -216,12 +191,12 @@ describe("Workspace annotation tags", () => {
     expect(tags[1]?.name).toBe("deployments");
   });
 
-  it("list_annotation_tags() returns empty list when no tags exist", async () => {
+  it("listAnnotationTags() returns empty list when no tags exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listAnnotationTags()).resolves.toStrictEqual([]);
   });
 
-  it("create_annotation_tag() returns the created AnnotationTag", async () => {
+  it("createAnnotationTag() returns the created AnnotationTag", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(tagJson(3, "new-tag")));
     const params = new CreateAnnotationTagParams({ name: "new-tag" });
     const tag = await ws.createAnnotationTag(params);
@@ -232,12 +207,8 @@ describe("Workspace annotation tags", () => {
   });
 });
 
-// =============================================================================
-// ADDITIVE — delegation contracts (packet §0.2 / B5 Caution #13).
-// NOT a substitute for any translated Python assertion: these lock the
-// facade-to-client seam (argument spelling and the params-dump choice)
-// that the wire suite above cannot observe.
-// =============================================================================
+// --- Additive: the facade-to-client seam (argument spelling and the
+// params-dump choice) that the wire suite above cannot observe ---
 
 describe("ADDITIVE: annotation member delegation contracts", () => {
   it("listAnnotations forwards from_date/to_date/tags verbatim, defaulting to null", async () => {
@@ -263,7 +234,7 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
     });
   });
 
-  it("createAnnotation sends the exclude_none dump (`workspace.py:6534`)", async () => {
+  it("createAnnotation sends the exclude_none dump", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("createAnnotation", annotationJson(), calls);
     await createAnnotationMember(
@@ -271,7 +242,7 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
       new CreateAnnotationParams({ date: "2026-03-31", description: "x" }),
     );
 
-    // `tags`/`user_id` are None and MUST be absent, not null (R3.5).
+    // `tags`/`user_id` are None and must be absent, not null.
     expect(calls[0]?.[0]).toStrictEqual({
       date: "2026-03-31",
       description: "x",
@@ -291,7 +262,7 @@ describe("ADDITIVE: annotation member delegation contracts", () => {
     expect(calls[0]?.[1]).toStrictEqual({ description: "Updated" });
   });
 
-  it("createAnnotationTag sends the exclude_none dump (`workspace.py:6674`)", async () => {
+  it("createAnnotationTag sends the exclude_none dump", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("createAnnotationTag", tagJson(), calls);
     await createAnnotationTagMember(

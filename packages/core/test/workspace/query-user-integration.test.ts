@@ -1,36 +1,8 @@
-// Translated query-user integration tests (B5-S2, packet §3):
-// assertion-for-assertion port of
-// tests/test_workspace_query_user_integration.py — ALL 11
-// classes (TestBehavioralFilteringAllOf :182,
-// TestBehavioralFilteringAnyOf :275,
-// TestBehavioralFilteringSavedCohort :359,
-// TestBehavioralFilteringCombinedCohortAndWhere :428,
-// TestBehavioralFilteringCohortPlusInCohortError :519,
-// TestBehavioralFilteringCohortSerializationError :591,
-// TestCrossEngineDistinctIds :652,
-// TestCrossEngineDataFrameComposition :752,
-// TestCrossEngineFilterConsistency :895,
-// TestCrossEngineCohortIdFromFunnel :1010,
-// TestUFilterWrapPreservation :1116).
-//
-// Translation notes:
-// - `export_profiles_page.call_args.kwargs.get(k)` becomes the recorded
-//   options bag (`mock.exportPageCalls[0].options[k]`).
-// - `patch.object(CohortDefinition, "to_dict", side_effect=...)` becomes
-//   a per-instance `toDict` override (the same observable: the U24
-//   validator's call raises).
-// - `TestCrossEngineDataFrameComposition` asserts PANDAS operations
-//   (`groupby`, `describe`, `merge`, boolean indexing,
-//   `isinstance(df, pd.DataFrame)`). There is no pandas in TS
-//   (phase2-design C6: `.df` becomes `toRows()` + `rowColumns()`), so
-//   each case is translated to the equivalent computation over the row
-//   list — the SAME numbers, asserted on the data the frame would be
-//   built from. `test_df_is_pandas_dataframe` becomes an assertion that
-//   `toRows()` is an array (the frame body); the pandas type check
-//   itself is a header-cited exclusion.
-// - `assert isinstance(excinfo.value.__cause__, ParamValidationError)`
-//   maps to the `cause` property the facade sets on the wrap (Python's
-//   `raise ... from exc`).
+// `Workspace.queryUser` integration: behavioural cohort filtering (all_of,
+// any_of, saved cohorts, cohort + where, U2 / U24 errors), cross-engine
+// distinct_ids and row composition, Filter consistency and the U_FILTER
+// wrap. Mirrors all 11 classes of
+// `tests/test_workspace_query_user_integration.py`; pandas ops become `toRows()` math.
 
 import { describe, expect, it } from "vitest";
 
@@ -78,7 +50,7 @@ function parseCohortParam(mock: MockWorkspaceClient): Record<string, unknown> {
   return JSON.parse(raw as string) as Record<string, unknown>;
 }
 
-// Mock data (test file :117-131)
+// Mock data
 const RAW_PROFILE_PREMIUM = makeRawProfile("user_001", undefined, {
   plan: "premium",
   email: "alice@example.com",
@@ -106,7 +78,7 @@ const RAW_PROFILE_PREMIUM_2 = makeRawProfile("user_004", undefined, {
 
 describe("Behavioral filtering all of", () => {
   // python: TestBehavioralFilteringAllOf
-  it("all_of(did_event) sets filter_by_cohort with raw_cohort", async () => {
+  it("allOf(did_event) sets filter_by_cohort with raw_cohort", async () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
     const cohort = CohortDefinition.allOf(
@@ -836,7 +808,7 @@ describe("Cross engine cohort ID from funnel", () => {
 });
 
 // ===========================================================================
-// U_FILTER wrap preservation over converted ES* guards (RR-4)
+// U_FILTER wrap preservation over converted ES* guards
 // ===========================================================================
 
 describe("U filter wrap preservation", () => {

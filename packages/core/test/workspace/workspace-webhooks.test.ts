@@ -1,19 +1,8 @@
-// B6-W5 Layer-3 translation (packet `b6-packets.md` §7) of the WHOLE
-// of `tests/unit/test_workspace_webhooks.py` (326 lines, 2 classes):
-// `TestWorkspaceWebhookCRUD` and `TestWorkspaceWebhookTest`
-// (:274).
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` becomes
-// `makeFacadeWorkspace(handler)` — the client is built over the OAuth
-// session while the facade carries the service-account `_TEST_SESSION`,
-// exactly as Python does. `temp_dir` has no TS analog and is dropped.
-//
-// ADDITIVE section (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-to-client delegation contracts (argument spelling + the
-// `model_dump(exclude_none=True)` body at `workspace.py:6738`, `:6774`,
-// `:6830`) that the wire suite above cannot observe.
+// Workspace webhook members (list/create/update/delete, testWebhook) over the
+// injected fetch seam. Mirrors tests/unit/test_workspace_webhooks.py (both
+// classes); the client is built over the OAuth session while the facade
+// carries the service-account session, as Python does. Additive: the
+// facade-to-client delegation contracts the wire suite cannot observe.
 
 import { describe, expect, it } from "vitest";
 
@@ -40,8 +29,7 @@ import {
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
- * A minimal webhook dict matching the API shape (`_webhook_json`,
- * :92-116).
+ * A minimal webhook dict matching the API shape (`_webhook_json`).
  *
  * @param id - Webhook UUID.
  * @param name - Webhook name.
@@ -65,7 +53,7 @@ function webhookJson(
 }
 
 /**
- * A webhook mutation-result dict (`_mutation_json`, :119-132).
+ * A webhook mutation-result dict (`_mutation_json`).
  *
  * @param id - Webhook UUID.
  * @param name - Webhook name.
@@ -78,13 +66,11 @@ function mutationJson(
   return { id, name };
 }
 
-// =============================================================================
-// TestWorkspaceWebhookCRUD
-// =============================================================================
+// --- Workspace webhook CRUD ---
 
 describe("Workspace webhook CRUD", () => {
   // python: TestWorkspaceWebhookCRUD
-  it("list_webhooks() returns list of ProjectWebhook objects", async () => {
+  it("listWebhooks() returns list of ProjectWebhook objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([webhookJson("id-1", "Hook A"), webhookJson("id-2", "Hook B")]),
     );
@@ -97,12 +83,12 @@ describe("Workspace webhook CRUD", () => {
     expect(webhooks[1]?.id).toBe("id-2");
   });
 
-  it("list_webhooks() returns empty list when no webhooks exist", async () => {
+  it("listWebhooks() returns empty list when no webhooks exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listWebhooks()).resolves.toStrictEqual([]);
   });
 
-  it("create_webhook() returns WebhookMutationResult", async () => {
+  it("createWebhook() returns WebhookMutationResult", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(mutationJson("new-id", "New Hook")),
     );
@@ -117,7 +103,7 @@ describe("Workspace webhook CRUD", () => {
     expect(result.name).toBe("New Hook");
   });
 
-  it("create_webhook() sends auth fields when provided", async () => {
+  it("createWebhook() sends auth fields when provided", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(mutationJson("new-id", "Secured")),
     );
@@ -134,7 +120,7 @@ describe("Workspace webhook CRUD", () => {
     expect(result.name).toBe("Secured");
   });
 
-  it("update_webhook() returns WebhookMutationResult", async () => {
+  it("updateWebhook() returns WebhookMutationResult", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(mutationJson("wh-uuid-123", "Renamed")),
     );
@@ -145,24 +131,22 @@ describe("Workspace webhook CRUD", () => {
     expect(result.name).toBe("Renamed");
   });
 
-  it("delete_webhook() returns None on success", async () => {
+  it("deleteWebhook() resolves to undefined on success", async () => {
     const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteWebhook("wh-uuid-123")).resolves.toBeUndefined();
   });
 
-  it("delete_webhook() handles 200 response too", async () => {
+  it("deleteWebhook() handles 200 response too", async () => {
     const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(ws.deleteWebhook("wh-uuid-123")).resolves.toBeUndefined();
   });
 });
 
-// =============================================================================
-// TestWorkspaceWebhookTest
-// =============================================================================
+// --- Workspace webhook test ---
 
 describe("Workspace webhook test", () => {
   // python: TestWorkspaceWebhookTest
-  it("test_webhook() returns WebhookTestResult on success", async () => {
+  it("testWebhook() returns WebhookTestResult on success", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ success: true, status_code: 200, message: "OK" }),
     );
@@ -175,7 +159,7 @@ describe("Workspace webhook test", () => {
     expect(result.message).toBe("OK");
   });
 
-  it("test_webhook() returns failure result when test fails", async () => {
+  it("testWebhook() returns failure result when test fails", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ success: false, status_code: 500, message: "Connection refused" }),
     );
@@ -188,9 +172,7 @@ describe("Workspace webhook test", () => {
   });
 });
 
-// =============================================================================
-// ADDITIVE — delegation contracts (packet §0.2 / B5 Caution #13).
-// =============================================================================
+// --- Additive: delegation contracts the wire suite cannot observe ---
 
 describe("ADDITIVE: webhook member delegation contracts", () => {
   it("listWebhooks / deleteWebhook forward positionally with no options bag", async () => {
@@ -206,7 +188,7 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
     expect(delCalls[0]?.[0]).toBe("wh-1");
   });
 
-  it("createWebhook sends the exclude_none dump (`workspace.py:6738`)", async () => {
+  it("createWebhook sends the exclude_none dump", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("createWebhook", mutationJson(), calls);
     await createWebhookMember(
@@ -214,7 +196,7 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
       new CreateWebhookParams({ name: "H", url: "https://e.co" }),
     );
 
-    // auth_type/username/password are None and MUST be absent (R3.5).
+    // auth_type/username/password are None and must be absent.
     expect(calls[0]?.[0]).toStrictEqual({ name: "H", url: "https://e.co" });
   });
 
@@ -231,7 +213,7 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
     expect(calls[0]?.[1]).toStrictEqual({ name: "Renamed", is_enabled: false });
   });
 
-  it("testWebhook sends the exclude_none dump (`workspace.py:6830`)", async () => {
+  it("testWebhook sends the exclude_none dump", async () => {
     const calls: unknown[][] = [];
     const client = stubClient(
       "testWebhook",

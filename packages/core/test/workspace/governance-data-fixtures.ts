@@ -1,3 +1,9 @@
+// Shared fixtures for the governance-data suites split from
+// `tests/unit/test_workspace_data_governance.py`: the `_make_workspace` twin
+// over the injected-fetch seam (plus the `readFile` / `monotonic` / `sleep`
+// seams the lookup-table upload needs), the bare `{"status": "ok"}`
+// envelope and the `_custom_property_json` / `_lookup_table_json` payloads.
+
 import { Workspace } from "../../src/workspace.js";
 import type { WorkspaceOptions } from "../../src/workspace-members/options.js";
 import {
@@ -11,10 +17,10 @@ import {
 
 /**
  * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :97-116).
+ * (`_make_workspace`).
  *
  * @param handler - The canned-response handler.
- * @param options - Extra facade options (the W7-D1/D2 seams).
+ * @param options - Extra facade options (the `readFile` / `monotonic` seams).
  * @param sleep - Optional client sleep override (the virtual clock).
  * @returns The facade plus the transport capture log.
  */
@@ -46,7 +52,7 @@ export function okBare(): CannedResponse {
 
 /**
  * A minimal custom property dict matching the API shape
- * (`_custom_property_json`, :208-230).
+ * (`_custom_property_json`).
  *
  * @param customPropertyId - Custom property ID.
  * @param name - Property name.
@@ -70,7 +76,7 @@ export function customPropertyJson(
 
 /**
  * A minimal lookup table dict matching the API shape
- * (`_lookup_table_json`, :233-251).
+ * (`_lookup_table_json`).
  *
  * @param id - Lookup table ID.
  * @param name - Table name.

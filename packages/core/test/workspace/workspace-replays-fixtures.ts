@@ -1,42 +1,9 @@
-// Translated Workspace replay-member tests (packet B5-S3,
-// `b5-packets.md` §5): assertion-for-assertion ports of ALL
-// THIRTEEN classes of
-//   tests/unit/test_workspace_replays.py
-//     TestListReplaysValidation        :97
-//     TestListReplaysQueryCall         :148
-//     TestRetentionWarning             :237
-//     TestEventsForReplayValidation    :284
-//     TestFetchReplay                  :317
-//     TestReplaysForUser               :432
-//     TestSignReplaysWiring            :465
-//     TestEventsForReplaysWindow       :493
-//     TestFetchReplaysResilience       :522
-//     TestReplaysForUserLimit          :560
-//     TestFetchReplaysBatching         :578
-//     TestReplaysForUserThreadsRetention :634
-//     TestCodedReplayGuardCodes        :664
-//
-// Translation notes:
-// - `ws._replays_svc = MagicMock()` → `ws.replaysService = stub` (the
-//   settable accessor mirrors Python's attribute write); the stub is a
-//   recording object cast to `ReplaysService`.
-// - `svc.discover.assert_called_once_with(distinct_id=…, replay_ids=…,
-//   from_date=…, to_date=…, limit=…)` → an assertion on the recorded
-//   options bag, whose keys are the camelCase service spellings
-//   (`ReplaysService.discover` is `_internal`; only the FACADE keeps
-//   Python's snake_case, R3.2).
-// - `pytest.raises(ValueError, match=…)` on the WR* guards → the
-//   `{class, code}` assertion (R5.4). The Python file asserts BOTH the
-//   message (TestListReplaysValidation) and the code
-//   (TestCodedReplayGuardCodes); the port keeps the code assertions and
-//   the message-substring ones become the same code, since
-//   `ParamValidationError` IS the `ValueError` subclass Python's
-//   `test_wr_guards_stay_catchable_as_value_error` pins.
-// - `warnings.catch_warnings(record=True)` → the injected
-//   {@link WarningSink} threaded through the Workspace constructor.
-// - `ws.fetch_replay = MagicMock(side_effect=…)` → a method override on
-//   the instance; `call.kwargs[...]` → the recorded options bag.
-// - Every member is `async` in the port (R6.1), so every call awaits.
+// Shared fixtures for the Workspace replay-member suites
+// (workspace-replays-list / workspace-replays-fetch): the recording
+// ReplaysService stub installed via the settable `ws.replaysService`
+// accessor (Python's `ws._replays_svc = MagicMock()`), the WarningSink that
+// replaces `warnings.catch_warnings(record=True)`, and canned replay records.
+
 import { expect } from "vitest";
 
 import { ParamValidationError } from "../../src/errors.js";
@@ -74,7 +41,8 @@ interface StubService {
  * Build a `Workspace` bound to a fake session (`_make_workspace`,
  * `test_workspace_replays.py`).
  *
- * @param options - Optional `warn` sink and App-API handler.
+ * @param options - Optional seams: `warn` (the `warnings.catch_warnings`
+ *   twin), `logger` (the `caplog` twin) and the App-API fetch `handler`.
  * @returns The workspace under test.
  */
 export function makeWorkspace(
@@ -98,7 +66,7 @@ export function makeWorkspace(
 
 /**
  * Replace the workspace's lazy `ReplaysService` with a recording stub
- * (`_install_mock_replays_service`, `:47-51`).
+ * (`_install_mock_replays_service`).
  *
  * @param ws - The workspace to patch.
  * @returns The stub, with its call log.
@@ -150,10 +118,11 @@ export function callsTo(
 }
 
 /**
- * Build a `ReplaySummary` for fixture seeding (`_summary`, `:54-64`).
+ * Build a `ReplaySummary` for fixture seeding (`_summary`).
  *
  * @param replayId - The replay id (default `"r-1"`).
- * @param options - `retentionDays` / `distinctId` overrides.
+ * @param options - Field overrides: `retentionDays` (default 30) and
+ *   `distinctId` (default `"u-42"`; an explicit `null` is kept).
  * @returns The summary.
  */
 export function summary(

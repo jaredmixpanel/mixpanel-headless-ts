@@ -1,46 +1,8 @@
-// B6-W7 Layer-3 translation (packet `b6-packets.md` §9) — the class
-// split of `tests/unit/test_workspace_data_governance.py` (1,842 lines)
-// that W7 owns:
-//
-//   drop filters      : `TestListDropFilters`,
-//     `TestCreateDropFilter`, `TestUpdateDropFilter`,
-//     `TestDeleteDropFilter`, `TestGetDropFilterLimits`
-//   custom properties : `TestListCustomProperties`,
-//     `TestCreateCustomProperty`, `TestGetCustomProperty`,
-//     `TestUpdateCustomProperty`, `TestDeleteCustomProperty`
-//     (:891), `TestValidateCustomProperty` (:905)
-//   custom events     : `TestCreateCustomEvent`,
-//     `TestListCustomEvents`, `TestUpdateCustomEvent`,
-//     `TestDeleteCustomEvent`
-//   lookup tables     : `TestListLookupTables`,
-//     `TestUploadLookupTable`, `TestMarkLookupTableReady`
-//     (:1648), `TestGetLookupUploadUrl` (:1672),
-//     `TestGetLookupUploadStatus`, `TestUpdateLookupTable`
-//     (:1751), `TestDeleteLookupTables` (:1775),
-//     `TestDownloadLookupTable`, `TestGetLookupDownloadUrl`
-//
-// The lexicon / tags / tracking-history classes in the same Python file
-// belong to W6 (`b6-packets.md` §8) and are NOT re-translated here.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the OAuth
-// session (`_make_oauth_credentials`, :82-88) while the facade carries
-// the service-account `_TEST_SESSION`, exactly as Python does.
-// `temp_dir` has no TS analog EXCEPT in `TestUploadLookupTable`, where
-// Python writes a real CSV and the facade reads it with
-// `Path(...).read_bytes()`; the TS twin injects the W7-D1 `readFile`
-// seam with the same bytes (packet §9 W7-D1: `packages/core` is
-// runtime-agnostic, so `node:fs` is a B8 wiring job).
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local branches Python's suite does not cover — the
-// `displayFormula` corruption re-raise, the
-// `to_form_body` JSON spelling, the `readFile` seam default, the
-// `REVOKED` / `NOTFOUND` / non-dict-result poll arms
-// (`workspace.py`) and the per-member delegation contracts
-// (which client method, with which arguments).
+// ADDITIVE (no Python twin): delegation contracts of the governance/data
+// `Workspace` members — which client method each calls and with which
+// arguments (dump flags, alias spelling, form bodies, defaults) — probed
+// through a stub client. Complements the wire-level suites split from
+// `tests/unit/test_workspace_data_governance.py`.
 
 import { describe, expect, it } from "vitest";
 
@@ -62,8 +24,8 @@ import {
 } from "./governance-data-fixtures.js";
 
 /**
- * A client stub whose single method returns `value` (the additive
- * delegation probes — the W6 `stubClient` pattern).
+ * A client stub whose single method returns `value` (the delegation
+ * probes).
  *
  * @param method - The client method name to stub.
  * @param value - The value the stub resolves to.
@@ -77,7 +39,8 @@ function stubClient(
 ): MixpanelClient {
   return {
     // The facade installs a `/me` workspace resolver at construction
-    // (`workspace.py:775-793`), so every stub must accept one.
+    // (`mixpanel_headless.workspace.Workspace._install_workspace_resolver`),
+    // so every stub must accept one.
     hasWorkspaceResolver: false,
     setWorkspaceResolver: (): void => {},
     [method]: (...args: unknown[]): Promise<unknown> => {

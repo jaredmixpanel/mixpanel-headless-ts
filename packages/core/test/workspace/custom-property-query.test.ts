@@ -1,25 +1,8 @@
-// Translated custom-property E2E tests (B5-S2, packet §3 + §8):
-// assertion-for-assertion port of tests/test_custom_property_query.py
-// — 4 of its 5 classes (TestGroupByCustomPropertyE2E :62,
-// TestFilterCustomPropertyE2E :124, TestMeasurementCustomPropertyE2E
-// :158, TestCombinedPositions :209), PLUS the B3-K2 deferral
-// `tests/test_custom_property_builders.py::TestMeasurementPropertyBuilder`
-// :361 (`B3-K2-notes.md:123`).
-//
-// OUTBOUND DEFERRAL TO B6 (header-cited):
-// `TestListCustomPropertiesErrorHandling` :260 exercises
-// `ws.list_custom_properties()` — the FACADE member, whose contract is
-// the `displayFormula` QueryError RE-RAISE at `workspace.py`
-// (`raised is not original`, `__cause__ is original`, HTTP context
-// carried over). The api-map puts `workspace.list_custom_properties` in
-// batch **B6** (`jq '.workspace_members[] | select(.name==
-// "list_custom_properties")'` -> `"batch": "B6"`), and the B4 client
-// method `listCustomProperties` does NOT perform that wrapping — it is
-// a plain `appRequest` + `expectListResult`
-// (`services/entities/custom-properties.ts:115-122`). The packet's
-// "translate against the B4 client method" instruction therefore cannot
-// preserve the assertions (there is no re-raise to observe), so the
-// class defers to B6 with the facade member it tests.
+// Custom properties end to end through the params builders — a
+// `CustomPropertyRef` or `InlineCustomProperty` in group_by, where and the
+// measurement position. Mirrors `tests/test_custom_property_query.py` minus
+// `TestListCustomPropertiesErrorHandling` (see governance-data-custom-properties)
+// plus `tests/test_custom_property_builders.py::TestMeasurementPropertyBuilder`.
 
 import { describe, expect, it } from "vitest";
 
@@ -258,8 +241,7 @@ describe("Combined positions", () => {
 });
 
 // ===========================================================================
-// B3-K2 deferral: tests/test_custom_property_builders.py
-//                 ::TestMeasurementPropertyBuilder :361
+// tests/test_custom_property_builders.py::TestMeasurementPropertyBuilder
 // ===========================================================================
 
 describe("Measurement property builder", () => {

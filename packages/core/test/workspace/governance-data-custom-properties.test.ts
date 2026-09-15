@@ -1,46 +1,8 @@
-// B6-W7 Layer-3 translation (packet `b6-packets.md` §9) — the class
-// split of `tests/unit/test_workspace_data_governance.py` (1,842 lines)
-// that W7 owns:
-//
-//   drop filters      : `TestListDropFilters`,
-//     `TestCreateDropFilter`, `TestUpdateDropFilter`,
-//     `TestDeleteDropFilter`, `TestGetDropFilterLimits`
-//   custom properties : `TestListCustomProperties`,
-//     `TestCreateCustomProperty`, `TestGetCustomProperty`,
-//     `TestUpdateCustomProperty`, `TestDeleteCustomProperty`
-//     (:891), `TestValidateCustomProperty` (:905)
-//   custom events     : `TestCreateCustomEvent`,
-//     `TestListCustomEvents`, `TestUpdateCustomEvent`,
-//     `TestDeleteCustomEvent`
-//   lookup tables     : `TestListLookupTables`,
-//     `TestUploadLookupTable`, `TestMarkLookupTableReady`
-//     (:1648), `TestGetLookupUploadUrl` (:1672),
-//     `TestGetLookupUploadStatus`, `TestUpdateLookupTable`
-//     (:1751), `TestDeleteLookupTables` (:1775),
-//     `TestDownloadLookupTable`, `TestGetLookupDownloadUrl`
-//
-// The lexicon / tags / tracking-history classes in the same Python file
-// belong to W6 (`b6-packets.md` §8) and are NOT re-translated here.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the OAuth
-// session (`_make_oauth_credentials`, :82-88) while the facade carries
-// the service-account `_TEST_SESSION`, exactly as Python does.
-// `temp_dir` has no TS analog EXCEPT in `TestUploadLookupTable`, where
-// Python writes a real CSV and the facade reads it with
-// `Path(...).read_bytes()`; the TS twin injects the W7-D1 `readFile`
-// seam with the same bytes (packet §9 W7-D1: `packages/core` is
-// runtime-agnostic, so `node:fs` is a B8 wiring job).
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local branches Python's suite does not cover — the
-// `displayFormula` corruption re-raise, the
-// `to_form_body` JSON spelling, the `readFile` seam default, the
-// `REVOKED` / `NOTFOUND` / non-dict-result poll arms
-// (`workspace.py`) and the per-member delegation contracts
-// (which client method, with which arguments).
+// `Workspace` custom-property members: list, create, get, update, delete
+// and validate. Mirrors the `Test*CustomProperty` / `TestListCustomProperties`
+// classes of `tests/unit/test_workspace_data_governance.py`;
+// `httpx.MockTransport` becomes the injected-fetch seam. `ADDITIVE:` locks
+// the facade's `displayFormula` re-raise branch at the member seam.
 
 import { describe, expect, it } from "vitest";
 
@@ -80,7 +42,7 @@ function throwingClient(method: string, error: Error): MixpanelClient {
 
 describe("List custom properties", () => {
   // python: TestListCustomProperties
-  it("list_custom_properties() returns list of CustomProperty objects", async () => {
+  it("listCustomProperties() returns list of CustomProperty objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([
         customPropertyJson(1, "Revenue", "events"),
@@ -95,7 +57,7 @@ describe("List custom properties", () => {
     expect(props[1]?.resource_type).toBe("people");
   });
 
-  it("list_custom_properties() returns empty list when none exist", async () => {
+  it("listCustomProperties() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
     await expect(ws.listCustomProperties()).resolves.toStrictEqual([]);
   });
@@ -103,7 +65,7 @@ describe("List custom properties", () => {
 
 describe("Create custom property", () => {
   // python: TestCreateCustomProperty
-  it("create_custom_property() returns the created CustomProperty", async () => {
+  it("createCustomProperty() returns the created CustomProperty", async () => {
     const { ws } = makeWorkspace(() =>
       ok(customPropertyJson(99, "New Prop", "events")),
     );
@@ -125,7 +87,7 @@ describe("Create custom property", () => {
 
 describe("Get custom property", () => {
   // python: TestGetCustomProperty
-  it("get_custom_property() returns a single CustomProperty by ID", async () => {
+  it("getCustomProperty() returns a single CustomProperty by ID", async () => {
     const { ws } = makeWorkspace(() =>
       ok(customPropertyJson(42, "Revenue", "events")),
     );
@@ -139,7 +101,7 @@ describe("Get custom property", () => {
 
 describe("Update custom property", () => {
   // python: TestUpdateCustomProperty
-  it("update_custom_property() returns the updated CustomProperty", async () => {
+  it("updateCustomProperty() returns the updated CustomProperty", async () => {
     const { ws } = makeWorkspace(() =>
       ok(customPropertyJson(42, "Renamed", "events")),
     );
@@ -153,7 +115,7 @@ describe("Update custom property", () => {
 
 describe("Delete custom property", () => {
   // python: TestDeleteCustomProperty
-  it("delete_custom_property() returns None on success", async () => {
+  it("deleteCustomProperty() returns None on success", async () => {
     const { ws } = makeWorkspace(() => okBare());
     await expect(ws.deleteCustomProperty("42")).resolves.toBeUndefined();
   });
@@ -161,7 +123,7 @@ describe("Delete custom property", () => {
 
 describe("Validate custom property", () => {
   // python: TestValidateCustomProperty
-  it("validate_custom_property() returns an opaque dict", async () => {
+  it("validateCustomProperty() returns an opaque dict", async () => {
     const { ws } = makeWorkspace(() => ok({ valid: true, errors: [] }));
     const params = new CreateCustomPropertyParams({
       name: "Test Prop",
@@ -179,17 +141,16 @@ describe("Validate custom property", () => {
 });
 
 // =============================================================================
-// ADDITIVE — facade-local branches and delegation contracts
-// (B5 Caution #13 / packet §0.2). None of these substitute for a
-// translated Python assertion; they lock behavior Python's suite leaves
-// uncovered.
+// ADDITIVE — the facade-local `displayFormula` re-raise branch, probed at
+// the member seam. Nothing here substitutes for a translated Python
+// assertion.
 // =============================================================================
 
 describe("ADDITIVE: list_custom_properties displayFormula corruption branch", () => {
   /**
    * Build the `QueryError` the App API raises when a project holds a
    * custom property with an invalid `displayFormula`
-   * (`workspace.py`).
+   * (`mixpanel_headless.workspace.Workspace.list_custom_properties`).
    *
    * @param body - The `response_body` detail.
    * @returns The error.

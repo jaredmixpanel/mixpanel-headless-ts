@@ -1,37 +1,8 @@
-// Translated structural query-user tests (B5-S2, packet §3 + §8):
-// assertion-for-assertion port of tests/test_query_user_structural.py
-// — the 8 classes this shard owns:
-// TestParallelPageOrderingPreserved :171,
-// TestParallelLimit1FallsBackToSequential :241,
-// TestParallelPageSizeZeroFallback :274,
-// TestParallelPageSizeNoneFallback :307,
-// TestAggregateComputedAtFromAPI :347,
-// TestAggregateComputedAtFallback :375,
-// TestDfProfilesVaryingPropertySetsUnionColumns :526,
-// TestDfPropertyNamedDistinctIdCollision :585.
-//
-// HEADER EXCLUSIONS (the other 4 classes, already translated):
-// - TestPbtFormatValueSpecialChars :416 and
-//   TestFiltersToSelectorOrAndPrecedence :461 — translated at B3-K4
-//   (`B3-K4-notes.md:87-90`).
-// - TestTransformProfileMissingDistinctId :492 and
-//   TestTransformProfileCompletelyEmpty :509 — translated at B3-K3
-//   (`B3-K3-notes.md:93-96`).
-// The Python file also carries a `TestCredentialCheckBeforeValidation`
-// REMOVAL comment — nothing to translate.
-//
-// Translation notes:
-// - `page_size=None` (Python `object.__setattr__` on a frozen
-//   dataclass) is reproduced with the same field mutated to `null`; the
-//   `or 1000` guard is `page0.page_size ? … : 1000` in TS, so both
-//   falsy values take the same branch.
-// - The pandas NaN assertions in
-//   `test_df_profiles_varying_property_sets_union_columns` have no TS
-//   twin: the ragged-row model (phase2-design C6) leaves a missing key
-//   ABSENT rather than filling NaN, and `rowColumns()` is the column
-//   contract. The translation asserts the SAME facts in the TS model —
-//   the union column list, its exact order, key ABSENCE where pandas
-//   would show NaN, and the present values.
+// Structural queryUser behaviour: parallel page ordering, the limit=1 and
+// page_size 0/null fallbacks, aggregate computed_at sourcing and the ragged-row
+// frame. Mirrors eight classes of tests/test_query_user_structural.py (the PBT,
+// selector and transform-profile classes live under test/query/). pandas NaN
+// asserts become key-absence asserts: ragged rows leave missing keys absent.
 
 import { describe, expect, it } from "vitest";
 
@@ -44,9 +15,7 @@ import {
   mockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
-// ===========================================================================
-// TIER 4: structural / behavioural correctness
-// ===========================================================================
+// --- Structural / behavioural correctness ---
 
 describe("Parallel page ordering preserved", () => {
   // python: TestParallelPageOrderingPreserved
@@ -200,9 +169,7 @@ describe("Aggregate computed at fallback", () => {
   });
 });
 
-// ===========================================================================
-// TIER 5: edge cases
-// ===========================================================================
+// --- Edge cases ---
 
 describe("Df profiles varying property sets union columns", () => {
   // python: TestDfProfilesVaryingPropertySetsUnionColumns

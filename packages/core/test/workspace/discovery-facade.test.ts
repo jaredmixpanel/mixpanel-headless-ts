@@ -1,19 +1,8 @@
-// B5-S1 facade coverage for the 12 discovery/lexicon `Workspace`
-// members (`workspace.py`).
-//
-// Provenance: these members carry ZERO corpus vectors (packet §4
-// "Vectors: 0") and Python has no dedicated facade test class for them
-// beyond `TestFacadeAndCli::test_facade_delegates` (translated in
-// `test/services/schema-graph.test.ts`). Per packet Caution #13 the
-// Layer-3 suite is the ONLY behaviour lock for zero-vector members, so
-// this file is ADDITIVE coverage of the delegation contract each member
-// carries in the Python source: which service method it calls, with
-// which arguments, and the two members whose facade body is more than a
-// forward — `clear_discovery_cache` (`:1273-1279`, guarded on the lazy
-// service) and `subproperties` (the `UserWarning` chain).
-//
-// It never substitutes for a translated Python assertion (B3-K2's
-// corpus-mirror precedent, `B3-K2-notes.md:125-128`).
+// ADDITIVE (no Python twin beyond `TestFacadeAndCli::test_facade_delegates`,
+// ported in `test/services/schema-graph.test.ts`): the delegation contract
+// of the 12 discovery/lexicon `Workspace` members — which service method
+// each calls, with which arguments — plus the two with a real facade body,
+// `clearDiscoveryCache` (guarded on the lazy service) and `subproperties`.
 
 import { describe, expect, it } from "vitest";
 
@@ -287,11 +276,9 @@ describe("Workspace discovery members", () => {
     expect(result.computed_at).toBe("2026-08-16T12:34:56+00:00");
   });
 
-  // B6-W1 UPDATE: this case used to assert that `use()` / `close()`
-  // threw `UNPORTED_MEMBER`. Both members are now ported (packet §3);
-  // what survives is the lifecycle pair itself — `use()` is the
-  // no-throw zero-axis swap and `close()` resolves (idempotently).
-  it("the lifecycle pair is live (B6-W1 replaced the UNPORTED stubs)", async () => {
+  // `use()` with no axes is a no-throw no-op swap; `close()` resolves
+  // idempotently.
+  it("use() with no axes resolves to the facade and close() is idempotent", async () => {
     const { ws } = workspaceWith(() => ({ status: 200, json: [] }));
     await expect(ws.use()).resolves.toBe(ws);
     await expect(ws.close()).resolves.toBeUndefined();

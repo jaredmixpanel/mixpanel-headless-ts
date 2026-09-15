@@ -1,31 +1,8 @@
-// Translated parallel query-user tests (B5-S2, packet §3): assertion-
-// for-assertion port of tests/test_workspace_query_user_parallel.py
-// — ALL 10 classes (TestParallelSinglePageSkip :239,
-// TestParallelMultiPageFetch :323, TestParallelLimitAwareDispatch :509,
-// TestParallelFailedPageHandling :651, TestParallelWorkerCap :799,
-// TestParallelRateLimitWarning :899, TestParallelAggregateValidation
-// :997, TestParallelEarlyExitOnLimit :1062, TestParallelResultStructure
-// :1184, TestParallelErrorPropagation :1291).
-//
-// Translation notes:
-// - `mock_api_client` / `workspace_factory` come from the shared
-//   `workspace-test-helpers.ts` (which also records why the Python
-//   `finally: ws.close()` has no TS twin).
-// - `caplog.at_level(logging.WARNING)` becomes the injected
-//   {@link logCollector} (R9.5 — `core` has no logging module); the
-//   substring assertions run against `collector.warnings`.
-// - `result.df.columns[0]` / `len(result.df)` become `rowColumns()[0]`
-//   / `toRows().length` (C6).
-// - Python's `ThreadPoolExecutor` is the bounded promise scheduler; the
-//   observable contracts these tests pin (call COUNT, page ORDER in the
-//   result, failed-page bookkeeping, coded-error propagation) are
-//   identical, which is exactly what the packet's "SAME worker-cap,
-//   page-ordering, early-exit-on-limit, and failed-page semantics"
-//   requires.
-// - `mock.side_effect = [page0, SomeError(...)]` (an iterable side
-//   effect) becomes a handler that returns page 0 and throws the coded
-//   error for every later page — the same first-failure behaviour with
-//   `workers=2`.
+// Workspace.queryUser in parallel mode: single-page skip, multi-page fetch,
+// limit-aware dispatch, failed-page bookkeeping, the worker cap, the rate-limit
+// warning, aggregate rejection, early exit, result shape and error propagation.
+// Mirrors tests/test_workspace_query_user_parallel.py (all ten classes). `caplog`
+// is the injected logCollector; `.df` asserts use toRows()/rowColumns().
 
 import { describe, expect, it } from "vitest";
 
@@ -49,9 +26,7 @@ import {
   pageSideEffectFactory,
 } from "../../test-support/workspace-test-helpers.js";
 
-// ===========================================================================
-// Single-page result skips parallel overhead
-// ===========================================================================
+// --- Single-page result skips parallel overhead ---
 
 describe("Parallel single page skip", () => {
   // python: TestParallelSinglePageSkip
@@ -124,9 +99,7 @@ describe("Parallel single page skip", () => {
   });
 });
 
-// ===========================================================================
-// Multi-page parallel fetch collects all profiles
-// ===========================================================================
+// --- Multi-page parallel fetch collects all profiles ---
 
 describe("Parallel multi page fetch", () => {
   // python: TestParallelMultiPageFetch
@@ -246,9 +219,7 @@ describe("Parallel multi page fetch", () => {
   });
 });
 
-// ===========================================================================
-// Limit-aware dispatch
-// ===========================================================================
+// --- Limit-aware dispatch ---
 
 describe("Parallel limit aware dispatch", () => {
   // python: TestParallelLimitAwareDispatch
@@ -337,9 +308,7 @@ describe("Parallel limit aware dispatch", () => {
   });
 });
 
-// ===========================================================================
-// Failed page handling
-// ===========================================================================
+// --- Failed page handling ---
 
 describe("Parallel failed page handling", () => {
   // python: TestParallelFailedPageHandling
@@ -461,9 +430,7 @@ describe("Parallel failed page handling", () => {
   });
 });
 
-// ===========================================================================
-// Worker cap enforcement
-// ===========================================================================
+// --- Worker cap enforcement ---
 
 describe("Parallel worker cap", () => {
   // python: TestParallelWorkerCap
@@ -539,9 +506,7 @@ describe("Parallel worker cap", () => {
   });
 });
 
-// ===========================================================================
-// Rate-limit warning when pages > 48
-// ===========================================================================
+// --- Rate-limit warning when pages > 48 ---
 
 describe("Parallel rate limit warning", () => {
   // python: TestParallelRateLimitWarning
@@ -601,9 +566,7 @@ describe("Parallel rate limit warning", () => {
   });
 });
 
-// ===========================================================================
-// parallel=True with mode="aggregate" produces U18
-// ===========================================================================
+// --- parallel=True with mode="aggregate" produces U18 ---
 
 describe("Parallel aggregate validation", () => {
   // python: TestParallelAggregateValidation
@@ -646,9 +609,7 @@ describe("Parallel aggregate validation", () => {
   });
 });
 
-// ===========================================================================
-// Early exit when the limit is reached mid-fetch
-// ===========================================================================
+// --- Early exit when the limit is reached mid-fetch ---
 
 describe("Parallel early exit on limit", () => {
   // python: TestParallelEarlyExitOnLimit
@@ -725,9 +686,7 @@ describe("Parallel early exit on limit", () => {
   });
 });
 
-// ===========================================================================
-// computed_at and result structure
-// ===========================================================================
+// --- computed_at and result structure ---
 
 describe("Parallel result structure", () => {
   // python: TestParallelResultStructure
@@ -802,9 +761,7 @@ describe("Parallel result structure", () => {
   });
 });
 
-// ===========================================================================
-// Systemic exceptions propagate immediately
-// ===========================================================================
+// --- Systemic exceptions propagate immediately ---
 
 describe("Parallel error propagation", () => {
   // python: TestParallelErrorPropagation

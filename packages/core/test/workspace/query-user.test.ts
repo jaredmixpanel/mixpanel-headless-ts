@@ -1,31 +1,8 @@
-// Translated query_user tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_query_user.py — ALL 18
-// classes (TestQueryUserDefaultLimit :164, TestQueryUserExplicitLimit
-// :237, TestQueryUserPropertySelection :367, TestQueryUserSorting :417,
-// TestQueryUserSearch :526, TestQueryUserDistinctId :575,
-// TestQueryUserDistinctIds :608, TestQueryUserGroupId :644,
-// TestQueryUserAsOf :674, TestQueryUserTotalCount :726,
-// TestQueryUserDataFrame :798, TestQueryUserEmptyResult :926,
-// TestQueryUserConfigError :1002, TestQueryUserResultMetadata :1034,
-// TestQueryUserProfileNormalization :1158,
-// TestQueryUserPaginationSessionId :1252,
-// TestQueryUserValueErrorWrapping :1335,
-// TestQueryUserAggregatePropertyEscaping :1355).
-//
-// Translation notes:
-// - `export_profiles_page.call_args.kwargs.get(k)` becomes the recorded
-//   options bag (`mock.exportPageCalls[i].options[k]`); the TS client
-//   takes `(page, options)` where Python takes kwargs, so the same keys
-//   and values are compared. Absent-vs-null: the facade forwards only
-//   the keys the params dict carries, so `get(k) is None` translates to
-//   `?? null` being null (absent OR explicit null — the same Python
-//   `.get(k)` semantics).
-// - `mock.side_effect = [p0, p1, p2]` (an iterable side effect) becomes
-//   a handler indexed by call count.
-// - `.df` asserts become `toRows()` / `rowColumns()` (C6).
-// - The Python file records two REMOVED cases in comments
-//   (`test_no_credentials_raises_config_error`, B1 Fix 10) — nothing to
-//   translate.
+// Workspace.queryUser in profiles mode: limits, pagination, property selection,
+// sorting, search, ids, as_of, totals, frame shape, metadata, normalization,
+// session ids and error wrapping. Mirrors all 18 classes of
+// tests/test_workspace_query_user.py. `call_args.kwargs.get(k)` reads become
+// `exportPageCalls[i].options[k] ?? null`; `.df` asserts use toRows()/rowColumns().
 
 import { describe, expect, it } from "vitest";
 
@@ -77,7 +54,7 @@ function sideEffect(
   });
 }
 
-// Mock data (test file :151-155)
+// Mock data
 const RAW_PROFILE_1 = makeRawProfile("user_001", undefined, {
   plan: "premium",
   email: "alice@example.com",
@@ -91,9 +68,7 @@ const RAW_PROFILE_3 = makeRawProfile("user_003", undefined, {
   email: "carol@example.com",
 });
 
-// ===========================================================================
-// Default limit=1
-// ===========================================================================
+// --- Default limit=1 ---
 
 describe("Query user default limit", () => {
   // python: TestQueryUserDefaultLimit
@@ -148,9 +123,7 @@ describe("Query user default limit", () => {
   });
 });
 
-// ===========================================================================
-// Explicit limit + pagination
-// ===========================================================================
+// --- Explicit limit + pagination ---
 
 describe("Query user explicit limit", () => {
   // python: TestQueryUserExplicitLimit
@@ -258,9 +231,7 @@ describe("Query user explicit limit", () => {
   });
 });
 
-// ===========================================================================
-// Property selection
-// ===========================================================================
+// --- Property selection ---
 
 describe("Query user property selection", () => {
   // python: TestQueryUserPropertySelection
@@ -293,9 +264,7 @@ describe("Query user property selection", () => {
   });
 });
 
-// ===========================================================================
-// Sorting
-// ===========================================================================
+// --- Sorting ---
 
 describe("Query user sorting", () => {
   // python: TestQueryUserSorting
@@ -367,9 +336,7 @@ describe("Query user sorting", () => {
   });
 });
 
-// ===========================================================================
-// Search
-// ===========================================================================
+// --- Search ---
 
 describe("Query user search", () => {
   // python: TestQueryUserSearch
@@ -395,9 +362,7 @@ describe("Query user search", () => {
   });
 });
 
-// ===========================================================================
-// distinct_id / distinct_ids
-// ===========================================================================
+// --- distinct_id / distinct_ids ---
 
 describe("Query user distinct ID", () => {
   // python: TestQueryUserDistinctId
@@ -447,9 +412,7 @@ describe("Query user distinct IDs", () => {
   });
 });
 
-// ===========================================================================
-// group_id
-// ===========================================================================
+// --- group_id ---
 
 describe("Query user group ID", () => {
   // python: TestQueryUserGroupId
@@ -472,9 +435,7 @@ describe("Query user group ID", () => {
   });
 });
 
-// ===========================================================================
-// as_of
-// ===========================================================================
+// --- as_of ---
 
 describe("Query user as of", () => {
   // python: TestQueryUserAsOf
@@ -507,9 +468,7 @@ describe("Query user as of", () => {
   });
 });
 
-// ===========================================================================
-// result.total == len(profiles)
-// ===========================================================================
+// --- result.total == len(profiles) ---
 
 describe("Query user total count", () => {
   // python: TestQueryUserTotalCount
@@ -567,9 +526,7 @@ describe("Query user total count", () => {
   });
 });
 
-// ===========================================================================
-// Frame column schema
-// ===========================================================================
+// --- Frame column schema ---
 
 describe("Query user data frame", () => {
   // python: TestQueryUserDataFrame
@@ -667,9 +624,7 @@ describe("Query user data frame", () => {
   });
 });
 
-// ===========================================================================
-// Empty result
-// ===========================================================================
+// --- Empty result ---
 
 describe("Query user empty result", () => {
   // python: TestQueryUserEmptyResult
@@ -719,9 +674,7 @@ describe("Query user empty result", () => {
   });
 });
 
-// ===========================================================================
-// Credentials
-// ===========================================================================
+// --- Credentials ---
 
 describe("Query user config error", () => {
   // python: TestQueryUserConfigError
@@ -737,9 +690,7 @@ describe("Query user config error", () => {
   });
 });
 
-// ===========================================================================
-// Result metadata
-// ===========================================================================
+// --- Result metadata ---
 
 describe("Query user result metadata", () => {
   // python: TestQueryUserResultMetadata
@@ -784,9 +735,7 @@ describe("Query user result metadata", () => {
   });
 });
 
-// ===========================================================================
-// Profile normalization
-// ===========================================================================
+// --- Profile normalization ---
 
 describe("Query user profile normalization", () => {
   // python: TestQueryUserProfileNormalization
@@ -826,9 +775,7 @@ describe("Query user profile normalization", () => {
   });
 });
 
-// ===========================================================================
-// Pagination session_id forwarding
-// ===========================================================================
+// --- Pagination session_id forwarding ---
 
 describe("Query user pagination session ID", () => {
   // python: TestQueryUserPaginationSessionId
@@ -873,9 +820,7 @@ describe("Query user pagination session ID", () => {
   });
 });
 
-// ===========================================================================
-// PR #118 review fixes
-// ===========================================================================
+// --- PR #118 review fixes ---
 
 describe("Query user value error wrapping", () => {
   // python: TestQueryUserValueErrorWrapping

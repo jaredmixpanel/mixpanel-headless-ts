@@ -1,20 +1,8 @@
-// Translated build_funnel_params tests (B5-S2, packet §3): assertion-
-// for-assertion port of tests/test_build_funnel_params.py — ALL
-// 11 classes (TestBuildFunnelParamsDefaults :68,
-// TestBuildFunnelParamsConfiguration :169,
-// TestBuildFunnelParamsPublicMethod :330,
-// TestBuildFunnelParamsPerStepFilters :392,
-// TestBuildFunnelParamsGlobalFilterGroupBy :528,
-// TestBuildFunnelParamsMixedSteps :587,
-// TestBuildFunnelParamsExclusions :644,
-// TestBuildFunnelParamsHoldingConstant :725,
-// TestBuildFunnelParamsNewMathTypes :800,
-// TestBuildFunnelParamsReentryMode :819,
-// TestDataGroupIdFunnel :868).
-//
-// Translation note: `mock_api_client.request.assert_not_called()`
-// becomes an empty `insightsCalls` log on the shared stub (the facade's
-// only wire path from `build_funnel_params` would be `insights_query`).
+// `Workspace.buildFunnelParams`: default structure, configuration options,
+// per-step filters, exclusions, holding constants, reentry mode and
+// data_group_id. Mirrors all 11 classes of `tests/test_build_funnel_params.py`.
+// `mock_api_client.request.assert_not_called()` becomes an empty
+// `insightsCalls` log on the shared stub (the method's only wire path).
 
 import { describe, expect, it } from "vitest";
 

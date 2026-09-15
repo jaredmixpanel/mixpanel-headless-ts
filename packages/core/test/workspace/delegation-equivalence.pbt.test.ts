@@ -1,27 +1,8 @@
-/**
- * B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of
- * `tests/unit/test_delegation_equivalence_pbt.py` — the WHOLE file:
- * `TestFunnelDelegation`, `TestRetentionDelegation`,
- * `TestMathPropertyMatrix` and `TestEventNameConsistency`
- * (:337).
- *
- * The second CROSS-ENTITY suite W3 owns. It is TIER-INDEPENDENT: every
- * surface it touches (`validateTimeArgs`, `validateFunnelArgs`,
- * `validateRetentionArgs`, `validateQueryArgs`, `validateFlowArgs` plus
- * the `bookmarks/enums.ts` math sets) is B2/B3 code that has been live
- * since those batches, so no facade member is required.
- *
- * Hypothesis `@given` + `@settings(max_examples=100)` translates to
- * fast-check `fc.assert(fc.property(...), { numRuns: 100 })` with the
- * same strategy shapes (`query/query-validation.pbt.test.ts`
- * precedent, whose date/`last` strategies this file re-derives verbatim
- * rather than importing across suites).
- *
- * Python's kwargs become the single options bag each validator takes;
- * the VALUES are identical. `sorted(VALID_MATH_*)` becomes a sorted
- * array over the `ReadonlySet` so the sampled domain matches Python's
- * ordering exactly.
- */
+// Delegation-equivalence properties over the standalone validators: the
+// funnel/retention time codes match `validateTimeArgs`, the math/property
+// matrix drives V1/V2 and F10/F11, and all four validators catch control
+// and invisible event names. Mirrors the whole of
+// `tests/unit/test_delegation_equivalence_pbt.py`; kwargs become option bags.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -119,15 +100,15 @@ const INVISIBLE_CHARS: readonly string[] = [
 
 /**
  * Representative alphabet for `st.characters(categories=("L", "N"))` —
- * the NARROWED stand-in the B2 arbiter ratified
- * (`query-validation.pbt.test.ts` header): ASCII letters/digits plus
- * explicit non-ASCII category-L/N members, split on code points.
+ * the same narrowed stand-in `query-validation.pbt.test.ts` uses: ASCII
+ * letters/digits plus explicit non-ASCII category-L/N members, split on
+ * code points.
  */
 const LN_CHARS: readonly string[] = codepoints(
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789éΩж中٤Ⅻ𝒳",
 );
 
-/** Port of `safe_text` (max_size=10, categories L/N, :78-81). */
+/** Port of `safe_text` (max_size=10, categories L/N). */
 const safeTextArb: fc.Arbitrary<string> = fc
   .array(fc.integer({ min: 0, max: LN_CHARS.length - 1 }), {
     minLength: 0,
@@ -366,14 +347,12 @@ describe("Event name consistency", () => {
           const name = prefix + ctrl + suffix;
           if (pythonStrip(name) === "") {
             // Empty-after-strip names trigger different rules; skip
-            // (`if not name.strip()`, :364). R11.7: the guard MUST be
-            // `pythonStrip`, never JS `trim` — CPython's `str.strip()`
-            // treats U+001C..U+001F as whitespace (`"\x1f".isspace()`
-            // is True) while `trim` does not, so a bare `trim` let the
-            // single-`\x1f` name through to the V22 assertion even
-            // though the validator had already short-circuited on V17.
-            // Found as a ~1-in-N `npm run check` flake at B6-W6;
-            // fix recorded in `B6-W6-notes.md` §4.
+            // (`if not name.strip()`). The guard must be `pythonStrip`,
+            // never JS `trim`: CPython's `str.strip()` treats
+            // U+001C..U+001F as whitespace (`"\x1f".isspace()` is True)
+            // while `trim` does not, so a bare `trim` let a single-`\x1f`
+            // name through to the V22 assertion even though the validator
+            // had already short-circuited on V17 (a rare flake).
             return;
           }
 

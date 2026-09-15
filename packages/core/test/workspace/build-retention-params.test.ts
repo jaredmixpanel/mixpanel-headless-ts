@@ -1,15 +1,7 @@
-// Translated build_retention_params tests (B5-S2, packet §3):
-// assertion-for-assertion port of tests/test_build_retention_params.py
-// — ALL 10 classes (TestBuildRetentionParamsDefaults :65,
-// TestBuildRetentionParamsTimeSections :162,
-// TestBuildRetentionParamsPerEventFilters :208,
-// TestBuildRetentionParamsGlobalFilters :249,
-// TestBuildRetentionParamsBucketSizes :278,
-// TestBuildRetentionParamsMode :299,
-// TestBuildRetentionParamsNewMathTypes :321,
-// TestBuildRetentionParamsUnboundedMode :340,
-// TestBuildRetentionParamsCumulative :395,
-// TestDataGroupIdRetention :434).
+// `Workspace.buildRetentionParams`: default structure, time sections,
+// per-event and global filters, bucket sizes, display modes, unbounded mode,
+// cumulative retention and data_group_id. Mirrors all 10 classes of
+// `tests/test_build_retention_params.py`.
 
 import { describe, expect, it } from "vitest";
 

@@ -1,42 +1,9 @@
-// Translated Workspace replay-member tests (packet B5-S3,
-// `b5-packets.md` §5): assertion-for-assertion ports of ALL
-// THIRTEEN classes of
-//   tests/unit/test_workspace_replays.py
-//     TestListReplaysValidation        :97
-//     TestListReplaysQueryCall         :148
-//     TestRetentionWarning             :237
-//     TestEventsForReplayValidation    :284
-//     TestFetchReplay                  :317
-//     TestReplaysForUser               :432
-//     TestSignReplaysWiring            :465
-//     TestEventsForReplaysWindow       :493
-//     TestFetchReplaysResilience       :522
-//     TestReplaysForUserLimit          :560
-//     TestFetchReplaysBatching         :578
-//     TestReplaysForUserThreadsRetention :634
-//     TestCodedReplayGuardCodes        :664
-//
-// Translation notes:
-// - `ws._replays_svc = MagicMock()` → `ws.replaysService = stub` (the
-//   settable accessor mirrors Python's attribute write); the stub is a
-//   recording object cast to `ReplaysService`.
-// - `svc.discover.assert_called_once_with(distinct_id=…, replay_ids=…,
-//   from_date=…, to_date=…, limit=…)` → an assertion on the recorded
-//   options bag, whose keys are the camelCase service spellings
-//   (`ReplaysService.discover` is `_internal`; only the FACADE keeps
-//   Python's snake_case, R3.2).
-// - `pytest.raises(ValueError, match=…)` on the WR* guards → the
-//   `{class, code}` assertion (R5.4). The Python file asserts BOTH the
-//   message (TestListReplaysValidation) and the code
-//   (TestCodedReplayGuardCodes); the port keeps the code assertions and
-//   the message-substring ones become the same code, since
-//   `ParamValidationError` IS the `ValueError` subclass Python's
-//   `test_wr_guards_stay_catchable_as_value_error` pins.
-// - `warnings.catch_warnings(record=True)` → the injected
-//   {@link WarningSink} threaded through the Workspace constructor.
-// - `ws.fetch_replay = MagicMock(side_effect=…)` → a method override on
-//   the instance; `call.kwargs[...]` → the recorded options bag.
-// - Every member is `async` in the port (R6.1), so every call awaits.
+// Workspace.fetchReplay / fetchReplays / replaysForUser: sign-fetch-join,
+// per-replay isolation, batching, retention threading, the events window and
+// the coded WR* guards. Mirrors the fetch-side classes of
+// tests/unit/test_workspace_replays.py; `pytest.raises(ValueError, match=…)`
+// becomes the class + code assertion (ParamValidationError is that subclass).
+
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError, ReplayNotFoundError } from "../../src/errors.js";
@@ -56,7 +23,7 @@ import {
 } from "./workspace-replays-fixtures.js";
 
 /**
- * Build a `SignedReplay` for fixture seeding (`_signed`, `:67-76`).
+ * Build a `SignedReplay` for fixture seeding (`_signed`).
  *
  * @param replayId - The replay id (default `"r-1"`).
  * @returns The signed handle.
@@ -72,7 +39,7 @@ function signedFixture(replayId = "r-1"): SignedReplay {
 }
 
 /**
- * Build a minimal valid `Replay` (`_replay`, `:79-89`).
+ * Build a minimal valid `Replay` (`_replay`).
  *
  * @param replayId - The replay id.
  * @returns The replay.
@@ -88,11 +55,9 @@ function makeReplay(replayId: string): Replay {
   });
 }
 
-// =============================================================================
-// fetch_replay flow
-// =============================================================================
+// --- fetchReplay flow ---
 
-describe("fetch_replay signs, fetches, joins", () => {
+describe("fetchReplay signs, fetches, joins", () => {
   // python: TestFetchReplay
   it("explicit retention skips discovery", async () => {
     // python: test_explicit_retention_skips_discovery
@@ -211,11 +176,9 @@ describe("fetch_replay signs, fetches, joins", () => {
   });
 });
 
-// =============================================================================
-// replays_for_user
-// =============================================================================
+// --- replaysForUser ---
 
-describe("replays_for_user composition", () => {
+describe("replaysForUser composition", () => {
   // python: TestReplaysForUser
   it("method exists", () => {
     // python: test_method_exists
@@ -238,9 +201,7 @@ describe("replays_for_user composition", () => {
   });
 });
 
-// =============================================================================
-// sign_replay / sign_replays
-// =============================================================================
+// --- sign_replay / sign_replays wiring ---
 
 describe("sign wiring", () => {
   // python: TestSignReplaysWiring
@@ -270,9 +231,7 @@ describe("sign wiring", () => {
   });
 });
 
-// =============================================================================
-// events_for_replays window passthrough
-// =============================================================================
+// --- events_for_replays window passthrough ---
 
 describe("events window passthrough", () => {
   // python: TestEventsForReplaysWindow
@@ -306,11 +265,9 @@ describe("events window passthrough", () => {
   });
 });
 
-// =============================================================================
-// fetch_replays resilience
-// =============================================================================
+// --- fetchReplays resilience ---
 
-describe("fetch_replays per-replay isolation", () => {
+describe("fetchReplays per-replay isolation", () => {
   // python: TestFetchReplaysResilience
   it("one failure does not sink the bundle", async () => {
     // python: test_one_failure_does_not_sink_the_bundle
@@ -407,11 +364,9 @@ describe("fetch_replays per-replay isolation", () => {
   });
 });
 
-// =============================================================================
-// replays_for_user default limit
-// =============================================================================
+// --- replaysForUser default limit ---
 
-describe("replays_for_user default limit", () => {
+describe("replaysForUser default limit", () => {
   // python: TestReplaysForUserLimit
   it("default limit is 20", async () => {
     // python: test_default_limit_is_20
@@ -430,11 +385,9 @@ describe("replays_for_user default limit", () => {
   });
 });
 
-// =============================================================================
-// fetch_replays Insights batching
-// =============================================================================
+// --- fetchReplays Insights batching ---
 
-describe("fetch_replays retention threading + batching", () => {
+describe("fetchReplays retention threading + batching", () => {
   // python: TestFetchReplaysBatching
   it("retention by ID passed to each fetch", async () => {
     // python: test_retention_by_id_passed_to_each_fetch
@@ -523,7 +476,7 @@ describe("fetch_replays retention threading + batching", () => {
   });
 });
 
-describe("replays_for_user threads retention", () => {
+describe("replaysForUser threads retention", () => {
   // python: TestReplaysForUserThreadsRetention
   it("retention map built from summaries", async () => {
     // python: test_retention_map_built_from_summaries
@@ -564,9 +517,7 @@ describe("replays_for_user threads retention", () => {
   });
 });
 
-// =============================================================================
-// Coded guard errors — WR1/WR4/WR5
-// =============================================================================
+// --- Coded guard errors — WR1/WR4/WR5 ---
 
 describe("coded replay guards", () => {
   // python: TestCodedReplayGuardCodes
@@ -669,7 +620,7 @@ describe("coded replay guards", () => {
     // Python asserts the guard is catchable as a bare `ValueError`;
     // `ParamValidationError` is that subclass. The TS twin is the class
     // identity itself (there is no separate `ValueError` ancestor on
-    // the coded-error tree — R5.3).
+    // the coded-error tree).
     const ws = makeWorkspace();
     installStubService(ws);
     let caught: unknown;
@@ -685,15 +636,11 @@ describe("coded replay guards", () => {
   });
 });
 
-// =============================================================================
-// B5-ARB FID-F5 (additive — `b5-review-resolution.md`): the window
-// derivation is Python `int(ev["timestamp"])` (`workspace.py`) —
-// a SUBSCRIPT, not a `.get`, so a missing key raises `KeyError` (the
-// pre-fix TS fell through `pythonIntCoerce(undefined)` to a TypeError
-// naming 'undefined').
-// =============================================================================
+// --- Additive: the window derivation is Python `int(ev["timestamp"])`, a
+// subscript rather than a `.get`, so a missing key must raise the KeyError
+// twin (not a TypeError from coercing `undefined`) ---
 
-describe("FID-F5: fetch_replay window derivation missing-timestamp class", () => {
+describe("fetchReplay window derivation: missing-timestamp error class", () => {
   it("an rrweb event without a timestamp key raises the KeyError twin", async () => {
     const ws = makeWorkspace();
     const stub = installStubService(ws);

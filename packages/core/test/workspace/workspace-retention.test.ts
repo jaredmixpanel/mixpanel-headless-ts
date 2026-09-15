@@ -1,16 +1,8 @@
-// Translated workspace-retention tests (B5-S2, packet §3): assertion-
-// for-assertion port of tests/test_workspace_retention.py — ALL
-// 4 classes (TestQueryRetentionIntegration :105,
-// TestQueryRetentionWithFilters :219, TestBuildRetentionParams :252,
-// TestQueryRetentionValidationIntegration :319).
-//
-// The Python file also carries a `TestQueryRetentionConfigError` REMOVAL
-// comment — nothing to translate.
-//
-// Translation notes: identical to the sibling `workspace-funnel.test.ts`
-// header (`insights_query.call_args[0][0]` -> `mock.insightsCalls[0]`;
-// `pytest.raises(ValueError, …)` names Python's dual-inheriting
-// `ParamValidationError`).
+// Workspace.queryRetention: integration through the stubbed insights client,
+// filters, buildRetentionParams and validation. Mirrors all four classes of
+// tests/test_workspace_retention.py. `call_args[0][0]` reads become
+// `mock.insightsCalls[0]`; `pytest.raises(ValueError, …)` names the
+// dual-inheriting ParamValidationError.
 
 import { describe, expect, it } from "vitest";
 
@@ -48,9 +40,7 @@ function retentionWs(): { ws: Workspace; mock: MockWorkspaceClient } {
   return { ws: makeStubWorkspace(mock), mock };
 }
 
-// ===========================================================================
-// T019: workspace integration
-// ===========================================================================
+// --- Workspace integration ---
 
 describe("Query retention integration", () => {
   // python: TestQueryRetentionIntegration
@@ -104,9 +94,7 @@ describe("Query retention integration", () => {
   });
 });
 
-// ===========================================================================
-// T-US2: per-event filters
-// ===========================================================================
+// --- Per-event filters ---
 
 describe("Query retention with filters", () => {
   // python: TestQueryRetentionWithFilters
@@ -131,9 +119,7 @@ describe("Query retention with filters", () => {
   });
 });
 
-// ===========================================================================
-// T-US4: build_retention_params
-// ===========================================================================
+// --- buildRetentionParams ---
 
 describe("Build retention params", () => {
   // python: TestBuildRetentionParams
@@ -170,9 +156,7 @@ describe("Build retention params", () => {
   });
 });
 
-// ===========================================================================
-// T-US5: validation integration
-// ===========================================================================
+// --- Validation integration ---
 
 describe("Query retention validation integration", () => {
   // python: TestQueryRetentionValidationIntegration

@@ -1,32 +1,8 @@
-// Translated aggregate query-user tests (B5-S2, packet §3): assertion-
-// for-assertion port of tests/test_workspace_query_user_aggregate.py
-// — ALL 14 classes (TestAggregateCount :121,
-// TestAggregateWithProperty :237, TestAggregateSegmented :417,
-// TestValidationU14AggregatePropertyRequired :577,
-// TestValidationU15AggregatePropertyProhibited :630,
-// TestValidationU16SegmentByRequiresAggregate :679,
-// TestValidationU18ParallelProfilesOnly :727,
-// TestValidationU19SortByProfilesOnly :751,
-// TestValidationU20SearchProfilesOnly :775,
-// TestValidationU21DistinctIdProfilesOnly :799,
-// TestValidationU22PropertiesProfilesOnly :843,
-// TestValidationMultipleErrors :872, TestEngageStatsCallParameters
-// :928, TestAggregateResultMetadata :1123).
-//
-// The trailing `TestAggregateConfigError` comment records a
-// class REMOVED in Python B1 — nothing to translate.
-//
-// Translation notes:
-// - `mock_api_client` / `workspace_factory` come from the shared
-//   `workspace-test-helpers.ts` (which also records why
-//   `finally: ws.close()` has no TS twin).
-// - `engage_stats.call_args.kwargs` becomes the recorded options bag
-//   (`mock.engageStatsCalls[0]`) — the TS client takes one options
-//   argument where Python takes kwargs, so the KEYS and VALUES compared
-//   are identical.
-// - `pytest.mark.parametrize` becomes an explicit `for` loop over the
-//   same three ids.
-// - `result.df` asserts become `toRows()` / `rowColumns()` (C6).
+// `Workspace.queryUser` in aggregate mode: count, property aggregates
+// (extremes / numeric_summary / percentile), segmented results, the
+// U14–U22 and U30 validation codes, `engage_stats` call parameters and
+// result metadata. Mirrors all 14 classes of
+// `tests/test_workspace_query_user_aggregate.py`; `.df` asserts become `toRows()`.
 
 import { describe, expect, it } from "vitest";
 

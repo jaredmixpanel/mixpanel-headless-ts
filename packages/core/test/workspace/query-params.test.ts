@@ -1,35 +1,8 @@
-// Translated insights params-building tests (B5-S2, packet §3):
-// assertion-for-assertion port of tests/unit/test_query_params.py
-// — ALL 22 classes (TestBasicParams :49,
-// TestAggregationParams :214, TestFilterParams :330, TestGroupParams
-// :478, TestMultiEventParams :610, TestFormulaParams :687,
-// TestAnalysisModeParams :766, TestModeParams :837,
-// TestPerMetricFilters :906, TestGroupByTypeError :975,
-// TestFiltersCombinatorParams :1007, TestFormulaObjectParams :1089,
-// TestBuildParams :1199, TestDateFilterParams :1253,
-// TestMultiFormulaParams :1320, TestPercentileParams :1376,
-// TestHistogramParams :1422, TestNewMathTypesInBuildParams :1458,
-// TestSegmentMethodInBuildParams :1502,
-// TestFrequencyBreakdownInBuildParams :1539,
-// TestFrequencyFilterInBuildParams :1599,
-// TestDataGroupIdInsights :1647).
-//
-// Translation notes:
-// - `ws._build_query_params(...)` (the private method) is the exported
-//   free function {@link buildQueryParams} in
-//   `src/workspace-query-params.ts` (R7.2 split). Every Python call
-//   spells the full keyword-only bag; the TS twin spreads a shared
-//   {@link BASE} of the SAME default values and overrides only what the
-//   Python call overrides — the inputs are identical.
-// - `pytest.raises(TypeError, match="group_by elements must be …")`
-//   names the B3 `ParamTypeError` twin (Python's `ParamTypeError`
-//   dual-inherits `TypeError`), code `BB1_GROUP_BY_ELEMENT_TYPE`.
-// - `build_filter_entry(...)` in `TestDateFilterParams` is the B3
-//   builder {@link buildFilterEntry}, called directly exactly as Python
-//   does.
-// - R10.7 (packet Caution 6): the frequency-filter clause shape is a
-//   KNOWN open item with pinned referee REJECTs. The asserts below
-//   describe Python's behaviour TODAY and are NOT "fixed".
+// `buildQueryParams` core shapes: time range and unit, aggregation math
+// and properties, filter and group entries (including list-item forms),
+// multi-event show entries and formula clauses. Mirrors the first six
+// classes of `tests/unit/test_query_params.py`; `build()` spreads the same
+// keyword bag every Python `_build_query_params` call spells.
 
 import { describe, expect, it } from "vitest";
 

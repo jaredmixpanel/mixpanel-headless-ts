@@ -1,18 +1,8 @@
-// ADDITIVE (no Python twin): network-free guards on the positional
-// entity-id parameters of the `Workspace` facade.
-//
-// Motivation — a live run passed `{ annotation_id: 2078447 }` where
-// `deleteAnnotation(annotationId: number)` expects the bare number; the
-// port interpolated `/annotations/[object Object]/` into the path and
-// surfaced the server's 404 as `QUERY_FAILED`. Python does not guard
-// these arguments (its signatures are `int`-typed), so the TS guard is
-// additive hardening: every `int`-typed positional id on the facade now
-// rejects a non-positive-integer BEFORE any request is assembled, with
-// Python's own `RL6_INVALID_ID` ("An id is a positive integer").
-//
-// Two layers: the `requireEntityId` helper table, and one probe per
-// guarded facade member proving the guard fires with ZERO transport
-// calls (the `httpx.MockTransport` twin records every request).
+// ADDITIVE (no Python twin): network-free guards on the `Workspace`
+// facade's positional entity-id parameters — `requireEntityId`,
+// `requireInt64Id` (lookup-table ids are signed int64) and one probe per
+// guarded member proving `RL6_INVALID_ID` fires with zero transport calls.
+// Python's `int`-typed signatures do no such check; this is TS hardening.
 
 import { describe, expect, it } from "vitest";
 

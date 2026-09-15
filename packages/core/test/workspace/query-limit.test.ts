@@ -1,27 +1,8 @@
-// Translated `limit` / `run_*_params` tests (Python PR #225, Linear
-// AIE-924): assertion-for-assertion port of
-// tests/unit/test_query_limit.py — ALL 4 classes
-// (TestQueryLimitsValidator :150, TestServiceLimitPassthrough :215,
-// TestWorkspaceLimitPassthrough :324, TestRunParams :412).
-//
-// Translation notes:
-// - `_query_limits` is the exported {@link queryLimits} twin;
-//   `DEFAULT_SEGMENTATION_LIMIT` / `MAX_SEGMENTATION_LIMIT` are exported
-//   under the same names.
-// - `pytest.raises(ValueError, match=LIMIT_ERROR)` names the
-//   python-builtins {@link ValueError} twin (plain, uncoded — Python
-//   added NO error code for this guard; the contract still pins 126).
-// - `test_rejects_non_integers` parametrizes `3000.0`: a JS number
-//   cannot carry float-ness, so `3000.0 === 3000` and that case is
-//   NOT translatable (R10.12 — the TS surface has no float twin here).
-//   `None.__class__` (a type object) becomes a class reference.
-// - The Python `mock_api_client.insights_query.call_args.kwargs`
-//   becomes the recorded options bag (`mock.insightsOptions[i]`).
-// - `try: ... finally: ws.close()` is dropped per
-//   `workspace-test-helpers.ts` (the TS facade owns no pool).
-// - The `ws.query(...)` / `ws.buildParams(...)` round-trip pins the
-//   `today` clock seam on both sides so the default `last=30` window
-//   cannot straddle midnight between the two calls.
+// The `limit` query setting and the `run_*_params` members: the
+// `queryLimits` validator, passthrough from `LiveQueryService` and the
+// facade, and build/run round-trips. Mirrors all 4 classes of
+// `tests/unit/test_query_limit.py`. `pytest.raises(ValueError)` is the
+// python-builtins `ValueError` twin; the `3000.0` float case is untranslatable.
 
 import { describe, expect, it } from "vitest";
 
@@ -44,7 +25,7 @@ import {
 } from "../../test-support/workspace-test-helpers.js";
 
 // ===========================================================================
-// Fixtures and mock responses (test file :36-147)
+// Fixtures and mock responses
 // ===========================================================================
 
 /** Expected message for every rejected `limit` (`LIMIT_ERROR`). */
@@ -122,7 +103,7 @@ function lastBody(mock: MockWorkspaceClient): Record<string, unknown> {
 }
 
 // ===========================================================================
-// TestQueryLimitsValidator (test file :150-212)
+// Query limits validator
 // ===========================================================================
 
 describe("Query limits validator", () => {
@@ -157,8 +138,9 @@ describe("Query limits validator", () => {
     expect(() => queryLimits(limit as unknown as number)).toThrow(LIMIT_ERROR);
   });
 
-  // `3000.0` is untranslatable (see the header note); the remaining
-  // three cases port as-is.
+  // Python also parametrizes `3000.0`; a JS number carries no float-ness
+  // (`3000.0 === 3000`), so that case is untranslatable and the remaining
+  // three port as-is.
   it.each([2999.5, "3000", Object])("rejects non-integers: %s", (limit) => {
     expect(() => queryLimits(limit as unknown as number)).toThrow(ValueError);
     expect(() => queryLimits(limit as unknown as number)).toThrow(LIMIT_ERROR);
@@ -188,13 +170,13 @@ describe("Query limits validator", () => {
 });
 
 // ===========================================================================
-// TestServiceLimitPassthrough (test file :215-321)
+// Service limit passthrough
 // ===========================================================================
 
 describe("Service limit passthrough", () => {
   // python: TestServiceLimitPassthrough
   /**
-   * The `service` fixture (test file :218-228).
+   * The `service` fixture.
    *
    * @param mock - The stub client.
    * @returns The service under test.
@@ -266,7 +248,7 @@ describe("Service limit passthrough", () => {
 });
 
 // ===========================================================================
-// TestWorkspaceLimitPassthrough (test file :324-409)
+// Workspace limit passthrough
 // ===========================================================================
 
 describe("Workspace limit passthrough", () => {
@@ -327,7 +309,7 @@ describe("Workspace limit passthrough", () => {
 });
 
 // ===========================================================================
-// TestRunParams (test file :412-568)
+// Run params
 // ===========================================================================
 
 describe("Run params", () => {
@@ -351,6 +333,8 @@ describe("Run params", () => {
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);
     const ws = makeStubWorkspace(mock);
 
+    // Both sides pin the `today` clock seam so the default `last=30`
+    // window cannot straddle midnight between the two calls.
     await ws.query("Login", { last: 7, today: TODAY });
     const direct = lastBody(mock);
 

@@ -1,42 +1,9 @@
-// Translated Workspace replay-member tests (packet B5-S3,
-// `b5-packets.md` §5): assertion-for-assertion ports of ALL
-// THIRTEEN classes of
-//   tests/unit/test_workspace_replays.py
-//     TestListReplaysValidation        :97
-//     TestListReplaysQueryCall         :148
-//     TestRetentionWarning             :237
-//     TestEventsForReplayValidation    :284
-//     TestFetchReplay                  :317
-//     TestReplaysForUser               :432
-//     TestSignReplaysWiring            :465
-//     TestEventsForReplaysWindow       :493
-//     TestFetchReplaysResilience       :522
-//     TestReplaysForUserLimit          :560
-//     TestFetchReplaysBatching         :578
-//     TestReplaysForUserThreadsRetention :634
-//     TestCodedReplayGuardCodes        :664
-//
-// Translation notes:
-// - `ws._replays_svc = MagicMock()` → `ws.replaysService = stub` (the
-//   settable accessor mirrors Python's attribute write); the stub is a
-//   recording object cast to `ReplaysService`.
-// - `svc.discover.assert_called_once_with(distinct_id=…, replay_ids=…,
-//   from_date=…, to_date=…, limit=…)` → an assertion on the recorded
-//   options bag, whose keys are the camelCase service spellings
-//   (`ReplaysService.discover` is `_internal`; only the FACADE keeps
-//   Python's snake_case, R3.2).
-// - `pytest.raises(ValueError, match=…)` on the WR* guards → the
-//   `{class, code}` assertion (R5.4). The Python file asserts BOTH the
-//   message (TestListReplaysValidation) and the code
-//   (TestCodedReplayGuardCodes); the port keeps the code assertions and
-//   the message-substring ones become the same code, since
-//   `ParamValidationError` IS the `ValueError` subclass Python's
-//   `test_wr_guards_stay_catchable_as_value_error` pins.
-// - `warnings.catch_warnings(record=True)` → the injected
-//   {@link WarningSink} threaded through the Workspace constructor.
-// - `ws.fetch_replay = MagicMock(side_effect=…)` → a method override on
-//   the instance; `call.kwargs[...]` → the recorded options bag.
-// - Every member is `async` in the port (R6.1), so every call awaits.
+// Workspace.listReplays: argument validation, the kwargs forwarded to
+// ReplaysService.discover, the missing-retention default and the five-property
+// cap. Mirrors the list-side classes of tests/unit/test_workspace_replays.py.
+// `assert_called_once_with(...)` reads the recorded options bag, whose keys are
+// the camelCase service spellings; the WR* guards are asserted by error code.
+
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "../../src/errors.js";
@@ -49,11 +16,9 @@ import {
   summary,
 } from "./workspace-replays-fixtures.js";
 
-// =============================================================================
-// list_replays validation
-// =============================================================================
+// --- listReplays validation ---
 
-describe("list_replays argument validation", () => {
+describe("listReplays argument validation", () => {
   // python: TestListReplaysValidation
   it("neither arg raises", async () => {
     // python: test_neither_arg_raises
@@ -120,11 +85,9 @@ describe("list_replays argument validation", () => {
   });
 });
 
-// =============================================================================
-// list_replays issues the documented query call
-// =============================================================================
+// --- listReplays issues the documented query call ---
 
-describe("list_replays → discover kwargs", () => {
+describe("listReplays → discover kwargs", () => {
   // python: TestListReplaysQueryCall
   it("distinct ID path delegates", async () => {
     // python: test_distinct_id_path_delegates
@@ -199,9 +162,7 @@ describe("list_replays → discover kwargs", () => {
   });
 });
 
-// =============================================================================
-// Retention default + warning
-// =============================================================================
+// --- Retention default + warning ---
 
 describe("missing retention defaults to 30 with a warning", () => {
   // python: TestRetentionWarning
@@ -242,9 +203,7 @@ describe("missing retention defaults to 30 with a warning", () => {
   });
 });
 
-// =============================================================================
-// events_for_replay validation
-// =============================================================================
+// --- events_for_replay validation ---
 
 describe("the 5-property cap", () => {
   // python: TestEventsForReplayValidation

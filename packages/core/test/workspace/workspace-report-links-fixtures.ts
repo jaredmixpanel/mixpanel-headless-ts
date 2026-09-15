@@ -1,45 +1,8 @@
-// Layer-3 translation of `tests/unit/test_workspace_report_links.py`
-// (045-report-links, Python PR #223) — the WHOLE file: every class from
-// `TestCreateReportLinkFromDict` through `TestWorkspaceScope`
-// (:1489), one `describe` per Python class, one `it` per test (Python
-// `parametrize` → `it.each`), in source order.
-//
-// Translation notes:
-// - The `mock_api_client` fixture (`MagicMock(spec=MixpanelAPIClient)`,
-//   :68-78) becomes `mockApiClient()` below: a stub carrying only the
-//   client members the report-link facade touches, each with a per-member
-//   call log so `assert_called_once_with` / `assert_not_called` /
-//   `method_calls == []` translate to list assertions. Its
-//   `create_bookmark_url` echo side effect and `resolve_workspace_id`
-//   return value (99) are the fixture defaults.
-// - `@patch("mixpanel_headless.workspace.generate_slug", return_value=_SLUG)`
-//   becomes the constructor seam `generateSlug: () => SLUG`.
-// - The `mock_live_query` fixture (a spec'd `LiveQueryService` mock
-//   installed on `ws._live_query`) has NO TS twin: the facade reads the
-//   lazily-built `liveQueryService` getter, which is backed by the
-//   injected client. The translations therefore stub the CLIENT's
-//   `insightsQuery(body, scope)` / `arbFunnelsQuery(body, scope)` with a
-//   minimal valid raw response and assert the recorded `body.bookmark`,
-//   `body.project_id`, `body.query_type` (flows) and the `scope` bag
-//   `{workspace_id, inject_workspace_id}` — the same values Python's
-//   `assert_called_once_with(params, 12345, workspace_id=…,
-//   inject_workspace_id=False)` pins. `result is sentinel` becomes an
-//   `instanceof` check plus `result.params` (the service threads the
-//   bookmark params through) — the identity of a mock return value has
-//   no twin once the real service runs.
-// - `patch.object(Workspace, "_validate_bookmark_params_schema",
-//   return_value=[warning])` (:335) has no seam in TS; the twin drives
-//   the REAL validator into a warning-only outcome (a `sorting` block
-//   with an unknown chart type yields `S4_UNKNOWN_CHART_TYPE` at
-//   severity `warning` and nothing else on otherwise-valid params).
-// - `caplog` becomes the injected `logger` seam (`logCollector()`).
-// - `dataclasses.replace(resolved, …)` becomes a rebuild through the
-//   `ResolvedReport` constructor from the source's fields.
-// - Error MESSAGE text is out of contract (rulebook R5.4): the
-//   `str(exc) == ...` assertions are dropped; class, `.code`, and
-//   `.details` (including `hint`) are asserted instead.
-// - The `workspace_factory` fixture's `ws.close()` finalizers are
-//   dropped (see `workspace-test-helpers.ts` header).
+// Shared fixtures for the Workspace report-link suites: `MockApiClient` (the
+// `MagicMock(spec=MixpanelAPIClient)` twin with per-member call logs, an
+// echoing create_bookmark_url and resolve_workspace_id → 99), makeWorkspace
+// with the `generateSlug` seam replacing the `generate_slug` patch, pinned and
+// EU sessions, and the slug-record / resolved-report builders.
 
 import { expect } from "vitest";
 
@@ -333,9 +296,7 @@ export function detailsOf(exc: {
   return exc.details!;
 }
 
-// =============================================================================
-// resolve_report_link (US2)
-// =============================================================================
+// --- resolveReportLink ---
 
 export const INSIGHTS_PARAMS = {
   sections: { show: [] },
@@ -362,9 +323,7 @@ export function slugRecord(
   };
 }
 
-// =============================================================================
-// query_report_link (US2)
-// =============================================================================
+// --- queryReportLink ---
 
 /**
  * `_resolved` plus the `dataclasses.replace(...)` twin: a

@@ -1,33 +1,8 @@
-// Translated custom-property type + validation tests (B5-S2, packet
-// §3): assertion-for-assertion port of tests/test_custom_property_types.py
-// — 11 of its 12 classes: TestPropertyInput :50,
-// TestInlineCustomProperty :101, TestInlineCustomPropertyNumeric :140,
-// TestCustomPropertyRef :173, TestTypeWidening :227,
-// TestCustomPropertyValidationCP1 :304, …CP2 :326, …CP3 :356,
-// …CP4 :370, …CP5 :388, …CP6 :419, TestCustomPropertyValidationValid
-// :436, …FilterPosition :457, …MeasurementPosition :469,
-// …FunnelRetention :480.
-//
-// HEADER EXCLUSION:
-// - `TestImmutability` :194 asserts
-//   `pytest.raises(dataclasses.FrozenInstanceError)` on attribute
-//   assignment for all three types. The TS ports use `readonly` fields,
-//   which is COMPILE-TIME only — rulebook R4.6 explicitly forbids
-//   `Object.freeze` — so there is no runtime error to observe and the
-//   class has no TS analog. The immutability the Python test protects
-//   (nobody mutates these value objects) is enforced by `tsc` at every
-//   call site instead.
-//
-// OVERLAP NOTE (packet §3, "UNLESS an assert is already locked verbatim
-// by a Phase-2 types test"): `test/types/query-params/filter.test.ts:432`
-// ("property-spec helper types") already locks THREE of the
-// construction asserts (PropertyInput defaults, CustomPropertyRef.id,
-// InlineCustomProperty defaults + the numeric factory). The classes are
-// translated in FULL here anyway — the Python classes carry cases the
-// Phase-2 describe does not (explicit types, the 5-way type
-// parametrize, the user resource_type, full construction, single-input
-// numeric, large ids), and duplicating three cheap asserts is safer for
-// R10.2 completeness than a partial exclusion.
+// `PropertyInput`, `InlineCustomProperty` and `CustomPropertyRef`
+// construction, the widened `Metric` / `GroupBy` / `Filter` property types
+// and the CP1–CP6 fail-fast validation. Mirrors 11 of the 12 classes of
+// `tests/test_custom_property_types.py`; `TestImmutability` is not carried
+// (`readonly` fields are compile-time only — no runtime FrozenInstanceError).
 
 import { describe, expect, it } from "vitest";
 

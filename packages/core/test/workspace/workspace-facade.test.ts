@@ -1,47 +1,8 @@
-// B6-W1 Layer-3 translation of `tests/unit/test_workspace.py` — the
-// classes the packet assigns to W1 (`b6-packets.md` §3 table):
-// `TestLiveQueries`, `TestDiscovery`, `TestContextManager`
-// (:712), `TestLimitValidation` (:754), `TestWorkspacesMethod` (:808),
-// `TestProjectsMethod`, `TestCodedWorkspaceGuardCodes`.
-//
-// B7-A1 resolutions (`b7-packets.md` §3.4 — this header now lists ZERO
-// B7 deferrals):
-//
-// - `TestCredentialResolution`: the class body is EMPTY in
-//   Python (every case was removed in B1 "Fix 10"); nothing to port —
-//   decision recorded here, no translation exists by construction.
-// - `TestCodedWorkspaceGuardCodes::test_ws1_init_target_with_account`
-//   (:969), `…_with_workspace` (:975) and
-//   `test_ws_guards_stay_catchable_as_value_error`: the
-//   CONSTRUCTOR-guard trio is translated in `workspace-init.test.ts`
-//   (B7 constructor section). The `use()` twin (:981, :993) stays here.
-// - `TestFacadeResolverWiring` is
-//   translated at the BOTTOM of this file (the stale B4-C1 header in
-//   `client-workspace.test.ts` mis-assigned it — packet Caution #17).
-//
-// COVERED BY EQUAL-OR-STRONGER B5/B6 TWINS (exclusion citations added at
-// B6-ARB, `b6-review-resolution.md` Finding B — the original header
-// claimed the classes whole while translating a subset, an R10.2
-// misclaim):
-//
-// - `TestLiveQueries::test_query_saved_report_delegation` →
-//   `workspace-bookmarks.test.ts` `TestQuerySavedReport
-//   (test_workspace_bookmarks.py)` (8 tests, delegation + kwargs).
-// - `TestDiscovery`: 9 of 11 cases have twins in the B5
-//   translation `discovery-facade.test.ts` — `property_values` →
-//   :99, `subproperties` (:498) → :112/:127, `funnels` (:523) → :137,
-//   `cohorts` → :147, `top_events` → :191,
-//   `clear_discovery_cache` (:594) → :210/:224, `lexicon_schemas`
-//   + `…_with_entity_type_filter` → :233, `lexicon_schema`
-//   → :255. The `events`/`properties` delegation pair (:442,
-//   :460) is translated below.
-// - The remaining 7 `TestLiveQueries` delegation cases (:210-:431) had
-//   NO Layer-3 twin anywhere and are translated below (B6-ARB fix).
-//
-// Python's `Workspace(session=…, _api_client=…)` factory becomes
-// `new Workspace({session, client})`; the `try/finally: ws.close()`
-// wrapper is kept (B6-W1 ports `close()`), unlike the B5 translations
-// which had to drop it (`workspace-test-helpers.ts:6-10`).
+// Workspace facade: delegation to LiveQueryService / DiscoveryService, the
+// context-manager close(), limit validation, workspaces() / projects(), the coded
+// workspace-guard codes on use(), MeService construction and resolver wiring.
+// Mirrors those classes of tests/unit/test_workspace.py; constructor-guard cases
+// live in workspace-init.test.ts, most TestDiscovery cases in discovery-facade.test.ts.
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -185,9 +146,6 @@ describe("Live queries — live-query delegation", () => {
     expect(retention).toHaveBeenCalledTimes(1);
     await ws.close();
   });
-
-  // The 7 cases below were translated at B6-ARB (Finding B) — they had
-  // no Layer-3 twin anywhere before.
 
   it("eventCounts() delegates to the live-query service (T047)", async () => {
     const { ws } = makeWorkspace();
@@ -672,17 +630,11 @@ describe("MeService construction", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// B7-A1: `TestFacadeResolverWiring`
-// — the dagger vector's Layer-3 twin, landed here per `b7-packets.md`
-// §3.4 (the stale B4-C1 header orphaned it — Caution #17).
-//
-// Mechanism substitutions (R10.2, header-cited): the httpx
-// MockTransport handler becomes the `createMockClient` canned handler;
-// the tmp-`$HOME` MeCache isolation is inherent (in-memory cache
-// factory); the account-swap case's ConfigManager becomes the
-// in-memory effects fake + real `resolverSeamsFromEffects`.
-// ---------------------------------------------------------------------------
+// --- Facade resolver wiring ---
+// The httpx MockTransport handler becomes the `createMockClient` canned
+// handler; the tmp-`$HOME` MeCache isolation is inherent (in-memory cache
+// factory); the account-swap case's ConfigManager becomes the in-memory
+// effects fake plus the real `resolverSeamsFromEffects`.
 
 /** `_me_dict` twin. */
 function meDict(

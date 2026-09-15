@@ -1,25 +1,8 @@
-// Translated query-user edge-case tests (B5-S2, packet §3 + §8): the
-// B2-M3 / B3-K4 file deferral (`B2-M3-notes.md:44`,
-// `B3-K4-notes.md:86`) — assertion-for-assertion port of
-// tests/test_query_user_edge_cases.py, ALL 3 classes
-// (TestTier1DataCorruption :173, TestTier2CrashPaths :593,
-// TestTier3ValidationGaps :768).
-//
-// Translation notes:
-// - Python's Tier-2 cases reach three PRIVATE methods
-//   (`_execute_user_query_sequential`, `_build_page_kwargs`,
-//   `_execute_user_aggregate`) to exercise their bare `json.loads`.
-//   In TS those decodes live in the exported {@link buildPageKwargs}
-//   and {@link buildStatsKwargs} (the `self`-free blocks, R7.2 split);
-//   the sequential engine's `output_properties` decode IS
-//   `buildPageKwargs`, so T2-02 and T2-03 both assert there.
-// - `json.JSONDecodeError` is `LosslessJsonError`: the engage-param
-//   round-trips decode through the shared lossless parser, never a bare
-//   `JSON.parse` (B0-1 F1).
-// - `pytest.raises(ValueError, …)` on `filter_to_selector` names
-//   Python's dual-inheriting `ParamValidationError`; the TS twin
-//   carries the same message.
-// - `.df` asserts become `toRows()` / `rowColumns()` (C6).
+// `Workspace.queryUser` edge cases in three tiers: silent data corruption
+// (sort_key, failed pages, id collisions), crash paths (malformed cohort
+// filters, bad JSON, unsupported operators) and validation gaps. Mirrors
+// all 3 classes of `tests/test_query_user_edge_cases.py`; `.df` asserts
+// become `toRows()` / `rowColumns()`.
 
 import { describe, expect, it } from "vitest";
 
@@ -280,6 +263,13 @@ describe("Tier 1 data corruption", () => {
 
 describe("Tier 2 crash paths", () => {
   // python: TestTier2CrashPaths
+  // Python reaches the private `_build_page_kwargs` /
+  // `_execute_user_aggregate` decodes; in TS they are the exported
+  // `buildPageKwargs` / `buildStatsKwargs` (the sequential engine's
+  // `output_properties` decode is `buildPageKwargs`). `json.JSONDecodeError`
+  // is `LosslessJsonError`: the engage params decode through the shared
+  // lossless parser, never a bare `JSON.parse`. `pytest.raises(ValueError)`
+  // on `filter_to_selector` names the dual-inheriting `ParamValidationError`.
   it("T2.01: a malformed cohort filter raises U_COHORT", async () => {
     // A Filter that passes the cohort-filter predicate but has the
     // wrong internal structure.

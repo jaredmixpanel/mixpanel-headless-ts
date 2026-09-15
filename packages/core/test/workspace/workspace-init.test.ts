@@ -1,22 +1,8 @@
-// Layer-3 translation of `tests/unit/test_workspace_init.py`:
-// B6-W1 classes `TestSessionBypass` and `TestReadOnlyProperties`
-// (:151); B7-A1 classes `TestActiveResolution` (:66),
-// `TestExplicitOverrides`, `TestTarget` — the resolver
-// constructor kwargs over injected `ResolverSources`
-// (`b7-packets.md` §3.4; the Python `two_accounts` tmp-config fixture
-// re-expresses over the in-memory fake config, header rule).
-//
-// `TestBridgeTokenMaterialization` is translated at B8-N2 in
-// `packages/node/test/workspace-bridge-materialization.test.ts` (the
-// constructor's bridge-token materialization side effect,
-// `workspace.py`, needs node:fs — the core-purity eslint
-// boundary covers core TEST files too; disclosed relocation, B8-N2
-// notes). ZERO deferrals remain in this header.
-//
-// `TestSessionBypass::test_session_use_chain_equivalence` is
-// SPLIT: the W1 chain half runs against stubbed seams below; the FULL
-// `Workspace().use(account=…, project=…)` twin (resolver constructor +
-// real seams) is in the B7 section at the bottom.
+// Workspace construction: session bypass, read-only properties, the resolver
+// constructor kwargs (active resolution, explicit overrides, target) over
+// injected ResolverSources, and the constructor-side workspace-guard codes.
+// Mirrors tests/unit/test_workspace_init.py over an in-memory fake config;
+// TestBridgeTokenMaterialization needs node:fs and lives in packages/node/test.
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -159,9 +145,7 @@ describe("Read only properties", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// B7-A1: the resolver constructor (`b7-packets.md` §3.4).
-// ---------------------------------------------------------------------------
+// --- The resolver constructor ---
 
 /** The `two_accounts` fixture. */
 async function twoAccounts(): Promise<EffectsBundle> {
@@ -275,11 +259,10 @@ describe("Target", () => {
   });
 });
 
-describe("Coded workspace guard codes — B7 constructor rows", () => {
+describe("Coded workspace guard codes — constructor guards", () => {
   // python: TestCodedWorkspaceGuardCodes
-  // De-deferred from `workspace-facade.test.ts` (the ":969/:975/:1021 →
-  // B7" header rows): all three call the CONSTRUCTOR guard, which now
-  // exists (`b7-packets.md` §3.4 / Caution #18).
+  // All three cases exercise the constructor guard; the `use()` twins live
+  // in workspace-facade.test.ts.
   it("Workspace({target, account}) raises WS1 before resolution", () => {
     let caught: unknown = null;
     try {
@@ -325,7 +308,7 @@ describe("Coded workspace guard codes — B7 constructor rows", () => {
   });
 });
 
-describe("Session bypass: session use chain equivalence — FULL twin", () => {
+describe("Session bypass: session/use chain equivalence over real seams", () => {
   // python: TestSessionBypass::test_session_use_chain_equivalence
   it("Workspace().use(...) matches Workspace({session}) over real seams", async () => {
     const bundle = await twoAccounts();

@@ -1,46 +1,8 @@
-// B6-W7 Layer-3 translation (packet `b6-packets.md` §9) — the class
-// split of `tests/unit/test_workspace_data_governance.py` (1,842 lines)
-// that W7 owns:
-//
-//   drop filters      : `TestListDropFilters`,
-//     `TestCreateDropFilter`, `TestUpdateDropFilter`,
-//     `TestDeleteDropFilter`, `TestGetDropFilterLimits`
-//   custom properties : `TestListCustomProperties`,
-//     `TestCreateCustomProperty`, `TestGetCustomProperty`,
-//     `TestUpdateCustomProperty`, `TestDeleteCustomProperty`
-//     (:891), `TestValidateCustomProperty` (:905)
-//   custom events     : `TestCreateCustomEvent`,
-//     `TestListCustomEvents`, `TestUpdateCustomEvent`,
-//     `TestDeleteCustomEvent`
-//   lookup tables     : `TestListLookupTables`,
-//     `TestUploadLookupTable`, `TestMarkLookupTableReady`
-//     (:1648), `TestGetLookupUploadUrl` (:1672),
-//     `TestGetLookupUploadStatus`, `TestUpdateLookupTable`
-//     (:1751), `TestDeleteLookupTables` (:1775),
-//     `TestDownloadLookupTable`, `TestGetLookupDownloadUrl`
-//
-// The lexicon / tags / tracking-history classes in the same Python file
-// belong to W6 (`b6-packets.md` §8) and are NOT re-translated here.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the OAuth
-// session (`_make_oauth_credentials`, :82-88) while the facade carries
-// the service-account `_TEST_SESSION`, exactly as Python does.
-// `temp_dir` has no TS analog EXCEPT in `TestUploadLookupTable`, where
-// Python writes a real CSV and the facade reads it with
-// `Path(...).read_bytes()`; the TS twin injects the W7-D1 `readFile`
-// seam with the same bytes (packet §9 W7-D1: `packages/core` is
-// runtime-agnostic, so `node:fs` is a B8 wiring job).
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local branches Python's suite does not cover — the
-// `displayFormula` corruption re-raise, the
-// `to_form_body` JSON spelling, the `readFile` seam default, the
-// `REVOKED` / `NOTFOUND` / non-dict-result poll arms
-// (`workspace.py`) and the per-member delegation contracts
-// (which client method, with which arguments).
+// `Workspace` drop-filter members: list, create, update, delete and limits.
+// Mirrors the `TestListDropFilters` / `TestCreateDropFilter` /
+// `TestUpdateDropFilter` / `TestDeleteDropFilter` / `TestGetDropFilterLimits`
+// classes of `tests/unit/test_workspace_data_governance.py`;
+// `httpx.MockTransport` becomes the injected-fetch seam, `temp_dir` is dropped.
 
 import { describe, expect, it } from "vitest";
 
@@ -55,7 +17,7 @@ import { makeWorkspace } from "./governance-data-fixtures.js";
 
 /**
  * A minimal drop filter dict matching the API shape
- * (`_drop_filter_json`, :187-205).
+ * (`_drop_filter_json`).
  *
  * @param id - Drop filter ID.
  * @param eventName - Event name to filter.
@@ -74,7 +36,7 @@ function dropFilterJson(
 
 describe("List drop filters", () => {
   // python: TestListDropFilters
-  it("list_drop_filters() returns list of DropFilter objects", async () => {
+  it("listDropFilters() returns list of DropFilter objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([dropFilterJson(1, "debug_log"), dropFilterJson(2, "test_event")]),
     );
@@ -86,7 +48,7 @@ describe("List drop filters", () => {
     expect(filters[1]?.id).toBe(2);
   });
 
-  it("list_drop_filters() returns empty list when none exist", async () => {
+  it("listDropFilters() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
     await expect(ws.listDropFilters()).resolves.toStrictEqual([]);
   });
@@ -94,7 +56,7 @@ describe("List drop filters", () => {
 
 describe("Create drop filter", () => {
   // python: TestCreateDropFilter
-  it("create_drop_filter() returns the full list of DropFilter objects", async () => {
+  it("createDropFilter() returns the full list of DropFilter objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([dropFilterJson(1, "debug_log"), dropFilterJson(2, "new_filter")]),
     );
@@ -112,7 +74,7 @@ describe("Create drop filter", () => {
 
 describe("Update drop filter", () => {
   // python: TestUpdateDropFilter
-  it("update_drop_filter() returns the full list of DropFilter objects", async () => {
+  it("updateDropFilter() returns the full list of DropFilter objects", async () => {
     const { ws } = makeWorkspace(() => ok([dropFilterJson(1, "debug_log")]));
     const params = new UpdateDropFilterParams({ id: 1, active: false });
     const result = await ws.updateDropFilter(params);
@@ -124,7 +86,7 @@ describe("Update drop filter", () => {
 
 describe("Delete drop filter", () => {
   // python: TestDeleteDropFilter
-  it("delete_drop_filter() returns the remaining list of DropFilter objects", async () => {
+  it("deleteDropFilter() returns the remaining list of DropFilter objects", async () => {
     const { ws } = makeWorkspace(() => ok([dropFilterJson(2, "kept_filter")]));
     const result = await ws.deleteDropFilter(1);
 
@@ -135,7 +97,7 @@ describe("Delete drop filter", () => {
 
 describe("Get drop filter limits", () => {
   // python: TestGetDropFilterLimits
-  it("get_drop_filter_limits() returns DropFilterLimitsResponse", async () => {
+  it("getDropFilterLimits() returns DropFilterLimitsResponse", async () => {
     const { ws } = makeWorkspace(() => ok({ filter_limit: 10 }));
     const limits = await ws.getDropFilterLimits();
 

@@ -1,28 +1,8 @@
-// B6-W4 Layer-3 translation (packet `b6-packets.md` §6) of the WHOLE
-// of `tests/unit/test_workspace_flags.py` (533 lines, 3 classes):
-// `TestWorkspaceFeatureFlagCRUD`,
-// `TestWorkspaceFeatureFlagLifecycle` and
-// `TestWorkspaceFeatureFlagOperations`.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the
-// OAuth session (`_make_oauth_credentials`, :56) and pinned to
-// workspace 100 (`client.set_workspace_id(100)`, :87) while the facade
-// carries the service-account `_TEST_SESSION`, exactly as
-// Python does. `temp_dir` has no TS analog (no config file is ever
-// touched) and is dropped.
-//
-// `flag.model_extra` is the Phase-2 `__extras` spillover bag
-// (`model-base.ts:396-405`, `extra='allow'`).
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local error branches Python's suite never reaches through the
-// wire — the three `create/get/update` empty-response guards
-// (`workspace.py:5810`, `:5842`, `:5878`) and the `get_flag_history`
-// query-param assembly (`:6053-6058`, the one non-forwarding body in
-// the shard) — get direct member-function tests.
+// Workspace feature-flag members (CRUD, lifecycle, operations) over the
+// injected fetch seam, with the client pinned to workspace 100 as Python does.
+// Mirrors tests/unit/test_workspace_flags.py (all three classes); `model_extra`
+// is the `__extras` spillover bag. Additive: the create/get/update empty-response
+// guards and the getFlagHistory query-param assembly the wire suite never reaches.
 
 import { describe, expect, it } from "vitest";
 
@@ -58,7 +38,7 @@ import { stubClient } from "../../test-support/workspace-test-helpers.js";
 
 /**
  * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :71-91).
+ * (`_make_workspace`).
  *
  * @param handler - The canned-response handler.
  * @returns The facade plus the transport capture log.
@@ -73,8 +53,7 @@ function makeWorkspace(handler: CannedHandler): {
 }
 
 /**
- * A minimal feature flag dict matching the API shape (`_flag_json`,
- * :99-125).
+ * A minimal feature flag dict matching the API shape (`_flag_json`).
  *
  * @param id - Flag UUID.
  * @param name - Flag name.
@@ -100,13 +79,11 @@ function flagJson(
   };
 }
 
-// =============================================================================
-// TestWorkspaceFeatureFlagCRUD
-// =============================================================================
+// --- Workspace feature flag CRUD ---
 
 describe("Workspace feature flag CRUD", () => {
   // python: TestWorkspaceFeatureFlagCRUD
-  it("list_feature_flags() returns list of FeatureFlag objects", async () => {
+  it("listFeatureFlags() returns list of FeatureFlag objects", async () => {
     const { ws } = makeWorkspace(() =>
       ok([
         flagJson("id-1", "Flag A", "flag_a"),
@@ -123,7 +100,7 @@ describe("Workspace feature flag CRUD", () => {
     expect(flags[1]?.name).toBe("Flag B");
   });
 
-  it("list_feature_flags() returns empty list when no flags exist", async () => {
+  it("listFeatureFlags() returns empty list when no flags exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
     await expect(ws.listFeatureFlags()).resolves.toStrictEqual([]);
   });
@@ -138,7 +115,7 @@ describe("Workspace feature flag CRUD", () => {
     expect(transport.captures[0]?.url).toContain("include_archived=true");
   });
 
-  it("list_feature_flags() returns FeatureFlag instances with correct fields", async () => {
+  it("listFeatureFlags() returns FeatureFlag instances with correct fields", async () => {
     const { ws } = makeWorkspace(() => ok([flagJson()]));
     const flags = await ws.listFeatureFlags();
 
@@ -149,7 +126,7 @@ describe("Workspace feature flag CRUD", () => {
     expect(flag?.serving_method).toBe(ServingMethod.CLIENT);
   });
 
-  it("create_feature_flag() returns the created FeatureFlag", async () => {
+  it("createFeatureFlag() returns the created FeatureFlag", async () => {
     const { ws } = makeWorkspace(() =>
       ok(flagJson("new-id", "New Flag", "new_flag")),
     );
@@ -165,7 +142,7 @@ describe("Workspace feature flag CRUD", () => {
     expect(flag.key).toBe("new_flag");
   });
 
-  it("create_feature_flag() sends optional fields when provided", async () => {
+  it("createFeatureFlag() sends optional fields when provided", async () => {
     const { ws } = makeWorkspace(() => {
       const data = flagJson("new-id", "Dark Mode", "dark_mode");
       data["description"] = "Toggle dark mode";
@@ -184,7 +161,7 @@ describe("Workspace feature flag CRUD", () => {
     expect(flag.status).toBe(FeatureFlagStatus.ENABLED);
   });
 
-  it("get_feature_flag() returns a single FeatureFlag by ID", async () => {
+  it("getFeatureFlag() returns a single FeatureFlag by ID", async () => {
     const { ws } = makeWorkspace(() =>
       ok(flagJson("abc-123", "My Flag", "my_flag")),
     );
@@ -195,7 +172,7 @@ describe("Workspace feature flag CRUD", () => {
     expect(flag.name).toBe("My Flag");
   });
 
-  it("get_feature_flag() preserves extra fields from the API", async () => {
+  it("getFeatureFlag() preserves extra fields from the API", async () => {
     const { ws } = makeWorkspace(() => {
       const data = flagJson();
       data["custom_metadata"] = { team: "platform" };
@@ -208,7 +185,7 @@ describe("Workspace feature flag CRUD", () => {
     });
   });
 
-  it("update_feature_flag() returns the updated FeatureFlag", async () => {
+  it("updateFeatureFlag() returns the updated FeatureFlag", async () => {
     const { ws } = makeWorkspace(() => {
       const data = flagJson("abc-123", "Updated", "test_flag");
       data["status"] = "enabled";
@@ -227,29 +204,27 @@ describe("Workspace feature flag CRUD", () => {
     expect(flag.status).toBe(FeatureFlagStatus.ENABLED);
   });
 
-  it("delete_feature_flag() returns None on success", async () => {
+  it("deleteFeatureFlag() resolves to undefined on success", async () => {
     const { ws } = makeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteFeatureFlag("abc-123")).resolves.toBeUndefined();
   });
 
-  it("delete_feature_flag() handles 200 response too", async () => {
+  it("deleteFeatureFlag() handles 200 response too", async () => {
     const { ws } = makeWorkspace(() => ok({}));
     await expect(ws.deleteFeatureFlag("abc-123")).resolves.toBeUndefined();
   });
 });
 
-// =============================================================================
-// TestWorkspaceFeatureFlagLifecycle
-// =============================================================================
+// --- Workspace feature flag lifecycle ---
 
 describe("Workspace feature flag lifecycle", () => {
   // python: TestWorkspaceFeatureFlagLifecycle
-  it("archive_feature_flag() returns None on success", async () => {
+  it("archiveFeatureFlag() resolves to undefined on success", async () => {
     const { ws } = makeWorkspace(() => ({ status: 204 }));
     await expect(ws.archiveFeatureFlag("abc-123")).resolves.toBeUndefined();
   });
 
-  it("restore_feature_flag() returns the restored FeatureFlag", async () => {
+  it("restoreFeatureFlag() returns the restored FeatureFlag", async () => {
     const { ws } = makeWorkspace(() =>
       ok(flagJson("abc-123", "Restored", "restored")),
     );
@@ -260,7 +235,7 @@ describe("Workspace feature flag lifecycle", () => {
     expect(flag.name).toBe("Restored");
   });
 
-  it("duplicate_feature_flag() returns the duplicated FeatureFlag", async () => {
+  it("duplicateFeatureFlag() returns the duplicated FeatureFlag", async () => {
     const { ws } = makeWorkspace(() =>
       ok(flagJson("dup-456", "Copy of Test", "test_flag_copy")),
     );
@@ -273,13 +248,11 @@ describe("Workspace feature flag lifecycle", () => {
   });
 });
 
-// =============================================================================
-// TestWorkspaceFeatureFlagOperations
-// =============================================================================
+// --- Workspace feature flag operations ---
 
 describe("Workspace feature flag operations", () => {
   // python: TestWorkspaceFeatureFlagOperations
-  it("set_flag_test_users() returns None on success", async () => {
+  it("setFlagTestUsers() resolves to undefined on success", async () => {
     const { ws } = makeWorkspace(() => ({ status: 204 }));
     const params = new SetTestUsersParams({
       users: { on: "user-1", off: "user-2" },
@@ -289,7 +262,7 @@ describe("Workspace feature flag operations", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("set_flag_test_users() accepts empty user mapping", async () => {
+  it("setFlagTestUsers() accepts empty user mapping", async () => {
     const { ws } = makeWorkspace(() => ({ status: 204 }));
     const params = new SetTestUsersParams({ users: {} });
     await expect(
@@ -297,7 +270,7 @@ describe("Workspace feature flag operations", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("get_flag_history() returns FlagHistoryResponse", async () => {
+  it("getFlagHistory() returns FlagHistoryResponse", async () => {
     const { ws } = makeWorkspace(() =>
       ok({
         events: [
@@ -314,7 +287,7 @@ describe("Workspace feature flag operations", () => {
     expect(history.count).toBe(2);
   });
 
-  it("get_flag_history() handles empty history", async () => {
+  it("getFlagHistory() handles empty history", async () => {
     const { ws } = makeWorkspace(() => ok({ events: [], count: 0 }));
     const history = await ws.getFlagHistory("abc-123");
 
@@ -323,7 +296,7 @@ describe("Workspace feature flag operations", () => {
     expect(history.count).toBe(0);
   });
 
-  it("get_flag_limits() returns FlagLimitsResponse", async () => {
+  it("getFlagLimits() returns FlagLimitsResponse", async () => {
     const { ws } = makeWorkspace(() =>
       ok({
         limit: 100,
@@ -341,7 +314,7 @@ describe("Workspace feature flag operations", () => {
     expect(limits.contract_status).toBe(FlagContractStatus.ACTIVE);
   });
 
-  it("get_flag_limits() correctly parses trial account limits", async () => {
+  it("getFlagLimits() correctly parses trial account limits", async () => {
     const { ws } = makeWorkspace(() =>
       ok({
         limit: 10,
@@ -358,14 +331,10 @@ describe("Workspace feature flag operations", () => {
   });
 });
 
-// =============================================================================
-// ADDITIVE — facade-local branches Python's suite never reaches through
-// the wire (B5 Caution #13 pattern). NOT substitutes for a translated
-// Python assertion.
-// =============================================================================
+// --- Additive: facade-local branches Python's wire suite never reaches ---
 
-describe("ADDITIVE: get_flag_history query-param assembly", () => {
-  it("omits `params` entirely when neither key is supplied (`:6053-6058`)", async () => {
+describe("ADDITIVE: getFlagHistory query-param assembly", () => {
+  it("omits `params` entirely when neither key is supplied", async () => {
     const calls: unknown[][] = [];
     const client = stubClient(
       "getFlagHistory",

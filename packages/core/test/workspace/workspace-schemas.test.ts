@@ -1,25 +1,8 @@
-// B6-W8 Layer-3 translation (packet `b6-packets.md` §10) — the WHOLE
-// of `tests/unit/test_workspace_schemas.py` (877 lines, 6 classes):
-//
-//   `TestListSchemaRegistry`, `TestCreateSchema`,
-//   `TestCreateSchemasBulk`, `TestUpdateSchema`,
-//   `TestUpdateSchemasBulk`, `TestDeleteSchemas`
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeFacadeWorkspace(handler)` — the client is built over the
-// OAuth session (`_make_oauth_credentials`, :57) while the facade
-// carries the service-account `_TEST_SESSION`, exactly as
-// Python does. `temp_dir` has no TS analog (no config file is ever
-// touched) and is dropped; the W6/W7 precedent.
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local delegation contracts Python's wire suite cannot see —
-// which client method each member calls, with which arguments, the
-// `model_dump(exclude_none=True, by_alias=True)` body spelling
-// (`workspace.py:8754`, `:8824`), the `validate_response_model(s)`
-// `endpoint=` strings, and the `RESPONSE_VALIDATION_ERROR` seam.
+// Workspace schema-registry members (list, create, bulk create, update, bulk
+// update, delete) over the injected fetch seam. Mirrors all six classes of
+// tests/unit/test_workspace_schemas.py. Additive: the facade-to-client
+// delegation contracts the wire suite cannot see — argument spelling, the
+// exclude_none + by_alias dump, `endpoint=` strings and the response-validation seam.
 
 import { describe, expect, it } from "vitest";
 
@@ -51,7 +34,7 @@ import { makeFacadeWorkspace } from "../../test-support/workspace-test-helpers.j
 
 /**
  * A minimal schema entry dict matching the API shape
- * (`_schema_entry_json`, :96-120).
+ * (`_schema_entry_json`).
  *
  * @param entityType - Entity type ("event", "custom_event", "profile").
  * @param name - Entity name.
@@ -79,9 +62,7 @@ function schemaEntryJson(
   return result;
 }
 
-// ===========================================================================
-// Tests: list_schema_registry (`TestListSchemaRegistry`, :151-286)
-// ===========================================================================
+// --- listSchemaRegistry (TestListSchemaRegistry) ---
 
 describe("Workspace.listSchemaRegistry", () => {
   it("returns all schemas as SchemaEntry list", async () => {
@@ -167,9 +148,7 @@ describe("Workspace.listSchemaRegistry", () => {
   });
 });
 
-// ===========================================================================
-// Tests: create_schema (`TestCreateSchema`, :298-379)
-// ===========================================================================
+// --- createSchema (TestCreateSchema) ---
 
 describe("Workspace.createSchema", () => {
   it("returns the raw dict from the API", async () => {
@@ -218,9 +197,7 @@ describe("Workspace.createSchema", () => {
   });
 });
 
-// ===========================================================================
-// Tests: create_schemas_bulk (`TestCreateSchemasBulk`, :383-515)
-// ===========================================================================
+// --- createSchemasBulk (TestCreateSchemasBulk) ---
 
 describe("Workspace.createSchemasBulk", () => {
   it("returns a BulkCreateSchemasResponse", async () => {
@@ -315,9 +292,7 @@ describe("Workspace.createSchemasBulk", () => {
   });
 });
 
-// ===========================================================================
-// Tests: update_schema (`TestUpdateSchema`, :519-600)
-// ===========================================================================
+// --- updateSchema (TestUpdateSchema) ---
 
 describe("Workspace.updateSchema", () => {
   it("returns the raw dict from the API", async () => {
@@ -373,9 +348,7 @@ describe("Workspace.updateSchema", () => {
   });
 });
 
-// ===========================================================================
-// Tests: update_schemas_bulk (`TestUpdateSchemasBulk`, :604-742)
-// ===========================================================================
+// --- updateSchemasBulk (TestUpdateSchemasBulk) ---
 
 describe("Workspace.updateSchemasBulk", () => {
   it("returns a list of BulkPatchResult", async () => {
@@ -472,9 +445,7 @@ describe("Workspace.updateSchemasBulk", () => {
   });
 });
 
-// ===========================================================================
-// Tests: delete_schemas (`TestDeleteSchemas`, :746-877)
-// ===========================================================================
+// --- deleteSchemas (TestDeleteSchemas) ---
 
 describe("Workspace.deleteSchemas", () => {
   it("deletes all and returns the count with no args", async () => {
@@ -550,7 +521,7 @@ describe("Workspace.deleteSchemas", () => {
     });
 
     // `pytest.raises(MixpanelHeadlessError, match="entity_name requires
-    // entity_type")` — the CLASS is the contract (R5.4); the message is
+    // entity_type")` — the class is the contract; the message is
     // additionally asserted because Python's `match=` does.
     await expect(
       ws.deleteSchemas({ entity_name: "Purchase" }),
@@ -558,18 +529,15 @@ describe("Workspace.deleteSchemas", () => {
     await expect(ws.deleteSchemas({ entity_name: "Purchase" })).rejects.toThrow(
       /entity_name requires entity_type/,
     );
-    // The guard fires BEFORE any request (packet Caution #4 twin).
+    // The guard fires before any request.
     expect(captured).toStrictEqual([]);
   });
 });
 
-// ===========================================================================
-// ADDITIVE (B5 Caution #13): facade-local delegation contracts. These do
-// NOT substitute for any translated Python assertion — they lock the
-// seams Python's wire-level suite cannot observe: which client method
-// each member calls, the request-body dump spelling, the `endpoint=`
-// string carried into `validate_response_model(s)`, and the guard code.
-// ===========================================================================
+// --- Additive: facade-local delegation contracts Python's wire suite cannot
+// observe — which client method each member calls, the request-body dump
+// spelling, the `endpoint=` string carried into `validate_response_model(s)`,
+// and the guard code ---
 
 /** One recorded delegation call. */
 interface DelegationCall {
@@ -636,7 +604,7 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
     ]);
   });
 
-  it("the bulk writers dump with exclude_none + by_alias (:8754, :8824)", async () => {
+  it("the bulk writers dump with exclude_none + by_alias", async () => {
     const { client, calls } = delegationStub({
       createSchemasBulk: { added: 1, deleted: 0 },
       updateSchemasBulk: [],

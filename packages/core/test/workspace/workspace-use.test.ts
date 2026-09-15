@@ -1,24 +1,8 @@
-// Layer-3 translation of `tests/unit/test_workspace_use.py` — the
-// B6-W1 classes (`TestUseWorkspace` :56, `TestUseProject` :72,
-// `TestHTTPTransportPreservation` :132, `TestTargetMutualExclusion`
-// :169, `TestUseUpdatesSessionAndClearsCaches` :255) plus the B7-A1
-// de-deferred classes (`b7-packets.md` §3.4 / Caution #18 — this
-// header now lists ZERO B7 deferrals): `TestUseAccount`,
-// `TestPersist`, `TestUseAccountEnvVarPriority`,
-// `TestUseTargetEnvOverride`,
-// `TestUseAccountWorkspaceEnvValidation`, and the four
-// previously seam-stubbed cases inside the W1 classes
-// (`test_target_alone_applies_three_axes` :176,
-// `test_use_target_also_clears_caches` :301,
-// `test_use_account_updates_me_cache_account_name` :311,
-// `test_use_target_updates_me_cache_account_name` :333) — all driven
-// through the REAL `resolverSeamsFromEffects` over the in-memory
-// effect fakes (the tmp-config fixture re-expression, §3.4 header
-// rule). The W1 seam-residue locks below are kept as-is.
-//
-// Construction in the W1 sections uses the session-bypass constructor;
-// the B7 sections construct through the resolver axes where Python
-// does (`Workspace(account="team", project="3713224")`).
+// Workspace.use(): workspace / project / target / account switches, HTTP
+// transport preservation, target mutual exclusion, session updates and cache
+// clearing, persistence and env-var precedence. Mirrors
+// tests/unit/test_workspace_use.py; the seam-stubbed sections use the
+// session-bypass constructor, the real-seam sections resolverSeamsFromEffects.
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -68,7 +52,7 @@ const OTHER_ACCOUNT: Account = {
 /**
  * Build a facade over a mock client (no request is expected).
  *
- * @param seams - Optional resolver-seam overrides (B7's surface).
+ * @param seams - Optional resolver-seam overrides.
  * @returns The facade plus the client it is bound to.
  */
 function makeWorkspace(seams?: Partial<ResolverSeams>): {
@@ -123,13 +107,13 @@ describe("Use project", () => {
   });
 });
 
-describe("HTTP transport preservation — R6.2", () => {
+describe("HTTP transport preservation", () => {
   // python: TestHTTPTransportPreservation
   it("a workspace switch does NOT recreate the client", async () => {
     const { ws, client } = makeWorkspace();
     const before = ws.client;
     // Python compares `id(client._http)` — the INNER pool. The TS twin
-    // is the pool token `httpHandle()` (B6-ARB fidelity F3), asserted
+    // is the pool token `httpHandle()`, asserted
     // through the facade path alongside the wrapper identity.
     const poolBefore = ws.client.httpHandle();
 
@@ -181,15 +165,14 @@ describe("Target mutual exclusion", () => {
     await expect(
       ws.use({ target: "ecom", account: "other" }),
     ).rejects.toBeInstanceOf(Error);
-    // Guard order (packet §14 Caution 4): NOTHING resolved.
+    // Guard order: nothing is resolved.
     expect(resolveSession).not.toHaveBeenCalled();
     expect(getAccount).not.toHaveBeenCalled();
   });
 
   it("use({target}) alone routes through the resolveSession seam", async () => {
-    // W1 residue of `test_target_alone_applies_three_axes`: the
-    // three axes come from the resolved session; B7 owns the resolution
-    // itself (target file I/O + env precedence).
+    // The three axes come from the resolved session; the resolution itself
+    // (target file I/O + env precedence) is covered over real seams below.
     const resolved: Session = {
       account: OTHER_ACCOUNT,
       project: { id: "3018488" },
@@ -260,7 +243,7 @@ describe("Use updates session and clears caches", () => {
   });
 });
 
-describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
+describe("resolver seams (stubbed)", () => {
   it("the default resolveSession seam throws UNPORTED_RESOLVER_SEAM", async () => {
     const { ws } = makeWorkspace();
     await expect(ws.use({ target: "ecom" })).rejects.toMatchObject({
@@ -351,10 +334,7 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// B7-A1: the de-deferred resolver classes over REAL seams
-// (`b7-packets.md` §3.4).
-// ---------------------------------------------------------------------------
+// --- The resolver classes over real seams ---
 
 /** The `two_accounts` fixture. */
 async function twoAccountsBundle(): Promise<EffectsBundle> {
@@ -395,9 +375,8 @@ function realSeamWorkspace(
     client,
     seams: {
       ...resolverSeamsFromEffects(bundle.effects),
-      // Python `_persist_active` routing over the fake config
-      // (`workspace.py` — the B8-owned effect member is wired
-      // to `persistActiveToConfig` here).
+      // Python `_persist_active` routing over the fake config: the effect
+      // member is wired to `persistActiveToConfig` here.
       persistActive: (session) => persistActiveToConfig(bundle.config, session),
     },
   });
@@ -566,7 +545,7 @@ describe("Use account workspace env validation — real seams", () => {
   });
 });
 
-describe("B7 de-deferred W1-class cases — real seams", () => {
+describe("target and cache cases over real seams", () => {
   it("use({target}) alone applies all three axes", async () => {
     const bundle = await twoAccountsBundle();
     const targets = createTargetsNamespace(bundle.effects);

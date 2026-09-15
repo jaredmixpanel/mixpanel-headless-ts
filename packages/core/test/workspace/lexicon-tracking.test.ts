@@ -1,40 +1,8 @@
-// B6-W6 Layer-3 translation (packet `b6-packets.md` §8) — the class
-// split of `tests/unit/test_workspace_data_governance.py` (1,842 lines)
-// that W6 owns:
-//
-//   lexicon definitions + tags : `TestGetEventDefinitions`,
-//     `TestUpdateEventDefinition`, `TestDeleteEventDefinition`
-//     (:341), `TestBulkUpdateEventDefinitions` (:355),
-//     `TestGetPropertyDefinitions`,
-//     `TestUpdatePropertyDefinition`,
-//     `TestBulkUpdatePropertyDefinitions`,
-//     `TestListLexiconTags`, `TestCreateLexiconTag`,
-//     `TestUpdateLexiconTag`, `TestDeleteLexiconTag`
-//   tracking & history : `TestGetTrackingMetadata`,
-//     `TestGetEventHistory`, `TestGetPropertyHistory`,
-//     `TestExportLexicon`
-//
-// The drop-filter / custom-property / custom-event / lookup-table
-// classes in the same Python file belong to W7 (`b6-packets.md` §9)
-// and are deliberately NOT translated here.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeFacadeWorkspace(handler)` — the client is built over the
-// OAuth session (`_make_oauth_credentials`, :82) while the facade
-// carries the service-account `_TEST_SESSION`, exactly as
-// Python does. `temp_dir` has no TS analog (no config file is ever
-// touched) and is dropped.
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local delegation contracts Python's wire suite cannot see —
-// which client method each member calls, with which arguments, the
-// `model_dump(exclude_none=True, by_alias=True)` body spelling
-// (`workspace.py:7266`, `:7325`, `:7406`, `:7452`) vs the PLAIN
-// `model_dump(exclude_none=True)` the two tag writers use (`:7526`,
-// `:7557`), and the `list_lexicon_tags` string-entry sentinel branch
-// (`:7491-7499`).
+// `Workspace` lexicon members: event/property definitions (get, update,
+// bulk update, delete), lexicon tags, tracking metadata, history and
+// export. Mirrors the lexicon / tags / tracking-history classes of
+// `tests/unit/test_workspace_data_governance.py`; `httpx.MockTransport`
+// becomes the injected-fetch seam. `ADDITIVE:` locks delegation and dump flags.
 
 import { describe, expect, it } from "vitest";
 
@@ -79,7 +47,7 @@ import {
 
 /**
  * A minimal event definition dict matching the API shape
- * (`_event_def_json`, :124-143).
+ * (`_event_def_json`).
  *
  * @param id - Event definition ID.
  * @param name - Event name.
@@ -97,7 +65,7 @@ function eventDefJson(id = 1, name = "Purchase"): Record<string, unknown> {
 
 /**
  * A minimal property definition dict matching the API shape
- * (`_property_def_json`, :146-165).
+ * (`_property_def_json`).
  *
  * @param id - Property definition ID.
  * @param name - Property name.
@@ -114,8 +82,7 @@ function propertyDefJson(id = 1, name = "$browser"): Record<string, unknown> {
 }
 
 /**
- * A minimal Lexicon tag dict matching the API shape (`_tag_json`,
- * :168-184).
+ * A minimal Lexicon tag dict matching the API shape (`_tag_json`).
  *
  * @param id - Tag ID.
  * @param name - Tag name.
@@ -141,7 +108,7 @@ function okBare(): CannedResponse {
 
 describe("Get event definitions", () => {
   // python: TestGetEventDefinitions
-  it("get_event_definitions() returns list of EventDefinition objects", async () => {
+  it("getEventDefinitions() returns list of EventDefinition objects", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([eventDefJson()]));
     const result = await ws.getEventDefinitions({ names: ["Purchase"] });
 
@@ -150,7 +117,7 @@ describe("Get event definitions", () => {
     expect(result[0]?.name).toBe("Purchase");
   });
 
-  it("get_event_definitions() handles multiple events", async () => {
+  it("getEventDefinitions() handles multiple events", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([eventDefJson(1, "Purchase"), eventDefJson(2, "Signup")]),
     );
@@ -163,7 +130,7 @@ describe("Get event definitions", () => {
     expect(result[1]?.name).toBe("Signup");
   });
 
-  it("get_event_definitions() returns empty list when no matches", async () => {
+  it("getEventDefinitions() returns empty list when no matches", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(
       ws.getEventDefinitions({ names: ["NonExistent"] }),
@@ -173,7 +140,7 @@ describe("Get event definitions", () => {
 
 describe("Update event definition", () => {
   // python: TestUpdateEventDefinition
-  it("update_event_definition() returns the updated EventDefinition", async () => {
+  it("updateEventDefinition() returns the updated EventDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(eventDefJson(1, "Purchase")));
     const params = new UpdateEventDefinitionParams({
       description: "Updated description",
@@ -188,7 +155,7 @@ describe("Update event definition", () => {
 
 describe("Delete event definition", () => {
   // python: TestDeleteEventDefinition
-  it("delete_event_definition() returns None on success", async () => {
+  it("deleteEventDefinition() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => okBare());
     await expect(ws.deleteEventDefinition("OldEvent")).resolves.toBeUndefined();
   });
@@ -196,7 +163,7 @@ describe("Delete event definition", () => {
 
 describe("Bulk update event definitions", () => {
   // python: TestBulkUpdateEventDefinitions
-  it("bulk_update_event_definitions() returns list of EventDefinition", async () => {
+  it("bulkUpdateEventDefinitions() returns list of EventDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([eventDefJson(1, "E1"), eventDefJson(2, "E2")]),
     );
@@ -221,7 +188,7 @@ describe("Bulk update event definitions", () => {
 
 describe("Get property definitions", () => {
   // python: TestGetPropertyDefinitions
-  it("get_property_definitions() returns list of PropertyDefinition", async () => {
+  it("getPropertyDefinitions() returns list of PropertyDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([propertyDefJson()]));
     const result = await ws.getPropertyDefinitions({ names: ["$browser"] });
 
@@ -230,7 +197,7 @@ describe("Get property definitions", () => {
     expect(result[0]?.name).toBe("$browser");
   });
 
-  it("get_property_definitions() passes resource_type to API", async () => {
+  it("getPropertyDefinitions() passes resource_type to API", async () => {
     const capturedUrls: string[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       capturedUrls.push(request.url);
@@ -242,13 +209,13 @@ describe("Get property definitions", () => {
     });
 
     expect(result).toHaveLength(1);
-    // ADDITIVE: Python captures the URL but only asserts the length
-    // (:417-435); the canonicalization contract lives in the B4 client
+    // ADDITIVE: Python captures the URL but only asserts the length; the
+    // canonicalization contract lives in the client
     // (`canonicalResourceType`, "event" -> "Event").
     expect(capturedUrls[0]).toContain("resourceType=Event");
   });
 
-  it("get_property_definitions() returns empty list when no matches", async () => {
+  it("getPropertyDefinitions() returns empty list when no matches", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(
       ws.getPropertyDefinitions({ names: ["nonexistent"] }),
@@ -258,7 +225,7 @@ describe("Get property definitions", () => {
 
 describe("Update property definition", () => {
   // python: TestUpdatePropertyDefinition
-  it("update_property_definition() returns the updated PropertyDefinition", async () => {
+  it("updatePropertyDefinition() returns the updated PropertyDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok(propertyDefJson(1, "$browser")),
     );
@@ -272,7 +239,7 @@ describe("Update property definition", () => {
 
 describe("Bulk update property definitions", () => {
   // python: TestBulkUpdatePropertyDefinitions
-  it("bulk_update_property_definitions() returns list of PropertyDefinition", async () => {
+  it("bulkUpdatePropertyDefinitions() returns list of PropertyDefinition", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([propertyDefJson(1, "$browser"), propertyDefJson(2, "$city")]),
     );
@@ -305,7 +272,7 @@ describe("Bulk update property definitions", () => {
 
 describe("List lexicon tags", () => {
   // python: TestListLexiconTags
-  it("list_lexicon_tags() returns list of LexiconTag objects", async () => {
+  it("listLexiconTags() returns list of LexiconTag objects", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         { id: 1, name: "core-metrics" },
@@ -322,7 +289,7 @@ describe("List lexicon tags", () => {
     expect(tags[1]?.name).toBe("growth");
   });
 
-  it("list_lexicon_tags() returns empty list when no tags exist", async () => {
+  it("listLexiconTags() returns empty list when no tags exist", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listLexiconTags()).resolves.toStrictEqual([]);
   });
@@ -330,7 +297,7 @@ describe("List lexicon tags", () => {
 
 describe("Create lexicon tag", () => {
   // python: TestCreateLexiconTag
-  it("create_lexicon_tag() returns the created LexiconTag", async () => {
+  it("createLexiconTag() returns the created LexiconTag", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(tagJson(99, "new-tag")));
     const tag = await ws.createLexiconTag(
       new CreateTagParams({ name: "new-tag" }),
@@ -344,7 +311,7 @@ describe("Create lexicon tag", () => {
 
 describe("Update lexicon tag", () => {
   // python: TestUpdateLexiconTag
-  it("update_lexicon_tag() returns the updated LexiconTag", async () => {
+  it("updateLexiconTag() returns the updated LexiconTag", async () => {
     const { ws } = makeFacadeWorkspace(() => ok(tagJson(1, "renamed-tag")));
     const tag = await ws.updateLexiconTag(
       1,
@@ -358,7 +325,7 @@ describe("Update lexicon tag", () => {
 
 describe("Delete lexicon tag", () => {
   // python: TestDeleteLexiconTag
-  it("delete_lexicon_tag() returns None on success", async () => {
+  it("deleteLexiconTag() returns None on success", async () => {
     const { ws } = makeFacadeWorkspace(() => okBare());
     await expect(ws.deleteLexiconTag("core-metrics")).resolves.toBeUndefined();
   });
@@ -370,7 +337,7 @@ describe("Delete lexicon tag", () => {
 
 describe("Get tracking metadata", () => {
   // python: TestGetTrackingMetadata
-  it("get_tracking_metadata() returns an opaque dict", async () => {
+  it("getTrackingMetadata() returns an opaque dict", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ last_seen: "2026-01-01", platforms: ["web", "ios"] }),
     );
@@ -384,7 +351,7 @@ describe("Get tracking metadata", () => {
 
 describe("Get event history", () => {
   // python: TestGetEventHistory
-  it("get_event_history() returns a list of history dicts", async () => {
+  it("getEventHistory() returns a list of history dicts", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([
         { action: "created", timestamp: "2026-01-01" },
@@ -398,7 +365,7 @@ describe("Get event history", () => {
     expect(result[0]?.["action"]).toBe("created");
   });
 
-  it("get_event_history() returns empty list when no history", async () => {
+  it("getEventHistory() returns empty list when no history", async () => {
     const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.getEventHistory("Purchase")).resolves.toStrictEqual([]);
   });
@@ -406,7 +373,7 @@ describe("Get event history", () => {
 
 describe("Get property history", () => {
   // python: TestGetPropertyHistory
-  it("get_property_history() returns a list of history dicts", async () => {
+  it("getPropertyHistory() returns a list of history dicts", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok([{ action: "hidden", timestamp: "2026-03-01" }]),
     );
@@ -424,7 +391,7 @@ describe("Get property history", () => {
 
 describe("Export lexicon", () => {
   // python: TestExportLexicon
-  it("export_lexicon() returns an opaque dict with export data", async () => {
+  it("exportLexicon() returns an opaque dict with export data", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ events: [eventDefJson()], properties: [propertyDefJson()] }),
     );
@@ -435,7 +402,7 @@ describe("Export lexicon", () => {
     expect(Object.hasOwn(result, "properties")).toBe(true);
   });
 
-  it("export_lexicon(export_types=['events']) passes filter to API", async () => {
+  it("exportLexicon(export_types=['events']) passes filter to API", async () => {
     const capturedUrls: string[] = [];
     const { ws } = makeFacadeWorkspace((request) => {
       capturedUrls.push(request.url);
@@ -444,13 +411,13 @@ describe("Export lexicon", () => {
     const result = await ws.exportLexicon({ export_types: ["events"] });
 
     expect(typeof result).toBe("object");
-    // ADDITIVE: Python captures the body but only asserts the type
-    // (:1309-1330); the `export_type` JSON-encoding contract is B4's.
+    // ADDITIVE: Python captures the body but only asserts the type; the
+    // `export_type` JSON encoding is the client's contract.
     expect(capturedUrls[0]).toContain("export_type=");
     expect(decodeURIComponent(capturedUrls[0] ?? "")).toContain('["events"]');
   });
 
-  it("export_lexicon() with no filter returns all types", async () => {
+  it("exportLexicon() with no filter returns all types", async () => {
     const { ws } = makeFacadeWorkspace(() =>
       ok({ events: [], properties: [], tags: [] }),
     );
@@ -461,14 +428,13 @@ describe("Export lexicon", () => {
 });
 
 // =============================================================================
-// ADDITIVE — facade delegation contracts (B5 Caution #13 / packet §0.2).
-// These do NOT substitute for a translated Python assertion; they lock
-// the seam Python's wire-level suite cannot observe: which client
-// method each member calls, with which arguments, and how the params
-// model is dumped.
+// ADDITIVE — facade delegation contracts. These do not substitute for a
+// translated Python assertion; they lock the seam Python's wire-level
+// suite cannot observe: which client method each member calls, with
+// which arguments, and how the params model is dumped.
 // =============================================================================
 
-describe("ADDITIVE: W6 delegation contracts", () => {
+describe("ADDITIVE: lexicon delegation contracts", () => {
   it("get_event_definitions forwards the names list positionally", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("getEventDefinitions", [], calls);
@@ -493,7 +459,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     expect(calls[0]).toStrictEqual([["p"], "people"]);
   });
 
-  it("update_event_definition dumps by_alias and drops None (`workspace.py:7266`)", async () => {
+  it("update_event_definition dumps by_alias and drops None", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("updateEventDefinition", eventDefJson(), calls);
     await updateEventDefinitionMember(
@@ -508,7 +474,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     expect(calls[0]?.[1]).toStrictEqual({ displayName: "Bought" });
   });
 
-  it("bulk_update_event_definitions dumps by_alias recursively (`:7325`)", async () => {
+  it("bulk_update_event_definitions dumps by_alias recursively", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("bulkUpdateEventDefinitions", [], calls);
     await bulkUpdateEventDefinitionsMember(
@@ -522,7 +488,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     });
   });
 
-  it("update_property_definition dumps by_alias and drops None (`:7406`)", async () => {
+  it("update_property_definition dumps by_alias and drops None", async () => {
     const calls: unknown[][] = [];
     const client = stubClient(
       "updatePropertyDefinition",
@@ -545,7 +511,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     });
   });
 
-  it("bulk_update_property_definitions dumps by_alias recursively (`:7452`)", async () => {
+  it("bulk_update_property_definitions dumps by_alias recursively", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("bulkUpdatePropertyDefinitions", [], calls);
     await bulkUpdatePropertyDefinitionsMember(
@@ -567,14 +533,14 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     });
   });
 
-  it("create_lexicon_tag dumps WITHOUT by_alias (`:7526`)", async () => {
+  it("create_lexicon_tag dumps without by_alias", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("createLexiconTag", tagJson(), calls);
     await createLexiconTagMember(client, new CreateTagParams({ name: "t" }));
     expect(calls[0]?.[0]).toStrictEqual({ name: "t" });
   });
 
-  it("update_lexicon_tag forwards the INT id then the plain dump (`:7557`)", async () => {
+  it("update_lexicon_tag forwards the int id then the plain dump", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("updateLexiconTag", tagJson(), calls);
     await updateLexiconTagMember(client, 7, new UpdateTagParams({ name: "t" }));
@@ -588,7 +554,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     expect(calls[0]?.[1]).toStrictEqual({});
   });
 
-  it("list_lexicon_tags wraps plain STRING entries with the id=0 sentinel (`:7491-7499`)", async () => {
+  it("list_lexicon_tags wraps plain string entries with the id=0 sentinel", async () => {
     const client = stubClient("listLexiconTags", [
       "plain-name",
       { id: 4, name: "structured" },
@@ -619,7 +585,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     expect(tagCalls[0]).toStrictEqual(["core-metrics"]);
   });
 
-  it("export_lexicon forwards `null` when export_types is absent (`:8648`)", async () => {
+  it("export_lexicon forwards `null` when export_types is absent", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("exportLexicon", {}, calls);
     await exportLexiconMember(client, {});
@@ -654,7 +620,7 @@ describe("ADDITIVE: W6 delegation contracts", () => {
     expect(propertyHistory).toStrictEqual([{ action: "hidden" }]);
   });
 
-  it("get_property_history forwards BOTH positional args (`:8614`)", async () => {
+  it("get_property_history forwards both positional args", async () => {
     const calls: unknown[][] = [];
     const client = stubClient("getPropertyHistory", [], calls);
     await getPropertyHistoryMember(client, "$browser", "user");
