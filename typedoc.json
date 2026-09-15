@@ -18,7 +18,8 @@
     "typedoc-plugin-markdown",
     "typedoc-vitepress-theme",
     "typedoc-plugin-mdn-links",
-    "./scripts/lib/typedoc-link-fallbacks.mjs"
+    "./scripts/lib/typedoc-link-fallbacks.mjs",
+    "./scripts/lib/typedoc-barrel-groups.mjs"
   ],
   "out": "docs/reference",
   "docsRoot": "docs",

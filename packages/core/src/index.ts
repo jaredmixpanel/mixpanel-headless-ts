@@ -799,7 +799,7 @@ export {
   type TimeUnit,
 } from "./types/literals.js";
 
-// ── Auth — accounts, sessions, tokens, OAuth primitives, resolver, region probe
+// --- Auth — accounts, sessions, tokens, OAuth primitives, resolver, region probe ---
 export {
   type Account,
   accountAuthHeader,
@@ -915,7 +915,7 @@ export {
   type TargetsNamespace,
 } from "./accounts/targets-namespace.js";
 
-// --- Public members of `query/`, `replays/`, `bookmarks/` ---
+// --- Query, replays, bookmarks — the public members of those subtrees ---
 export { inferBookmarkType } from "./bookmarks/infer-type.js";
 export {
   validateBookmark,

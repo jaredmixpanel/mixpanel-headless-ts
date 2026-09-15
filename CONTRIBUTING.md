@@ -308,6 +308,9 @@ in node or browser docs resolves to core's one export of that name, and
 typedoc-plugin-mdn-links. Neither the TSDoc grammar the linter enforces nor
 TypeDoc's accepts the other's cross-package or global-scope spelling, so the
 sources keep the plain `{@link Name}` form.
+`typedoc-barrel-groups.mjs` groups and orders the core reference by the
+`// --- … ---` sections of `packages/core/src/index.ts`, so a new section
+divider is also a new reference group.
 
 | Path                                                                                       | What it is                                                                                                                                                                 |
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
