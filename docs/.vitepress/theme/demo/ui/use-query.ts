@@ -16,6 +16,7 @@ import {
 import type { Workspace } from "@mixpanel-headless/browser";
 
 import { type Call, runCall } from "../model/call.js";
+import { describeError, type ErrorContext } from "../model/errors.js";
 import {
   eventsCall,
   propertiesCall,
@@ -73,71 +74,18 @@ export interface QueryController {
   reset: () => void;
 }
 
-const FIXTURE_MISS = /^demo fixture miss: (.+)$/u;
-
-/**
- * Map a thrown value to the inline error block's shape. Reads the library's
- * `code`, `statusCode` and `details` when present; a proper class-based
- * mapping (`describeError`) arrives with live mode.
- *
- * @param error - Whatever `runCall` rejected with.
- * @returns The error as the UI shows it.
- */
-function describeLocalError(error: unknown): DemoError {
-  if (!(error instanceof Error)) {
-    return {
-      code: null,
-      className: "Error",
-      message: String(error),
-      statusCode: null,
-      details: null,
-      fatal: false,
-    };
-  }
-  const bag = error as Error & {
-    code?: unknown;
-    statusCode?: unknown;
-    details?: unknown;
-  };
-  const code = typeof bag.code === "string" ? bag.code : null;
-  const statusCode = typeof bag.statusCode === "number" ? bag.statusCode : null;
-  const details =
-    typeof bag.details === "object" &&
-    bag.details !== null &&
-    Object.keys(bag.details).length > 0
-      ? bag.details
-      : null;
-  const miss = FIXTURE_MISS.exec(error.message);
-  let message = error.message;
-  if (miss?.[1] !== undefined) {
-    message = `Playground fixture missing for ${miss[1]} — please report this.`;
-  } else if (error.name === "EventNotFoundError") {
-    const similar = (details as { similar_events?: unknown } | null)
-      ?.similar_events;
-    const hint =
-      Array.isArray(similar) && similar.length > 0
-        ? ` Suggestions: ${similar.join(", ")}.`
-        : "";
-    message = `${error.message}${hint}`;
-  }
-  return {
-    code,
-    className: error.name,
-    message,
-    statusCode,
-    details,
-    fatal: statusCode === 401,
-  };
-}
-
 /**
  * Create the controller for one workspace getter (offline or live; the
  * panel never cares which).
  *
  * @param ws - Returns the current facade.
+ * @param context - What the error copy quotes (the live session's expiry).
  * @returns The controller.
  */
-export function useQuery(ws: () => Workspace): QueryController {
+export function useQuery(
+  ws: () => Workspace,
+  context: () => ErrorContext = () => ({}),
+): QueryController {
   const spec = shallowRef<QuerySpec | null>(null);
   const result = shallowRef<AnyResult | null>(null);
   const loading = ref(false);
@@ -194,7 +142,7 @@ export function useQuery(ws: () => Workspace): QueryController {
       try {
         topEvents.value = (await runCall(ws(), call)) as readonly TopEvent[];
       } catch (error_) {
-        error.value = describeLocalError(error_);
+        error.value = describeError(error_, context());
       } finally {
         topLoading.value = false;
       }
@@ -230,7 +178,7 @@ export function useQuery(ws: () => Workspace): QueryController {
       } catch (error_) {
         if (ticket === sequence) {
           result.value = null;
-          error.value = describeLocalError(error_);
+          error.value = describeError(error_, context());
         }
       } finally {
         if (ticket === sequence) {
@@ -248,7 +196,7 @@ export function useQuery(ws: () => Workspace): QueryController {
       try {
         properties.value = (await runCall(ws(), call)) as readonly string[];
       } catch (error_) {
-        error.value = describeLocalError(error_);
+        error.value = describeError(error_, context());
       }
     },
     async showValues(property) {
@@ -264,7 +212,7 @@ export function useQuery(ws: () => Workspace): QueryController {
           values: (await runCall(ws(), call)) as readonly string[],
         };
       } catch (error_) {
-        error.value = describeLocalError(error_);
+        error.value = describeError(error_, context());
       }
     },
     async loadAllEvents() {
@@ -273,7 +221,7 @@ export function useQuery(ws: () => Workspace): QueryController {
       try {
         allEvents.value = (await runCall(ws(), call)) as readonly string[];
       } catch (error_) {
-        error.value = describeLocalError(error_);
+        error.value = describeError(error_, context());
       }
     },
     async createLink(name) {
@@ -291,7 +239,7 @@ export function useQuery(ws: () => Workspace): QueryController {
         link.value = created;
         return created;
       } catch (error_) {
-        error.value = describeLocalError(error_);
+        error.value = describeError(error_, context());
         return null;
       }
     },

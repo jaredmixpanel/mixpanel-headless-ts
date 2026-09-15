@@ -33,7 +33,7 @@ declare const memory: InMemoryCredentialStore; // filled by completeLogin on /de
 // ---cut---
 const ws = await createBrowserWorkspaceFromStore({
   region: "us",
-  projectId: "0",
+  projectId: "0", // any digits-only id works before ws.use() picks the real one
   store: memory,
 });
 const me = await ws.me();

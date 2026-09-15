@@ -705,3 +705,59 @@
 .mp-callback {
   padding: 24px 0;
 }
+
+/* --- Live session ------------------------------------------------------- */
+
+.mp-session .mp-intro-actions {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.mp-region {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.mp-warn {
+  padding: 8px 12px;
+  border-left: 3px solid var(--vp-c-warning-1);
+  background: var(--vp-c-warning-soft);
+}
+
+.mp-warn-text {
+  color: var(--vp-c-warning-1);
+}
+
+.mp-picker-org {
+  margin-top: 16px;
+}
+
+.mp-picker-org ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mp-picker-project {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.mp-picker-name {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.mp-callback .mp-intro-actions a.mp-btn {
+  text-decoration: none;
+}

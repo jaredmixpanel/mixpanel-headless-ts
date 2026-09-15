@@ -1,11 +1,18 @@
 // The playground's banners: the mode bar, the live-mode intro with its
-// region picker, the footer note, and the inline error block. Copy lives
-// here verbatim; the components only choose which line to show.
+// region picker, the live session header, the footer note, and the inline
+// error block. Copy lives here verbatim; the components only choose which
+// line to show.
 
 import { withBase } from "vitepress";
 import { defineComponent, h, type PropType, ref, type VNode } from "vue";
 
-import type { DemoError, Region } from "../model/session-state.js";
+import { clockTime } from "../model/errors.js";
+import type {
+  DemoError,
+  PickedProject,
+  PickedWorkspace,
+  Region,
+} from "../model/session-state.js";
 import { button, segmented } from "./el.js";
 
 const REGIONS: ReadonlyArray<{ value: Region; label: string }> = [
@@ -45,7 +52,12 @@ export const LiveIntro = defineComponent({
   props: {
     region: { type: String as PropType<Region>, required: true },
     notice: { type: String as PropType<string | null>, default: null },
-    signInEnabled: { type: Boolean, default: true },
+    /**
+     * Why signing in cannot work from this host (the page is not served
+     * from the redirect URI's origin), or `null` when it can.
+     */
+    hostNote: { type: String as PropType<string | null>, default: null },
+    busy: { type: Boolean, default: false },
   },
   emits: {
     region: (region: Region) => typeof region === "string",
@@ -71,17 +83,13 @@ export const LiveIntro = defineComponent({
           ),
           button("Sign in with Mixpanel", () => emit("signIn"), {
             class: "mp-btn mp-btn-brand",
-            disabled: !props.signInEnabled,
+            disabled: props.hostNote !== null || props.busy,
           }),
           button("Back to demo", () => emit("back")),
         ]),
-        props.signInEnabled
+        props.hostNote === null
           ? null
-          : h(
-              "p",
-              { class: "mp-muted" },
-              "Signing in is not wired up in this build yet; the offline demo runs the same code.",
-            ),
+          : h("p", { class: "mp-warn", role: "note" }, props.hostNote),
         h("details", { class: "mp-details" }, [
           h("summary", "Having trouble?"),
           h("p", [
@@ -95,6 +103,56 @@ export const LiveIntro = defineComponent({
             ),
             ").",
           ]),
+        ]),
+      ]);
+  },
+});
+
+/** The live session header: who, where, until when, and the way out. */
+export const SessionBar = defineComponent({
+  name: "DemoSessionBar",
+  props: {
+    region: { type: String as PropType<Region>, required: true },
+    user: { type: String as PropType<string | null>, default: null },
+    project: { type: Object as PropType<PickedProject>, required: true },
+    workspace: {
+      type: Object as PropType<PickedWorkspace | null>,
+      default: null,
+    },
+    /** `OAuthTokens.expires_at`. */
+    expiresAt: { type: String, required: true },
+    /** Set by the pre-expiry timer (`expires_at − 60 s`). */
+    expiring: { type: Boolean, default: false },
+  },
+  emits: { switchProject: () => true, signOut: () => true },
+  setup(props, { emit }) {
+    return () =>
+      h("div", { class: "mp-modebar mp-session" }, [
+        h("p", { class: "mp-modebar-text" }, [
+          h("span", { class: "mp-region" }, props.region.toUpperCase()),
+          " Signed in as ",
+          h("strong", props.user ?? "unknown user"),
+          " · Project ",
+          h("strong", props.project.name),
+          props.workspace === null
+            ? null
+            : [" · Workspace ", h("strong", props.workspace.name)],
+          " · ",
+          props.expiring
+            ? h(
+                "span",
+                { class: "mp-warn-text", role: "status" },
+                "session expires in a minute — queries after that will ask you to sign in again",
+              )
+            : `session valid until ${clockTime(props.expiresAt)}`,
+        ]),
+        h("div", { class: "mp-intro-actions" }, [
+          button("Switch project", () => emit("switchProject"), {
+            class: "mp-btn mp-btn-small",
+          }),
+          button("Sign out", () => emit("signOut"), {
+            class: "mp-btn mp-btn-small",
+          }),
         ]),
       ]);
   },

@@ -9,4 +9,4 @@ outline: false
 
 <DemoCallback />
 
-Completing sign-in. If you were not redirected, go to the [playground](/demo/).
+If nothing happens within a few seconds, go back to the [playground](/demo/).

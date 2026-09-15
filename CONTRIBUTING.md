@@ -402,7 +402,12 @@ it. To run live mode locally use `npm run docs:dev` on
 `http://localhost:5173`, pick a region and sign in — the redirect URI is a
 build constant (`__DEMO_REDIRECT_URI__`, from `DOCS_ORIGIN` and `DOCS_BASE` in
 `config.mts`), `http://localhost:5173/demo/callback` in dev and the Pages
-callback in CI, and `beginLogin` accepts `http:` on loopback only.
+callback in CI, and `beginLogin` accepts `http:` on loopback only. The
+sign-in hop keeps two non-secrets in `sessionStorage` (`mp-demo.region`, the
+region of the sign-in in progress, and `mp-demo.live`, the flag behind the
+reload notice); the tokens `completeLogin` writes are moved into an
+`InMemoryCredentialStore` on the callback page and every library key is
+deleted from `sessionStorage` (`finishLogin`, `tests/demo-session.test.ts`).
 `config.mts` also stamps a Content Security Policy into every built page
 (`transformHtml`: inline scripts are hashed per page, `connect-src` names the
 three Mixpanel hosts, `style-src` keeps `'unsafe-inline'` for Shiki's colour
