@@ -37,7 +37,7 @@ import {
   sortedByCodepoint,
 } from "../compat/codepoint.js";
 import { AttributeError, ValueError } from "../compat/python-builtins.js";
-import { isPythonDict } from "../compat/python-dict.js";
+import { isPythonDict, setOwn } from "../compat/python-dict.js";
 import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr, pythonStr } from "../compat/python-str.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
@@ -1030,9 +1030,9 @@ export function transformRetentionResult(
         continue;
       }
       const [segCohorts, segAvg] = extractCohortsAndAverage(asRecord(segValue));
-      segments[segKey] = segCohorts;
+      setOwn(segments, segKey, segCohorts);
       if (pyTruthy(segAvg)) {
-        segmentAverages[segKey] = segAvg;
+        setOwn(segmentAverages, segKey, segAvg);
       }
     }
   } else {

@@ -31,6 +31,7 @@ import {
 } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { DEFAULT_APP_TIMEOUT_S } from "../../client/url.js";
+import { setOwn } from "../../compat/python-dict.js";
 import { pythonInt } from "../../compat/python-int.js";
 import { urljoin, urlsplit } from "../../compat/urllib.js";
 import {
@@ -249,7 +250,7 @@ async function createBookmarkUrl(
   const payload: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (key !== "workspace_id") {
-      payload[key] = value;
+      setOwn(payload, key, value);
     }
   }
   const result = await appRequest(
