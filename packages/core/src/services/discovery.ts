@@ -42,7 +42,7 @@ import {
   cpLength,
   sortedByCodepoint,
 } from "../compat/codepoint.js";
-import { pythonStr, type PythonValue } from "../compat/index.js";
+import { pythonRepr, pythonStrOf } from "../compat/index.js";
 import { KeyError, ValueError } from "../compat/python-builtins.js";
 import { isPythonDict, setOwn } from "../compat/python-dict.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
@@ -61,6 +61,7 @@ import {
   TopEvent,
 } from "../types/results/discovery.js";
 import { pyTruthy } from "../types/results/result-base.js";
+import { isLeapYear } from "./queries/py-dates.js";
 import { dictGet, passthrough } from "./shared.js";
 
 /**
@@ -272,16 +273,6 @@ export function parseBookmarkInfo(
 
 /** Days per month, non-leap (`datetime` calendar validity). */
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
-
-/**
- * Proleptic-Gregorian leap-year test (CPython `calendar.isleap`).
- *
- * @param year - Four-digit year.
- * @returns Whether February has 29 days.
- */
-function isLeapYear(year: number): boolean {
-  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-}
 
 /**
  * Whether `s` parses as a valid ISO-8601 date or datetime — the
@@ -560,13 +551,13 @@ export function inferSubproperties(
 
   for (const name of sortedByCodepoint(mixedShape)) {
     warn(
-      `Subproperty ${pyReprStr(name)} observed with both scalar and ` +
+      `Subproperty ${pythonRepr(name)} observed with both scalar and ` +
         `nested-object shapes across sampled rows; reporting the scalar form`,
     );
   }
   for (const name of sortedByCodepoint(nullOnly)) {
     warn(
-      `Subproperty ${pyReprStr(name)} observed but all sampled values were ` +
+      `Subproperty ${pythonRepr(name)} observed but all sampled values were ` +
         `null; not classifiable`,
     );
   }
@@ -580,7 +571,7 @@ export function inferSubproperties(
     const [inferred, mixed] = inferScalarType(values);
     if (mixed) {
       warn(
-        `Subproperty ${pyReprStr(name)} has mixed value types across ` +
+        `Subproperty ${pythonRepr(name)} has mixed value types across ` +
           `sampled rows; reporting as 'string'`,
       );
     }
@@ -644,52 +635,6 @@ function pySetKey(value: ScalarSubValue): string {
   return `n:${String(value === 0 ? 0 : value)}`;
 }
 
-/**
- * CPython `repr()` of a subproperty name for the warning texts
- * (`{name!r}`) — single-quoted unless the name contains a single quote
- * and no double quote.
- *
- * @param text - The name.
- * @returns The `repr` spelling.
- */
-function pyReprStr(text: string): string {
-  const quote = text.includes("'") && !text.includes('"') ? '"' : "'";
-  let body = "";
-  for (const ch of text) {
-    switch (ch) {
-      case "\\": {
-        body += "\\\\";
-
-        break;
-      }
-      case quote: {
-        body += `\\${ch}`;
-
-        break;
-      }
-      case "\n": {
-        body += String.raw`\n`;
-
-        break;
-      }
-      case "\r": {
-        body += String.raw`\r`;
-
-        break;
-      }
-      case "\t": {
-        body += String.raw`\t`;
-
-        break;
-      }
-      default: {
-        body += ch;
-      }
-    }
-  }
-  return `${quote}${body}${quote}`;
-}
-
 // ---------------------------------------------------------------------------
 // DiscoveryService (`discovery.py:359-920`)
 // ---------------------------------------------------------------------------
@@ -745,18 +690,6 @@ export interface GetSchemaGraphOptions {
 }
 
 /**
- * Python `str(x)` for names in the per-event inversion (identity for
- * strings; the compat port for scalar non-strings) — the same twin the
- * SchemaGraphResult node builder applies.
- *
- * @param value - A payload value that passed a truthiness check.
- * @returns The Python string form.
- */
-function pyStr(value: unknown): string {
-  return typeof value === "string" ? value : pythonStr(value as PythonValue);
-}
-
-/**
  * Invert per-event property lists into a property→events map — TS port
  * of `_invert_per_event_properties` (`discovery.py:359-385`,
  * PR #215).
@@ -794,13 +727,13 @@ function invertPerEventProperties(
         continue;
       }
 
-      const key = pyStr(prop["name"]);
+      const key = pythonStrOf(prop["name"]);
       let attached = propertyToEvents.get(key);
       if (attached === undefined) {
         attached = [];
         propertyToEvents.set(key, attached);
       }
-      attached.push(pyStr(eventName));
+      attached.push(pythonStrOf(eventName));
     }
   }
   return propertyToEvents;
@@ -1279,7 +1212,7 @@ export class DiscoveryService {
     const properties = flatProperties.map((row) => ({
       ...row,
       events: (pyTruthy(row["name"])
-        ? (propertyToEvents.get(pyStr(row["name"])) ?? [])
+        ? (propertyToEvents.get(pythonStrOf(row["name"])) ?? [])
         : []
       ).map((eventName) => ({ name: eventName })),
     }));
@@ -1351,6 +1284,9 @@ export function isoUtc(when: Date): string {
 
 /**
  * Convert one wire row to Python's `json.loads` product.
+ *
+ * TODO(Ω): the typed twin of {@link toNativeJson} — `workspace.ts` carries
+ * an `unknown`-typed copy; home both as one export in `client/json-value.ts`.
  *
  * @param value - The lossless row.
  * @returns The native record.

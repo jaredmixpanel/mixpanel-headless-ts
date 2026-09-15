@@ -50,7 +50,7 @@ import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import { rawFetch } from "../client/transport.js";
 import { isPythonDict } from "../compat/python-dict.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
-import { pythonStrOf } from "../compat/python-str.js";
+import { pythonRepr, pythonStrOf } from "../compat/python-str.js";
 import { zfill } from "../compat/zfill.js";
 import {
   MixpanelHeadlessError,
@@ -634,7 +634,7 @@ export class ReplaysService {
   buildExpiredError(signed: SignedReplay): SignedURLExpiredError {
     return new SignedURLExpiredError(
       `Signed URL for replay ${signed.replay_id} expired (5-minute ` +
-        `TTL). Re-sign with sign_replay(${pythonReprStr(signed.replay_id)}) or use ` +
+        `TTL). Re-sign with sign_replay(${pythonRepr(signed.replay_id)}) or use ` +
         `the default re_sign_on_expiry=True on stream_replay.`,
       {
         details: {
@@ -1135,27 +1135,4 @@ function parseIsoToMs(text: string): number | null {
     ms += sign * offsetMinutes * 60_000;
   }
   return Number.isNaN(ms) ? null : ms;
-}
-
-/**
- * `repr(str)` for the one interpolated `{signed.replay_id!r}` site
- * (`replays.py:496`) — CPython prefers single quotes and switches to
- * double quotes only when the text contains a single quote and no
- * double quote.
- *
- * @param text - The string to represent.
- * @returns The Python-style repr.
- */
-function pythonReprStr(text: string): string {
-  const useDouble = text.includes("'") && !text.includes('"');
-  const quote = useDouble ? '"' : "'";
-  let body = text.replaceAll("\\", "\\\\");
-  if (!useDouble) {
-    body = body.replaceAll("'", String.raw`\'`);
-  }
-  body = body
-    .replaceAll("\n", String.raw`\n`)
-    .replaceAll("\r", String.raw`\r`)
-    .replaceAll("\t", String.raw`\t`);
-  return `${quote}${body}${quote}`;
 }

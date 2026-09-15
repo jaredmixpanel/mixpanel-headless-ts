@@ -26,12 +26,12 @@ import {
   isPlainRecord,
   MixpanelHttpError,
 } from "../../client/internals.js";
-import type { JsonValue } from "../../client/json-value.js";
+import { type JsonValue, toNativeJson } from "../../client/json-value.js";
 import {
   LosslessJsonError,
   parseLossless,
 } from "../../client/lossless-json.js";
-import { cpSlice, pythonStr } from "../../compat/index.js";
+import { cpSlice, pythonStr, pythonStrOf } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
 import { scopedPath } from "../shared.js";
 import {
@@ -324,7 +324,7 @@ async function getLookupUploadUrl(
     if (!Object.hasOwn(record, requiredKey)) {
       throw new MixpanelHeadlessError(
         `get_lookup_upload_url response missing required ` +
-          `field '${requiredKey}': ${pythonStrOfRecord(record)}`,
+          `field '${requiredKey}': ${pythonStrOf(toNativeJson(record))}`,
         "MISSING_FIELD",
       );
     }
@@ -548,16 +548,4 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
     downloadLookupTable: bindFirst(core, downloadLookupTable),
     getLookupDownloadUrl: bindFirst(core, getLookupDownloadUrl),
   };
-}
-
-/**
- * Spell a parsed record the way Python interpolates a dict into an
- * f-string (message text only — out of contract per R5.4; used by the
- * MISSING_FIELD message).
- *
- * @param record - The parsed record.
- * @returns An approximate `str(dict)` spelling.
- */
-function pythonStrOfRecord(record: Record<string, JsonValue>): string {
-  return JSON.stringify(record);
 }
