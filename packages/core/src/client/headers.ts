@@ -25,9 +25,10 @@ export const QUERY_ORIGIN = "mixpanel-headless";
  *
  * Mirrors `packages/core/package.json` `version` (Python reads
  * `mixpanel_headless.__version__`); `core` cannot read files at runtime,
- * so the constant is pinned here. Changesets does not bump it:
- * `tests/library-version.test.ts` fails when the two drift, so a release
- * bump must update this line too.
+ * so the constant is pinned here. Changesets bumps the manifest only, so
+ * `npm run version` rewrites this line afterwards
+ * (`scripts/sync-library-version.mjs`); `tests/library-version.test.ts`
+ * fails when the two drift.
  */
 const LIBRARY_VERSION = "0.1.0";
 
