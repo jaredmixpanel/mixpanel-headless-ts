@@ -886,11 +886,20 @@
   white-space: nowrap;
 }
 
-.mp-demo thead th {
+/*
+ * `.vp-doc` scoped so this outranks the theme's dark-mode `th` rule, whose
+ * translucent tint let scrolled rows show through a sticky header; the
+ * same tint is mixed into the surface here, so it stays opaque.
+ */
+.vp-doc .mp-demo thead th {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--vp-c-bg-soft);
+  background-color: color-mix(
+    in srgb,
+    var(--vp-c-brand-1) 8%,
+    var(--vp-c-bg-soft)
+  );
   color: var(--vp-c-text-2);
   font-size: 13px;
   font-weight: 600;
