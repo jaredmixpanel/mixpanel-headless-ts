@@ -30,7 +30,12 @@
 
 /* --- Light mode: Mixpanel blue ------------------------------------------ */
 
-:root {
+/* `html:root` / `html.dark` rather than `:root` / `.dark`: this file is
+   bundled before VitePress's own palette (the theme entry imports it first),
+   and the default theme declares the same custom properties on `:root` and
+   `.dark`. Equal specificity would let the later, default declaration win;
+   the extra type selector makes the brand values win regardless of order. */
+html:root {
   --vp-c-brand-1: var(--mp-blue);
   --vp-c-brand-2: var(--mp-blue-dark);
   --vp-c-brand-3: var(--mp-blue);
@@ -85,7 +90,7 @@
 
 /* --- Dark mode: brand purple on #242133 --------------------------------- */
 
-.dark {
+html.dark {
   --vp-c-brand-1: var(--mp-purple-light);
   --vp-c-brand-2: var(--mp-purple);
   --vp-c-brand-3: var(--mp-purple);
@@ -184,19 +189,102 @@
 
 /* --- Twoslash hover popups (static renderer) ---------------------------- */
 /*
- * The rich style places a popup absolutely at its static position inside
- * the hovered token, where `pre { overflow-x: auto }` clips anything past
- * the block's right edge. Fixed positioning keeps the same static
- * placement (no offsets are set) but escapes the scroll container; the
- * viewport bound stops wide option-bag types from running off screen.
+ * The rich style places a popup absolutely inside the hovered token, where
+ * the code block's `overflow-x: auto` (on the `pre` and its wrapper) clips
+ * anything past the block's edges. Fixed positioning escapes both
+ * scrollers; the theme entry sets the offsets from the token on hover,
+ * since a fixed box left at its static position is placed in page
+ * coordinates and drifts by the scroll distance. The viewport bound stops
+ * wide option-bag types from running off screen.
+ *
+ * Colours: style-core maps the popup onto the theme's page background; the
+ * elevated surface with the divider and a shadow lifts it off the block
+ * in both schemes. Docs copy uses the body tint, tag names the brand.
  */
+:root {
+  --twoslash-popup-bg: var(--vp-c-bg-elv);
+  --twoslash-border-color: var(--vp-c-divider);
+  --twoslash-popup-shadow: var(--vp-shadow-3);
+  --twoslash-docs-color: var(--vp-c-text-2);
+}
+
 .vp-doc .twoslash .twoslash-popup-container {
   position: fixed;
   max-width: min(40rem, calc(100vw - 2rem));
-  z-index: 40;
+  overflow-y: auto;
+  transform: none;
+}
+
+/*
+ * Every `pre` is its own stacking context (`z-index: 1`, VitePress), so a
+ * popup can only rise above the blocks that follow when the block it
+ * belongs to does: the hovered block steps in front of its siblings and
+ * stays there through the popup's fade-out.
+ */
+.vp-doc [class*="language-"] pre.twoslash {
+  transition: z-index 0s linear 0.3s;
+}
+
+.vp-doc [class*="language-"] pre.twoslash:hover {
+  z-index: 2;
+  transition-delay: 0s;
 }
 
 .vp-doc .twoslash .twoslash-popup-container .twoslash-popup-code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.vp-doc .twoslash .twoslash-popup-docs-tag-name {
+  color: var(--vp-c-brand-1);
+}
+
+/* --- Home: the playground card --------------------------------------------- */
+/*
+ * The one feature card that leads somewhere interactive gets a quiet brand
+ * tint, a hairline in the brand colour and a small label, so it reads as
+ * the "try it" door among prose links without shouting. Matched by its
+ * link rather than a class: VitePress renders the home features from
+ * frontmatter and offers no per-card hook.
+ */
+.VPFeatures .VPFeature[href$="/demo/"] {
+  position: relative;
+  border-color: color-mix(in srgb, var(--vp-c-brand-1) 45%, transparent);
+  background:
+    linear-gradient(135deg, var(--vp-c-brand-soft) 0%, transparent 60%),
+    var(--vp-c-bg-soft);
+  transition:
+    border-color 0.25s,
+    box-shadow 0.25s;
+}
+
+.VPFeatures .VPFeature[href$="/demo/"]:hover {
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 0 0 4px var(--vp-c-brand-soft);
+}
+
+.VPFeatures .VPFeature[href$="/demo/"]::before {
+  content: "Interactive";
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vp-c-brand-1);
+  color: var(--vp-c-white);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+html.dark .VPFeatures .VPFeature[href$="/demo/"]::before {
+  background: var(--vp-c-brand-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .VPFeatures .VPFeature[href$="/demo/"] {
+    transition: none;
+  }
 }

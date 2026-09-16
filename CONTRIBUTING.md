@@ -165,6 +165,7 @@ a byte-exact freshness test exists it fails on a hand edit.
 | `packages/core/src/compat/decimal-digits.gen.ts`             | `npm run generate:compat-tables` (`scripts/generate-decimal-digits.py`, same pin)                         | The pinned CPython's `int(ch)` per codepoint                                                                                                                                                                            | Same provenance test; body parity in the `compat/` tests                                                                                                                                                                                                                                                     |
 | `packages/core/src/compat/whitespace.gen.ts`                 | `npm run generate:compat-tables` (`scripts/generate-whitespace.py`, same pin)                             | The pinned CPython's `str.isspace()` / `int()` whitespace acceptance                                                                                                                                                    | Same provenance test; body parity in `python-strip.test.ts`                                                                                                                                                                                                                                                  |
 | `packages/core/test/compat/fixtures/canonical-fixtures.json` | `npm run generate:canonical-fixtures` (`scripts/generate-canonical-fixtures.py`, same pin, then Prettier) | A deterministic sample of corpus `builder` vectors rendered by CPython `json.dumps`                                                                                                                                     | Same provenance test — pinned interpreter, generator sha256, corpus pin equal to `corpus.config.json` `sourceCommit`, row count and per-row sha256; parity in `python-json-dumps-canonical.test.ts`                                                                                                          |
+| `docs/.vitepress/theme/demo/fixtures/demo-project.gen.ts`    | `npm run generate:demo-fixtures` (`scripts/generate-demo-fixtures.mjs`; `-- --check` for a dry diff)      | None — a seeded PRNG (the synthetic playground project; refresh = edit the generator, rerun, commit both)                                                                                                               | `tests/demo-fixtures.test.ts` — byte-identical regeneration, size budget, and the real library run over the fixture transport (every trend, breakdown, funnel and retention key parses; the insights envelope matches a corpus vector's shape)                                                               |
 | `scripts/lib/python-reference-anchors.gen.json`              | `npm run generate:python-anchors` (`-- --check` for a dry diff)                                           | The Python checkout (`MP_PYTHON_REPO`, default `../mixpanel-headless`) at the corpus pin: a detached worktree, `uv run --offline --extra docs mkdocs build`, then every `id="mixpanel_headless.…"` on its `api/*` pages | `tests/python-reference-anchors.test.ts` pins the corpus pin and generator sha256 the header records; the plugin links only listed anchors                                                                                                                                                                   |
 | `conformance-runner/corpus/**`                               | `npm run sync:corpus` (`scripts/sync-corpus.sh`)                                                          | The Python checkout's `conformance/vectors/**`, `conformance/contract/*.json`, `conformance/schema/canonical-selftest.json`; the api-map from `docs/history/`                                                           | Pin gate inside the script (`corpus.config.json` `sourceCommit` must equal the source manifest); `corpus.test.ts` replays every vector                                                                                                                                                                       |
 | `vendor/mixpanel-contracts/**`                               | Re-vendor per `vendor/mixpanel-contracts/README.md`; `PROVENANCE.json` records source path + sha256       | The analytics checkout (`ANALYTICS_ROOT`, read-only)                                                                                                                                                                    | `npm run vendor:drift` in `check` (integrity always; byte-diff when the checkout is mounted)                                                                                                                                                                                                                 |
@@ -322,13 +323,13 @@ the generated `scripts/lib/python-reference-anchors.gen.json` lists (a
 member the Python page leaves out links its object; `_internal` names stay
 text), so regenerate that file when the corpus pin moves.
 
-| Path                                                                                       | What it is                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/index.md`, `docs/getting-started/`, `docs/guide/`, `docs/api/`, `docs/architecture/` | Hand-written pages. Frontmatter `title` and `description`; the description is the page's line in `llms.txt`.                                                                                                                                                                                                                                            |
-| `docs/.vitepress/config.mts`                                                               | Nav and sidebar, `base` from `DOCS_BASE`, the twoslash compiler options, the llms and tabs plugins. Reads the sidebar JSON TypeDoc writes into `docs/reference/`.                                                                                                                                                                                       |
-| `docs/.vitepress/theme/`                                                                   | The default theme plus the Mixpanel palette (`mixpanel.css`, ported from the Python site), the code themes (`shiki-mixpanel-*.json`: GitHub themes with the brand token colours on top) and the copy-as-Markdown buttons above every page. Plain TypeScript, no Vue SFC. `docs/public/og.png` is the social-preview image (Pillow-rendered brand card). |
-| `docs/reference/`                                                                          | Generated by `npm run docs:api`; git-ignored, never edited, on the shared ignore list (`scripts/lib/lint-ignores.mjs`) with `docs/.vitepress/{dist,cache}/`.                                                                                                                                                                                            |
-| `docs/history/`                                                                            | The frozen process record; excluded from the site (`srcExclude`).                                                                                                                                                                                                                                                                                       |
+| Path                                                                                       | What it is                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/index.md`, `docs/getting-started/`, `docs/guide/`, `docs/api/`, `docs/architecture/` | Hand-written pages. Frontmatter `title` and `description`; the description is the page's line in `llms.txt`.                                                                                                                                                                                                                                                                                         |
+| `docs/.vitepress/config.mts`                                                               | Nav and sidebar, `base` from `DOCS_BASE`, the twoslash compiler options, the llms and tabs plugins. Reads the sidebar JSON TypeDoc writes into `docs/reference/`.                                                                                                                                                                                                                                    |
+| `docs/.vitepress/theme/`                                                                   | The default theme plus the Mixpanel palette (`mixpanel.css`, ported from the Python site), the code themes (`shiki-mixpanel-*.json`: GitHub themes with the brand token colours on top), the copy-as-Markdown buttons above every page, and the playground under `theme/demo/` (below). Plain TypeScript, no Vue SFC. `docs/public/og.png` is the social-preview image (Pillow-rendered brand card). |
+| `docs/reference/`                                                                          | Generated by `npm run docs:api`; git-ignored, never edited, on the shared ignore list (`scripts/lib/lint-ignores.mjs`) with `docs/.vitepress/{dist,cache}/`.                                                                                                                                                                                                                                         |
+| `docs/history/`                                                                            | The frozen process record; excluded from the site (`srcExclude`).                                                                                                                                                                                                                                                                                                                                    |
 
 Commands (all root npm scripts; `scripts/README.md` lists them too):
 
@@ -383,6 +384,48 @@ are deliberately partial stay plain ``ts````. Never put real
   credentials in a snippet.
 - Prettier formats `docs/**/*.md` (`npm run fmt`). Documentation changes need
   no changeset.
+
+Playground (`/demo/`): the page runs the published `@mixpanel-headless/browser`
+package in the visitor's browser, offline by default against a synthetic
+project and, after "Use my own project", live through redirect PKCE. The code
+lives in `docs/.vitepress/theme/demo/`: `model/` is framework-free TypeScript
+(no `vue`, no `window`) that vitest runs under Node — the `QuerySpec` → `Call`
+pipeline (one `Call` object is both rendered as code and executed, so the code
+shown is the code that ran), the fixture transport behind the library's
+`fetch` seam, the state machine, the error copy and the two loop reports —
+the "Aha moments" ranking (`model/aha.ts`: one `queryRetention` call per
+candidate, a loop program printed from the same literals, and
+`rankByRetention`, whose displayed source `tests/demo-aha.test.ts` pins to the
+function) and the "Conversion matrix" (`model/matrix.ts`: one `queryFunnel`
+call per ordered pair of the event pool, the same program discipline, and
+`bestPath`, pinned by `tests/demo-matrix.test.ts`; both tests share
+`tests/demo-program-helpers.ts`); `ui/` is the Vue layer
+(`defineComponent` + `h()`, no SFC) and is the only place that may touch the
+DOM, storage or the library's login functions. Logic goes in `model/`, never
+in `ui/`. The fixtures are generated: `npm run generate:demo-fixtures` writes
+`theme/demo/fixtures/demo-project.gen.ts` from a seeded generator and
+`tests/demo-fixtures.test.ts` byte-compares it and runs the real library over
+it. To run live mode locally use `npm run docs:dev` on
+`http://localhost:5173`, pick a region and sign in — the redirect URI is a
+build constant (`__DEMO_REDIRECT_URI__`, from `DOCS_ORIGIN` and `DOCS_BASE` in
+`config.mts`), `http://localhost:5173/demo/callback` in dev and the Pages
+callback in CI, and `beginLogin` accepts `http:` on loopback only. The
+sign-in hop keeps two non-secrets in `sessionStorage` (`mp-demo.region`, the
+region of the sign-in in progress, and `mp-demo.live`, the flag behind the
+reload notice); the tokens `completeLogin` writes are moved into an
+`InMemoryCredentialStore` on the callback page and every library key is
+deleted from `sessionStorage` (`finishLogin`, `tests/demo-session.test.ts`).
+`config.mts` also stamps a Content Security Policy into every built page
+(`transformHtml`: inline scripts are hashed per page, `connect-src` names the
+three Mixpanel hosts, `style-src` keeps `'unsafe-inline'` for Shiki's colour
+attributes); `tests/demo-source.test.ts` greps the demo tree for storage and
+redirect-URI rules, and `tests/demo-dist.test.ts` checks the built site (CSP
+hashes, no third-party loads, the playground chunk not loaded elsewhere and
+within 738 KB minified / 210 KB gzipped) — it skips without a build and runs
+in `docs.yml` after one.
+`npm run demo:canary` (`.github/workflows/demo-canary.yml`, weekly and on
+dispatch, no secrets) probes that Mixpanel's endpoints still answer CORS
+preflights from the site's origin; a failing run is the alert.
 
 `.github/workflows/docs.yml` runs `npm run docs:build` on every push to
 `main`, every pull request and on dispatch (the site is a downloadable

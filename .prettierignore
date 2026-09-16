@@ -22,3 +22,4 @@ packages/core/src/compat/non-printable.gen.ts
 packages/core/src/compat/decimal-digits.gen.ts
 packages/core/src/compat/whitespace.gen.ts
 scripts/lib/python-reference-anchors.gen.json
+docs/.vitepress/theme/demo/fixtures/demo-project.gen.ts

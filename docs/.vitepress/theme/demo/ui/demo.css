@@ -1,0 +1,2015 @@
+/*
+ * Playground styles, scoped under `.mp-demo`. Colours come from the theme's
+ * `--vp-c-*` / `--mp-*` variables (theme/mixpanel.css), so light and dark
+ * mode need no separate rules except where an alpha-shaded fill is built or
+ * a brand tint falls short of 4.5:1 in one scheme. Loaded only with the
+ * playground chunk; the skeleton the page markup carries is hidden as soon
+ * as this file arrives.
+ *
+ * Layout: a workbench column (engine tabs, the active builder, the result)
+ * beside a sticky code panel; under 1100 px the panel drops below the
+ * result. Type scale: UI 15 px, chips and tables 14 px, kickers 12 px,
+ * code 13.5 px.
+ */
+
+.mp-demo-skeleton {
+  display: none;
+}
+
+/*
+ * The page drops the sidebar and the outline (`sidebar: false`,
+ * `aside: false`); without either, VitePress caps the doc container at
+ * 992–1104 px and the content at 752–784 px. The workbench wants the
+ * width, so the `pageClass` lifts both caps (scoped rules carry one extra
+ * attribute selector, hence the `.Layout` prefix to outrank them).
+ */
+@media (min-width: 960px) {
+  .Layout.mp-playground .VPDoc:not(.has-sidebar) .container,
+  .Layout.mp-playground .VPDoc:not(.has-sidebar) .content {
+    max-width: 1440px;
+  }
+}
+
+.mp-demo {
+  --mp-demo-radius: 10px;
+  /*
+   * Selected segments and chips: brand text on the brand tint. In dark
+   * mode the purple-light on its tint measures under 4.5:1, so the text
+   * falls back to the body colour and the brand border marks selection.
+   */
+  --mp-selected-bg: var(--vp-c-brand-soft);
+  --mp-selected-text: var(--vp-c-brand-1);
+  --mp-selected-border: var(--vp-c-brand-1);
+  /* Primary buttons: brand fill, white text, in both schemes. */
+  --mp-primary-bg: var(--vp-c-brand-1);
+  --mp-primary-hover: var(--vp-c-brand-2);
+  margin: 24px 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--vp-c-text-1);
+}
+
+.dark .mp-demo {
+  --mp-selected-text: var(--vp-c-text-1);
+  --mp-primary-bg: var(--vp-c-brand-3);
+  --mp-primary-hover: var(--vp-button-brand-hover-bg);
+}
+
+/* Kicker labels: EVENTS, CODE, RESULT. */
+.mp-demo h2,
+.mp-demo h3 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-2);
+}
+
+.mp-demo p {
+  margin: 0 0 8px;
+  color: var(--vp-c-text-1);
+}
+
+/*
+ * The theme paints every `.vp-doc` cell and list item in the body colour
+ * (`.vp-doc :is(p, li, td)`), which is fixed for light mode and would sit
+ * under white text in the retention grid; the playground's cells and items
+ * take their colour from their own rules instead.
+ */
+.vp-doc .mp-demo :is(td, li) {
+  color: inherit;
+}
+
+/*
+ * Text-only tints. The brand green and red are fill colours: as small text
+ * on the page background they reach only 3.8:1 in light mode and 4.1:1 in
+ * dark, so the change indicators use a darker (light) or lighter (dark)
+ * shade of each that clears 4.5:1.
+ */
+.mp-demo {
+  --mp-up: #1b7a52;
+  --mp-down: #c23a1c;
+}
+
+.dark .mp-demo {
+  --mp-up: #3fb37f;
+  --mp-down: #f0735a;
+}
+
+.mp-demo code {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.92em;
+}
+
+/* Secondary copy; `--vp-c-text-3` is a placeholder tint under 4.5:1 on white. */
+.vp-doc .mp-demo .mp-muted {
+  color: var(--vp-c-text-2);
+}
+
+.mp-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Present to assistive technology only (live regions, table captions). */
+.mp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Empty-state copy under a heading or in place of a visualisation. */
+.mp-empty {
+  margin: 8px 0;
+  color: var(--vp-c-text-2);
+}
+
+.mp-chart-empty .mp-empty {
+  display: flex;
+  align-items: center;
+  min-height: 160px;
+  padding: 0 16px;
+  border: 1px dashed var(--vp-c-divider);
+  border-radius: 8px;
+}
+
+/* --- Mode bar, intro, footer -------------------------------------------- */
+
+.mp-modebar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--mp-demo-radius);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-modebar-text {
+  margin: 0;
+}
+
+/* The way out of the demo stays one line; the copy beside it wraps. */
+.mp-modebar > .mp-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.mp-intro {
+  padding: 24px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--mp-demo-radius);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.mp-notice {
+  padding: 8px 12px;
+  border-left: 3px solid var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+
+.mp-details summary {
+  cursor: pointer;
+  color: var(--vp-c-text-2);
+}
+
+.mp-footnote {
+  margin: 20px 0 0;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+
+/* The arrow is bound to the link text; the link never breaks across lines. */
+.mp-footnote a {
+  white-space: nowrap;
+}
+
+/* --- Grid ---------------------------------------------------------------- */
+
+.mp-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(380px, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-top: 20px;
+}
+
+.mp-col {
+  min-width: 0;
+  padding: 16px 20px 20px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--mp-demo-radius);
+  background: var(--vp-c-bg);
+}
+
+/* The code stays in view while the result scrolls beside it. */
+.mp-col-code {
+  position: sticky;
+  top: calc(var(--vp-nav-height) + 24px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--vp-nav-height) - 48px);
+  overflow: auto;
+}
+
+@media (max-width: 1100px) {
+  .mp-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mp-col-code {
+    position: static;
+    max-height: none;
+  }
+}
+
+.mp-col-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  margin: 0 0 8px;
+}
+
+/* --- Engine tabs --------------------------------------------------------- */
+
+.mp-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.mp-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.mp-tab {
+  margin-bottom: -1px;
+  padding: 8px 14px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--vp-c-text-2);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mp-tab:hover {
+  color: var(--vp-c-text-1);
+}
+
+.mp-tab[aria-selected="true"] {
+  border-bottom-color: var(--vp-c-brand-1);
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+.mp-tab:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.mp-tabbar .mp-segmented {
+  margin-bottom: 8px;
+}
+
+.mp-tabpanel {
+  margin: 0 0 20px;
+}
+
+/* --- Controls ------------------------------------------------------------ */
+
+.mp-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.mp-btn:hover:not(:disabled) {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-text-1);
+}
+
+/* Disabled controls fade as a whole; the text never changes colour. */
+.mp-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* One ring for every focusable thing on the page, keyboard focus only. */
+.mp-btn:focus-visible,
+.mp-select:focus-visible,
+.mp-event:focus-visible,
+.mp-code:focus-visible,
+.mp-chart svg:focus-visible,
+.mp-tip-anchor:focus-visible,
+.mp-demo a:focus-visible,
+.mp-demo summary:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+.mp-btn-brand {
+  border-color: var(--mp-primary-bg);
+  background: var(--mp-primary-bg);
+  color: var(--vp-c-white);
+  font-weight: 600;
+}
+
+.mp-btn-brand:hover:not(:disabled) {
+  border-color: var(--mp-primary-hover);
+  background: var(--mp-primary-hover);
+  color: var(--vp-c-white);
+}
+
+.mp-btn-brand:disabled {
+  opacity: 0.55;
+}
+
+.mp-btn-small {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.mp-btn-icon {
+  padding: 4px 9px;
+  line-height: 1.2;
+}
+
+.mp-btn-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--vp-c-brand-1);
+  font-size: 14px;
+}
+
+.mp-select {
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/*
+ * A segmented control is a row of buttons whose borders overlap by 1 px;
+ * the outer corners are rounded on the end segments only, so the selected
+ * segment's border runs into its neighbours' with no inner radius and the
+ * group needs no border or clipping of its own.
+ */
+.mp-segmented {
+  display: inline-flex;
+}
+
+.mp-seg {
+  position: relative;
+  border-radius: 0;
+}
+
+.mp-seg + .mp-seg {
+  margin-left: -1px;
+}
+
+.mp-seg:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.mp-seg:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.mp-seg:hover:not(:disabled) {
+  border-color: var(--vp-c-border);
+  background: var(--vp-c-bg-soft);
+}
+
+/* The selected segment's border sits over the shared edges either side. */
+.mp-seg[aria-pressed="true"],
+.mp-seg[aria-pressed="true"]:hover:not(:disabled) {
+  z-index: 1;
+  border-color: var(--mp-selected-border);
+  background: var(--mp-selected-bg);
+  color: var(--mp-selected-text);
+  font-weight: 600;
+}
+
+.mp-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+/* Caption beside the control, for the one-row builders. */
+.mp-field-inline {
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+}
+
+.mp-field-caption {
+  white-space: nowrap;
+}
+
+.mp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  margin: 12px 0 0;
+}
+
+.mp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.mp-chip {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+}
+
+/* --- Event strip --------------------------------------------------------- */
+
+/* The default theme styles every list inside `.vp-doc`; these are controls. */
+.vp-doc .mp-demo :is(ul, ol) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vp-doc .mp-demo li,
+.vp-doc .mp-demo li + li {
+  margin: 0;
+}
+
+.mp-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Every other event, once "More…" has loaded them: a scrolling band. */
+.mp-events-all {
+  max-height: 132px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--vp-c-divider);
+  overflow-y: auto;
+}
+
+.mp-event {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  max-width: 100%;
+  padding: 5px 12px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 999px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mp-event:hover {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-event-active {
+  border-color: var(--mp-selected-border);
+  background: var(--mp-selected-bg);
+  color: var(--mp-selected-text);
+  font-weight: 600;
+}
+
+.mp-event-more {
+  border-style: dashed;
+  color: var(--vp-c-text-2);
+}
+
+.mp-event-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-event-meta {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--vp-c-text-2);
+}
+
+.mp-up {
+  color: var(--mp-up);
+}
+
+.mp-down {
+  color: var(--mp-down);
+}
+
+/* --- Builders ------------------------------------------------------------ */
+
+.mp-builder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+}
+
+.mp-steps {
+  display: contents;
+}
+
+/* A step: its number, the event (a select drawn as the chip's text), ×. */
+.mp-step {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 999px;
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-step-n {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+}
+
+.mp-select-bare {
+  padding: 5px 4px;
+  border: 0;
+  background: transparent;
+  font-weight: 500;
+}
+
+.mp-step-remove {
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  font-size: 15px;
+}
+
+.mp-step-add {
+  border-style: dashed;
+  border-radius: 999px;
+  color: var(--vp-c-text-2);
+}
+
+/* --- Result -------------------------------------------------------------- */
+
+.mp-result {
+  position: relative;
+  padding-top: 16px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.mp-result-kicker {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.mp-result-status {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+/*
+ * The run indicator: a 2 px track over the panel's top border, a brand
+ * highlight sliding along it. Without motion the highlight fills the
+ * track, so the panel still shows a brand line while a run is in flight.
+ */
+.mp-loading-bar {
+  position: absolute;
+  top: -1px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  background: var(--vp-c-brand-soft);
+}
+
+.mp-loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--vp-c-brand-1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mp-loading-bar::after {
+    width: 40%;
+    animation: mp-slide 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes mp-slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+.mp-result-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.mp-result-body {
+  position: relative;
+  min-height: 160px;
+  overflow-x: auto;
+  transition: opacity 0.15s ease;
+}
+
+.mp-loading {
+  opacity: 0.45;
+}
+
+.mp-skeleton-chart,
+.mp-skeleton-chip {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--vp-c-bg-soft) 25%,
+    var(--vp-c-bg-alt) 50%,
+    var(--vp-c-bg-soft) 75%
+  );
+  background-size: 200% 100%;
+  animation: mp-shimmer 1.2s linear infinite;
+}
+
+.mp-skeleton-chart {
+  height: 320px;
+}
+
+.mp-skeleton-chip {
+  width: 140px;
+  height: 34px;
+  border-radius: 999px;
+}
+
+@keyframes mp-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/*
+ * Reduced motion: no shimmer, no fades, no bar growth, and nothing a later
+ * rule adds either — hence the wildcard and `!important`, so the switch
+ * cannot be undone by a more specific transition declared further down.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .mp-demo *,
+  .mp-demo *::before,
+  .mp-demo *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.mp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.mp-actions .mp-btn {
+  white-space: nowrap;
+}
+
+.mp-tip-anchor {
+  position: relative;
+  display: inline-block;
+}
+
+.mp-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  display: none;
+  width: min(420px, 80vw);
+  padding: 10px 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-elv);
+  box-shadow: var(--vp-shadow-2);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vp-c-text-1);
+}
+
+.mp-tip code {
+  overflow-wrap: anywhere;
+}
+
+.mp-tip-anchor:hover .mp-tip,
+.mp-tip-anchor:focus-within .mp-tip,
+.mp-tip-anchor:focus .mp-tip {
+  display: block;
+}
+
+/* --- Chart --------------------------------------------------------------- */
+
+.mp-chart {
+  margin: 0;
+}
+
+.mp-chart svg {
+  display: block;
+  width: 100%;
+  height: 320px;
+  font-family: var(--vp-font-family-base);
+}
+
+.mp-chart-grid {
+  stroke: var(--vp-c-divider);
+  stroke-width: 1;
+}
+
+.mp-chart-tick {
+  fill: var(--vp-c-text-2);
+  font-size: 12px;
+}
+
+.mp-chart-line {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mp-chart-dot {
+  fill: currentcolor;
+  opacity: 0.85;
+}
+
+.mp-chart-cross {
+  stroke: var(--vp-c-text-3);
+  stroke-dasharray: 3 3;
+}
+
+.mp-chart-box {
+  fill: var(--vp-c-bg-elv);
+  stroke: var(--vp-c-divider);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+}
+
+.dark .mp-chart-box {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.mp-chart-box-title {
+  fill: var(--vp-c-text-1);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mp-chart-box-row {
+  fill: var(--vp-c-text-1);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-chart-hover {
+  pointer-events: none;
+}
+
+.mp-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.mp-legend-item::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: currentcolor;
+}
+
+/* --- Bars ---------------------------------------------------------------- */
+
+.mp-bar-row {
+  margin: 0 0 14px;
+}
+
+.mp-bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mp-bar-step {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-bar-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.mp-bar-track {
+  height: 16px;
+  margin: 6px 0;
+  border-radius: 4px;
+  background: var(--vp-c-bg-soft);
+  overflow: hidden;
+}
+
+.mp-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--vp-c-brand-1);
+  transition: width 0.3s ease;
+}
+
+.mp-bar-meta {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+/* --- Tables (result rows, retention grid) -------------------------------- */
+
+.mp-table-wrap {
+  max-height: 320px;
+  margin-top: 4px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  overflow: auto;
+}
+
+.mp-demo table {
+  display: table;
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-demo th,
+.mp-demo td {
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--vp-c-divider);
+  text-align: left;
+  white-space: nowrap;
+}
+
+/*
+ * `.vp-doc` scoped so this outranks the theme's dark-mode `th` rule, whose
+ * translucent tint let scrolled rows show through a sticky header; the
+ * same tint is mixed into the surface here, so it stays opaque.
+ */
+.vp-doc .mp-demo thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: color-mix(
+    in srgb,
+    var(--vp-c-brand-1) 8%,
+    var(--vp-c-bg-soft)
+  );
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mp-demo tbody tr:nth-child(even) > :is(td, th) {
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-demo tr:last-child td {
+  border-bottom: 0;
+}
+
+.mp-table-foot {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+.mp-retention {
+  margin-top: 4px;
+}
+
+/* Shaded cells paint over the zebra stripe. */
+.mp-demo tbody tr:nth-child(even) > td.mp-cell,
+.mp-cell {
+  background: rgba(79, 68, 224, var(--mp-cell-alpha, 0));
+}
+
+.dark .mp-demo tbody tr:nth-child(even) > td.mp-cell,
+.dark .mp-cell {
+  background: rgba(120, 86, 255, var(--mp-cell-alpha, 0));
+}
+
+.vp-doc .mp-demo td.mp-cell-inverse {
+  color: #fff;
+}
+
+/* --- Code panel ---------------------------------------------------------- */
+
+.mp-codepanel {
+  min-width: 0;
+}
+
+.mp-code {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--vp-code-block-bg);
+  font-family: var(--vp-font-family-mono);
+  font-size: 13.5px;
+  line-height: 1.6;
+  /* Wrap at spaces only, never inside a token; a lone token wider than
+     the column scrolls instead. */
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  overflow-x: auto;
+  color: var(--vp-code-color);
+}
+
+.mp-code-string {
+  white-space: nowrap;
+}
+
+/* Each source line is a block; a wrapped continuation hangs by 2ch. */
+.mp-code-line {
+  display: block;
+  min-height: 1.6em;
+  padding-left: 2ch;
+  text-indent: -2ch;
+}
+
+.mp-code span {
+  color: var(--shiki-light, inherit);
+}
+
+.dark .mp-code span {
+  color: var(--shiki-dark, inherit);
+}
+
+.mp-code-result {
+  margin-top: 16px;
+}
+
+.mp-code-result h3 {
+  margin-bottom: 8px;
+}
+
+/* --- Errors -------------------------------------------------------------- */
+
+.mp-error {
+  margin: 8px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--mp-red);
+  border-radius: 6px;
+  background: var(--vp-c-bg-soft);
+  font-size: 14px;
+}
+
+.mp-error-details {
+  max-height: 200px;
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--vp-code-block-bg);
+  font-size: 12px;
+  overflow: auto;
+}
+
+/* --- Callback page ------------------------------------------------------- */
+
+.mp-callback {
+  padding: 24px 0;
+}
+
+/* --- Live session ------------------------------------------------------- */
+
+.mp-session .mp-intro-actions {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.mp-region {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--mp-selected-border);
+  border-radius: 4px;
+  background: var(--mp-selected-bg);
+  color: var(--mp-selected-text);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.mp-warn {
+  padding: 8px 12px;
+  border-left: 3px solid var(--vp-c-warning-1);
+  background: var(--vp-c-warning-soft);
+}
+
+.mp-warn-text {
+  color: var(--vp-c-warning-1);
+}
+
+/*
+ * The picker, the sign-in loading card and the redirect notice host the
+ * run indicator; it sits on their top edge, so they position it and clip
+ * its ends to the rounded corners.
+ */
+.mp-picker,
+.mp-pending {
+  position: relative;
+  overflow: hidden;
+}
+
+/*
+ * The result panel's bar overlaps its top border; a card clips at its
+ * padding edge, so here the bar starts inside it and is a touch thicker to
+ * read across the wider surface.
+ */
+.mp-picker .mp-loading-bar,
+.mp-pending .mp-loading-bar {
+  top: 0;
+  height: 3px;
+}
+
+.mp-picker-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin: 0 0 8px;
+}
+
+.mp-loading-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/*
+ * The patience line: empty until the wait earns it, then fades in. The
+ * transition is on opacity alone so the reduced-motion block turns it
+ * into a plain appearance.
+ */
+.mp-demo .mp-loading-note {
+  min-height: 1.5em;
+  margin-bottom: 0;
+  color: var(--vp-c-text-2);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.mp-demo .mp-loading-note-shown {
+  opacity: 1;
+}
+
+/*
+ * The picker skeleton: grey bars where the organisation headers and the
+ * project rows will be. Static by default; motion adds the shimmer.
+ */
+.mp-skeleton-picker {
+  margin-top: 16px;
+}
+
+.mp-skeleton-bar {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--vp-c-default-soft);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mp-skeleton-bar {
+    background: linear-gradient(
+      90deg,
+      var(--vp-c-default-soft) 25%,
+      var(--vp-c-divider) 50%,
+      var(--vp-c-default-soft) 75%
+    );
+    background-size: 200% 100%;
+    animation: mp-shimmer 1.4s linear infinite;
+  }
+}
+
+.mp-skeleton-org {
+  width: 140px;
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+.mp-skeleton-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 0;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+/* --- Picking a project ---------------------------------------------------- */
+
+/*
+ * While `ws.use()` runs the list stays but goes inert (the controls are
+ * disabled too, for the keyboard); the chosen row keeps full contrast
+ * with a brand outline so the visitor sees what is being opened.
+ */
+.mp-picker-busy .mp-picker-list {
+  pointer-events: none;
+}
+
+.mp-picker-busy .mp-picker-project:not(.mp-picker-opening) {
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.mp-picker-opening {
+  margin: 0 -12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--vp-c-brand-soft);
+  box-shadow: inset 0 0 0 2px var(--mp-selected-border);
+}
+
+.mp-picker-org {
+  margin-top: 16px;
+}
+
+.mp-picker-org ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mp-picker-project {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.mp-picker-name {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.mp-callback .mp-intro-actions a.mp-btn {
+  text-decoration: none;
+}
+
+/* --- where filter --- */
+
+button.mp-chip-toggle {
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+button.mp-chip-toggle:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+button.mp-chip-toggle[aria-pressed="true"] {
+  border-color: var(--mp-selected-border);
+  background: var(--mp-selected-bg);
+  color: var(--mp-selected-text);
+  font-weight: 600;
+}
+
+.mp-filter-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+
+.mp-filter-line code {
+  font-size: 13px;
+  color: var(--vp-c-text-1);
+}
+
+.mp-filter-clear {
+  padding: 0 8px;
+  line-height: 1.6;
+}
+
+/* --- aha moments --- */
+
+.mp-loop-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mp-loop-chips {
+  margin: 0;
+}
+
+/* A candidate chip with its remove button inside the pill. */
+.mp-loop-chip {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  padding: 2px 4px 2px 12px;
+  border: 1px solid var(--vp-c-border);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-loop-remove {
+  padding: 1px 6px;
+  border: 0;
+  background: none;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.vp-doc .mp-demo .mp-loop-hint {
+  margin: 0;
+  font-size: 13px;
+}
+
+.mp-loop-progress {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.vp-doc .mp-demo .mp-loop-sub {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.mp-aha-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Rank, event, curve, rate, lift, cohorts: one row, the event column flexes. */
+.mp-aha-open {
+  display: grid;
+  grid-template-columns: 2ch minmax(120px, 1fr) 96px 6ch 9ch auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mp-aha-open:hover {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-aha-open:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+.mp-aha-rank {
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+}
+
+.mp-aha-event {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-aha-rate {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mp-aha-lift {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+.mp-aha-meta {
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--vp-c-text-2);
+}
+
+/* Small multiple: the curve on the brand colour, the median as a dashed
+   line in the secondary text colour (3:1 against both backgrounds). */
+.mp-aha-spark {
+  display: block;
+  width: 96px;
+  height: 28px;
+  overflow: visible;
+  color: var(--vp-c-brand-1);
+}
+
+.mp-aha-curve {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mp-aha-dot {
+  fill: currentcolor;
+}
+
+.mp-aha-median {
+  stroke: var(--vp-c-text-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* A candidate whose query failed keeps its place under the ranking. */
+.mp-aha-failed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px dashed var(--vp-c-divider);
+  border-radius: 8px;
+}
+
+.mp-aha-failed .mp-error {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .mp-aha-open {
+    grid-template-columns: 2ch minmax(0, 1fr) 6ch;
+  }
+
+  .mp-aha-spark,
+  .mp-aha-lift,
+  .mp-aha-meta {
+    display: none;
+  }
+}
+
+.mp-code-helper {
+  margin-top: 8px;
+}
+
+.mp-code-helper summary {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+/* --- conversion matrix --- */
+
+/* The grid first, the cell's panel under it: five event columns and a
+   panel do not fit one result column side by side. */
+.mp-matrix-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.mp-matrix-main {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/*
+ * Fixed layout: the `<colgroup>` shares the width out, so a long event
+ * name truncates in its header instead of widening the table past the
+ * result column (and the column past the page).
+ */
+.mp-matrix {
+  table-layout: fixed;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.mp-demo .mp-matrix th,
+.mp-demo .mp-matrix td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vp-doc .mp-demo .mp-matrix th.mp-matrix-corner {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+  white-space: nowrap;
+}
+
+.mp-demo .mp-matrix thead th.mp-num,
+.mp-demo .mp-matrix td {
+  text-align: center;
+}
+
+.mp-demo .mp-matrix th[scope="row"] {
+  font-weight: 500;
+}
+
+/* A shaded cell is its button: the fill stays on the cell, the button fills it. */
+.mp-demo .mp-matrix td.mp-matrix-cell {
+  padding: 0;
+}
+
+.mp-matrix-btn {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mp-matrix-btn:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+.mp-matrix-btn:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -3px;
+}
+
+.mp-matrix-btn[aria-pressed="true"] {
+  border-color: var(--vp-c-text-1);
+}
+
+.vp-doc .mp-demo td.mp-cell-inverse .mp-matrix-btn[aria-pressed="true"],
+.vp-doc .mp-demo td.mp-cell-inverse .mp-matrix-btn:focus-visible {
+  border-color: #fff;
+  outline-color: #fff;
+}
+
+.mp-demo .mp-matrix td.mp-matrix-diag,
+.mp-demo .mp-matrix td.mp-matrix-pending {
+  color: var(--vp-c-text-3);
+}
+
+.mp-demo .mp-matrix td.mp-matrix-failed {
+  font-size: 12px;
+  color: var(--mp-red, #d33);
+}
+
+.vp-doc .mp-demo .mp-matrix-best {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.mp-matrix-best strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mp-matrix-estimate {
+  white-space: nowrap;
+  color: var(--vp-c-text-2);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+/* The panel: one pair across the four windows, the chart beside the values. */
+.mp-matrix-panel {
+  position: relative;
+  max-width: 640px;
+  padding: 12px 14px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  overflow: hidden;
+}
+
+/* The sweep's bar starts inside the card's clip, like the picker's. */
+.mp-matrix-panel .mp-loading-bar {
+  top: 0;
+  height: 3px;
+}
+
+/* Placeholders while a sweep runs: the chart's footprint and each pending value. */
+.mp-sweep-skeleton {
+  min-height: 140px;
+  border-radius: 8px;
+  background: var(--vp-c-default-soft);
+}
+
+.mp-matrix-skeleton {
+  display: inline-block;
+  width: 3em;
+  height: 1em;
+  vertical-align: -0.1em;
+}
+
+.mp-sweep-skeleton-value {
+  display: inline-block;
+  width: 3.5em;
+  height: 1em;
+  vertical-align: -0.1em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mp-sweep-skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--vp-c-default-soft) 25%,
+      var(--vp-c-divider) 50%,
+      var(--vp-c-default-soft) 75%
+    );
+    background-size: 200% 100%;
+    animation: mp-shimmer 1.4s linear infinite;
+  }
+}
+
+.mp-matrix-panel-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.vp-doc .mp-demo .mp-matrix-panel h3 {
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.mp-matrix-panel-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+}
+
+.mp-matrix-panel-body .mp-sweep-chart {
+  flex: 1 1 260px;
+  max-width: 360px;
+}
+
+.mp-matrix-windows {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 16px;
+  margin: 8px 0;
+  padding: 0;
+  font-size: 13px;
+  list-style: none;
+}
+
+.mp-matrix-windows li {
+  display: contents;
+}
+
+.mp-matrix-windows li > .mp-num {
+  text-align: right;
+}
+
+.mp-matrix-panel .mp-actions {
+  margin-top: 8px;
+}
+
+.mp-sweep-chart {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  overflow: visible;
+  color: var(--vp-c-brand-1);
+}
+
+.mp-sweep-axis {
+  stroke: var(--vp-c-divider);
+  stroke-width: 1;
+}
+
+.mp-sweep-line {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mp-sweep-dot {
+  fill: currentcolor;
+}
+
+.mp-sweep-value,
+.mp-sweep-tick {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  fill: var(--vp-c-text-2);
+}
+
+.mp-sweep-value {
+  fill: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+/* --- constellation --- */
+
+/* The band a loop report opens with: the constellation, and beside it —
+   once the picture has settled to its small size — the finding; while the
+   loop runs the picture takes the row and the progress line wraps under. */
+.mp-loop-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.mp-loop-band .mp-loop-progress,
+.vp-doc .mp-demo .mp-loop-band .mp-loop-sub,
+.vp-doc .mp-demo .mp-loop-band .mp-matrix-best {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.mp-const {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  transition: width 0.5s ease;
+}
+
+.mp-const-settled {
+  width: 380px;
+}
+
+.mp-const-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  overflow: visible;
+  color: var(--vp-c-brand-1);
+}
+
+/* An arc's weight and opacity follow the rate it found; a failed pair is a
+   dashed grey line; the arcs of the finding are heavier and fully opaque. */
+.mp-const-edge {
+  opacity: var(--mp-edge-alpha, 0.6);
+  transition: opacity 0.3s ease;
+}
+
+.mp-const-arc {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: var(--mp-edge-width, 1);
+  stroke-linecap: round;
+  stroke-dasharray: var(--mp-edge-len, 0);
+  stroke-dashoffset: 0;
+  transition: stroke-width 0.3s ease;
+}
+
+.mp-const-head {
+  fill: currentcolor;
+  stroke: none;
+}
+
+.mp-const-failed {
+  color: var(--vp-c-text-3);
+}
+
+.mp-const-failed .mp-const-arc {
+  stroke-dasharray: 4 3;
+}
+
+.mp-const-hi {
+  opacity: 1;
+}
+
+.mp-const-hi .mp-const-arc {
+  stroke-width: calc(var(--mp-edge-width, 1) + 1.25);
+}
+
+.mp-const-node circle {
+  fill: var(--vp-c-bg);
+  stroke: currentcolor;
+  stroke-width: 2;
+  transition: fill 0.3s ease;
+}
+
+.mp-const-node-hi circle {
+  fill: currentcolor;
+}
+
+/* Labels sit outside the ring; the halo keeps one legible where an arc
+   passes behind it. */
+.mp-const-label {
+  fill: var(--vp-c-text-2);
+  font-size: 12px;
+  paint-order: stroke;
+  stroke: var(--vp-c-bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.mp-const-label-hub,
+.mp-const-node-hi .mp-const-label {
+  fill: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+.mp-const-count {
+  fill: var(--vp-c-text-2);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--vp-c-bg);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+/* Settled, the drawing is shown at about half size: labels, node rings
+   and arcs are drawn heavier so they still read. */
+.mp-const-settled .mp-const-label {
+  font-size: 17px;
+  stroke-width: 4px;
+}
+
+.mp-const-settled .mp-const-node circle {
+  stroke-width: 3;
+}
+
+.mp-const-settled .mp-const-arc {
+  stroke-width: calc(var(--mp-edge-width, 1) * 1.5);
+}
+
+.mp-const-settled .mp-const-hi .mp-const-arc {
+  stroke-width: calc(var(--mp-edge-width, 1) * 1.5 + 1.5);
+}
+
+/* Each arc draws itself in as its result lands (a dash as long as the arc,
+   offset away and brought back), its arrowhead arriving with it; nodes
+   fade in one after another; a pair under a sweep breathes. Reduced
+   motion: the global rule above clears every animation, so arcs simply
+   appear and nothing pulses. */
+@media (prefers-reduced-motion: no-preference) {
+  .mp-const-arc {
+    animation: mp-draw 0.35s ease-out;
+  }
+
+  .mp-const-failed .mp-const-arc {
+    animation: mp-fade 0.35s ease;
+  }
+
+  .mp-const-head {
+    animation: mp-fade 0.2s ease 0.3s both;
+  }
+
+  .mp-const-node {
+    animation: mp-fade 0.3s ease both;
+    animation-delay: calc(var(--mp-i, 0) * 40ms);
+  }
+
+  .mp-const-pulse {
+    animation: mp-pulse 1s ease-in-out infinite;
+  }
+}
+
+@keyframes mp-draw {
+  from {
+    stroke-dashoffset: var(--mp-edge-len, 0);
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mp-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mp-pulse {
+  0%,
+  100% {
+    opacity: var(--mp-edge-alpha, 0.6);
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* --- live trace --- */
+
+.mp-code-live {
+  position: relative;
+}
+
+/* Emoji in the system font: the monospace font would substitute its own. */
+.mp-code-emoji {
+  font-family: system-ui, sans-serif;
+  font-style: normal;
+}
+
+/* The gutter lives in the block's left padding: the check at its left edge,
+   the caret against the code. Neither is selectable, so a drag over the
+   block still copies the program alone. */
+.mp-code-gutter {
+  position: absolute;
+  top: 0;
+  left: -17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 16px;
+  height: 1.6em;
+  text-indent: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.mp-code-caret {
+  margin-left: auto;
+  color: var(--vp-c-brand-1);
+}
+
+/* Struck bright as a call lands, then faded; it stays. */
+.mp-code-tick {
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.55;
+}
+
+/* A trace comment: laid out like a line, coloured like a comment, outside
+   the program (not selectable, not announced). */
+.mp-code-trace {
+  display: block;
+  min-height: 1.6em;
+  padding-left: 2ch;
+  text-indent: -2ch;
+  color: #8f8f91;
+  user-select: none;
+}
+
+.dark .mp-code-trace {
+  color: #9a9a9c;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mp-code-caret {
+    animation: mp-blink 1s steps(1) infinite;
+  }
+
+  .mp-code-tick {
+    animation: mp-tick 1.2s ease-out both;
+  }
+
+  .mp-code-trace {
+    animation: mp-fade 0.25s ease;
+  }
+}
+
+@keyframes mp-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes mp-tick {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.55;
+  }
+}

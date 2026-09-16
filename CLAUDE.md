@@ -63,6 +63,9 @@ the lefthook hooks (eslint + prettier at commit, typecheck + `test:fast` at push
   type-checked against `dist/`, dead links fail); `docs:dev` previews;
   `docs:api:check` validates the reference (in the gate).
   Conventions in CONTRIBUTING.md "Documentation".
+- Playground (`/demo/`, `docs/.vitepress/theme/demo/`): `npm run generate:demo-fixtures`
+  rewrites the synthetic project (`--check` for drift); `npm run demo:canary` probes
+  Mixpanel's CORS/OAuth policy for live mode (weekly in `demo-canary.yml`).
 - Releasing: `npx changeset` per change to a published package;
   `npm run version` / `release` = `changeset version` / `publish` (run by `release.yml`).
 

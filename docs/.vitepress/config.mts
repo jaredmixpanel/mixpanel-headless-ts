@@ -1,14 +1,18 @@
 // VitePress configuration for the documentation site (`npm run docs:*`;
 // CONTRIBUTING.md "Documentation").
 //
-// Three things are decided here rather than in the pages: `base` comes from
+// Four things are decided here rather than in the pages: `base` comes from
 // `DOCS_BASE` so one config serves the GitHub project page
 // (`/mixpanel-headless-ts/`) and a custom domain (`/`) without an edit; every
 // ```ts twoslash block is compiled against the packages' built declarations
 // (the workspace symlinks in node_modules point at `packages/*/dist`, so a
-// snippet sees exactly what a consumer sees); and the API reference sidebar
-// is the JSON typedoc-vitepress-theme writes next to the generated pages.
+// snippet sees exactly what a consumer sees); the API reference sidebar
+// is the JSON typedoc-vitepress-theme writes next to the generated pages; and
+// the playground (`/demo/`, theme/demo/) gets its build-time constants from
+// `vite.define` and a Content Security Policy stamped into every built page
+// by `transformHtml`.
 
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -37,6 +41,14 @@ const base = process.env["DOCS_BASE"] ?? "/";
 // Absolute URLs in llms.txt when the origin is known (CI sets it); relative
 // otherwise, which the llms plugin still resolves against `base`.
 const origin = process.env["DOCS_ORIGIN"];
+
+// The playground's OAuth redirect URI is fixed at build time (never read
+// from the page, so it cannot be injected): the Pages URL in CI, and the
+// `docs:dev` port locally — `beginLogin` accepts `http:` only on loopback.
+const demoOrigin = origin ?? "http://localhost:5173";
+const DEMO_REDIRECT_URI = `${demoOrigin}${base}demo/callback`;
+/** The playground page, which carries its own social image. */
+const DEMO_PAGE = "demo/index.md";
 
 // VitePress 1.x pins Vite 5, shiki 2 and its own markdown-it, while the
 // root hoists newer copies for vitest, twoslash and the tabs plugin. The
@@ -148,6 +160,7 @@ const guide: DefaultTheme.SidebarItem = {
     { text: "Data governance", link: "/guide/data-governance" },
     { text: "Business context", link: "/guide/business-context" },
     { text: "In the browser", link: "/guide/browser" },
+    { text: "Playground", link: "/demo/" },
     {
       text: "Accounts, sessions, and targets",
       link: "/guide/accounts-sessions-targets",
@@ -169,6 +182,59 @@ const apiOverview: DefaultTheme.SidebarItem = {
   text: "Overview",
   link: "/api/",
 };
+
+// --- Content Security Policy ---------------------------------------------
+
+// Inline `<script>` elements (no `src`), whose text is what a CSP hash
+// covers. VitePress emits a few per page (the colour-scheme and platform
+// probes, the asset hash map); they are hashed from the page rather than
+// listed, so a VitePress upgrade that changes one cannot silently break the
+// site — tests/demo-dist.test.ts recomputes the hashes from the built HTML.
+const INLINE_SCRIPT = /<script(?![^>]*\ssrc\s*=)[^>]*>([\s\S]*?)<\/script>/giu;
+
+// The hosts live mode talks to: the query/app APIs and the OAuth endpoints
+// share these three per region (core's `ENDPOINTS` and `OAUTH_BASE_URLS`).
+// The export hosts (`data.mixpanel.com` and its regional twins) are absent
+// on purpose: the browser package refuses the Export API before any fetch,
+// and the policy is a second fence behind that guard.
+const CONNECT_HOSTS = [
+  "https://mixpanel.com",
+  "https://eu.mixpanel.com",
+  "https://in.mixpanel.com",
+];
+
+/**
+ * Build the policy for one built page.
+ *
+ * `style-src` keeps `'unsafe-inline'`: Shiki writes the light/dark token
+ * colours as `style` attributes on thousands of spans, which cannot be
+ * hashed without `'unsafe-hashes'`. That is the accepted gap. Applied at
+ * build time only, so the dev server's HMR (inline and eval) is untouched;
+ * `frame-ancestors` is not settable from a meta element and is left out.
+ *
+ * @param html - The rendered page.
+ * @returns The policy text for the meta element.
+ */
+function contentSecurityPolicy(html: string): string {
+  const hashes = [...html.matchAll(INLINE_SCRIPT)].map(
+    (match) =>
+      `'sha256-${createHash("sha256")
+        .update(match[1] ?? "")
+        .digest("base64")}'`,
+  );
+  const scriptSrc = ["'self'", ...new Set(hashes)].join(" ");
+  return [
+    "default-src 'self'",
+    `script-src ${scriptSrc}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    `connect-src 'self' ${CONNECT_HOSTS.join(" ")}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
 
 // The reference sidebar is split per package: VitePress renders the whole
 // sidebar tree into every page's HTML (collapsed groups included), and the
@@ -205,6 +271,13 @@ export default defineConfig({
   ...(origin === undefined
     ? {}
     : { sitemap: { hostname: `${origin}${base}` } }),
+  // GitHub Pages cannot send response headers, so the policy travels as a
+  // meta element. Injected here rather than through `head` because its
+  // script hashes depend on the rendered page.
+  transformHtml(html) {
+    const meta = `<meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicy(html)}">`;
+    return html.replace("<head>", () => `<head>\n    ${meta}`);
+  },
   head: [
     ["meta", { property: "og:type", content: "website" }],
     [
@@ -219,9 +292,21 @@ export default defineConfig({
           "Typed Mixpanel analytics queries, schema discovery, entity management, streaming extraction, and session replay analysis for Node.js and browsers.",
       },
     ],
-    ["meta", { property: "og:image", content: `${origin ?? ""}${base}og.png` }],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
   ],
+  // The social image needs the absolute origin, which a page's frontmatter
+  // cannot see; the playground gets its screenshot, every other page the
+  // brand card.
+  transformHead({ pageData }) {
+    const image =
+      pageData.relativePath === DEMO_PAGE ? "playground.png" : "og.png";
+    return [
+      [
+        "meta",
+        { property: "og:image", content: `${origin ?? ""}${base}${image}` },
+      ],
+    ];
+  },
 
   markdown: {
     theme: {
@@ -278,6 +363,11 @@ export default defineConfig({
   },
 
   vite: {
+    define: {
+      __DEMO_REDIRECT_URI__: JSON.stringify(DEMO_REDIRECT_URI),
+      // The kill switch for live mode; `false` hides "Use my own project".
+      __DEMO_LIVE_ENABLED__: JSON.stringify(true),
+    },
     plugins: [
       llmstxt({
         ...(origin === undefined ? {} : { domain: origin }),
@@ -286,7 +376,8 @@ export default defineConfig({
           "A complete programmable interface to Mixpanel for Node.js and browsers: typed analytics queries, schema discovery, entity management, streaming extraction, and session replay analysis.",
         details:
           "TypeScript port of the Python mixpanel_headless library, verified against a conformance corpus extracted from it. Three packages: @mixpanel-headless/node (servers, scripts, CI), @mixpanel-headless/browser (web apps), @mixpanel-headless/core (the isomorphic engine both share).",
-        ignoreFiles: ["history/**"],
+        // The OAuth callback page is a redirect target with no content.
+        ignoreFiles: ["history/**", "demo/callback.md"],
         // The generated reference is ~800 pages: keep it out of the llms.txt
         // index (the API overview page links into it) but in the full bundle.
         // The plugin builds that index from the sidebar and warns for every
@@ -310,6 +401,7 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/getting-started/installation" },
       { text: "Reference", link: "/api/" },
+      { text: "Playground", link: "/demo/" },
       {
         text: "Python library",
         link: "https://mixpanel.github.io/mixpanel-headless/",
