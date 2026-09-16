@@ -138,7 +138,7 @@ export function pythonTypeNameOf(value: unknown): string {
  * @remarks
  * The Python parsers and transforms are pure passthroughs — they never
  * validate — so re-typing here (rather than running a guard) is what
- * keeps the TS behaviour identical: a malformed row builds a malformed
+ * keeps the TS behavior identical: a malformed row builds a malformed
  * result object in both languages instead of raising in one.
  * @param value - The raw API value.
  * @returns The same value at the declared field type.

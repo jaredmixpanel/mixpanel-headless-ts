@@ -1,6 +1,6 @@
 // Protocol conformance for oracle-ts (normative spec:
 // conformance/schema/oracle-protocol.md in the Python repo). Mirrors the
-// oracle-py suite so both bridges pin the same observable behaviour, plus
+// oracle-py suite so both bridges pin the same observable behavior, plus
 // the TS-specific raw-token traps (nested integral floats, integer-like
 // dict-key ordering).
 

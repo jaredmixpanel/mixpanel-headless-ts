@@ -1,7 +1,7 @@
 // createNodeEndpointOverrides: the MP_API_BASE_URL / MP_APP_BASE_URL provider
 // over process.env, read per call. Mirrors
 // tests/unit/test_api_base_url_override.py (per-call semantics, value
-// normalisation, and the env-built Workspace inheriting the override via
+// normalization, and the env-built Workspace inheriting the override via
 // `createNodeWorkspace()`).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

@@ -44,7 +44,7 @@ const me = await ws.me();
 await ws.use({ project: "12345", workspace: 67 });
 ```
 
-Pick an event, flip the controls, and the code on the right is the call that produced the result — copy it into your own page. The last two tabs are reports Mixpanel does not have, because each is a loop of queries plus a computation over them — and the loop is the code shown: "Aha moments" ranks which behaviours users come back for after signing up (one retention query per candidate return event; it shows what retained users keep doing, not which early action causes retention), and "Conversion matrix" runs one two-step funnel per ordered pair of events, shades the results as a heatmap and chains the strongest pairs into a funnel you can open. A value chip under a breakdown becomes a `where` filter, built with the same `Filter` the library exports:
+Pick an event, flip the controls, and the code on the right is the call that produced the result — copy it into your own page. The last two tabs are reports Mixpanel does not have, because each is a loop of queries plus a computation over them — and the loop is the code shown: "Aha moments" ranks which behaviors users come back for after signing up (one retention query per candidate return event; it shows what retained users keep doing, not which early action causes retention), and "Conversion matrix" runs one two-step funnel per ordered pair of events, shades the results as a heatmap and chains the strongest pairs into a funnel you can open. A value chip under a breakdown becomes a `where` filter, built with the same `Filter` the library exports:
 
 ```ts twoslash
 import { createBrowserWorkspace, Filter } from "@mixpanel-headless/browser";

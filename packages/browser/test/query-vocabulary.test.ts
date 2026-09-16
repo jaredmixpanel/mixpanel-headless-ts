@@ -205,7 +205,7 @@ describe("browser entry — entity params for the v1 write scopes", () => {
 describe("browser entry — identity helpers (core re-exports)", () => {
   // Heads spec 02 §3.3: a page computes and cites QueryRef hashes. The
   // hash is defined over `pythonJsonDumpsCanonical(params)`, and the ref
-  // is labelled with the report type `inferBookmarkType(params)` derives.
+  // is labeled with the report type `inferBookmarkType(params)` derives.
   // A page that builds its own params (the whole point of the query
   // vocabulary above) therefore needs BOTH on the bundled entry — the
   // desktop's vendored bundle is built from this barrel and has no other

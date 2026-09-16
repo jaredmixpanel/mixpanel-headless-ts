@@ -31,7 +31,7 @@ Auth-type detection is env-driven:
 3. `MP_OAUTH_TOKEN` set → `oauth_token`.
 4. Otherwise → `oauth_browser` (PKCE).
 
-Region behaviour depends on the auth type:
+Region behavior depends on the auth type:
 
 - `service_account` and `oauth_token`: probes `us → eu → in` against `/me` and uses the first `200`.
 - `oauth_browser`: defaults to `us` when `region` is not passed. EU and India users must pass `region: "eu"` or `region: "in"` explicitly (the PKCE flow commits to a single region before the post-login `/me` probe runs).
@@ -107,7 +107,7 @@ When set (a trailing slash is tolerated), the region lookup is bypassed and the 
 Details:
 
 - **Read per request, not at construction.** `createNodeWorkspace()` wires a `process.env` reader that is consulted on every request, so `ws.use({ account })` swaps, long-lived processes, and test env patching all see the current value — the Python library's `os.environ` semantics. When you build a core client by hand, pass `clientOptions.endpointOverrides` yourself: a static `{ apiBaseUrl, appBaseUrl }` bag, or a provider such as `createNodeEndpointOverrides()` from `@mixpanel-headless/node`.
-- **Route-aware behaviour is preserved.** The App-vs-Query read-timeout choice and the pinned `workspace_id` injection key off the API family, not the hostname.
+- **Route-aware behavior is preserved.** The App-vs-Query read-timeout choice and the pinned `workspace_id` injection key off the API family, not the hostname.
 - **`MP_REGION` is still required** and still meaningful for everything that is not a URL (account records, `/me` domain cross-checks, report-link hostnames). Report links keep producing real `*.mixpanel.com` URLs.
 - **Login region probe.** Probing `us → eu → in` against one host is pointless, so under the override `loginUnified` probes once against the base and labels the account with `MP_REGION` (when it is `us`/`eu`/`in`) or `us`.
 - **Plain `http://` bases are accepted** with no extra flag. They are intended for local or headless deployments only — never send real credentials over cleartext to a remote host.
@@ -115,7 +115,7 @@ Details:
 - **Family detection is longest-prefix**, so split configs where one base sits under the other (for example `MP_API_BASE_URL=https://proxy` with `MP_APP_BASE_URL=https://proxy/api/query`) still classify every request correctly.
 - **Browser builds** take the same setting through `clientOptions.endpointOverrides` on the factories (config only — there is no env). See [In the browser](/guide/browser#alternate-api-host).
 
-With neither variable set, behaviour is byte-identical to the per-region defaults.
+With neither variable set, behavior is byte-identical to the per-region defaults.
 
 ## Setting up an account
 

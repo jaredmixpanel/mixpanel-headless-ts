@@ -99,7 +99,7 @@ export interface StartCallbackServerOptions {
   /**
    * TS-only cancellation for the losing login completer. On abort the
    * server closes and the promise rejects with a plain `Error`, never an
-   * `OAuthError`, because the canceller discards it.
+   * `OAuthError`, because the canceler discards it.
    */
   readonly signal?: AbortSignal | undefined;
 }
@@ -200,7 +200,7 @@ async function handleCallbackRequest(
   if (receivedState !== expectedState) {
     // Don't leak the expected state to the browser, nor into the
     // server-side exception: hosts log `error.toDict()`, and `details`
-    // is serialised by it.
+    // is serialized by it.
     // Divergence: Python puts `expected_state` in `OAuthError.details` on state mismatch; TS keeps only `received_state` (the attacker-supplied value) so logged errors never carry the nonce.
     const browserMessage = "State parameter mismatch. Authorization failed.";
     await sendHtml(res, errorHtml(htmlEscape(browserMessage)), 400);
@@ -293,7 +293,7 @@ function closeServer(server: Server): Promise<void> {
  *   provider error, missing params or state mismatch
  *   (`OAUTH_TOKEN_ERROR`).
  * @throws Error - The `signal` aborted (the losing completer was
- *   cancelled).
+ *   canceled).
  * @example
  * ```ts
  * const [result, port] = await startCallbackServer({ state: "s" });
@@ -421,7 +421,7 @@ export async function startCallbackServer(
   await closeServer(boundServer);
 
   if (settled.kind === "aborted") {
-    throw new Error("callback server aborted (losing completer cancelled)");
+    throw new Error("callback server aborted (losing completer canceled)");
   }
   if (settled.kind === "request") {
     if (settled.outcome.error !== undefined) {

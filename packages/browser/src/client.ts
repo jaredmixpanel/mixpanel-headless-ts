@@ -381,7 +381,7 @@ function exportRefusal(
  * at `{apiBaseUrl}/api/2.0`, an origin outside the live set, so the
  * requests it builds are admitted (the override host is user-controlled
  * and is where browser export can actually work), while the live
- * origins stay refused even under an override (defence in depth). A
+ * origins stay refused even under an override (defense in depth). A
  * provider-form override is consulted on every call by the client and,
  * on refusal, by this guard — flipping it between requests changes the
  * verdict without re-wrapping. The effective table itself is only read

@@ -1,5 +1,5 @@
 // Property tests for the API/App base-URL override: every family resolves
-// to `base.rstrip("/") + prefix`, `buildUrl` appends the normalised path, and
+// to `base.rstrip("/") + prefix`, `buildUrl` appends the normalized path, and
 // resolving an override never mutates the live endpoint table.
 // Mirrors tests/unit/test_api_base_url_override_pbt.py (fast-check for
 // Hypothesis). `mock.patch.dict(os.environ)` becomes the injected `endpointOverrides` bag.
@@ -48,7 +48,7 @@ const pathSegments = fc.array(fc.stringMatching(/^[a-z0-9_-]{1,8}$/), {
   maxLength: 3,
 });
 
-/** A normalised base URL like `http://host:port/seg/seg`, no trailing slash. */
+/** A normalized base URL like `http://host:port/seg/seg`, no trailing slash. */
 const baseUrls = fc
   .record({
     scheme: fc.constantFrom("http", "https"),
@@ -97,7 +97,7 @@ describe("API base URL override properties", () => {
     );
   });
 
-  it("build URL appends normalised path", () => {
+  it("build URL appends normalized path", () => {
     // python: test_build_url_appends_normalised_path
     fc.assert(
       fc.property(

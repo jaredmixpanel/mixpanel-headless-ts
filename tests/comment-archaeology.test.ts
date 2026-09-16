@@ -127,7 +127,7 @@ describe("findBannedTokens", () => {
   });
 
   it("whitelists the bookmark rule-label form only in the validation files", () => {
-    const line = "// rule B19: event behaviours need a name";
+    const line = "// rule B19: event behaviors need a name";
     expect(
       tokensOf(line, "packages/core/src/query/validation-bookmark.ts"),
     ).toStrictEqual([]);
@@ -143,7 +143,7 @@ describe("findBannedTokens", () => {
     // The bare label without the `rule` prefix stays a hit even there.
     expect(
       tokensOf(
-        "// B19: event behaviours",
+        "// B19: event behaviors",
         "packages/core/src/query/validation-bookmark.ts",
       ),
     ).toStrictEqual(["batch-id"]);
@@ -213,7 +213,7 @@ describe("extraction", () => {
 });
 
 describe("rationale detection", () => {
-  it("recognises the rationale vocabulary case-insensitively", () => {
+  it("recognizes the rationale vocabulary case-insensitively", () => {
     expect(hasRationale("Because the API rejects it.")).toBe(true);
     expect(hasRationale("kept so that callers can retry")).toBe(true);
     expect(hasRationale("a known trade-off")).toBe(true);

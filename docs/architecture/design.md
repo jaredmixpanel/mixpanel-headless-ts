@@ -1,6 +1,6 @@
 ---
 title: Design
-description: "How the TypeScript port is put together — the core/node/browser split, the isomorphic core with injected seams, the purity boundary, the service layering, the error model, models and serialisation, and how the Python design maps onto it."
+description: "How the TypeScript port is put together — the core/node/browser split, the isomorphic core with injected seams, the purity boundary, the service layering, the error model, models and serialization, and how the Python design maps onto it."
 ---
 
 # Design
@@ -209,7 +209,7 @@ persist })` swaps in a new `Session` and returns the same facade for
   into signal-aware request and sleep closures; every cancellation exits as
   an `AbortError` `DOMException`.
 - **Transport** — the `fetch` adapter that replaces httpx's wire layer:
-  normalises every transport failure to one internal error type, sends with
+  normalizes every transport failure to one internal error type, sends with
   `redirect: "manual"` because httpx raises on 3xx where fetch would follow,
   and twins httpx's byte-level encoding of query strings, form bodies and
   JSON bodies with big integers.
@@ -288,7 +288,7 @@ the hierarchy next to the retry loops and are mapped to public errors before
 they surface. [Error handling](/guide/error-handling) lists the classes and
 codes.
 
-## Models and serialisation
+## Models and serialization
 
 - **Entity models** (`types/entities/*`) — each Pydantic model is a
   hand-written class extending one `EntityModel` base that owns the model
@@ -296,7 +296,7 @@ codes.
   nested-model reconstruction, the per-class `extra` policy and the
   validation aliases. `fromDict()` validates (throwing
   `ResponseValidationError`); `modelDump()` / `modelDumpExcludeNone()` and
-  `toJSON()` serialise. Fields keep Python's names in declaration order.
+  `toJSON()` serialize. Fields keep Python's names in declaration order.
 - **Result models** (`types/results/*`) — the frozen-dataclass twins. They do
   not coerce: a wrong JSON type is a `ResponseValidationError`. `toRows()`
   returns the rows Python builds before pandas and `rowColumns()` the frame's
@@ -304,7 +304,7 @@ codes.
   outside the contract.
 - **Query vocabulary** (`types/query-params/*`) — the pure builder classes
   (`Filter`, `Metric`, `FunnelStep`, …) that validate their inputs and
-  serialise to bookmark params. They hold no session and reach no transport,
+  serialize to bookmark params. They hold no session and reach no transport,
   which is why the browser entry point can re-export them as runtime values
   while exporting `Workspace` as a type only.
 - **Literals** — Python `Literal[...]` aliases become unions plus a
@@ -337,21 +337,21 @@ codes.
   `noUncheckedIndexedAccess`, `isolatedDeclarations` and
   `verbatimModuleSyntax` are on for the library builds; every exported
   binding has an explicit type.
-- **Bug-compatibility over cleanliness where behaviour is observable.** Where
-  Python's behaviour is odd but visible, the port reproduces it and says so
+- **Bug-compatibility over cleanliness where behavior is observable.** Where
+  Python's behavior is odd but visible, the port reproduces it and says so
   in a comment; deliberate differences are marked at the site and listed in
   [Porting](/architecture/porting).
 
 ## Technology stack
 
-| Component    | Technology                               | Purpose                                                                              |
-| ------------ | ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| Language     | TypeScript (strict, ESM, NodeNext)       | One code base for Node ≥ 22.12 and evergreen browsers                                |
-| HTTP         | the platform `fetch`                     | Injected; no HTTP library dependency                                                 |
-| Crypto       | WebCrypto (`SubtleCrypto`)               | PKCE challenge, slug minting                                                         |
-| Validation   | hand-written model classes               | Pydantic and dataclass twins with the same error surface                             |
-| Config       | TOML (node package)                      | `~/.mp/config.toml`, shared with the Python `mp` CLI                                 |
-| Verification | conformance corpus + differential oracle | Behaviour locked to the Python implementation (see [Porting](/architecture/porting)) |
+| Component    | Technology                               | Purpose                                                                             |
+| ------------ | ---------------------------------------- | ----------------------------------------------------------------------------------- |
+| Language     | TypeScript (strict, ESM, NodeNext)       | One code base for Node ≥ 22.12 and evergreen browsers                               |
+| HTTP         | the platform `fetch`                     | Injected; no HTTP library dependency                                                |
+| Crypto       | WebCrypto (`SubtleCrypto`)               | PKCE challenge, slug minting                                                        |
+| Validation   | hand-written model classes               | Pydantic and dataclass twins with the same error surface                            |
+| Config       | TOML (node package)                      | `~/.mp/config.toml`, shared with the Python `mp` CLI                                |
+| Verification | conformance corpus + differential oracle | Behavior locked to the Python implementation (see [Porting](/architecture/porting)) |
 
 ## Package structure
 

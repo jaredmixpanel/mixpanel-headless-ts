@@ -1,6 +1,6 @@
 // The offline transport (docs/.vitepress/theme/demo/model/fixture-fetch.ts):
 // its route table (unknown routes and keys throw, never a silent 200), the
-// facade-visible errors it produces, date materialisation relative to the
+// facade-visible errors it produces, date materialization relative to the
 // frozen clock, both time-section shapes, the `where` filter read from the
 // bookmark's filter section, and the chart adapters (model/series.ts) over
 // the results the real library builds from it.
@@ -188,7 +188,7 @@ describe("fixtureFetch: through the facade", () => {
     expect((error as EventNotFoundError).code).toBe("EVENT_NOT_FOUND");
   });
 
-  it("materialises 'in the last' relative to the frozen clock", async () => {
+  it("materializes 'in the last' relative to the frozen clock", async () => {
     const result = await ws.query("Note Saved", { math: "total", last: 7 });
     expect(result.to_date).toBe("2026-09-15T00:00:00-08:00");
     expect(result.from_date).toBe("2026-09-09T00:00:00-08:00");
@@ -538,7 +538,7 @@ describe("empty states and cell shading", () => {
     expect([...alphas].sort((a, b) => a - b)).toStrictEqual(alphas);
   });
 
-  it("never lets the fill alpha land where neither text colour reaches 4.5:1", () => {
+  it("never lets the fill alpha land where neither text color reaches 4.5:1", () => {
     // On the light background the body text fails above 0.65 and white
     // fails below 0.83 (measured against theme/mixpanel.css); no rate may
     // produce a fill in between.

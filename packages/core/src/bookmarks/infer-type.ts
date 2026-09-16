@@ -28,7 +28,7 @@
  * server round-trip may add or drop them.
  *
  * Ambiguity returns `null`, never a guess: a params object with no
- * readable behaviour clause (an empty `show` list, a leading `formula`
+ * readable behavior clause (an empty `show` list, a leading `formula`
  * or `warehouse` clause, an unknown metric type) is unclassifiable from
  * its shape, and callers record `bookmarkType: null`; it is not part of
  * the QueryRef hash, so a `null` costs identity nothing.
@@ -37,7 +37,7 @@
 import type { ReportLinkType } from "../types/literals.js";
 
 /**
- * `MetricType` values that pin a behaviour clause to a report type.
+ * `MetricType` values that pin a behavior clause to a report type.
  * `"formula"` and `"warehouse"` are deliberately absent: they describe the
  * clause, not the query family.
  */
@@ -109,7 +109,7 @@ export function inferBookmarkType(params: unknown): ReportLinkType | null {
   if (!Array.isArray(show)) {
     return null;
   }
-  // The insights-family builders put the behaviour clause first (funnels
+  // The insights-family builders put the behavior clause first (funnels
   // and retention emit exactly one; insights appends formula clauses after
   // its event clauses), so read clause 0 and refuse rather than hunting —
   // a params object whose first clause is a formula or a warehouse query

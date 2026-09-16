@@ -33,8 +33,8 @@ const BOX = { width: 220, pad: 10, row: 20, title: 24 } as const;
 const TICKS = 5;
 const ANCHORS = ["start", "middle", "end"] as const;
 
-/** Series colours, in order; all defined in theme/mixpanel.css. */
-const SERIES_COLOURS = [
+/** Series colors, in order; all defined in theme/mixpanel.css. */
+const SERIES_COLORS = [
   "var(--mp-blue)",
   "var(--mp-purple)",
   "var(--mp-green)",
@@ -248,7 +248,7 @@ export default defineComponent({
           "g",
           {
             key: s.name,
-            style: { color: SERIES_COLOURS[k % SERIES_COLOURS.length] },
+            style: { color: SERIES_COLORS[k % SERIES_COLORS.length] },
           },
           [
             h("path", {
@@ -291,8 +291,8 @@ export default defineComponent({
         x(i) + BOX.width + 20 > width.value ? x(i) - BOX.width - 12 : x(i) + 12;
       const rowY = (k: number): number =>
         PAD.top + BOX.pad + BOX.title + k * BOX.row;
-      // Each value row carries its line's colour as a swatch; the text
-      // itself stays in the body colour so it reads in both schemes.
+      // Each value row carries its line's color as a swatch; the text
+      // itself stays in the body color so it reads in both schemes.
       return h("g", { class: "mp-chart-hover" }, [
         h("line", {
           x1: x(i),
@@ -325,7 +325,7 @@ export default defineComponent({
             y: rowY(k) - 2,
             width: 10,
             height: 3,
-            fill: SERIES_COLOURS[k % SERIES_COLOURS.length],
+            fill: SERIES_COLORS[k % SERIES_COLORS.length],
           }),
           h(
             "text",
@@ -352,7 +352,7 @@ export default defineComponent({
                 {
                   key: s.name,
                   class: "mp-legend-item",
-                  style: { color: SERIES_COLOURS[k % SERIES_COLOURS.length] },
+                  style: { color: SERIES_COLORS[k % SERIES_COLORS.length] },
                 },
                 s.name,
               ),

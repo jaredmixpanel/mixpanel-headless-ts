@@ -604,7 +604,7 @@ export class ReplayBundle {
    *
    * @param actionSequence - Labels to look for, in order. An empty list
    *   matches every replay (returns a full clone).
-   * @param options - Labelling overrides: `labelFn` maps an action to its
+   * @param options - Labeling overrides: `labelFn` maps an action to its
    *   label (defaults to `defaultLabelFn`).
    * @returns The filtered bundle.
    * @example

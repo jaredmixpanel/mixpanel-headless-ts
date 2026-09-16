@@ -245,7 +245,7 @@ const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
 /**
  * Derive the flow chart mode from pre-built flow params.
  *
- * `flows_merge_type` wins when present and recognised. `chartType` is
+ * `flows_merge_type` wins when present and recognized. `chartType` is
  * the fallback. Anything else runs as sankey.
  *
  * @param params - Flow bookmark params, normally from `buildFlowParams`.

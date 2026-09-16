@@ -65,7 +65,7 @@ npm workspaces; every package is ESM-only (`"type": "module"`).
 | `differential`       | oracle-ts, the stdio bridge the Python fuzz harness drives, plus the ajv bookmark-schema referee (private).                          |
 | `scripts/`           | Generators, launchers, codemods and audits — see [`scripts/README.md`](scripts/README.md).                                           |
 | `tests/`             | Repo-level tests that own no workspace (public-surface lock, package consumption, ignore-list sync, browser bundle).                 |
-| `vendor/`            | Contract artefacts vendored verbatim with sha256 provenance (`vendor/mixpanel-contracts/PROVENANCE.json`).                           |
+| `vendor/`            | Contract artifacts vendored verbatim with sha256 provenance (`vendor/mixpanel-contracts/PROVENANCE.json`).                           |
 | `docs/`              | The documentation site (VitePress + TypeDoc); see "Documentation". `docs/reference/` is generated and git-ignored.                   |
 | `docs/history/`      | The port's archived process record. Frozen; see its README.                                                                          |
 
@@ -153,10 +153,10 @@ npm run conformance -- --report json --filter "bookmarks/"   # vector-id substri
 
 ## Generated files — never hand-edit
 
-Every generated artefact has a generator; regenerate instead of editing. Where
+Every generated artifact has a generator; regenerate instead of editing. Where
 a byte-exact freshness test exists it fails on a hand edit.
 
-| Artefact                                                     | Generator / command                                                                                       | Inputs                                                                                                                                                                                                                  | Freshness test                                                                                                                                                                                                                                                                                               |
+| Artifact                                                     | Generator / command                                                                                       | Inputs                                                                                                                                                                                                                  | Freshness test                                                                                                                                                                                                                                                                                               |
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `conformance-runner/src/api-map.gen.ts`                      | `npm run generate:api-map` (`scripts/generate-api-map.mjs`)                                               | `conformance-runner/corpus/{api-index,typescript-port-api-map}.json`, `conformance-runner/src/{naming-exceptions,authored-apis}.json`                                                                                   | `conformance-runner/test/api-map.test.ts` — sha256 stamps of all four inputs + parity with `src/naming.ts`                                                                                                                                                                                                   |
 | `packages/core/src/errors-codes.gen.ts`                      | `npm run generate:error-codes` (`scripts/generate-error-codes.mjs`; `--check` for a dry diff)             | `conformance-runner/corpus/contract/error-codes.json`                                                                                                                                                                   | `conformance-runner/test/error-codes-registry.test.ts` — regenerate-and-diff, plus registry equality against the live `errors.ts`                                                                                                                                                                            |
@@ -193,7 +193,7 @@ The corpus is a committed snapshot pinned by `sourceCommit` in
    worktree of `MP_RIG_BRANCH` (default `main`) instead.
 4. `npm run generate:all` (the api-map and error-codes inputs live in the
    corpus), then `npm run check`. Fix `FAIL_*` verdicts in the port, or record
-   a new divergence in `PORTING.md` if the Python behaviour is one the port
+   a new divergence in `PORTING.md` if the Python behavior is one the port
    deliberately does not follow.
 5. Commit the corpus snapshot separately from hand-written changes, and add a
    row to `conformance-runner/GATE.md` with the new pin and totals.
@@ -208,7 +208,7 @@ The corpus is a committed snapshot pinned by `sourceCommit` in
    `workspace.py:4506-4536`. The Python revision the port tracks is recorded
    once, in `corpus.config.json` and `PORTING.md`.
 3. **Every exported symbol has a TSDoc block.** The first sentence states the
-   behaviour in the imperative ("Return the …", "Resolve the …"). Then, as
+   behavior in the imperative ("Return the …", "Resolve the …"). Then, as
    needed: `@remarks` for non-obvious semantics; `@param name - description`
    (units, constraints, defaults — never the type); `@returns`;
    `@throws {@link ErrorClass}` for each deliberate throw; `@example` for
@@ -236,7 +236,7 @@ previews the mechanical rewrites the tool knows (see `scripts/audit/README.md`).
 
 ## Tests
 
-- `describe` names the unit under test; `it` states the behaviour in plain
+- `describe` names the unit under test; `it` states the behavior in plain
   English ("rejects a redirect URI without a scheme"). When a test mirrors a
   Python test, the Python name goes in a trailing comment
   (`// python: test_rejects_missing_scheme`), never in the title. Test-file
@@ -323,13 +323,13 @@ the generated `scripts/lib/python-reference-anchors.gen.json` lists (a
 member the Python page leaves out links its object; `_internal` names stay
 text), so regenerate that file when the corpus pin moves.
 
-| Path                                                                                       | What it is                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/index.md`, `docs/getting-started/`, `docs/guide/`, `docs/api/`, `docs/architecture/` | Hand-written pages. Frontmatter `title` and `description`; the description is the page's line in `llms.txt`.                                                                                                                                                                                                                                                                                         |
-| `docs/.vitepress/config.mts`                                                               | Nav and sidebar, `base` from `DOCS_BASE`, the twoslash compiler options, the llms and tabs plugins. Reads the sidebar JSON TypeDoc writes into `docs/reference/`.                                                                                                                                                                                                                                    |
-| `docs/.vitepress/theme/`                                                                   | The default theme plus the Mixpanel palette (`mixpanel.css`, ported from the Python site), the code themes (`shiki-mixpanel-*.json`: GitHub themes with the brand token colours on top), the copy-as-Markdown buttons above every page, and the playground under `theme/demo/` (below). Plain TypeScript, no Vue SFC. `docs/public/og.png` is the social-preview image (Pillow-rendered brand card). |
-| `docs/reference/`                                                                          | Generated by `npm run docs:api`; git-ignored, never edited, on the shared ignore list (`scripts/lib/lint-ignores.mjs`) with `docs/.vitepress/{dist,cache}/`.                                                                                                                                                                                                                                         |
-| `docs/history/`                                                                            | The frozen process record; excluded from the site (`srcExclude`).                                                                                                                                                                                                                                                                                                                                    |
+| Path                                                                                       | What it is                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/index.md`, `docs/getting-started/`, `docs/guide/`, `docs/api/`, `docs/architecture/` | Hand-written pages. Frontmatter `title` and `description`; the description is the page's line in `llms.txt`.                                                                                                                                                                                                                                                                                        |
+| `docs/.vitepress/config.mts`                                                               | Nav and sidebar, `base` from `DOCS_BASE`, the twoslash compiler options, the llms and tabs plugins. Reads the sidebar JSON TypeDoc writes into `docs/reference/`.                                                                                                                                                                                                                                   |
+| `docs/.vitepress/theme/`                                                                   | The default theme plus the Mixpanel palette (`mixpanel.css`, ported from the Python site), the code themes (`shiki-mixpanel-*.json`: GitHub themes with the brand token colors on top), the copy-as-Markdown buttons above every page, and the playground under `theme/demo/` (below). Plain TypeScript, no Vue SFC. `docs/public/og.png` is the social-preview image (Pillow-rendered brand card). |
+| `docs/reference/`                                                                          | Generated by `npm run docs:api`; git-ignored, never edited, on the shared ignore list (`scripts/lib/lint-ignores.mjs`) with `docs/.vitepress/{dist,cache}/`.                                                                                                                                                                                                                                        |
+| `docs/history/`                                                                            | The frozen process record; excluded from the site (`srcExclude`).                                                                                                                                                                                                                                                                                                                                   |
 
 Commands (all root npm scripts; `scripts/README.md` lists them too):
 
@@ -417,7 +417,7 @@ reload notice); the tokens `completeLogin` writes are moved into an
 deleted from `sessionStorage` (`finishLogin`, `tests/demo-session.test.ts`).
 `config.mts` also stamps a Content Security Policy into every built page
 (`transformHtml`: inline scripts are hashed per page, `connect-src` names the
-three Mixpanel hosts, `style-src` keeps `'unsafe-inline'` for Shiki's colour
+three Mixpanel hosts, `style-src` keeps `'unsafe-inline'` for Shiki's color
 attributes); `tests/demo-source.test.ts` greps the demo tree for storage and
 redirect-URI rules, and `tests/demo-dist.test.ts` checks the built site (CSP
 hashes, no third-party loads, the playground chunk not loaded elsewhere and
@@ -445,11 +445,11 @@ job would fail.
   body explains why.
 - Mechanical changes (codemods, `eslint --fix`, regenerated files, corpus
   snapshots) go in their own commit, separate from hand edits, and are
-  labelled `mechanical` in the PR.
+  labeled `mechanical` in the PR.
 - A refactor PR states the conformance numbers before and after
   (`npm run conformance -- --report json` summary) and, when it touches a
   shared builder, the oracle run it was checked against.
-- A PR that changes behaviour relative to Python adds a `// Divergence:`
+- A PR that changes behavior relative to Python adds a `// Divergence:`
   marker and a `PORTING.md` row in the same change.
 - A PR that changes a published package adds a changeset (`npx changeset`;
   see "Releasing").
@@ -491,7 +491,7 @@ meanwhile. Turning releases on is the owner's flip:
 
 1. Remove the `"private": true` line from `packages/core/package.json`,
    `packages/node/package.json` and `packages/browser/package.json`.
-2. On npmjs.com, create the `@mixpanel-headless` organisation and add a
+2. On npmjs.com, create the `@mixpanel-headless` organization and add a
    trusted publisher to each of the three packages: GitHub Actions,
    repository `jaredmixpanel/mixpanel-headless-ts`, workflow `release.yml`,
    environment `npm`. If npm still requires a package to exist before a

@@ -15,7 +15,7 @@
 //
 // Resolution drops the module segments a directive omits (`workspace.`,
 // `types.`) and keeps the ones it spells (`auth_types.`): the first
-// capitalised segment (or, for module-level names, each segment in turn)
+// capitalized segment (or, for module-level names, each segment in turn)
 // starts the candidate, and the longest listed prefix wins. A name whose
 // full path is listed links there; one whose object is listed but whose
 // member is not — private helpers, methods the directive's `members:`
@@ -57,7 +57,7 @@ export function resolvePythonReference(dotted) {
   const segments = dotted.split(".");
   if (segments.shift() !== ROOT || segments.length === 0) return;
   // Candidates start at each module prefix up to the object (the first
-  // capitalised segment); a module-level name tries every segment.
+  // capitalized segment); a module-level name tries every segment.
   const capital = segments.findIndex((s) => /^[A-Z]/.test(s));
   const lastStart = capital === -1 ? segments.length - 1 : capital;
   let best;

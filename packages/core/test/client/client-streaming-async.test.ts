@@ -1,8 +1,8 @@
-// TS-only async behaviour of the export stream: line reassembly across
+// TS-only async behavior of the export stream: line reassembly across
 // delayed chunks, lazy yielding, early `return()`, Retry-After timing in the
 // export 429 loop, abort during the backoff sleep, plus the `streamEvents` /
 // `streamProfiles` facade wrappers. No Python source suite: the corpus records
-// full-body streams, so chunk-boundary and cancellation behaviour is locked here.
+// full-body streams, so chunk-boundary and cancellation behavior is locked here.
 import { describe, expect, it } from "vitest";
 
 import { createMixpanelClient } from "../../src/client/client.js";

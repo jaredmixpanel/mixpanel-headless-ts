@@ -46,7 +46,7 @@ export type TargetName = string;
  *
  * Token refresh does I/O, so both methods are async; refresh already
  * happens at per-request resolution time, so the async signature
- * changes no observable wire behaviour.
+ * changes no observable wire behavior.
  *
  * @see mixpanel_headless._internal.auth.account.TokenResolver
  */

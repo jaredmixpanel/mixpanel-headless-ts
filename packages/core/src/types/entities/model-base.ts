@@ -61,7 +61,7 @@ export interface ModelDumpOptions {
  *
  * `K` is the set of attribute names the owning class declares (the keys
  * of its `XInit` constructor bag), so a spec whose `name` is not a
- * declared field fails to compile; the unparameterised form is the
+ * declared field fails to compile; the unparameterized form is the
  * class-agnostic view the rig and the response validator walk.
  */
 export interface EntityFieldSpec<K extends string = string> {
@@ -173,7 +173,7 @@ export interface ComputedFieldSpec {
  *
  * `F` is the class's constructor bag (`XInit`). `EntityModelStatics<XInit>`
  * is what `super(...)` and {@link prepareInit} take from a concrete class;
- * the unparameterised form (`F = never`) is the class-agnostic view for
+ * the unparameterized form (`F = never`) is the class-agnostic view for
  * heterogeneous tables (the rig's codec rows, nested-model thunks): its
  * field names are unconstrained and its constructor is deliberately
  * uncallable, since no bag type fits every class.
@@ -326,7 +326,7 @@ interface ClassIndex {
 const CLASS_INDEX = new WeakMap<EntityModelStatics, ClassIndex>();
 
 /**
- * Look up (or build and memoise) the decode index of one class.
+ * Look up (or build and memoize) the decode index of one class.
  *
  * @param cls - The entity-model statics.
  * @returns The class's index.
@@ -360,7 +360,7 @@ function classIndex(cls: EntityModelStatics): ClassIndex {
  * constructors receive attribute-name bags directly.
  *
  * The result is typed as the class's constructor bag `F` because the
- * constructor is the validator: this function only canonicalises keys,
+ * constructor is the validator: this function only canonicalizes keys,
  * and every value it forwards is checked (required, nullable, coerced,
  * reconstructed) by the constructor it feeds — the one place the
  * unvalidated-to-typed assertion lives.
@@ -418,7 +418,7 @@ export function prepareInit<F extends object>(
  * `F` is the subclass's constructor bag (`XInit`): it types the
  * `super(cls, fields)` call and ties the class statics to the same key
  * set. It does not shape the instance — every subclass declares its
- * materialised fields explicitly, because the instance type differs
+ * materialized fields explicitly, because the instance type differs
  * from the bag (defaults applied, nested payloads reconstructed into
  * model instances).
  *
@@ -786,7 +786,7 @@ function dumpValue(
   // `model_dump` keeps arbitrary objects inside `dict[str, Any]`
   // fields by identity (`out['d']['k'] is c` for a custom-class member,
   // with and without `exclude_none`). A clone-anything walk would strip
-  // class behaviour (a `Uint8Array` decomposes into index keys).
+  // class behavior (a `Uint8Array` decomposes into index keys).
   return value;
 }
 

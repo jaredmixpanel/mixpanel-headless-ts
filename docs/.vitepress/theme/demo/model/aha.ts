@@ -1,4 +1,4 @@
-// The "Aha moments" report: which behaviours users come back for after
+// The "Aha moments" report: which behaviors users come back for after
 // the born event. Each candidate is the return event of one retention
 // query, so the ranking says what retained users keep doing, not which
 // early action causes retention (that needs a cohort comparison).

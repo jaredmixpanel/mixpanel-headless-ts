@@ -126,7 +126,7 @@ export interface ExclusionFields {
  *
  * @example
  * ```ts
- * // Drop anyone who cancelled between the first and third step.
+ * // Drop anyone who canceled between the first and third step.
  * const noCancel = new Exclusion({ event: "Cancel", from_step: 0, to_step: 2 });
  * ```
  * @see mixpanel_headless.types.Exclusion

@@ -63,7 +63,7 @@ const JS_FILES = ["**/*.{js,mjs,cjs}"];
 // ---------------------------------------------------------------------------
 
 /**
- * Normalise an upstream preset that still ships `warn` severities to `error`.
+ * Normalize an upstream preset that still ships `warn` severities to `error`.
  *
  * @param {object} config - One flat-config entry (a preset object with `rules`).
  * @returns {object} The same entry with every `warn` severity raised to `error`.
@@ -404,7 +404,7 @@ const config = defineConfig([
       // Fixture builders and codec tables nest calls legitimately.
       "unicorn/max-nested-calls": "off",
       // Entity-model statics name the concrete class deliberately;
-      // switching to `this` changes behaviour under subclassing.
+      // switching to `this` changes behavior under subclassing.
       "unicorn/class-reference-in-static-methods": "off",
       // In-place `sort()` / `reverse()` are intentional where used; the
       // copying variants allocate and are covered by the typed
@@ -421,7 +421,7 @@ const config = defineConfig([
       // Named imports from `node:path` & co. are this repo's convention.
       "unicorn/import-style": "off",
       // Inner helpers that close over test state are fine; hoisting them is
-      // churn with no behavioural gain.
+      // churn with no behavioral gain.
       "unicorn/consistent-function-scoping": "off",
       // Readability calls this codebase makes the other way.
       "unicorn/no-unreadable-for-of-expression": "off",
@@ -434,7 +434,7 @@ const config = defineConfig([
       // The ternary form `...(cond ? { a } : {})` is used consistently and
       // reads explicitly; `...(cond && { a })` relies on a spread quirk.
       "unicorn/consistent-conditional-object-spread": "off",
-      // Lazily-initialised module-level caches and one-time module init
+      // Lazily-initialized module-level caches and one-time module init
       // (inspect hooks, codec registration) are deliberate.
       "unicorn/no-top-level-assignment-in-function": "off",
       "unicorn/no-top-level-side-effects": "off",
@@ -967,7 +967,7 @@ const config = defineConfig([
         // `*.test-d.ts` = vitest typecheck files (type-level tests).
         { pattern: String.raw`\.test(-d)?\.ts$` },
       ],
-      // Titles are English behaviour statements; the Python test name lives
+      // Titles are English behavior statements; the Python test name lives
       // in a trailing `// python: test_x` comment, never in the title
       // (CONTRIBUTING "Tests").
       "vitest/valid-title": [
@@ -976,11 +976,11 @@ const config = defineConfig([
           mustNotMatch: {
             it: [
               "^test_",
-              "State the behaviour in English; keep the Python name in a `// python:` comment",
+              "State the behavior in English; keep the Python name in a `// python:` comment",
             ],
             test: [
               "^test_",
-              "State the behaviour in English; keep the Python name in a `// python:` comment",
+              "State the behavior in English; keep the Python name in a `// python:` comment",
             ],
             describe: [
               String.raw`^Test[A-Z]|^test_|\.py:\d`,

@@ -603,7 +603,7 @@ export function transformRetention(
 
 /**
  * Transform a raw `/segmentation` response into a
- * {@link SegmentationResult}, totalling every count in `data.values`.
+ * {@link SegmentationResult}, totaling every count in `data.values`.
  *
  * @param raw - Raw API response.
  * @param event - Event name that was queried.

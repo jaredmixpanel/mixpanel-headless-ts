@@ -11,7 +11,7 @@
  * half-up; the `$insert_id` generator is injectable so streaming vectors
  * replay deterministically; and every `dict.get`/`dict.pop` default goes
  * through `Object.hasOwn`, never `in`. Python's debug logging on the
- * uuid-fill branch has no twin — only the value behaviour is contract.
+ * uuid-fill branch has no twin — only the value behavior is contract.
  *
  * @see mixpanel_headless._internal.transforms
  * @internal
@@ -128,7 +128,7 @@ function dictKeyText(key: unknown): string {
  *
  * @remarks
  * A non-dict `properties` value is in-annotation (the interior of a
- * `dict[str, Any]`), so CPython's behaviour is contract and is
+ * `dict[str, Any]`), so CPython's behavior is contract and is
  * reproduced branch for branch:
  *
  * | input | CPython |

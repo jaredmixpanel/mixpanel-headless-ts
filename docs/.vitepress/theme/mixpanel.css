@@ -145,7 +145,7 @@ html.dark {
 /*
  * The Python site's button: transparent, a subtle border, 13px text, a
  * brand outline on keyboard focus. The component ships its own layout; only
- * colours and weight are overridden here.
+ * colors and weight are overridden here.
  */
 
 .markdown-copy-buttons {
@@ -197,7 +197,7 @@ html.dark {
  * coordinates and drifts by the scroll distance. The viewport bound stops
  * wide option-bag types from running off screen.
  *
- * Colours: style-core maps the popup onto the theme's page background; the
+ * Colors: style-core maps the popup onto the theme's page background; the
  * elevated surface with the divider and a shadow lifts it off the block
  * in both schemes. Docs copy uses the body tint, tag names the brand.
  */
@@ -242,7 +242,7 @@ html.dark {
 /* --- Home: the playground card --------------------------------------------- */
 /*
  * The one feature card that leads somewhere interactive gets a quiet brand
- * tint, a hairline in the brand colour and a small label, so it reads as
+ * tint, a hairline in the brand color and a small label, so it reads as
  * the "try it" door among prose links without shouting. Matched by its
  * link rather than a class: VitePress renders the home features from
  * frontmatter and offers no per-card hook.

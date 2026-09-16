@@ -65,7 +65,7 @@ function normalizeDateKey(dateKey: string): string {
  * Python orders by code point; this keeps the engine's UTF-16 code-unit
  * order, which differs only when a surrogate pair meets a BMP character
  * above U+D7FF. No corpus key exercises that case, so the switch to
- * `compareCodepoints` is a behaviour change to make together with a
+ * `compareCodepoints` is a behavior change to make together with a
  * vector that proves it, not silently here.
  *
  * @param keys - Keys to sort.

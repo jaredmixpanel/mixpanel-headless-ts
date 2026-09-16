@@ -81,11 +81,11 @@ interface ShikiOverrides {
 }
 
 /**
- * Build a code theme from a GitHub base plus the Mixpanel token colours.
+ * Build a code theme from a GitHub base plus the Mixpanel token colors.
  *
  * The overrides come last in `tokenColors`, so for equal-specificity scopes
  * they win over the base rules; everything the palette does not name keeps
- * the GitHub colour.
+ * the GitHub color.
  *
  * @param github - The GitHub theme to extend.
  * @param file - The override file name under `theme/`.
@@ -186,7 +186,7 @@ const apiOverview: DefaultTheme.SidebarItem = {
 // --- Content Security Policy ---------------------------------------------
 
 // Inline `<script>` elements (no `src`), whose text is what a CSP hash
-// covers. VitePress emits a few per page (the colour-scheme and platform
+// covers. VitePress emits a few per page (the color-scheme and platform
 // probes, the asset hash map); they are hashed from the page rather than
 // listed, so a VitePress upgrade that changes one cannot silently break the
 // site — tests/demo-dist.test.ts recomputes the hashes from the built HTML.
@@ -207,7 +207,7 @@ const CONNECT_HOSTS = [
  * Build the policy for one built page.
  *
  * `style-src` keeps `'unsafe-inline'`: Shiki writes the light/dark token
- * colours as `style` attributes on thousands of spans, which cannot be
+ * colors as `style` attributes on thousands of spans, which cannot be
  * hashed without `'unsafe-hashes'`. That is the accepted gap. Applied at
  * build time only, so the dev server's HMR (inline and eval) is untouched;
  * `frame-ancestors` is not settable from a meta element and is left out.

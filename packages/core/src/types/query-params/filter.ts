@@ -1620,7 +1620,7 @@ export class Filter {
  *
  * - the conformance codec (`conformance-runner/src/vector-codecs.ts`), which must rehydrate
  *   a *recorded* Filter faithfully — pinned vectors capture the downstream
- *   builders' own guard behaviour (engage `ES13`, segfilter `SG1` / `SG2`
+ *   builders' own guard behavior (engage `ES13`, segfilter `SG1` / `SG2`
  *   / `SG3`) on an already-constructed Filter, so re-validating or
  *   rewriting the fields on the way in would change what the builder
  *   under test sees;

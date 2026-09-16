@@ -565,7 +565,7 @@ describe("Flows bookmark params", () => {
 });
 
 // --- Probe-pinned pydantic-core shapes (TS-only additions) ---
-// CPython/pydantic behaviour the Python unit file never exercised but the
+// CPython/pydantic behavior the Python unit file never exercised but the
 // structural twin must reproduce for the differential fuzz to pass; every
 // expectation is a verbatim CPython transcript row.
 

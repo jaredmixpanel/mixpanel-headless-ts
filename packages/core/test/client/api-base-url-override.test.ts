@@ -603,7 +603,7 @@ describe("Workspace facade hits override", () => {
 });
 
 // =============================================================================
-// Unset → byte-identical live behaviour
+// Unset → byte-identical live behavior
 // =============================================================================
 
 describe("Unset is live", () => {

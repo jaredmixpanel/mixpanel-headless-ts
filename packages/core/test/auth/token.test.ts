@@ -1,6 +1,6 @@
 // OAuthTokens / OAuthClientInfo: parse factories, the tz-aware expiry
 // validator, the 30-second expiry buffer and `fromTokenResponse`. TS unit
-// tests over `token.py`'s documented behaviour; no Python suite is mirrored.
+// tests over `token.py`'s documented behavior; no Python suite is mirrored.
 
 import { describe, expect, it } from "vitest";
 

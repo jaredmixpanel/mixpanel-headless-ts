@@ -876,7 +876,7 @@ function scanFlowSteps(steps: readonly FlowStep[]): ValidationError[] {
 
 /**
  * The retention pair `[born_event, return_event]`: each event's filters,
- * labelled by role rather than index.
+ * labeled by role rather than index.
  *
  * @param events - The two retention events.
  * @returns Errors in source order.

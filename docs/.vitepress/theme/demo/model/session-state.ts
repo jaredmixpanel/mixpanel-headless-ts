@@ -69,7 +69,7 @@ export interface PickerProject extends PickedProject {
   readonly workspaces: readonly PickedWorkspace[];
 }
 
-/** One organisation's projects, in picker order. */
+/** One organization's projects, in picker order. */
 export interface PickerGroup {
   readonly organization: string;
   readonly projects: readonly PickerProject[];
@@ -210,8 +210,8 @@ function compareText(a: string, b: string): number {
 }
 
 /**
- * The projects `/me` lists, grouped by organisation and sorted by
- * (organisation name, project name), both lower-cased — the order the
+ * The projects `/me` lists, grouped by organization and sorted by
+ * (organization name, project name), both lower-cased — the order the
  * Node package's login picker uses. Each project carries its workspaces,
  * default first, then by name.
  *

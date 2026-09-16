@@ -209,7 +209,7 @@ function planFile(sf) {
 function stripAsUnknownAs(node) {
   let current = node;
   while (ts.isAsExpression(current)) current = current.expression;
-  // Parenthesised inner expressions come back without their parens.
+  // Parenthesized inner expressions come back without their parens.
   while (ts.isParenthesizedExpression(current)) current = current.expression;
   return current;
 }

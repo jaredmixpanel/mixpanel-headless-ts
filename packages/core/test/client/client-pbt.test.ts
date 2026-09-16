@@ -1,5 +1,5 @@
 // Property tests for the client's auth header round-trip, `calculateBackoff`
-// bounds, `buildUrl` path normalisation and `iterJsonlLines` chunk
+// bounds, `buildUrl` path normalization and `iterJsonlLines` chunk
 // invariance. Mirrors tests/unit/test_api_client_pbt.py (fast-check for
 // Hypothesis; TestActivityFeedDateRange is in client-queries-pbt.test.ts).
 // Hypothesis category alphabets become explicit alphabets with non-ASCII and non-BMP members.

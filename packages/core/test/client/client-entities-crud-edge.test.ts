@@ -1,4 +1,4 @@
-// Entity-CRUD edge behaviour through the assembled client: `appRequest`
+// Entity-CRUD edge behavior through the assembled client: `appRequest`
 // envelope unwrapping, list-method response handling, response type
 // validation, the duplicate bookmark-dashboard lookups, 204 voids, error
 // propagation and workspace-scoped paths. Mirrors every class of

@@ -63,7 +63,7 @@ describe("pythonJsonDumpsCanonical — CPython oracle table", () => {
   it("normalizes every integral number to an integer spelling", () => {
     // The numeric normalization rule: both bodies pre-normalize an
     // integral float to an int, so JS's inability to tell 2 from 2.0
-    // stops being a divergence and becomes the defined behaviour.
+    // stops being a divergence and becomes the defined behavior.
     expect(pythonJsonDumpsCanonical({ v: 2 })).toBe('{"v":2}');
     expect(pythonJsonDumpsCanonical({ v: 1e15 })).toBe(
       '{"v":1000000000000000}',

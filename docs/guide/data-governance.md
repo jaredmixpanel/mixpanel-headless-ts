@@ -17,7 +17,7 @@ All data governance operations require a **workspace ID** — set via the `MP_WO
 For read-only Lexicon schema exploration (listing events/properties with descriptions and metadata), see [Discovery](/guide/discovery). This guide covers **write operations**: creating, updating, and deleting definitions.
 :::
 
-The request and response models follow the same conventions as the other App API entities — `new XParams({ ... })` constructors, `snake_case` fields, `toJSON()` / `modelDumpExcludeNone()` serialisation. See [How the models work](/guide/entity-management#how-the-models-work).
+The request and response models follow the same conventions as the other App API entities — `new XParams({ ... })` constructors, `snake_case` fields, `toJSON()` / `modelDumpExcludeNone()` serialization. See [How the models work](/guide/entity-management#how-the-models-work).
 
 ## Lexicon — event definitions
 
@@ -149,7 +149,7 @@ console.log(definition.name);
 
 ### Bulk update property definitions
 
-Each `BulkPropertyUpdate` names its `resource_type` as `"Event"` or `"User"` (capitalised — this is what the bulk endpoint expects, unlike the lowercase filter values above).
+Each `BulkPropertyUpdate` names its `resource_type` as `"Event"` or `"User"` (capitalized — this is what the bulk endpoint expects, unlike the lowercase filter values above).
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -1180,7 +1180,7 @@ for (const r of result) {
 
 ### Cancel a deletion request
 
-Only pending requests can be cancelled.
+Only pending requests can be canceled.
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";

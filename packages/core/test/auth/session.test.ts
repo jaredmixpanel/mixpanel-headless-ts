@@ -2,7 +2,7 @@
 // functions. Extra-key behavior mirrors each Pydantic model_config:
 // Project/WorkspaceRef/Session IGNORE extras (frozen only); ActiveSession is
 // extra='forbid' and rejects `project` by name. TS unit tests over
-// `session.py`'s documented behaviour; no Python suite is mirrored.
+// `session.py`'s documented behavior; no Python suite is mirrored.
 
 import { describe, expect, it } from "vitest";
 

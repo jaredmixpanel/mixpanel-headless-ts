@@ -129,12 +129,12 @@ export const WORKSPACE_SCOPED_FAMILIES: ReadonlySet<EndpointKind> =
 const NO_OVERRIDES: EndpointOverrides = Object.freeze({});
 
 /**
- * Normalise one override value for concatenation (Python
+ * Normalize one override value for concatenation (Python
  * `_base_url_override`): trailing slashes stripped; `null` / `undefined`
  * / empty / slash-only all collapse to `""` (= unset).
  *
  * @param value - The raw override value.
- * @returns The normalised base, or `""` when unset.
+ * @returns The normalized base, or `""` when unset.
  * @example
  * ```typescript
  * normalizeBaseUrlOverride("http://127.0.0.1:8080/"); // "http://127.0.0.1:8080"
@@ -198,7 +198,7 @@ export function endpointOverridesFromEnv(
 
 /**
  * Report whether the bag routes every family at one host (`apiBaseUrl`
- * set after normalisation) — the condition that collapses the region
+ * set after normalization) — the condition that collapses the region
  * probe.
  *
  * @param overrides - The override bag.
@@ -238,7 +238,7 @@ function liveEndpoints(region: Region): ReadonlyMap<EndpointKind, string> {
  * @param region - Mixpanel region key.
  * @param overrides - The injected override bag (default: none).
  * @returns With neither member set: the live `ENDPOINTS[region]` object
- *   itself (byte-identical behaviour). With `apiBaseUrl` set: a fresh
+ *   itself (byte-identical behavior). With `apiBaseUrl` set: a fresh
  *   table of `{base}{prefix}` for every family. With `appBaseUrl` set:
  *   the `app` entry becomes `{appBase}/api/app` on top of whichever
  *   table applies. The live table is never mutated.

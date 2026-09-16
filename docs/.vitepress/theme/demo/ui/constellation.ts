@@ -4,7 +4,7 @@
 // It is a picture of the loop's progress, not a chart of the result — the
 // table or list that follows is the accessible representation, so the
 // SVG is hidden from assistive technology. Dependency-free, like the
-// other visualisations.
+// other visualizations.
 
 import { defineComponent, h, type PropType, type VNode } from "vue";
 
@@ -20,7 +20,7 @@ export interface ConstellationEdge {
   readonly to: number;
   /**
    * What the query found, 0–1, driving the arc's weight and opacity;
-   * `null` when the query failed (a dashed grey arc).
+   * `null` when the query failed (a dashed gray arc).
    */
   readonly weight: number | null;
   /** Whether the arc is part of the result the report singles out. */
@@ -34,7 +34,7 @@ export type ConstellationLayout = "ring" | "hub";
 
 /** Drawing geometry (user units = px at full size). */
 const VIEW = { width: 640, height: 320 } as const;
-const CENTRE = { x: VIEW.width / 2, y: VIEW.height / 2 } as const;
+const CENTER = { x: VIEW.width / 2, y: VIEW.height / 2 } as const;
 const RING_RADIUS = 112;
 const NODE_RADIUS = 5;
 const HUB_RADIUS = 7;
@@ -75,11 +75,11 @@ function positions(count: number, layout: ConstellationLayout): Point[] {
   const ring = Array.from({ length: Math.max(onRing, 0) }, (_, i) => {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / Math.max(onRing, 1);
     return {
-      x: CENTRE.x + RING_RADIUS * Math.cos(angle),
-      y: CENTRE.y + RING_RADIUS * Math.sin(angle),
+      x: CENTER.x + RING_RADIUS * Math.cos(angle),
+      y: CENTER.y + RING_RADIUS * Math.sin(angle),
     };
   });
-  return layout === "hub" ? [CENTRE, ...ring] : ring;
+  return layout === "hub" ? [CENTER, ...ring] : ring;
 }
 
 const unit = (from: Point, to: Point): Point => {
@@ -101,8 +101,8 @@ const fixed = (value: number): string => value.toFixed(1);
  * so the reverse pair bows the other way, trimmed off both nodes with
  * room for the arrowhead, plus the arrowhead itself.
  *
- * @param from - Source node centre.
- * @param to - Target node centre.
+ * @param from - Source node center.
+ * @param to - Target node center.
  * @param radii - The two nodes' radii.
  * @returns The curve's `d`, the head's `d`, and the curve's length.
  */
@@ -142,7 +142,7 @@ function arc(
 
 /**
  * Where a ring label sits relative to its node: outside the ring, anchored
- * away from the centre, above or below when the node is near the top or
+ * away from the center, above or below when the node is near the top or
  * bottom.
  *
  * @param point - The node.
@@ -153,7 +153,7 @@ function labelPlacement(point: Point): {
   y: number;
   anchor: "start" | "middle" | "end";
 } {
-  const direction = unit(CENTRE, point);
+  const direction = unit(CENTER, point);
   const at = along(point, direction, LABEL_GAP);
   let anchor: "start" | "middle" | "end" = "middle";
   if (Math.abs(direction.x) > 0.3) {
@@ -175,7 +175,7 @@ const truncate = (name: string): string =>
 export default defineComponent({
   name: "DemoConstellation",
   props: {
-    /** Node labels, in ring order (the hub layout's first node is the centre). */
+    /** Node labels, in ring order (the hub layout's first node is the center). */
     nodes: { type: Array as PropType<readonly string[]>, required: true },
     layout: { type: String as PropType<ConstellationLayout>, default: "ring" },
     /** The settled queries, in loop order. */
@@ -291,8 +291,8 @@ export default defineComponent({
       // The count sits in the ring's middle; with a node there, just above it.
       const countAt =
         props.layout === "hub"
-          ? { x: CENTRE.x, y: CENTRE.y - HUB_RADIUS - 12 }
-          : { x: CENTRE.x, y: CENTRE.y + 7 };
+          ? { x: CENTER.x, y: CENTER.y - HUB_RADIUS - 12 }
+          : { x: CENTER.x, y: CENTER.y + 7 };
       return h(
         "div",
         {

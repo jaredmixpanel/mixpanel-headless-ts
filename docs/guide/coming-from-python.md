@@ -5,7 +5,7 @@ description: "How the TypeScript port maps onto mixpanel_headless — three nami
 
 # Coming from the Python library?
 
-This is a faithful, behaviour-for-behaviour port of [`mixpanel_headless`](https://github.com/mixpanel/mixpanel-headless) — same concepts, same auth model, same config file, same query semantics. The [Python guides](https://mixpanel.github.io/mixpanel-headless/) apply directly; translate names with three rules.
+This is a faithful, behavior-for-behavior port of [`mixpanel_headless`](https://github.com/mixpanel/mixpanel-headless) — same concepts, same auth model, same config file, same query semantics. The [Python guides](https://mixpanel.github.io/mixpanel-headless/) apply directly; translate names with three rules.
 
 ## The three rules
 
@@ -266,7 +266,7 @@ The port ships no `mp` command. Because the on-disk state is shared, the Python 
 
 Every release replays a conformance corpus of **3,453 test vectors extracted from the Python implementation** — covering outputs, error class and code, and the exact HTTP requests made — with zero failures, and a cross-language differential oracle continuously fuzzes the two implementations against each other (28,091 examples, 0 divergences at the current pin). Even Python-specific rendering quirks (float formatting, `str()` semantics) are reproduced so results match byte for byte.
 
-The port is pinned to one Python revision, and every known behavioural difference is written down against the TypeScript symbol that carries it. They fall into a few categories:
+The port is pinned to one Python revision, and every known behavioral difference is written down against the TypeScript symbol that carries it. They fall into a few categories:
 
 - **Numbers beyond 2<sup>53</sup>** — CPython integers are arbitrary precision; the port returns JS `number` and rejects anything beyond ±(2<sup>53</sup> − 1) with `PY_INT_UNSAFE_INTEGER` rather than rounding silently.
 - **Integer-like object keys** — JavaScript hoists them to the front of an object; only key order differs, which the sorted-key canonical JSON does not see.

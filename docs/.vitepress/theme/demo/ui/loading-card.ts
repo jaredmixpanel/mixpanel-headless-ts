@@ -52,7 +52,7 @@ const ROW_WIDTHS: ReadonlyArray<readonly [name: string, workspace: string]> = [
   ["40%", "16%"],
   ["52%", "20%"],
 ];
-/** Rows under the first and the second organisation header. */
+/** Rows under the first and the second organization header. */
 const ROWS_PER_ORG: readonly number[] = [3, 2];
 
 /** Sign-in loading card. */

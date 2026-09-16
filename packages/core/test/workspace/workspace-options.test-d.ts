@@ -1,6 +1,6 @@
 // Type-level contract of the `Workspace` facade's public surface: the
 // constructor option bag and the method signatures a consumer compiles
-// against. Runtime behaviour lives in test/workspace/*.test.ts; this file
+// against. Runtime behavior lives in test/workspace/*.test.ts; this file
 // only fails when a signature drifts.
 import { describe, expectTypeOf, it } from "vitest";
 

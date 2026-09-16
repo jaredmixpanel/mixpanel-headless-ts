@@ -1,5 +1,5 @@
 // The project picker shown after sign-in: `/me`'s projects grouped by
-// organisation, each with its workspaces (default preselected), and one
+// organization, each with its workspaces (default preselected), and one
 // "Use" button per project that becomes `ws.use({ project, workspace })`.
 // While that call runs the list stays on screen but inert, the run
 // indicator crosses the card and the chosen row is marked, so the visitor

@@ -19,7 +19,7 @@
  *
  * Naming: Python `snake_case` methods become `camelCase`; option-bag keys
  * that mirror Python keyword arguments or wire fields stay `snake_case`
- * (README "Naming"). Behaviour is locked against Python by the
+ * (README "Naming"). Behavior is locked against Python by the
  * conformance corpus (`conformance-runner/`) and the differential oracle
  * (`differential/`); every known deviation is listed in `PORTING.md`.
  *

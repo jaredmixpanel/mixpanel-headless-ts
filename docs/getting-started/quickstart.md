@@ -30,7 +30,7 @@ console.log(`Logged in as ${summary.user_email ?? summary.name}`);
 
 [`loginUnified`](/reference/node/functions/loginUnified) is the engine behind the Python CLI's `mp login`. It auto-detects the auth type from the environment:
 
-| Env vars set                | Auth type used         | Region behaviour                                 | Persistence                                                                                           |
+| Env vars set                | Auth type used         | Region behavior                                  | Persistence                                                                                           |
 | --------------------------- | ---------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | `MP_USERNAME` + `MP_SECRET` | `service_account`      | probes `us → eu → in` unless `region` is given   | username + secret persisted to `~/.mp/config.toml`                                                    |
 | `MP_OAUTH_TOKEN`            | `oauth_token`          | probes `us → eu → in` unless `region` is given   | bearer persisted inline to `~/.mp/config.toml` (pass `token_env: "VAR"` to persist a pointer instead) |

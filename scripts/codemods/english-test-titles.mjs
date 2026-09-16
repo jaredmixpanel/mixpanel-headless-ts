@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Codemod: turn Python-identifier test titles into English behaviour
+// Codemod: turn Python-identifier test titles into English behavior
 // statements, keeping the Python name as a trailing `// python:` comment
 // (docs/history/cleanup-plan-2026-09.md §9.4, decision D7).
 //
@@ -11,7 +11,7 @@
 //
 // The rename is deterministic and purely lexical: snake_case words become
 // space-separated words, CamelCase class names are split into words with the
-// first capitalised, a short acronym table restores URL/ID/JSON/…, and rule
+// first capitalized, a short acronym table restores URL/ID/JSON/…, and rule
 // codes such as `f1` / `up4` / `r5c` keep their upper-case letters. Where the
 // mechanical text misleads, the reviewer edits the title afterwards — the
 // `// python:` comment is the stable link back to the Python suite either
@@ -111,7 +111,7 @@ function humanizeTestId(id) {
     .join(" ");
 }
 
-/** CamelCase tokenizer: acronym runs, capitalised words, rule codes, digits. */
+/** CamelCase tokenizer: acronym runs, capitalized words, rule codes, digits. */
 const CAMEL_TOKEN =
   /[A-Z]+\d+[a-z]?|[A-Z]{2,}(?=[A-Z][a-z]|$)|[A-Z]?[a-z]+|[A-Z]|\d+/g;
 

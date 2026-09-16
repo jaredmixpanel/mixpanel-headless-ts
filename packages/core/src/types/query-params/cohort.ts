@@ -97,7 +97,7 @@ function validateCohortDate(dateStr: string): void {
 
 /**
  * Convert `Filter` objects to the event-selector expression tree a
- * behavioural cohort criterion embeds.
+ * behavioral cohort criterion embeds.
  *
  * Each `Filter` is emitted as an Insights bookmark filter node
  * (`filterOperator` / `filterValue` / `filterType` keys) rather than the
@@ -238,7 +238,7 @@ export type HasPropertyType =
  *
  * Build criteria through the static factories; the field constructor
  * exists for codec reconstruction only. Each criterion contributes a
- * selector node and, for behavioural criteria, a behavior entry to the
+ * selector node and, for behavioral criteria, a behavior entry to the
  * Mixpanel cohort-definition format (legacy `selector` + `behaviors`
  * JSON).
  *

@@ -87,7 +87,7 @@ jobs:
       # only to produce the machine-readable verdict report as an artifact. The
       # CLI writes the JSON to stdout (summary to stderr), so it is redirected
       # here. Runs even when the gate failed so the report is available for
-      # triage, but not when install failed or the job was cancelled.
+      # triage, but not when install failed or the job was canceled.
       - name: Conformance report
         id: report
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}

@@ -232,7 +232,7 @@ export function buildDateRange(options: {
  * `null` yields `[]`; a single `Filter`/`FrequencyFilter` is wrapped;
  * a list is processed element-by-element. Elements that are neither a
  * `FrequencyFilter` nor a `Filter` are silently skipped — Python has no
- * `else` branch, so the skip is the behaviour, not an oversight.
+ * `else` branch, so the skip is the behavior, not an oversight.
  *
  * Dispatch order mirrors Python: `FrequencyFilter` is tested before
  * `Filter` (they are unrelated classes in Python, but the source order

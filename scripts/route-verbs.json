@@ -1,5 +1,5 @@
 {
-  "note": "Route-level consent phrases, keyed \"<METHOD> <family> <template>\" (heads spec 01 §7.2). Consent is authorised per ROUTE, not per method: several headless methods can share one route, and the server cannot tell them apart, so the dialog must describe the union of what the route can do. scripts/generate-bridge-allowlist.mjs fails on a write row whose apis map to different method verbs unless that route appears here, fails on an entry here that matches no route, and a `{n}` placeholder is only accepted on bulk methods.",
+  "note": "Route-level consent phrases, keyed \"<METHOD> <family> <template>\" (heads spec 01 §7.2). Consent is authorized per ROUTE, not per method: several headless methods can share one route, and the server cannot tell them apart, so the dialog must describe the union of what the route can do. scripts/generate-bridge-allowlist.mjs fails on a write row whose apis map to different method verbs unless that route appears here, fails on an entry here that matches no route, and a `{n}` placeholder is only accepted on bulk methods.",
   "verbs": {
     "DELETE app /api/app/projects/{project_id}/data-definitions/events/": "delete a custom event or event definition",
     "DELETE app /api/app/projects/{project_id}/schemas": "delete ALL matching schemas in this project",

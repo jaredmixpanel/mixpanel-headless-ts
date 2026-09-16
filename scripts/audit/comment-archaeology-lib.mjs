@@ -22,7 +22,7 @@ import ts from "typescript";
 /**
  * Named banned-token regexes. Each is compiled with the `g` flag (the scanner
  * resets `lastIndex` before every use). The prose words carry `i` so a
- * capitalised variant at the start of a sentence is not a loophole.
+ * capitalized variant at the start of a sentence is not a loophole.
  */
 export const BANNED_TOKENS = Object.freeze([
   {
@@ -613,9 +613,9 @@ export function fixOwnershipMarker(line) {
   if (!/[A-Za-z]/.test(label)) {
     return { line: null, changed: true, deleted: true };
   }
-  const capitalised = label.charAt(0).toUpperCase() + label.slice(1);
+  const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
   return {
-    line: `${indent}// --- ${capitalised} ---`,
+    line: `${indent}// --- ${capitalized} ---`,
     changed: true,
     deleted: false,
   };
