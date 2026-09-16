@@ -335,7 +335,7 @@ describe("callback HTML security", () => {
     const details = (rejection as OAuthError).details;
     expect(details).toStrictEqual({ received_state: "wrong-state" });
     expect(details).not.toHaveProperty("expected_state");
-    // The serialised form hosts log must not carry the nonce either.
+    // The serialized form hosts log must not carry the nonce either.
     expect(JSON.stringify((rejection as OAuthError).toDict())).not.toContain(
       state,
     );

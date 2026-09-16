@@ -12,7 +12,7 @@
  * `bool` subclasses `int`; the property reference is built before any
  * operator dispatch, so `ES1` wins over every other code; and a filter
  * list is translated lazily, aborting at the first failing element.
- * Python's warning logs have no twin — the value behaviour around them
+ * Python's warning logs have no twin — the value behavior around them
  * does.
  *
  * @see mixpanel_headless._internal.query.user_builders
@@ -230,7 +230,7 @@ export function filterToSelector(f: Filter): string {
     }
     // Python also materializes a `dropped` list, but only to feed
     // `logger.warning` — logging is out of contract, so the TS twin
-    // keeps just the value behaviour.
+    // keeps just the value behavior.
     const parts: string[] = [];
     for (const v of value) {
       if (isSelectorScalar(v)) {

@@ -4,7 +4,7 @@ The isomorphic core of Mixpanel Headless: the `Workspace` facade, the five
 query engines (Insights, Funnels, Retention, Flows, User profiles), the query
 vocabulary (`Filter`, `Metric`, `GroupBy`, …), entity models, result types and
 the coded error hierarchy. Zero Node dependencies — it runs anywhere `fetch`
-and WebCrypto exist. A behaviour-for-behaviour port of the Python
+and WebCrypto exist. A behavior-for-behavior port of the Python
 [`mixpanel_headless`](https://github.com/mixpanel/mixpanel-headless) library,
 verified against a corpus of vectors extracted from it (see the repository's
 [`PORTING.md`](../../PORTING.md)).
@@ -89,4 +89,4 @@ management.
 
 Carries `"private": true` until the owner flips it; versions and release notes
 are managed by Changesets and published through `release.yml` (see the
-repository's `CONTRIBUTING.md`, "Releasing"). Licence: MIT.
+repository's `CONTRIBUTING.md`, "Releasing"). License: MIT.

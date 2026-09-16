@@ -75,7 +75,7 @@ export interface MockWorkspaceClient {
    * {@link arbFunnelsCalls}.
    */
   readonly arbFunnelsOptions: Array<Record<string, unknown> | undefined>;
-  /** Install the `export_profiles_page` behaviour. */
+  /** Install the `export_profiles_page` behavior. */
   setPageHandler: (handler: PageHandler) => void;
   /** Install a fixed `engage_stats` response. */
   setEngageStats: (value: unknown) => void;
@@ -296,7 +296,7 @@ export function makePageResult(
 }
 
 /**
- * Build the `export_profiles_page` behaviour
+ * Build the `export_profiles_page` behavior
  * (`_page_side_effect_factory`).
  *
  * @param total - Total profiles across all pages.

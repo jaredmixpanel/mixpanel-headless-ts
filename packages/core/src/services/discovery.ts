@@ -52,7 +52,7 @@ import { passthrough } from "./shared.js";
  * The `warnings.warn(..., UserWarning)` side channel as an injected
  * seam (`core` has no stderr). Python's default action prints the
  * warning and continues; the TS default is a no-op sink, so the
- * observable behaviour (the call still returns) is preserved and hosts
+ * observable behavior (the call still returns) is preserved and hosts
  * that care (CLI, tests) pass their own sink.
  *
  * @param message - The warning text (message text is not contract; the
@@ -538,7 +538,7 @@ function splitWords(text: string): string[] {
  * Build a sorted list of {@link SubPropertyInfo} from sampled raw
  * values.
  *
- * Behaviour (verbatim from the Python docstring):
+ * Behavior (verbatim from the Python docstring):
  *
  * - JSON `null` sub-values are missing data, not a type. Sub-keys seen
  *   only with `null` warn and are excluded.

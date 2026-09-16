@@ -1,4 +1,4 @@
-// Entity CRUD through the assembled client: dashboards (organisation,
+// Entity CRUD through the assembled client: dashboards (organization,
 // blueprints, RCA/advanced), bookmarks v2 (CRUD, bulk ops, history) and
 // cohorts on the App API. Mirrors every class of
 // tests/unit/test_api_client_crud.py; Python's `with client:` blocks are

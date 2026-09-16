@@ -17,7 +17,7 @@
 //   5. scripts/consent-verbs.json — tsMethod -> consent verb phrase (§7.2).
 //   6. scripts/route-verbs.json — "<METHOD> <family> <template>" -> the
 //      phrase for a route whose methods disagree, or that needs its own
-//      wording. Consent is authorised per route, not per method.
+//      wording. Consent is authorized per route, not per method.
 //
 // The generator fails hard rather than guessing:
 //   - an interaction on a host the rules do not name (admitted or export);
@@ -324,7 +324,7 @@ function isBulkMethod(tsMethod) {
 }
 
 /**
- * The consent phrase for a write route (spec §7.2). Consent is authorised per
+ * The consent phrase for a write route (spec §7.2). Consent is authorized per
  * route, not per method: several headless methods can share one route and the
  * server cannot tell them apart, so a phrase drawn from just the primary api
  * could misdescribe what the page is about to do. An explicit route-level

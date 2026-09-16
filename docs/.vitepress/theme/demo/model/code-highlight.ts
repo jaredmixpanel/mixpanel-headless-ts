@@ -5,7 +5,7 @@
 // `renderCall` and the setup snippets can produce, and degrades to `punct`
 // for anything else rather than failing.
 
-/** What a token is, for colouring. */
+/** What a token is, for coloring. */
 export type TokenType =
   "keyword" | "string" | "number" | "punct" | "ident" | "comment" | "space";
 

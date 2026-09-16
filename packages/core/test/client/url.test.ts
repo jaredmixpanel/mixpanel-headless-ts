@@ -1,5 +1,5 @@
 // The regional endpoint table and `buildUrl` (query/export/engage prefixes,
-// leading-slash normalisation). Mirrors TestEndpoints and TestBuildUrl from
+// leading-slash normalization). Mirrors TestEndpoints and TestBuildUrl from
 // tests/unit/test_api_client.py; Python drives `client._build_url` on a
 // Session-bound client, here the pure `buildUrl(region, kind, path)` is
 // called with the fixture's region literal — every expected value is verbatim.

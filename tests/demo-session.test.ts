@@ -381,7 +381,7 @@ describe("project picker", () => {
     },
   };
 
-  it("groups by organisation, case-folded, with workspaces default-first", async () => {
+  it("groups by organization, case-folded, with workspaces default-first", async () => {
     const groups = groupProjects(await meFrom(payload));
     expect(
       groups.map((g) => [g.organization, g.projects.map((p) => p.id)]),

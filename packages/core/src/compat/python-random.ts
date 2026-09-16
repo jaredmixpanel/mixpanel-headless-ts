@@ -5,7 +5,7 @@
  * Ported for `ReplayBundle.sample(n, seed)` as full CPython parity rather
  * than a substitute PRNG, so a seeded sample selects the same replays in
  * both runtimes. The Python tests only lock same-seed self-consistency,
- * but a divergent selection would be a silent behavioural fork. Locked by
+ * but a divergent selection would be a silent behavioral fork. Locked by
  * pinned CPython probe outputs (`test/compat/python-random.test.ts`).
  *
  * Scope: integer (and `null`) seeds only — the `str`/`bytes` seeding

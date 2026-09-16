@@ -26,7 +26,7 @@
  *
  * **Any number whose value is integral renders as an integer**: `2.0` → `2`,
  * `1000000000000000.0` → `1000000000000000`, `-0.0` → `0`. Both bodies
- * apply it, so it is the defined canonical behaviour rather than a JS
+ * apply it, so it is the defined canonical behavior rather than a JS
  * limitation leaking into the identity. In TypeScript it is free (JS has
  * one number type); Python pre-normalizes with `float.is_integer()` → `int`
  * before `json.dumps`, which the fixture generator does and the desktop

@@ -1,7 +1,7 @@
 /**
  * Shared constructor guards for the query-parameter types: event-name and
  * cohort-argument validation, calendar-date checks, Python `int`
- * predicates and the raw-cohort deep-copy/sanitise helpers. Guards throw
+ * predicates and the raw-cohort deep-copy/sanitize helpers. Guards throw
  * in Python source order — the first failing rule wins, and the corpus
  * records one `{class, code}` per input. This module is the cycle-free
  * leaf below `filter.ts` and `cohort.ts`, which need each other's types.
@@ -286,7 +286,7 @@ export function deepCopy<T>(value: T): T {
  * Python's body runs `del es["selector"]` whenever
  * `es.get("selector") is None`, which would raise `KeyError` on an absent
  * key; every constructible `CohortDefinition.to_dict()` output carries
- * the key, so the reachable behaviour is exactly "delete when present and
+ * the key, so the reachable behavior is exactly "delete when present and
  * null", and a JS `delete` on an absent key is a silent no-op anyway.
  * Exported for the conformance binding and translated tests only.
  * @param raw - Output of `CohortDefinition.toDict()`.

@@ -1,4 +1,7 @@
-// The "Aha moments" report: which early behaviour predicts retention.
+// The "Aha moments" report: which behaviors users come back for after
+// the born event. Each candidate is the return event of one retention
+// query, so the ranking says what retained users keep doing, not which
+// early action causes retention (that needs a cohort comparison).
 // Mixpanel has no report for it and none is needed — one `queryRetention`
 // per candidate event in a loop, then a ranking of the average curves at a
 // target bucket. The single-source rule holds here too: the loop the code

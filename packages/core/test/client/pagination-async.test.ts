@@ -1,6 +1,6 @@
-// TS-only async behaviour of `paginateAll`: laziness across real await
+// TS-only async behavior of `paginateAll`: laziness across real await
 // points (page N+1 is not requested before page N's items are consumed),
-// abort between pages and during the backoff sleep (every exit normalised
+// abort between pages and during the backoff sleep (every exit normalized
 // to `DOMException("AbortError")`), and early `return()`. No Python source
 // suite: the synchronous Python iterator has no cancellation surface.
 import { describe, expect, it } from "vitest";
@@ -33,7 +33,7 @@ function isAbortError(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === "AbortError";
 }
 
-describe("paginateAll async behaviour", () => {
+describe("paginateAll async behavior", () => {
   it("delayed mock pages: laziness across real await points", async () => {
     // Each response resolves on a macrotask boundary; the walk must
     // still deliver pages strictly in cursor order, one request per

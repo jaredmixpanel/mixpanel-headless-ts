@@ -1,5 +1,5 @@
 // DiscoveryService: event / property / funnel / cohort / top-event listing,
-// property values, cache behaviour, similar-event suggestions and
+// property values, cache behavior, similar-event suggestions and
 // subproperty inference. Mirrors tests/unit/test_discovery.py (all classes).
 // Python's `warnings` becomes an injected WarningSink; the stacklevel case
 // (test_mixed_warning_stacklevel_points_at_user_frame) has no TS analog.

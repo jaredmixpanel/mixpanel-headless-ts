@@ -227,7 +227,7 @@ describe("the export guard evaluates the effective endpoint table", () => {
   });
 
   it.each(EXPORT_ORIGINS)(
-    "apiBaseUrl set: the live origin %s is STILL refused (defence in depth)",
+    "apiBaseUrl set: the live origin %s is STILL refused (defense in depth)",
     async (origin) => {
       const transport = fakeTransport(() => ({ status: 200, json: {} }));
       const ws = makeOverrideWorkspace(transport, { apiBaseUrl: PROXY });

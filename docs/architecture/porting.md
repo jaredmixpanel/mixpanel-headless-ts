@@ -1,20 +1,20 @@
 ---
 title: Porting
-description: "The Python revision the port tracks, what the conformance corpus and the differential oracle prove (and do not), the naming rules, and the categories of known behavioural divergence."
+description: "The Python revision the port tracks, what the conformance corpus and the differential oracle prove (and do not), the naming rules, and the categories of known behavioral divergence."
 ---
 
 # Porting
 
-This is a behaviour-for-behaviour port of the Python
+This is a behavior-for-behavior port of the Python
 [`mixpanel_headless`](https://github.com/mixpanel/mixpanel-headless) library.
-"Behaviour-for-behaviour" is a claim that is checked, not asserted: a corpus
+"Behavior-for-behavior" is a claim that is checked, not asserted: a corpus
 of test vectors extracted from the Python implementation is replayed against
 the port on every run of the repository gate, and a cross-language
 differential oracle fuzzes the two implementations against each other. This
 page records what is pinned, what the rig proves, and where the port knowingly
 differs. The authoritative, always-current list of divergences is
 [`PORTING.md`](https://github.com/jaredmixpanel/mixpanel-headless-ts/blob/main/PORTING.md)
-in the repository; this page summarises its categories and does not repeat
+in the repository; this page summarizes its categories and does not repeat
 its entries.
 
 ## Pinned Python revision
@@ -60,8 +60,8 @@ verdict per vector:
 
 | Verdict          | Meaning                                                                        |
 | ---------------- | ------------------------------------------------------------------------------ |
-| `PASS`           | Output (after canonicalisation), requests and error class/code all match       |
-| `FAIL_OUTPUT`    | The value differs after canonicalisation                                       |
+| `PASS`           | Output (after canonicalization), requests and error class/code all match       |
+| `FAIL_OUTPUT`    | The value differs after canonicalization                                       |
 | `FAIL_REQUEST`   | The port issued a different method, URL, params, headers or body               |
 | `FAIL_ERROR`     | The error class or code differs                                                |
 | `PRECISION_LOSS` | The only difference is the rounding of an integer beyond 2^53                  |
@@ -75,7 +75,7 @@ The gate requires zero `FAIL_*` verdicts.
 The Python repository's fuzz harness generates inputs with Hypothesis and
 feeds them to two oracles over a stdio line protocol — the Python one and
 `oracle-ts`, a bridge over the same bindings the conformance runner uses —
-and compares the answers through a shared canonicaliser. It covers 55 input
+and compares the answers through a shared canonicalizer. It covers 55 input
 families, from the Python-parity string and float helpers to the filter and
 bookmark builders, the validators and the model codecs. A separate
 JSON-schema referee checks every recorded `build_params` payload against the
@@ -91,15 +91,15 @@ agreement with Python on every fuzzed family.
 
 - error message text (class and code are the contract, the message is not);
 - inputs that violate a validator's declared type;
-- integers beyond 2^53 (a canonicaliser policy: integers are contract up to
+- integers beyond 2^53 (a canonicalizer policy: integers are contract up to
   ±(2^53 − 1));
-- object-key order (the canonicaliser sorts keys, so JavaScript's hoisting of
+- object-key order (the canonicalizer sorts keys, so JavaScript's hoisting of
   integer-like keys is invisible to it);
-- local-clock behaviour (the runners freeze a UTC clock);
+- local-clock behavior (the runners freeze a UTC clock);
 - real network timing, timeouts and retries (the `sleep`, `now` and `random`
   seams are injected);
 - file-system security properties on Node;
-- browser-only behaviour;
+- browser-only behavior;
 - the fuzz domain's documented exclusions (timestamps beyond `datetime.max`,
   integer-like unknown keys, big integers).
 
@@ -107,7 +107,7 @@ agreement with Python on every fuzzed family.
 
 ## Known divergence categories
 
-Every known behavioural difference is listed in
+Every known behavioral difference is listed in
 [`PORTING.md`](https://github.com/jaredmixpanel/mixpanel-headless-ts/blob/main/PORTING.md)
 with the TypeScript symbol that carries it; differences introduced
 deliberately are also marked `// Divergence:` at the site in the source. The

@@ -1,5 +1,5 @@
 /**
- * Dashboard members of the `Workspace` facade: dashboard CRUD, favourites
+ * Dashboard members of the `Workspace` facade: dashboard CRUD, favorites
  * and pins, report placement, blueprints and RCA dashboards, and the
  * report-link / text-card updates. Each function is the body of one
  * facade method — options-bag mapping, the params dump, the like-named

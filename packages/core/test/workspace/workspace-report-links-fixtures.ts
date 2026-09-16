@@ -85,7 +85,7 @@ export interface MockApiClient {
  * Build the `mock_api_client` fixture twin: the slug POST echoes a record,
  * `resolve_workspace_id` returns 99.
  *
- * @returns The stub client plus its call logs and behaviour setters.
+ * @returns The stub client plus its call logs and behavior setters.
  */
 function mockApiClient(): MockApiClient {
   const bookmarkUrlCreateCalls: Array<Record<string, unknown>> = [];

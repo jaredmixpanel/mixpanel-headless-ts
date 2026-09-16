@@ -55,7 +55,7 @@ export const MANIFEST_FILE = "manifest.json";
 
 // A fixed header — no build date, nothing that changes between runs (the
 // copyright years are the fixed span in LICENSE, not the build year).
-// `legalComments: "inline"` keeps any dependency licence comments in the
+// `legalComments: "inline"` keeps any dependency license comments in the
 // bytes rather than in a side file nobody vendors.
 const LICENSE_BANNER =
   `/*! ${PACKAGE_NAME} — bundled from ${SOURCE_REPO}. ` +
@@ -188,7 +188,7 @@ async function bundleOne(format, globalName) {
  * Build both artifacts and the manifest, verifying browser purity on the way.
  *
  * @param {{ outDir?: string, allowDirty?: boolean, write?: boolean }} [options] - `outDir` (default `dist/browser`), `allowDirty` (build from a dirty tree; default false), `write` (write the artifacts and manifest to disk; default true).
- * @returns {Promise<{ outDir: string, manifest: object, manifestJson: string, artifacts: Array<{ name: string, bytes: Buffer, size: number, gzipSize: number, sha256: string }>, iifeText: string, exports: string[] }>} The output directory, the manifest (object and serialised), per-artifact bytes and sizes, the IIFE text and the exported global keys.
+ * @returns {Promise<{ outDir: string, manifest: object, manifestJson: string, artifacts: Array<{ name: string, bytes: Buffer, size: number, gzipSize: number, sha256: string }>, iifeText: string, exports: string[] }>} The output directory, the manifest (object and serialized), per-artifact bytes and sizes, the IIFE text and the exported global keys.
  */
 export async function buildBrowserBundles(options = {}) {
   const {

@@ -4,7 +4,7 @@
 // the wire envelopes are built here, in one place, in exactly the shapes the
 // library parses (`transformQueryResult`, `extractFunnelStepsFromSeries`,
 // `extractCohortsAndAverage`, `DiscoveryService`, `MeService`). Absolute
-// dates are materialised relative to the `today` seam so "last 30 days"
+// dates are materialized relative to the `today` seam so "last 30 days"
 // ends on the day the page is opened. An unknown route or a missing fixture
 // key throws — never a silent 200.
 
@@ -159,7 +159,7 @@ function pick(root: unknown, ...path: ReadonlyArray<string | number>): unknown {
 }
 
 /**
- * Names of the behaviours in a funnel or retention clause.
+ * Names of the behaviors in a funnel or retention clause.
  *
  * @param behavior - `sections.show[0].behavior`.
  * @returns Event names in step order.
@@ -173,7 +173,7 @@ function behaviorNames(behavior: unknown): string[] {
 
 /**
  * Local calendar date shifted by whole days (DST-safe: the local constructor
- * normalises day overflow).
+ * normalizes day overflow).
  *
  * @param date - Anchor.
  * @param days - Offset (negative = past).

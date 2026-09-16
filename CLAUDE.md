@@ -14,7 +14,7 @@ The human-facing documents are the source of truth; read them before changing an
 - `CONTRIBUTING.md` — toolchain pins, layout, the gate, generated files, corpus
   refresh, comment/docstring style, test and commit conventions, releasing.
 - `PORTING.md` — the pinned Python revision, naming rules, every known
-  behavioural divergence (with its TS symbol), what the corpus and oracle prove.
+  behavioral divergence (with its TS symbol), what the corpus and oracle prove.
 - `docs/history/` — the port's archived process record (frozen); its README has
   a reading order and a glossary of the identifiers (`R9.1`, `B6-W2`, `P2-4`,
   `TS-5`, `D11–D16`, `AIE-nnn`) older commits still cite. Never add new

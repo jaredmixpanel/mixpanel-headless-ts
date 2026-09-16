@@ -1,7 +1,7 @@
 # Porting notes
 
 How this TypeScript port relates to the Python `mixpanel_headless` library it
-mirrors: the revision it tracks, the naming rules, every known behavioural
+mirrors: the revision it tracks, the naming rules, every known behavioral
 divergence, and what the verification rig does and does not prove. Process
 history (why a decision was taken, by whom, when) lives in
 [`docs/history/`](docs/history/README.md); this file is the living record.
@@ -39,7 +39,7 @@ generated `conformance-runner/src/api-map.gen.ts`; exceptions to the
 mechanical transform live in `conformance-runner/src/naming-exceptions.json`
 and the generator fails on any name with no rule (no fuzzy matching).
 
-## Known behavioural divergences
+## Known behavioral divergences
 
 Contract for all of these: error **class and code** are contract, error
 message text is not; integers are contract up to ±(2^53 − 1). Each item names
@@ -180,7 +180,7 @@ marked `// Divergence:` at the site.
 - `// Divergence:` Python chmods the config file's parent to `0o700` on every
   write whatever the path; the port tightens only the default `~/.mp` and
   leaves a custom `configPath` / `MP_CONFIG_PATH` parent alone —
-  `ConfigManager` (`config/manager.ts`). _Upstream candidate: the Python behaviour
+  `ConfigManager` (`config/manager.ts`). _Upstream candidate: the Python behavior
   chmods unrelated directories such as a repo `config/` or `/tmp`._
 - The default config path is captured at import time in Python and at
   `ConfigManager` construction in TS, so a mid-process `HOME` change is
@@ -206,7 +206,7 @@ marked `// Divergence:` at the site.
   instead of `start` (which needs a shell) — `browserLaunchArgv`
   (`auth/flow.ts`).
 - Not observable: when the callback server and the pasted-redirect reader
-  race during `login`, the loser is cancelled through an `AbortSignal`;
+  race during `login`, the loser is canceled through an `AbortSignal`;
   Python leaves its daemon thread running. The loser's outcome is discarded
   in both runtimes — `OAuthFlow.login` (`auth/flow.ts`).
 
@@ -318,9 +318,9 @@ line protocol and compared through the shared canonicalizer; 55 families.
 **Not proven**: anything outside the recorded input domain — error message
 text; out-of-annotation inputs; integers beyond 2^53 (canonicalizer policy);
 object-key order (the canonicalizer sorts keys, so integer-key hoisting is
-invisible); local-clock behaviour (runners freeze a UTC clock); real
+invisible); local-clock behavior (runners freeze a UTC clock); real
 network timing, timeouts and retries (injected `sleep` / `now` / `random`
-seams); file-system security properties on Node; browser-only behaviour; and
+seams); file-system security properties on Node; browser-only behavior; and
 the fuzz domain's documented exclusions (timestamps beyond `datetime.max`,
 integer-like unknown keys, big ints), so "0 divergences" is relative to
 those.

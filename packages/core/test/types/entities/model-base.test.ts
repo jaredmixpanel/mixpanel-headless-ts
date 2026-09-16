@@ -2,7 +2,7 @@
 // absent keys, null vs absent, extra policies, validation-alias acceptance,
 // lax coercion, nested reconstruction, model_dump identity passthrough and
 // the hand-ported Python field validators. TS-only unit tests (no Python
-// twin); the Pydantic behaviours they pin were measured against pydantic v2.
+// twin); the Pydantic behaviors they pin were measured against pydantic v2.
 import { describe, expect, it } from "vitest";
 
 import { ResponseValidationError } from "../../../src/errors.js";

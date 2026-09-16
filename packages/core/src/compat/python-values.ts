@@ -364,7 +364,7 @@ export function pythonNumberStr(value: number | null): string {
  * through `str(...)` before fuzzy matching (`str(mode)`, `str(unit)` in
  * `mixpanel_headless._internal.validation.validate_retention_args`).
  *
- * Only the shapes those call sites can actually receive are modelled:
+ * Only the shapes those call sites can actually receive are modeled:
  * strings pass through, `None` renders `"None"`, and anything else
  * falls back to {@link pythonTypeName} (a display-only approximation).
  *

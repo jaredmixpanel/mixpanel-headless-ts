@@ -4,7 +4,7 @@
 //
 // Table-driven (`HOISTS` below): each entry names a local top-level
 // definition, the test-support module and export that replaces it, and the
-// canonical body (whitespace-normalised) the local copy must match — a copy
+// canonical body (whitespace-normalized) the local copy must match — a copy
 // whose body differs is left alone and reported as KEPT, so a file that
 // genuinely needs its own variant is never rewritten. Removal takes the
 // definition plus its attached doc comment (the comment run directly above
@@ -36,14 +36,14 @@ const CHECK = process.argv.includes("--check");
  * @property {string} module - Test-support module basename (no extension).
  * @property {string} shared - The exported name that replaces it.
  * @property {boolean} [type] - Whether the export is a type (`import type`).
- * @property {string[]} bodies - Accepted canonical bodies (normalised).
+ * @property {string[]} bodies - Accepted canonical bodies (normalized).
  */
 
 /**
  * Collapse whitespace so two formattings of one body compare equal.
  *
  * @param {string} text - Source text.
- * @returns {string} The normalised text.
+ * @returns {string} The normalized text.
  */
 function norm(text) {
   return text

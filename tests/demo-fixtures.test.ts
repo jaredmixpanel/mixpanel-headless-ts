@@ -308,7 +308,7 @@ describe("demo fixtures: the library parses every key", () => {
     }
   });
 
-  it("materialises a non-empty first cohort for every range and unit", async () => {
+  it("materializes a non-empty first cohort for every range and unit", async () => {
     for (const key of Object.keys(DEMO_FIXTURES.retention)) {
       const [pair = "", unit = ""] = key.split("|", 2);
       const [born = "", returnEvent = ""] = pair.split(">>", 2);

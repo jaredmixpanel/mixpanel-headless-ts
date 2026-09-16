@@ -2,7 +2,7 @@
 // Regenerate with: npm run generate:demo-fixtures
 //
 // The synthetic "Northwind Notes" project the playground serves offline.
-// Series are day offsets (index 89 = today); fixture-fetch.ts materialises
+// Series are day offsets (index 89 = today); fixture-fetch.ts materializes
 // dates and wire envelopes at serve time.
 
 import type { DemoFixtures } from "../model/fixture-types.js";

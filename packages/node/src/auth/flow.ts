@@ -13,7 +13,7 @@
  * no sync form; its two-phase probe-then-bind shape is kept verbatim and
  * the TOCTOU window between the two is Python's own. Python's two racing
  * completer threads (callback server and stdin paste reader) become
- * racing promises, and the loser is cancelled via an `AbortSignal` where
+ * racing promises, and the loser is canceled via an `AbortSignal` where
  * Python leaks a daemon thread; node's event loop would otherwise never
  * drain, and the loser's outcome is discarded in both runtimes.
  *

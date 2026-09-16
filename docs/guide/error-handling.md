@@ -113,7 +113,7 @@ const ws = createNodeWorkspace({ clientOptions: { maxRetries: 5 } });
 
 Once the budget is spent you get a [`RateLimitError`](/reference/core/classes/RateLimitError); `retryAfter` tells you how long the server asked you to wait and `rateLimitFormUrl` links the rate-limit-increase form. Other statuses are not retried — a `ServerError` reaches you on the first `5xx`.
 
-Network-level failures — DNS, connection refused, TLS, the wall-clock timeout — surface as a plain `MixpanelHeadlessError` with code `HTTP_ERROR` and the underlying exception in `cause`. Timeouts are route-aware by default (sized to outlast the server's own deadline) and can be pinned with `clientOptions.timeoutSeconds`. Cancelling a call through an `AbortSignal` is not an error of the library's: it rejects with a standard `AbortError` `DOMException`, which passes through untouched.
+Network-level failures — DNS, connection refused, TLS, the wall-clock timeout — surface as a plain `MixpanelHeadlessError` with code `HTTP_ERROR` and the underlying exception in `cause`. Timeouts are route-aware by default (sized to outlast the server's own deadline) and can be pinned with `clientOptions.timeoutSeconds`. Canceling a call through an `AbortSignal` is not an error of the library's: it rejects with a standard `AbortError` `DOMException`, which passes through untouched.
 
 ### Report links and session replay
 

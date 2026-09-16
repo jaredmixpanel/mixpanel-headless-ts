@@ -1,4 +1,4 @@
-// Structural queryUser behaviour: parallel page ordering, the limit=1 and
+// Structural queryUser behavior: parallel page ordering, the limit=1 and
 // page_size 0/null fallbacks, aggregate computed_at sourcing and the ragged-row
 // frame. Mirrors eight classes of tests/test_query_user_structural.py (the PBT,
 // selector and transform-profile classes live under test/query/). pandas NaN
@@ -15,7 +15,7 @@ import {
   mockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
-// --- Structural / behavioural correctness ---
+// --- Structural / behavioral correctness ---
 
 describe("Parallel page ordering preserved", () => {
   // python: TestParallelPageOrderingPreserved

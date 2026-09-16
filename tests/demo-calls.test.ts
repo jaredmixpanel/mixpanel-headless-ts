@@ -5,7 +5,7 @@
 // method allowlist, the closed expression table and the option-key order,
 // checks the import merge that keeps a copied block compiling, and
 // snapshots every rendered block so a change to the printer is a
-// reviewable diff. Also covers the tokenizer that colours those blocks.
+// reviewable diff. Also covers the tokenizer that colors those blocks.
 
 import { describe, expect, it } from "vitest";
 

@@ -3,7 +3,7 @@
  *
  * Given a JSON-like value, {@link canonicalize} produces a canonical JSON
  * string; comparison between the two runners is string equality of the
- * canonical forms, so this module and its Python twin must be behaviourally
+ * canonical forms, so this module and its Python twin must be behaviorally
  * identical. Parity is verified by the shared `canonical-selftest.json`
  * pairs executed by both suites. The numbered rules referenced throughout
  * this file:

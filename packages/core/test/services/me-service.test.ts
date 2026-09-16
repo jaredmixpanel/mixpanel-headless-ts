@@ -67,14 +67,14 @@ function meResponseDict(): Record<string, JsonValue> {
 
 /** The `mock_api` fixture twin — a client exposing only `me()`. */
 function mockApi(
-  behaviour: () => Promise<Record<string, JsonValue>> = () =>
+  behavior: () => Promise<Record<string, JsonValue>> = () =>
     Promise.resolve(meResponseDict()),
 ): { client: MeClient; calls: number[] } {
   const calls: number[] = [];
   const client: MeClient = {
     me: async (): Promise<Record<string, JsonValue>> => {
       calls.push(calls.length);
-      return behaviour();
+      return behavior();
     },
   };
   return { client, calls };
@@ -90,11 +90,11 @@ function makeService(
   options: {
     cache?: MeCacheStore;
     accountType?: "service_account" | "oauth_browser" | "oauth_token" | null;
-    behaviour?: () => Promise<Record<string, JsonValue>>;
+    behavior?: () => Promise<Record<string, JsonValue>>;
   } = {},
 ): { service: MeService; calls: number[]; cache: MeCacheStore } {
   const cache = options.cache ?? inMemoryMeCache("personal");
-  const { client, calls } = mockApi(options.behaviour);
+  const { client, calls } = mockApi(options.behavior);
   const service = new MeService(client, cache, "us", {
     accountType: options.accountType ?? null,
   });
@@ -165,7 +165,7 @@ describe("MeService.fetch", () => {
 describe("MeService.fetch error handling", () => {
   it("401 raises an actionable ConfigError", async () => {
     const { service } = makeService({
-      behaviour: () =>
+      behavior: () =>
         Promise.reject(
           new AuthenticationError("Invalid credentials", { statusCode: 401 }),
         ),
@@ -183,7 +183,7 @@ describe("MeService.fetch error handling", () => {
   it("403 on a service account surfaces the E-10 scope hint", async () => {
     const { service } = makeService({
       accountType: "service_account",
-      behaviour: () =>
+      behavior: () =>
         Promise.reject(
           new QueryError("Permission denied", { statusCode: 403 }),
         ),
@@ -203,7 +203,7 @@ describe("MeService.fetch error handling", () => {
 
   it("403 without an account type uses the generic message", async () => {
     const { service } = makeService({
-      behaviour: () =>
+      behavior: () =>
         Promise.reject(
           new QueryError("Permission denied", { statusCode: 403 }),
         ),
@@ -218,7 +218,7 @@ describe("MeService.fetch error handling", () => {
 
   it("non-401/403 errors propagate unchanged", async () => {
     const { service } = makeService({
-      behaviour: () =>
+      behavior: () =>
         Promise.reject(new QueryError("Bad request", { statusCode: 400 })),
     });
 
@@ -429,7 +429,7 @@ describe("Me service resolve workspace", () => {
         },
       },
     };
-    const { service } = makeService({ behaviour: () => Promise.resolve(raw) });
+    const { service } = makeService({ behavior: () => Promise.resolve(raw) });
     await service.fetch(); // warm, as the Python fixture does
 
     await expect(service.resolveWorkspace("4025120")).resolves.toBe(2);
@@ -459,7 +459,7 @@ describe("Me service resolve workspace", () => {
         },
       },
     };
-    const { service } = makeService({ behaviour: () => Promise.resolve(raw) });
+    const { service } = makeService({ behavior: () => Promise.resolve(raw) });
     await service.fetch();
 
     await expect(service.resolveWorkspace("4025120")).resolves.toBe(2);

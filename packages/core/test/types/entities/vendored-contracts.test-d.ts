@@ -60,7 +60,7 @@ describe("alerts (vendored alerts/custom request + response models)", () => {
   });
 
   it("the unwrapped alert count is assignable to the vendored results model", () => {
-    // Python unwraps the `{status, results}` envelope before modelling.
+    // Python unwraps the `{status, results}` envelope before modeling.
     expectTypeOf<
       Pick<
         AlertCount,
@@ -123,7 +123,7 @@ describe("feature flags", () => {
 
   it("limits are a key subset of the vendored results model", () => {
     // The vendored startup_block_* / is_startup_blocked fields are not
-    // modelled in Python. The `FeatureFlagStatus` literal set also differs
+    // modeled in Python. The `FeatureFlagStatus` literal set also differs
     // from the Python enum; the Python enum is the contract and the literal
     // tables are locked against `literal-aliases.json` instead.
     expectTypeOf<

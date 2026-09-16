@@ -472,7 +472,7 @@ describe("bridge file edge cases", () => {
 });
 
 // Error-class and byte-format corners, each aligned to the observed
-// Python behaviour:
+// Python behavior:
 // - an invalid-UTF-8 bridge file propagates the decode error raw
 //   (`bridge.py` catches only OSError + JSONDecodeError; CPython raises
 //   UnicodeDecodeError — the TS twin is the TextDecoder fatal-mode
@@ -524,7 +524,7 @@ describe("bridge error classes and byte format", () => {
     expect(existsSync(out)).toBe(false);
   });
 
-  it("serialises header keys in codepoint order like json.dumps sort_keys", () => {
+  it("serializes header keys in codepoint order like json.dumps sort_keys", () => {
     // UTF-16 code units order "😀" (surrogate 0xD83D…) BEFORE "｡"
     // (0xFF61); Python codepoint order is the reverse. CPython:
     // json.dumps({"😀":1,"｡":2}, sort_keys=True) → {"｡": 2, "😀": 1}.

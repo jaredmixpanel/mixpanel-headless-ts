@@ -301,7 +301,7 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
 describe("codec round-trip sweep", () => {
   it("finds tagged payloads to exercise (sweep is not vacuous)", () => {
     expect(roundTrippable.length).toBeGreaterThan(0);
-    // The two behavioural targets are exercised, per the corpus
+    // The two behavioral targets are exercised, per the corpus
     // tag-universe counts (SecretStr 20, OAuthTokens 7 at pin time).
     expect(tally.get("SecretStr") ?? 0).toBeGreaterThanOrEqual(1);
     expect(tally.get("OAuthTokens") ?? 0).toBeGreaterThanOrEqual(1);

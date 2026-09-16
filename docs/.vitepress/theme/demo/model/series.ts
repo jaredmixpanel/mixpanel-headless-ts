@@ -55,11 +55,11 @@ export interface RetentionGrid {
   readonly unit: string;
 }
 
-/** How a retention cell is shaded: fill alpha on the brand colour, and whether the text is white. */
+/** How a retention cell is shaded: fill alpha on the brand color, and whether the text is white. */
 export interface CellShade {
-  /** Alpha of the brand-coloured fill, 0–1. */
+  /** Alpha of the brand-colored fill, 0–1. */
   readonly alpha: number;
-  /** Whether the cell text is white rather than the body colour. */
+  /** Whether the cell text is white rather than the body color. */
   readonly inverse: boolean;
 }
 
@@ -127,7 +127,7 @@ export function allZero(series: readonly TrendLine[]): boolean {
   return points.length > 0 && points.every((point) => point.value === 0);
 }
 
-/** Rates up to this shade keep the body text colour; above it the text is white. */
+/** Rates up to this shade keep the body text color; above it the text is white. */
 const INVERSE_ABOVE = 0.55;
 /**
  * The lowest fill alpha a white-text cell uses. On the light background,
@@ -141,7 +141,7 @@ const INVERSE_MIN_ALPHA = 0.85;
 /**
  * Shade for one retention cell: the fill alpha follows the rate below the
  * text switch and jumps to a band that keeps white text readable above it,
- * so the contrast stays at or above 4.5:1 in both colour schemes.
+ * so the contrast stays at or above 4.5:1 in both color schemes.
  *
  * @param rate - The cell's retention rate, 0–1 (clamped).
  * @returns The fill alpha and whether the text is white.

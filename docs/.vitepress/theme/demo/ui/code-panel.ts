@@ -3,7 +3,7 @@
 // loop program with its helper behind a disclosure — highlighted by the
 // model's tokenizer. Tokens get the same `--shiki-light` / `--shiki-dark`
 // variables Shiki emits, so the block matches the site's code blocks in
-// both colour schemes. While a loop runs, its `await` line carries a
+// both color schemes. While a loop runs, its `await` line carries a
 // caret and a live comment beneath it (a clock face turning on the
 // panel's own timer); when it is done, a summary comment follows the
 // loop. Both are decoration on the rendered lines, outside the program
@@ -32,17 +32,16 @@ import {
   traceSummary,
 } from "../model/trace.js";
 
-/** Token colours: the values of the two theme/shiki-mixpanel-*.json files. */
-const COLOURS: Readonly<
-  Record<string, readonly [light: string, dark: string]>
-> = {
-  keyword: ["#e34f2f", "#ef6347"],
-  string: ["#219464", "#2eb87d"],
-  number: ["#df7800", "#f08d1c"],
-  comment: ["#8f8f91", "#9a9a9c"],
-  punct: ["#626266", "#c0c0c0"],
-  ident: ["#626266", "#e0e0e0"],
-};
+/** Token colors: the values of the two theme/shiki-mixpanel-*.json files. */
+const COLORS: Readonly<Record<string, readonly [light: string, dark: string]>> =
+  {
+    keyword: ["#e34f2f", "#ef6347"],
+    string: ["#219464", "#2eb87d"],
+    number: ["#df7800", "#f08d1c"],
+    comment: ["#8f8f91", "#9a9a9c"],
+    punct: ["#626266", "#c0c0c0"],
+    ident: ["#626266", "#e0e0e0"],
+  };
 
 /** A loop run as the panel traces it, drawn beside the program's lines. */
 export interface CodeTrace {
@@ -172,7 +171,7 @@ function highlight(
     { spans: [], text: "" },
   ];
   for (const token of tokenize(code)) {
-    const colour = COLOURS[token.type];
+    const color = COLORS[token.type];
     for (const [k, text] of token.text.split("\n").entries()) {
       if (k > 0) {
         lines.push({ spans: [], text: "" });
@@ -187,14 +186,14 @@ function highlight(
         line.spans.push(
           h(
             "span",
-            colour === undefined
+            color === undefined
               ? { key: line.spans.length, class: string }
               : {
                   key: line.spans.length,
                   class: string,
                   style: {
-                    "--shiki-light": colour[0],
-                    "--shiki-dark": colour[1],
+                    "--shiki-light": color[0],
+                    "--shiki-dark": color[1],
                   },
                 },
             text,

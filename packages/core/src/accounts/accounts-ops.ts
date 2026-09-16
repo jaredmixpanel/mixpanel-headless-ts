@@ -6,7 +6,7 @@
  * I/O go through the store / flow / bridge members); `login_unified`
  * lives in `login-unified.ts`. Only two sites reveal a secret —
  * {@link freshBrowserBearer} and `token()`, Python's documented public
- * behaviour; secrets never reach thrown messages or error `details`.
+ * behavior; secrets never reach thrown messages or error `details`.
  *
  * @see mixpanel_headless.accounts
  */

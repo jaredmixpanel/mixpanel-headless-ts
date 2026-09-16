@@ -3,7 +3,7 @@
  * `data-definitions/events/`, workspace-scoped through
  * `maybe_scoped_path`). `create_custom_event` posts a form body and peels
  * the `{custom_event: ...}` inner envelope; `update_custom_event` keeps
- * Python's defence-in-depth `UPDATE_TARGET_MISMATCH` echo check, because
+ * Python's defense-in-depth `UPDATE_TARGET_MISMATCH` echo check, because
  * the data-definitions endpoint has silently created instead of updated
  * in the past. `list_custom_events` is not corpus-locked.
  *
@@ -154,7 +154,7 @@ export function createCustomEventMethods(core: ClientCore): CustomEventMethods {
         jsonBody: payload,
       });
       const record = expectRecordResult(result, "update_custom_event");
-      // Defence in depth: if the server echoes back a different
+      // Defense in depth: if the server echoes back a different
       // customEventId, the lexicon entry may have been
       // created instead of updated — fail rather than return an
       // unrelated entity. Python `!=` here is numeric cross-type

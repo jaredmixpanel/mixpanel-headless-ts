@@ -341,14 +341,14 @@ try {
   }
 } catch (error) {
   if (controller.signal.aborted) {
-    console.error("export cancelled");
+    console.error("export canceled");
   } else {
     throw error;
   }
 }
 ```
 
-Breaking out of a `for await` loop early (`break`, `return`, or a thrown error) closes the generator and releases the HTTP response, so you rarely need the signal for a clean early exit — it is for cancelling from _outside_ the loop.
+Breaking out of a `for await` loop early (`break`, `return`, or a thrown error) closes the generator and releases the HTTP response, so you rarely need the signal for a clean early exit — it is for canceling from _outside_ the loop.
 
 ## Processing Patterns
 

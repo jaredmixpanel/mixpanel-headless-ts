@@ -566,7 +566,7 @@ export interface UnionSpec {
  *
  * `validate_with_pydantic(model_cls, …)` takes a class; TS has none,
  * so the port passes this handle around instead. `.name` is what the
- * conformance `model_name` output codec serialises for
+ * conformance `model_name` output codec serializes for
  * `get_root_model_for_bookmark_type`, and what the facade's dispatch
  * keys on; `.validate` is what {@link validateWithPydantic} consumes.
  */
@@ -1360,7 +1360,7 @@ export interface ValidateWithPydanticOptions {
 /**
  * Validate `raw` against a model and translate pydantic's errors.
  *
- * Specialised to the model set this file owns: the `model_cls`
+ * Specialized to the model set this file owns: the `model_cls`
  * positional becomes the structural validator function, because TS has
  * no pydantic model objects.
  *

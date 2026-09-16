@@ -1,5 +1,5 @@
 /*
- * Playground styles, scoped under `.mp-demo`. Colours come from the theme's
+ * Playground styles, scoped under `.mp-demo`. Colors come from the theme's
  * `--vp-c-*` / `--mp-*` variables (theme/mixpanel.css), so light and dark
  * mode need no separate rules except where an alpha-shaded fill is built or
  * a brand tint falls short of 4.5:1 in one scheme. Loaded only with the
@@ -35,7 +35,7 @@
   /*
    * Selected segments and chips: brand text on the brand tint. In dark
    * mode the purple-light on its tint measures under 4.5:1, so the text
-   * falls back to the body colour and the brand border marks selection.
+   * falls back to the body color and the brand border marks selection.
    */
   --mp-selected-bg: var(--vp-c-brand-soft);
   --mp-selected-text: var(--vp-c-brand-1);
@@ -75,17 +75,17 @@
 }
 
 /*
- * The theme paints every `.vp-doc` cell and list item in the body colour
+ * The theme paints every `.vp-doc` cell and list item in the body color
  * (`.vp-doc :is(p, li, td)`), which is fixed for light mode and would sit
  * under white text in the retention grid; the playground's cells and items
- * take their colour from their own rules instead.
+ * take their color from their own rules instead.
  */
 .vp-doc .mp-demo :is(td, li) {
   color: inherit;
 }
 
 /*
- * Text-only tints. The brand green and red are fill colours: as small text
+ * Text-only tints. The brand green and red are fill colors: as small text
  * on the page background they reach only 3.8:1 in light mode and 4.1:1 in
  * dark, so the change indicators use a darker (light) or lighter (dark)
  * shade of each that clears 4.5:1.
@@ -129,7 +129,7 @@
   white-space: nowrap;
 }
 
-/* Empty-state copy under a heading or in place of a visualisation. */
+/* Empty-state copy under a heading or in place of a visualization. */
 .mp-empty {
   margin: 8px 0;
   color: var(--vp-c-text-2);
@@ -331,7 +331,7 @@
   color: var(--vp-c-text-1);
 }
 
-/* Disabled controls fade as a whole; the text never changes colour. */
+/* Disabled controls fade as a whole; the text never changes color. */
 .mp-btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
@@ -1161,7 +1161,7 @@
 }
 
 /*
- * The picker skeleton: grey bars where the organisation headers and the
+ * The picker skeleton: gray bars where the organization headers and the
  * project rows will be. Static by default; motion adds the shimmer.
  */
 .mp-skeleton-picker {
@@ -1406,8 +1406,8 @@ button.mp-chip-toggle[aria-pressed="true"] {
   color: var(--vp-c-text-2);
 }
 
-/* Small multiple: the curve on the brand colour, the median as a dashed
-   line in the secondary text colour (3:1 against both backgrounds). */
+/* Small multiple: the curve on the brand color, the median as a dashed
+   line in the secondary text color (3:1 against both backgrounds). */
 .mp-aha-spark {
   display: block;
   width: 96px;
@@ -1774,7 +1774,7 @@ button.mp-chip-toggle[aria-pressed="true"] {
 }
 
 /* An arc's weight and opacity follow the rate it found; a failed pair is a
-   dashed grey line; the arcs of the finding are heavier and fully opaque. */
+   dashed gray line; the arcs of the finding are heavier and fully opaque. */
 .mp-const-edge {
   opacity: var(--mp-edge-alpha, 0.6);
   transition: opacity 0.3s ease;
@@ -1969,7 +1969,7 @@ button.mp-chip-toggle[aria-pressed="true"] {
   opacity: 0.55;
 }
 
-/* A trace comment: laid out like a line, coloured like a comment, outside
+/* A trace comment: laid out like a line, colored like a comment, outside
    the program (not selectable, not announced). */
 .mp-code-trace {
   display: block;

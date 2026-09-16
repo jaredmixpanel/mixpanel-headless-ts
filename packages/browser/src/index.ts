@@ -213,7 +213,7 @@ export { CreateAnnotationParams } from "@mixpanel-headless/core";
 // Pages compute and cite QueryRef hashes: the hash is taken over
 // `pythonJsonDumpsCanonical(params)` — CPython-parity
 // `json.dumps(…, sort_keys=True, separators=(",", ":"))` — and the ref
-// is labelled with the report type `inferBookmarkType(params)` derives.
+// is labeled with the report type `inferBookmarkType(params)` derives.
 // A page that builds params from its own controls therefore needs both
 // at runtime on this entry point, for the same reason the vocabulary
 // above is here: the vendored IIFE exposes exactly this barrel.

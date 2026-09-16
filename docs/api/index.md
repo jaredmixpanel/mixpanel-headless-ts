@@ -143,7 +143,7 @@ Every option type is named after its method — `ws.queryRetention()` takes
 `ws.listDashboards()` takes
 [`WorkspaceListDashboardsOptions`](/reference/core/interfaces/WorkspaceListDashboardsOptions)
 — so the reference page for a method's options is one search away. The full
-translation table, including the behavioural differences, is in
+translation table, including the behavioral differences, is in
 [Coming from Python](/guide/coming-from-python).
 
 ## Errors
@@ -151,7 +151,7 @@ translation table, including the behavioural differences, is in
 Every error extends
 [`MixpanelHeadlessError`](/reference/core/classes/MixpanelHeadlessError) and
 carries a stable machine-readable `code`, a structured `details` bag
-(snake_case keys, the wire spelling) and `toDict()`, which serialises to
+(snake_case keys, the wire spelling) and `toDict()`, which serializes to
 [`{ code, message, details }`](/reference/core/interfaces/ErrorDict) exactly
 as Python's `to_dict()` does. Branch on classes and codes, never on message
 text — class name plus `code` is the compatibility contract; the message is
@@ -198,7 +198,7 @@ whose Python `.df` is not the uniform rows pattern expose `toRows()` variants
 instead; their reference pages say so. Entity models (dashboards, bookmarks,
 cohorts, flags, …) are the Pydantic twins: `fromDict()` validates a payload
 (throwing `ResponseValidationError`), `modelDump()` / `modelDumpExcludeNone()`
-serialise it the way `model_dump()` does.
+serialize it the way `model_dump()` does.
 
 ## Map of the public surface
 

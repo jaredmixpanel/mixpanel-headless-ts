@@ -1,4 +1,4 @@
-// TS-only wire-behaviour locks (no Python source test): mid-stream export
+// TS-only wire-behavior locks (no Python source test): mid-stream export
 // body failures retry inside the `httpx.HTTPError` scope, then wrap as
 // HTTP_ERROR; `timeoutSeconds` is enforced at the fetch adapter for headers and
 // buffered bodies only (httpx read-timeouts are per-read, so a healthy stream is

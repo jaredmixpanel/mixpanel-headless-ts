@@ -4,7 +4,7 @@
 // library's fetch seam. Generated from a seeded PRNG rather than recorded
 // from a real project so the data is reproducible, carries no personal data
 // by construction, and never goes stale (series are day offsets; the
-// transport materialises dates relative to "today").
+// transport materializes dates relative to "today").
 //
 // Usage:
 //   npm run generate:demo-fixtures              # (re)write the .gen.ts file
@@ -99,7 +99,7 @@ const WINDOW_FACTOR = { 1: 0.69, 7: 1, 14: 1.11, 30: 1.2 };
 
 /**
  * born → return events offered for retention: the two onboarding events
- * against every other event (the "which behaviour predicts retention"
+ * against every other event (the "which behavior predicts retention"
  * ranking needs the full row), plus Upgrade → Note Saved.
  */
 const RETENTION_BORN = ["Signup", "App Opened"];
@@ -175,7 +175,7 @@ function trendSeries(multiplier) {
 }
 
 /**
- * Split a series across segments by noisy, renormalised shares; the largest
+ * Split a series across segments by noisy, renormalized shares; the largest
  * segment absorbs the rounding remainder so segments always sum to the series.
  *
  * @param {number[]} series - Daily totals.
@@ -362,7 +362,7 @@ function renderDemoFixtures() {
 // Regenerate with: npm run generate:demo-fixtures
 //
 // The synthetic "Northwind Notes" project the playground serves offline.
-// Series are day offsets (index 89 = today); fixture-fetch.ts materialises
+// Series are day offsets (index 89 = today); fixture-fetch.ts materializes
 // dates and wire envelopes at serve time.
 
 import type { DemoFixtures } from "../model/fixture-types.js";

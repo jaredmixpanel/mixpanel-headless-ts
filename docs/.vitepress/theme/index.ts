@@ -6,7 +6,7 @@
 // library chunk they import is loaded by the two demo pages and no other.
 
 // The static renderer's popup layout, then the VitePress layer of the
-// vitepress-twoslash package (its variables map the popup's colours and
+// vitepress-twoslash package (its variables map the popup's colors and
 // fonts onto the theme's `--vp-*` tokens, so the popup follows dark mode).
 // The package's `style.css` bundles both with floating-vue's stylesheet,
 // which only its floating renderer needs.

@@ -1,4 +1,4 @@
-// `Workspace.queryUser` integration: behavioural cohort filtering (all_of,
+// `Workspace.queryUser` integration: behavioral cohort filtering (all_of,
 // any_of, saved cohorts, cohort + where, U2 / U24 errors), cross-engine
 // distinct_ids and row composition, Filter consistency and the U_FILTER
 // wrap. Mirrors all 11 classes of
@@ -73,7 +73,7 @@ const RAW_PROFILE_PREMIUM_2 = makeRawProfile("user_004", undefined, {
 });
 
 // ===========================================================================
-// T020: behavioural filtering — all_of
+// T020: behavioral filtering — all_of
 // ===========================================================================
 
 describe("Behavioral filtering all of", () => {
@@ -151,7 +151,7 @@ describe("Behavioral filtering all of", () => {
 });
 
 // ===========================================================================
-// T020: behavioural filtering — any_of
+// T020: behavioral filtering — any_of
 // ===========================================================================
 
 describe("Behavioral filtering any of", () => {
@@ -219,7 +219,7 @@ describe("Behavioral filtering any of", () => {
 });
 
 // ===========================================================================
-// T020: behavioural filtering — saved cohort
+// T020: behavioral filtering — saved cohort
 // ===========================================================================
 
 describe("Behavioral filtering saved cohort", () => {

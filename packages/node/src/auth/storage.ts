@@ -191,7 +191,7 @@ export interface OAuthStorageOptions {
  * `O_NOFOLLOW`-opened fd before `fchmod`; the node port substitutes an
  * `lstat` probe (symlink means warn, no chmod) followed by a plain
  * `chmodSync` (the `// Divergence:` line at
- * {@link OAuthStorage.checkAndFixPermissions}). Observable behaviour
+ * {@link OAuthStorage.checkAndFixPermissions}). Observable behavior
  * (symlinked targets never chmodded, lax modes repaired, warnings on
  * failure) is preserved.
  * @example

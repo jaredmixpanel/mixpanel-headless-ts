@@ -12,7 +12,7 @@
  * Python hardens credential reads at the fd level (`O_NOFOLLOW`,
  * `O_CLOEXEC`, a dirfd walk and fstat-pinned invariant checks). The node
  * port replaces that with an `lstat` symlink refusal plus `stat`
- * regular-file, mode and size checks; caller-visible behaviour (refusals
+ * regular-file, mode and size checks; caller-visible behavior (refusals
  * and successful reads) is preserved, and the TOCTOU window between the
  * `lstat` probe and the subsequent read is the accepted deviation (the
  * `// Divergence:` line at {@link readCredentialBytes}).

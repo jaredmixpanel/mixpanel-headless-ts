@@ -1,4 +1,4 @@
-// Provenance of the four CPython-generated artefacts (the compat tables and
+// Provenance of the four CPython-generated artifacts (the compat tables and
 // the canonical json.dumps fixtures). Regeneration is manual, so this pins
 // what each header records: interpreter/Unicode versions against
 // scripts/compat-python.pin.json, the generator sha256, the header counts

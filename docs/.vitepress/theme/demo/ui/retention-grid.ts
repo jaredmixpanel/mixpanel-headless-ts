@@ -1,7 +1,7 @@
 // Retention as a cohort × bucket grid shaded by rate. Cells sit on the brand
-// colour with an alpha that follows the rate; the text switches to white
+// color with an alpha that follows the rate; the text switches to white
 // above 0.55, and `cellShade` keeps the fill out of the alpha band where
-// neither colour reaches 4.5:1. A real table with scoped headers and a
+// neither color reaches 4.5:1. A real table with scoped headers and a
 // caption, so the grid reads row by row to assistive technology.
 
 import { defineComponent, h, type PropType } from "vue";

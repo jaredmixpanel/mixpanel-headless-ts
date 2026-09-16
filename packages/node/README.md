@@ -97,4 +97,4 @@ error classes are imported from `@mixpanel-headless/core` — and adds:
 
 Carries `"private": true` until the owner flips it; versions and release notes
 are managed by Changesets and published through `release.yml` (see the
-repository's `CONTRIBUTING.md`, "Releasing"). Licence: MIT.
+repository's `CONTRIBUTING.md`, "Releasing"). License: MIT.

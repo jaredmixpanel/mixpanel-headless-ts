@@ -648,7 +648,7 @@ const powerUsers = new CohortDefinition(
 );
 ```
 
-`CohortDefinition.allOf(…)` / `.anyOf(…)` compose criteria; `CohortCriteria` covers event behaviour (`didEvent`, `didNotDoEvent` with counts, windows and aggregations), profile properties (`hasProperty`, `propertyIsSet`, `propertyIsNotSet`) and membership in saved cohorts (`inCohort`, `notInCohort`).
+`CohortDefinition.allOf(…)` / `.anyOf(…)` compose criteria; `CohortCriteria` covers event behavior (`didEvent`, `didNotDoEvent` with counts, windows and aggregations), profile properties (`hasProperty`, `propertyIsSet`, `propertyIsNotSet`) and membership in saved cohorts (`inCohort`, `notInCohort`).
 
 #### 1. Filter — restrict a query to a segment
 

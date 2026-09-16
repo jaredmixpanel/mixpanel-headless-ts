@@ -38,7 +38,7 @@ function readSections() {
   const sections = [];
   for (const match of text.matchAll(DIVIDER)) {
     const [, heading, detail] = match;
-    // A parenthesised qualifier is part of the file's prose, not the title.
+    // A parenthesized qualifier is part of the file's prose, not the title.
     const title = heading.replace(/ \(.*\)$/, "");
     sections.push({ title, detail, start: match.index, names: [] });
   }
@@ -99,7 +99,7 @@ export function load(app) {
       const targets = child.comment
         ? [child]
         : (child.getNonIndexSignatures?.().filter((s) => s.comment) ?? []);
-      // Never synthesise a comment: an empty one would count as documentation
+      // Never synthesize a comment: an empty one would count as documentation
       // and hide the export from the `notDocumented` validation.
       if (targets.length === 0) {
         app.logger.warn(

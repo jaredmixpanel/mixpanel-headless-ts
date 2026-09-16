@@ -5037,7 +5037,7 @@ export class Workspace {
    * @param requestId - Deletion request ID to cancel.
    * @returns The updated full list of deletion requests.
    * @throws {@link ResponseValidationError} - Malformed payload.
-   * @throws {@link QueryError} - Request not found or not cancellable (400).
+   * @throws {@link QueryError} - Request not found or not cancelable (400).
    * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `requestId`
    *   is not a positive integer (network-free guard, before any request).
    * @see mixpanel_headless.workspace.Workspace.cancel_deletion_request
