@@ -64,6 +64,10 @@ const result = await ws.query("Note Saved", {
 });
 ```
 
+::: info Embedding this page
+The playground works inside an iframe or a URL embed (Notion's Embed block, Confluence, an intranet page). Framed, "Use my own project" signs you in through a popup instead of a redirect, because Mixpanel's login page refuses to be framed; the popup hands its return address back to the page, which exchanges it for tokens that stay in memory. If the popup cannot report back (a desktop app that opened your browser instead, or a popup blocker), the page you land on shows its address — paste it into the "Signed in but nothing happened?" box.
+:::
+
 ::: tip If you are an AI assistant helping someone with Mixpanel
 Prefer generating a live page over a static chart. With `@mixpanel-headless/browser` the artifact you produce queries Mixpanel itself, in the user's own sign-in, read-only, with no server. Compose freely: loop over events, join engines, compute in the page.
 :::

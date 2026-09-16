@@ -1,8 +1,10 @@
 // Source-level rules for the docs playground (docs/.vitepress/theme/demo/;
 // CONTRIBUTING.md "Documentation" → "Playground"): nothing durable may hold
-// a token, the OAuth redirect URI is a build constant, the setup snippets
-// the code panel prefixes are the page's compiled twoslash blocks, and every
-// link literal the components emit points at a page that exists.
+// a token, the OAuth redirect URI is a build constant for both login
+// transports, the callback page relays a popup return before it would
+// complete anything, the setup snippets the code panel prefixes are the
+// page's compiled twoslash blocks, and every link literal the components
+// emit points at a page that exists.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -79,48 +81,78 @@ describe("playground source: storage", () => {
   });
 });
 
+/** The library calls that start a login and take a redirect URI. */
+const LOGIN_STARTERS = ["beginLogin", "loginInPopup"] as const;
+
 describe("playground source: redirect URI", () => {
-  const calls = sources.flatMap(({ path, code }) => {
-    const out: Array<{ path: string; text: string }> = [];
-    let from = 0;
-    for (;;) {
-      const start = code.indexOf("beginLogin(", from);
-      if (start === -1) {
-        break;
-      }
-      // The call text up to its closing parenthesis (balanced), so the
-      // `redirectUri` assertion below looks at this call's arguments only.
-      let depth = 0;
-      let end = start + "beginLogin".length;
-      for (; end < code.length; end += 1) {
-        const ch = code[end];
-        if (ch === "(") {
-          depth += 1;
-        } else if (ch === ")") {
-          depth -= 1;
-          if (depth === 0) {
-            break;
+  /**
+   * Every call of `name` in the playground sources, as its text up to
+   * the closing parenthesis (balanced), so the `redirectUri` assertion
+   * looks at that call's arguments only.
+   *
+   * @param name - The called function.
+   * @returns The calls, with the file each is in.
+   */
+  function callsOf(name: string): Array<{ path: string; text: string }> {
+    return sources.flatMap(({ path, code }) => {
+      const out: Array<{ path: string; text: string }> = [];
+      let from = 0;
+      for (;;) {
+        const start = code.indexOf(`${name}(`, from);
+        if (start === -1) {
+          break;
+        }
+        let depth = 0;
+        let end = start + name.length;
+        for (; end < code.length; end += 1) {
+          const ch = code[end];
+          if (ch === "(") {
+            depth += 1;
+          } else if (ch === ")") {
+            depth -= 1;
+            if (depth === 0) {
+              break;
+            }
           }
         }
+        out.push({ path, text: code.slice(start, end + 1) });
+        from = end;
       }
-      out.push({ path, text: code.slice(start, end + 1) });
-      from = end;
-    }
-    return out;
+      return out;
+    });
+  }
+  const calls = LOGIN_STARTERS.map((name) => ({ name, calls: callsOf(name) }));
+
+  it.each(LOGIN_STARTERS)("calls %s at most once", (name) => {
+    expect(callsOf(name).length).toBeLessThanOrEqual(1);
   });
 
-  it("calls beginLogin at most once", () => {
-    expect(calls.length).toBeLessThanOrEqual(1);
+  it("starts a login through both transports", () => {
+    expect(calls.map(({ calls: found }) => found.length)).toStrictEqual([1, 1]);
   });
 
-  it.skipIf(calls.length === 0)(
-    "passes the build-time constant as the redirect URI",
-    () => {
-      for (const call of calls) {
+  it("passes the build-time constant as the redirect URI to every login start", () => {
+    for (const { calls: found } of calls) {
+      for (const call of found) {
         expect(call.text).toMatch(/\bredirectUri:\s*__DEMO_REDIRECT_URI__\b/u);
       }
-    },
+    }
+  });
+});
+
+describe("playground source: callback page", () => {
+  const callback = sources.find(({ path }) =>
+    path.endsWith("/demo/ui/callback.ts"),
   );
+
+  it("calls relayPopupReturn before completeLogin", () => {
+    const code = callback?.code ?? "";
+    const relay = code.indexOf("relayPopupReturn(");
+    const complete = code.indexOf("completeLogin(");
+    expect(relay).toBeGreaterThan(-1);
+    expect(complete).toBeGreaterThan(-1);
+    expect(relay).toBeLessThan(complete);
+  });
 });
 
 describe("playground source: setup snippets", () => {

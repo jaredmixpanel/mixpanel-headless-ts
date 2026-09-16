@@ -9,6 +9,7 @@ import {
   CREDENTIAL_KEYS,
   type CredentialStore,
   parseOAuthTokens,
+  POPUP_WINDOW_NAME,
   type Workspace,
 } from "@mixpanel-headless/browser";
 
@@ -78,6 +79,77 @@ export interface PickerGroup {
 /** Where an error sends the user next. */
 export type ErrorRetry = "signed-out" | "offline";
 
+/**
+ * How the page reaches Mixpanel's login: by navigating itself (a
+ * top-level page) or through a popup (a page inside someone else's
+ * `<iframe>`, which Mixpanel's authorize page refuses to load into and
+ * which has no top window of its own to navigate).
+ */
+export type LoginTransport = "redirect" | "popup";
+
+/** The two window references framed detection compares. */
+export interface FrameLike {
+  readonly self: unknown;
+  readonly top: unknown;
+}
+
+/**
+ * Pick the login transport for a document: the redirect flow when the
+ * page is the top window, the popup flow when it is framed.
+ *
+ * @param win - The page's `window` (or a stand-in with `self` and `top`).
+ * @returns The transport.
+ */
+export function loginTransport(win: FrameLike): LoginTransport {
+  return win.self === win.top ? "redirect" : "popup";
+}
+
+/**
+ * Whether a callback document that could not relay and has no sign-in of
+ * its own to complete should show its address for the visitor to paste
+ * back: it is the popup the flow opened but its opener is gone (an
+ * Electron shell handed the login to the system browser), or it carries a
+ * fresh authorization return that some other window started.
+ *
+ * @param doc - The document's `window.name` and `location.search`.
+ * @returns `true` when the paste-back card is the right thing to show.
+ */
+export function strandedReturn(doc: {
+  readonly windowName: string;
+  readonly search: string;
+}): boolean {
+  if (doc.windowName === POPUP_WINDOW_NAME) {
+    return true;
+  }
+  const params = new URLSearchParams(doc.search);
+  return params.has("code") && params.has("state");
+}
+
+/**
+ * Complete a login from a pasted return URL while a popup login may
+ * still be waiting on the same store, and only then release that wait.
+ * The order matters: aborting `loginInPopup` deletes the pending record
+ * the paste needs, so the wait is released after the exchange has
+ * settled, whichever way it went. The released promise rejects with the
+ * abort reason; the caller ignores that rejection.
+ *
+ * @param complete - Runs `completeLogin` with the pasted URL.
+ * @param releasePopup - Aborts the popup login in flight (a no-op when
+ *   none is).
+ * @returns Whatever `complete` resolved with.
+ * @throws Whatever `complete` rejected with, after the release.
+ */
+export async function completePastedLogin<T>(
+  complete: () => Promise<T>,
+  releasePopup: () => void,
+): Promise<T> {
+  try {
+    return await complete();
+  } finally {
+    releasePopup();
+  }
+}
+
 /** A library error mapped to copy (programs key on `.code`, never on text). */
 export interface DemoError {
   /** The error's `.code`, or `null` for non-library failures. */
@@ -107,6 +179,14 @@ export type DemoState =
   | {
       readonly mode: "login-pending";
       readonly region: Region;
+      /** Redirect at the top level, popup when framed. */
+      readonly transport: LoginTransport;
+      /**
+       * Redirect: the authorize URL once `beginLogin` has it, offered as a
+       * link should the navigation not happen. Popup: the URL to offer as
+       * a link once the browser has refused the window; `null` while the
+       * popup is open.
+       */
       readonly authorizeUrl: string | null;
     }
   | { readonly mode: "callback" }

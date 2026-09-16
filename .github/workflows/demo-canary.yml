@@ -1,7 +1,9 @@
 # Weekly probe of the policy the docs playground's live mode depends on
 # (`scripts/demo-canary.mjs`; CONTRIBUTING.md "Documentation" → "Playground"):
 # Mixpanel's query, app and OAuth endpoints must answer CORS preflights
-# from the site's origin, and the Export API must still refuse them.
+# from the site's origin, the Export API must still refuse them, and the
+# sign-in pages must still send no `Cross-Origin-Opener-Policy` while
+# forbidding framing (the popup login depends on both).
 #
 # A real login cannot run here: the flow has no client-credentials variant,
 # Mixpanel's sign-in page is interactive, and this repository keeps secrets

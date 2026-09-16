@@ -1,8 +1,9 @@
 // The playground's live-mode model (docs/.vitepress/theme/demo/model/):
 // the token hand-off from the hop store to memory, sign-out, the error
 // copy table keyed on the real error classes, the project picker's
-// grouping, and one simulated redirect login over injected fetches — the
-// same library calls the page makes, under Node.
+// grouping, the framed page's transport choice and popup outcomes, and
+// simulated logins over injected fetches (a redirect, and a popup that
+// is completed by paste) — the same library calls the page makes, under Node.
 
 import { describe, expect, it } from "vitest";
 
@@ -10,6 +11,8 @@ import {
   AuthenticationError,
   beginLogin,
   BROWSER_NO_PENDING_LOGIN,
+  BROWSER_POPUP_BLOCKED,
+  BROWSER_POPUP_CLOSED,
   BrowserUnsupportedError,
   completeLogin,
   ConfigError,
@@ -20,7 +23,10 @@ import {
   EventNotFoundError,
   InMemoryCredentialStore,
   LocalStorageCredentialStore,
+  loginInPopup,
   OAuthError,
+  POPUP_WINDOW_NAME,
+  type PopupHost,
   QueryError,
   RateLimitError,
   ServerError,
@@ -32,18 +38,25 @@ import {
   clockTime,
   describeError,
   noPendingLoginError,
+  POPUP_BLOCKED_MESSAGE,
+  POPUP_CANCELED_NOTICE,
+  POPUP_TIMEOUT_NOTICE,
+  popupLoginOutcome,
 } from "../docs/.vitepress/theme/demo/model/errors.js";
 import { fixtureFetch } from "../docs/.vitepress/theme/demo/model/fixture-fetch.js";
 import {
   asRegion,
+  completePastedLogin,
   defaultWorkspace,
   finishLogin,
   groupProjects,
+  loginTransport,
   type Me,
   type Region,
   REGION_STORAGE_KEY,
   REGIONS,
   signOut,
+  strandedReturn,
 } from "../docs/.vitepress/theme/demo/model/session-state.js";
 import {
   LIVE_SETUP,
@@ -285,6 +298,20 @@ describe("describeError", () => {
       /no longer valid/u,
       "signed-out",
     ],
+    [
+      "BROWSER_POPUP_CLOSED",
+      new BrowserUnsupportedError("x", BROWSER_POPUP_CLOSED, {
+        reason: "closed",
+      }),
+      /^Sign-in canceled\.$/u,
+      "signed-out",
+    ],
+    [
+      "OAUTH_TIMEOUT",
+      oauth("OAUTH_TIMEOUT", { timeout_ms: 300_000 }),
+      /did not return within five minutes/u,
+      "signed-out",
+    ],
   ] as const)("%s ends the session", (_label, error, message, retry) => {
     const described = describeError(error, {
       redirectUri: REDIRECT_URI,
@@ -348,6 +375,20 @@ describe("describeError", () => {
     expect(describeError("nope").message).toBe("nope");
   });
 
+  it("keeps a blocked popup inline: the pending record is still usable", () => {
+    const described = describeError(
+      new BrowserUnsupportedError("x", BROWSER_POPUP_BLOCKED, {
+        reason: "blocked",
+        authorize_url: "https://mixpanel.com/oauth/authorize/?x=1",
+        state: "s",
+      }),
+    );
+    expect(described.fatal).toBe(false);
+    expect(described.retry).toBeNull();
+    expect(described.message).toBe(POPUP_BLOCKED_MESSAGE);
+    expect(described.code).toBe(BROWSER_POPUP_BLOCKED);
+  });
+
   it("builds the no-pending-login copy without the library", () => {
     const fromLibrary = describeError(
       new BrowserUnsupportedError("x", BROWSER_NO_PENDING_LOGIN),
@@ -356,6 +397,138 @@ describe("describeError", () => {
       ...fromLibrary,
       details: null,
     });
+  });
+});
+
+describe("loginTransport", () => {
+  it("picks the redirect flow for a top-level page", () => {
+    const top = {};
+    expect(loginTransport({ self: top, top })).toBe("redirect");
+  });
+
+  it("picks the popup flow for a framed page", () => {
+    expect(loginTransport({ self: {}, top: {} })).toBe("popup");
+  });
+});
+
+describe("popupLoginOutcome", () => {
+  const AUTHORIZE_URL = "https://mixpanel.com/oauth/authorize/?state=abc";
+  const blocked = (details: Record<string, unknown>): BrowserUnsupportedError =>
+    new BrowserUnsupportedError("x", BROWSER_POPUP_BLOCKED, details);
+
+  it("offers the authorize link when the browser refused the window", () => {
+    expect(
+      popupLoginOutcome(
+        blocked({
+          reason: "blocked",
+          authorize_url: AUTHORIZE_URL,
+          state: "abc",
+        }),
+      ),
+    ).toStrictEqual({ kind: "blocked", authorizeUrl: AUTHORIZE_URL });
+  });
+
+  it("keeps waiting on a repeat click while the popup is open", () => {
+    expect(
+      popupLoginOutcome(blocked({ reason: "in_flight", region: "us" })),
+    ).toStrictEqual({ kind: "in-flight" });
+  });
+
+  it("falls back to the error block for a blocked popup without a link", () => {
+    const error = blocked({ reason: "no_window" });
+    const described = describeError(error);
+    expect(popupLoginOutcome(error)).toStrictEqual({
+      kind: "error",
+      error: described,
+    });
+    expect(described.code).toBe(BROWSER_POPUP_BLOCKED);
+    expect(described.fatal).toBe(false);
+  });
+
+  it("drops back to signed-out quietly when the popup was closed", () => {
+    expect(
+      popupLoginOutcome(
+        new BrowserUnsupportedError("x", BROWSER_POPUP_CLOSED, {
+          reason: "closed",
+        }),
+      ),
+    ).toStrictEqual({ kind: "signed-out", notice: POPUP_CANCELED_NOTICE });
+  });
+
+  it("drops back to signed-out with the timeout notice", () => {
+    expect(
+      popupLoginOutcome(
+        new OAuthError("x", "OAUTH_TIMEOUT", { timeout_ms: 300_000 }),
+      ),
+    ).toStrictEqual({ kind: "signed-out", notice: POPUP_TIMEOUT_NOTICE });
+  });
+
+  it("hands every other rejection to the redirect flow's mapping", () => {
+    const denied = new OAuthError("x", "OAUTH_AUTH_DENIED");
+    const described = describeError(denied, { redirectUri: REDIRECT_URI });
+    expect(
+      popupLoginOutcome(denied, { redirectUri: REDIRECT_URI }),
+    ).toStrictEqual({ kind: "error", error: described });
+    expect(described.retry).toBe("signed-out");
+  });
+});
+
+describe("strandedReturn", () => {
+  it("is true for the popup window whose opener is gone", () => {
+    expect(strandedReturn({ windowName: POPUP_WINDOW_NAME, search: "" })).toBe(
+      true,
+    );
+  });
+
+  it.each(["", "some-other-window"])(
+    "is true for an authorization return no window here started (window name %j)",
+    (windowName) => {
+      expect(
+        strandedReturn({ windowName, search: "?code=abc&state=xyz" }),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    ["nothing", ""],
+    ["a code without a state", "?code=abc"],
+    ["a provider error", "?error=access_denied&state=xyz"],
+  ])("is false for %s", (_label, search) => {
+    expect(strandedReturn({ windowName: "", search })).toBe(false);
+  });
+});
+
+describe("completePastedLogin", () => {
+  it("completes first and releases the popup wait afterwards", async () => {
+    const order: string[] = [];
+    const result = await completePastedLogin(
+      async () => {
+        await Promise.resolve();
+        order.push("complete");
+        return "tokens";
+      },
+      () => {
+        order.push("release");
+      },
+    );
+    expect(result).toBe("tokens");
+    expect(order).toStrictEqual(["complete", "release"]);
+  });
+
+  it("releases the wait even when the paste fails, and rethrows", async () => {
+    const order: string[] = [];
+    await expect(
+      completePastedLogin(
+        () => {
+          order.push("complete");
+          return Promise.reject(new Error("bad paste"));
+        },
+        () => {
+          order.push("release");
+        },
+      ),
+    ).rejects.toThrow("bad paste");
+    expect(order).toStrictEqual(["complete", "release"]);
   });
 });
 
@@ -506,5 +679,114 @@ describe("redirect login round trip", () => {
 
     await signOut(memory, hop, "us");
     expect(memory.get(CREDENTIAL_KEYS.tokens("us"))).toBeNull();
+  });
+});
+
+describe("popup login completed by paste", () => {
+  /**
+   * A window seam whose popup never reports back — the case the paste box
+   * exists for — over real timers the flow tears down itself.
+   *
+   * @param origin - The page's origin.
+   * @returns The host and the popup it hands out.
+   */
+  function silentHost(origin: string): {
+    host: PopupHost;
+    popup: { closed: boolean; close: () => void; focus: () => void };
+  } {
+    const popup = {
+      closed: false,
+      close: () => {
+        popup.closed = true;
+      },
+      focus: () => undefined,
+    };
+    const host: PopupHost = {
+      origin,
+      open: () => popup,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      setInterval: (fn, ms) => setInterval(fn, ms),
+      clearInterval: (handle) => {
+        clearInterval(handle as ReturnType<typeof setInterval>);
+      },
+      setTimeout: (fn, ms) => setTimeout(fn, ms),
+      clearTimeout: (handle) => {
+        clearTimeout(handle as ReturnType<typeof setTimeout>);
+      },
+    };
+    return { host, popup };
+  }
+
+  it("lands the tokens in memory with the popup wait still open, then releases it", async () => {
+    const fetchImpl: typeof fetch = (input, init) => {
+      const request = new Request(input, init);
+      if (request.url.endsWith("/oauth/mcp/register/")) {
+        return Promise.resolve(
+          Response.json({ client_id: "dcr-client-123" }, { status: 201 }),
+        );
+      }
+      expect(request.url.endsWith("/oauth/token/")).toBe(true);
+      return Promise.resolve(
+        Response.json({
+          access_token: "popup-access-token",
+          refresh_token: null,
+          expires_in: 3600,
+          token_type: "Bearer",
+          scope: "openid",
+        }),
+      );
+    };
+    const memory = new InMemoryCredentialStore();
+    const now = Date.UTC(2026, 8, 15, 10, 0, 0);
+    const { host, popup } = silentHost(new URL(REDIRECT_URI).origin);
+    const controller = new AbortController();
+
+    // The page's attempt: the popup opens and nothing comes back from it.
+    const attempt = loginInPopup({
+      region: "us",
+      redirectUri: REDIRECT_URI,
+      store: memory,
+      signal: controller.signal,
+      host,
+      fetch: fetchImpl,
+      now: () => now,
+    });
+    const settled = attempt.then(
+      () => "resolved",
+      (error: unknown) => error,
+    );
+    // Let `beginLogin` run so the pending record exists to paste against.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20);
+    });
+    const pending = memory.get(CREDENTIAL_KEYS.pendingLogin("us"));
+    expect(pending).not.toBeNull();
+    const state = (JSON.parse(pending ?? "{}") as { state?: string }).state;
+
+    // The visitor pastes the address the relay page showed them.
+    const tokens = await completePastedLogin(
+      () =>
+        completeLogin({
+          region: "us",
+          returnUrl: `${REDIRECT_URI}?code=auth-code&state=${state ?? ""}`,
+          store: memory,
+          fetch: fetchImpl,
+          now: () => now,
+        }),
+      () => {
+        controller.abort();
+      },
+    );
+    expect(Date.parse(tokens.expires_at)).toBe(now + 3600 * 1000);
+    expect(memory.get(CREDENTIAL_KEYS.tokens("us"))).not.toBeNull();
+    // The released wait rejects with the abort reason (which the page
+    // ignores), closed the popup, and left the landed tokens alone.
+    const released = await settled;
+    expect(released).toBeInstanceOf(DOMException);
+    expect((released as DOMException).name).toBe("AbortError");
+    expect(popup.closed).toBe(true);
+    expect(memory.get(CREDENTIAL_KEYS.tokens("us"))).not.toBeNull();
+    expect(memory.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
   });
 });
