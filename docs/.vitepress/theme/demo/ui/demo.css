@@ -1572,3 +1572,284 @@ button.mp-chip-toggle[aria-pressed="true"] {
   fill: var(--vp-c-text-1);
   font-weight: 600;
 }
+
+/* --- constellation --- */
+
+/* The band a loop report opens with: the constellation, and beside it —
+   once the picture has settled to its small size — the finding; while the
+   loop runs the picture takes the row and the progress line wraps under. */
+.mp-loop-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.mp-loop-band .mp-loop-progress,
+.vp-doc .mp-demo .mp-loop-band .mp-loop-sub,
+.vp-doc .mp-demo .mp-loop-band .mp-matrix-best {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.mp-const {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  transition: width 0.5s ease;
+}
+
+.mp-const-settled {
+  width: 380px;
+}
+
+.mp-const-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  overflow: visible;
+  color: var(--vp-c-brand-1);
+}
+
+/* An arc's weight and opacity follow the rate it found; a failed pair is a
+   dashed grey line; the arcs of the finding are heavier and fully opaque. */
+.mp-const-edge {
+  opacity: var(--mp-edge-alpha, 0.6);
+  transition: opacity 0.3s ease;
+}
+
+.mp-const-arc {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: var(--mp-edge-width, 1);
+  stroke-linecap: round;
+  stroke-dasharray: var(--mp-edge-len, 0);
+  stroke-dashoffset: 0;
+  transition: stroke-width 0.3s ease;
+}
+
+.mp-const-head {
+  fill: currentcolor;
+  stroke: none;
+}
+
+.mp-const-failed {
+  color: var(--vp-c-text-3);
+}
+
+.mp-const-failed .mp-const-arc {
+  stroke-dasharray: 4 3;
+}
+
+.mp-const-hi {
+  opacity: 1;
+}
+
+.mp-const-hi .mp-const-arc {
+  stroke-width: calc(var(--mp-edge-width, 1) + 1.25);
+}
+
+.mp-const-node circle {
+  fill: var(--vp-c-bg);
+  stroke: currentcolor;
+  stroke-width: 2;
+  transition: fill 0.3s ease;
+}
+
+.mp-const-node-hi circle {
+  fill: currentcolor;
+}
+
+/* Labels sit outside the ring; the halo keeps one legible where an arc
+   passes behind it. */
+.mp-const-label {
+  fill: var(--vp-c-text-2);
+  font-size: 12px;
+  paint-order: stroke;
+  stroke: var(--vp-c-bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.mp-const-label-hub,
+.mp-const-node-hi .mp-const-label {
+  fill: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+.mp-const-count {
+  fill: var(--vp-c-text-2);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--vp-c-bg);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+/* Settled, the drawing is shown at about half size: labels, node rings
+   and arcs are drawn heavier so they still read. */
+.mp-const-settled .mp-const-label {
+  font-size: 17px;
+  stroke-width: 4px;
+}
+
+.mp-const-settled .mp-const-node circle {
+  stroke-width: 3;
+}
+
+.mp-const-settled .mp-const-arc {
+  stroke-width: calc(var(--mp-edge-width, 1) * 1.5);
+}
+
+.mp-const-settled .mp-const-hi .mp-const-arc {
+  stroke-width: calc(var(--mp-edge-width, 1) * 1.5 + 1.5);
+}
+
+/* Each arc draws itself in as its result lands (a dash as long as the arc,
+   offset away and brought back), its arrowhead arriving with it; nodes
+   fade in one after another; a pair under a sweep breathes. Reduced
+   motion: the global rule above clears every animation, so arcs simply
+   appear and nothing pulses. */
+@media (prefers-reduced-motion: no-preference) {
+  .mp-const-arc {
+    animation: mp-draw 0.35s ease-out;
+  }
+
+  .mp-const-failed .mp-const-arc {
+    animation: mp-fade 0.35s ease;
+  }
+
+  .mp-const-head {
+    animation: mp-fade 0.2s ease 0.3s both;
+  }
+
+  .mp-const-node {
+    animation: mp-fade 0.3s ease both;
+    animation-delay: calc(var(--mp-i, 0) * 40ms);
+  }
+
+  .mp-const-pulse {
+    animation: mp-pulse 1s ease-in-out infinite;
+  }
+}
+
+@keyframes mp-draw {
+  from {
+    stroke-dashoffset: var(--mp-edge-len, 0);
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mp-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mp-pulse {
+  0%,
+  100% {
+    opacity: var(--mp-edge-alpha, 0.6);
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* --- live trace --- */
+
+.mp-code-live {
+  position: relative;
+}
+
+/* Emoji in the system font: the monospace font would substitute its own. */
+.mp-code-emoji {
+  font-family: system-ui, sans-serif;
+  font-style: normal;
+}
+
+/* The gutter lives in the block's left padding: the check at its left edge,
+   the caret against the code. Neither is selectable, so a drag over the
+   block still copies the program alone. */
+.mp-code-gutter {
+  position: absolute;
+  top: 0;
+  left: -17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 16px;
+  height: 1.6em;
+  text-indent: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.mp-code-caret {
+  margin-left: auto;
+  color: var(--vp-c-brand-1);
+}
+
+/* Struck bright as a call lands, then faded; it stays. */
+.mp-code-tick {
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.55;
+}
+
+/* A trace comment: laid out like a line, coloured like a comment, outside
+   the program (not selectable, not announced). */
+.mp-code-trace {
+  display: block;
+  min-height: 1.6em;
+  padding-left: 2ch;
+  text-indent: -2ch;
+  color: #8f8f91;
+  user-select: none;
+}
+
+.dark .mp-code-trace {
+  color: #9a9a9c;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mp-code-caret {
+    animation: mp-blink 1s steps(1) infinite;
+  }
+
+  .mp-code-tick {
+    animation: mp-tick 1.2s ease-out both;
+  }
+
+  .mp-code-trace {
+    animation: mp-fade 0.25s ease;
+  }
+}
+
+@keyframes mp-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes mp-tick {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.55;
+  }
+}

@@ -6,8 +6,10 @@
 // reports, which settle them in order. The conversion matrix also keeps a
 // cache of per-window sweeps, so a cell opened twice costs nothing the
 // second time. Domain logic stays in model/; this composable only orders
-// those calls and keeps stale responses from overwriting newer ones.
-// Results are class instances, hence `shallowRef`.
+// those calls and keeps stale responses from overwriting newer ones. Each
+// outcome carries the call's wall time and a loop run names the call in
+// flight, which is all the code panel's trace and the result's
+// constellation need. Results are class instances, hence `shallowRef`.
 
 import {
   computed,
@@ -75,6 +77,8 @@ export interface CallOutcome {
   /** `null` while the call is pending, or after it failed. */
   readonly result: AnyResult | null;
   readonly error: DemoError | null;
+  /** Wall time of the call in milliseconds; `null` while it is pending. */
+  readonly durationMs: number | null;
 }
 
 /**
@@ -88,6 +92,10 @@ export interface EngineRun {
   readonly spec: AnySpec;
   /** In call order: one for a query, one per candidate or pair for a loop. */
   readonly outcomes: readonly CallOutcome[];
+  /** Index into `outcomes` of the loop call in flight; `null` otherwise. */
+  readonly current: number | null;
+  /** `performance.now()` when the call in flight began; `null` otherwise. */
+  readonly startedAt: number | null;
   readonly loading: boolean;
   /** The error that ended the run (a query's own, or the one that stopped the loop). */
   readonly error: DemoError | null;
@@ -112,6 +120,8 @@ export interface QueryController {
   readonly result: ComputedRef<AnyResult | null>;
   /** The shown run's outcomes, call by call. */
   readonly outcomes: ComputedRef<readonly CallOutcome[]>;
+  /** Index of the shown loop's call in flight, or `null`. */
+  readonly current: ComputedRef<number | null>;
   readonly loading: ComputedRef<boolean>;
   /** The shown run's error, else the latest discovery error. */
   readonly error: ComputedRef<DemoError | null>;
@@ -229,6 +239,7 @@ export function useQuery(
   );
   const result = computed(() => single.value?.result ?? null);
   const outcomes = computed(() => active.value?.outcomes ?? []);
+  const inFlight = computed(() => active.value?.current ?? null);
   const loading = computed(() => active.value?.loading ?? false);
   const error = computed(() => active.value?.error ?? discoveryError.value);
   const link = computed(() => active.value?.link ?? null);
@@ -270,15 +281,25 @@ export function useQuery(
     store(kind, { ...current, ...changes });
     return true;
   };
+  // Timed around the call itself, so the trace reports what the request
+  // took and not what the panel took to draw it.
   const settle = async (call: Call): Promise<CallOutcome> => {
+    const started = performance.now();
     try {
+      const value = (await runCall(ws(), call)) as AnyResult;
       return {
         call,
-        result: (await runCall(ws(), call)) as AnyResult,
+        result: value,
         error: null,
+        durationMs: performance.now() - started,
       };
     } catch (error_) {
-      return { call, result: null, error: describeError(error_, context()) };
+      return {
+        call,
+        result: null,
+        error: describeError(error_, context()),
+        durationMs: performance.now() - started,
+      };
     }
   };
 
@@ -304,7 +325,14 @@ export function useQuery(
     store(kind, {
       ticket,
       spec: next,
-      outcomes: loop.map((call) => ({ call, result: null, error: null })),
+      outcomes: loop.map((call) => ({
+        call,
+        result: null,
+        error: null,
+        durationMs: null,
+      })),
+      current: 0,
+      startedAt: performance.now(),
       loading: true,
       error: null,
       link: null,
@@ -321,14 +349,23 @@ export function useQuery(
         store(kind, {
           ...current,
           outcomes: settled,
+          current: null,
+          startedAt: null,
           loading: false,
           error: outcome.error,
         });
         return;
       }
-      store(kind, { ...current, outcomes: settled });
+      // The next call starts as soon as this one is stored.
+      const more = i + 1 < loop.length;
+      store(kind, {
+        ...current,
+        outcomes: settled,
+        current: more ? i + 1 : null,
+        startedAt: more ? performance.now() : null,
+      });
     }
-    patch(kind, ticket, { loading: false });
+    patch(kind, ticket, { loading: false, current: null, startedAt: null });
   };
 
   return {
@@ -337,6 +374,7 @@ export function useQuery(
     spec,
     result,
     outcomes,
+    current: inFlight,
     loading,
     error,
     topEvents,
@@ -384,8 +422,11 @@ export function useQuery(
             call,
             result: runs.value[kind]?.outcomes[0]?.result ?? null,
             error: null,
+            durationMs: null,
           },
         ],
+        current: null,
+        startedAt: null,
         loading: true,
         error: null,
         link: null,

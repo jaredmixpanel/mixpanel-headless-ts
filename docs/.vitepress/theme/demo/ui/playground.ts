@@ -75,6 +75,7 @@ import {
   liveSetup,
   OFFLINE_SETUP,
 } from "../model/setup-snippets.js";
+import type { TracedCall } from "../model/trace.js";
 import AhaBuilder, { type AhaDraft } from "./aha-builder.js";
 import { rankOutcomes } from "./aha-result.js";
 import {
@@ -90,7 +91,11 @@ import {
   RetentionBuilder,
   type RetentionDraft,
 } from "./builders.js";
-import CodePanel, { type CodeHelper, programText } from "./code-panel.js";
+import CodePanel, {
+  type CodeHelper,
+  type CodeTrace,
+  programText,
+} from "./code-panel.js";
 import { button } from "./el.js";
 import EventStrip from "./event-list.js";
 import MatrixBuilder, { type MatrixDraft } from "./matrix-builder.js";
@@ -991,6 +996,28 @@ export default defineComponent({
         return null;
       },
     );
+    // The shown loop's trace: what each call took and which is in flight,
+    // from the run itself; the panel turns it into the comment lines.
+    const loopTrace = computed((): CodeTrace | null => {
+      const shown = query.runs.value[engine.value];
+      if (
+        shown === undefined ||
+        !isLoopSpec(shown.spec) ||
+        loopCode.value === null
+      ) {
+        return null;
+      }
+      const traced: TracedCall[] = shown.outcomes.map((outcome) => ({
+        call: outcome.call,
+        durationMs: outcome.durationMs,
+        failed: outcome.error !== null,
+      }));
+      return {
+        calls: traced,
+        current: shown.current,
+        startedAt: shown.startedAt,
+      };
+    });
     const codeColumn = (): VNode =>
       h("aside", { class: "mp-col mp-col-code" }, [
         h(CodePanel, {
@@ -1001,6 +1028,7 @@ export default defineComponent({
           placeholder: query.spec.value === null ? RUN_HINT : null,
           program: loopCode.value?.program ?? null,
           helper: loopCode.value?.helper ?? null,
+          trace: loopTrace.value,
         }),
       ]);
 

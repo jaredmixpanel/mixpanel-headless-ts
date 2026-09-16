@@ -421,7 +421,7 @@ three Mixpanel hosts, `style-src` keeps `'unsafe-inline'` for Shiki's colour
 attributes); `tests/demo-source.test.ts` greps the demo tree for storage and
 redirect-URI rules, and `tests/demo-dist.test.ts` checks the built site (CSP
 hashes, no third-party loads, the playground chunk not loaded elsewhere and
-within 700 KB minified / 190 KB gzipped) — it skips without a build and runs
+within 738 KB minified / 210 KB gzipped) — it skips without a build and runs
 in `docs.yml` after one.
 `npm run demo:canary` (`.github/workflows/demo-canary.yml`, weekly and on
 dispatch, no secrets) probes that Mixpanel's endpoints still answer CORS

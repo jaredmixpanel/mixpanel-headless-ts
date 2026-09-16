@@ -131,6 +131,7 @@ export default defineComponent({
         return h(AhaResult, {
           spec,
           outcomes: props.outcomes,
+          loading: props.loading,
           onOpen: (event: string) => emit("openRetention", event),
         });
       }
@@ -171,26 +172,10 @@ export default defineComponent({
       }
     };
 
-    // The ranking loop reports where it is under its skeleton; a query
-    // shows the bare skeleton (its previous result stays until replaced).
-    const skeleton = (spec: AnySpec): VNode | null => {
-      if (!props.loading) {
-        return null;
-      }
-      const settled = props.outcomes.filter(
-        (outcome) => outcome.result !== null || outcome.error !== null,
-      ).length;
-      return h("div", [
-        h("div", { class: "mp-skeleton-chart" }),
-        isLoopSpec(spec)
-          ? h(
-              "p",
-              { class: "mp-muted mp-loop-progress", role: "status" },
-              `Running query ${String(Math.min(settled + 1, props.outcomes.length))} of ${String(props.outcomes.length)}…`,
-            )
-          : null,
-      ]);
-    };
+    // A query's first run shows the bare skeleton (a later run keeps the
+    // previous result until replaced); the loops draw their own progress.
+    const skeleton = (): VNode | null =>
+      props.loading ? h("div", { class: "mp-skeleton-chart" }) : null;
 
     // The kicker row carries the run indicator: the bar for every engine,
     // the status line only for a query (a loop reports its own count).
@@ -221,16 +206,10 @@ export default defineComponent({
             : h(ErrorBlock, { error: props.error }),
         ]);
       }
-      // A query is ready once it has a result; the ranking once it has
-      // finished with at least one answer to rank; the matrix at once — its
-      // grid fills cell by cell as the loop settles.
-      const ready =
-        spec.kind === "matrix" ||
-        (spec.kind === "aha"
-          ? !props.loading &&
-            props.outcomes.some((outcome) => outcome.result !== null)
-          : result !== null);
-      const dimmed = props.loading && spec.kind !== "matrix";
+      // A query is ready once it has a result; a loop at once — its
+      // constellation and grid fill as the calls settle.
+      const ready = isLoopSpec(spec) || result !== null;
+      const dimmed = props.loading && !isLoopSpec(spec);
       return h(
         "section",
         { class: "mp-result", "aria-busy": props.loading ? "true" : "false" },
@@ -239,7 +218,7 @@ export default defineComponent({
           h("p", { class: "mp-result-title" }, resultTitle(spec, result)),
           props.error === null ? null : h(ErrorBlock, { error: props.error }),
           h("div", { class: ["mp-result-body", dimmed ? "mp-loading" : ""] }, [
-            ready ? body(spec, result) : skeleton(spec),
+            ready ? body(spec, result) : skeleton(),
           ]),
           ready ? slots["actions"]?.() : null,
           ready && result !== null

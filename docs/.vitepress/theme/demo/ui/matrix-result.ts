@@ -1,15 +1,18 @@
-// The conversion matrix's result: an n × n heatmap (row = first step,
-// column = second step, cell = overall conversion within the window) that
-// fills as the loop settles, the best path `bestPath` chains under it with
-// a button that opens it in the Funnel tab, and a side panel for one cell
-// that runs the pair at the windows not fetched yet and draws the four
-// values as a line. A real table with scoped headers and a caption; every
-// cell is a button, so the panel opens from the keyboard too. The cells
-// are shaded like the retention grid, through the same `cellShade`.
+// The conversion matrix's result: a constellation of the pool that draws
+// one arc per pair as the loop settles (and stays, small, with the best
+// path lit), an n × n heatmap (row = first step, column = second step,
+// cell = overall conversion within the window) that fills alongside it,
+// the best path `bestPath` chains with a button that opens it in the
+// Funnel tab, and a side panel for one cell that runs the pair at the
+// windows not fetched yet and draws the four values as a line. A real
+// table with scoped headers and a caption; every cell is a button, so the
+// panel opens from the keyboard too. The cells are shaded like the
+// retention grid, through the same `cellShade`.
 
 import { defineComponent, h, type PropType, type VNode } from "vue";
 
 import {
+  type BestPath,
   bestPath,
   type MatrixPair,
   type MatrixSpec,
@@ -24,8 +27,9 @@ import {
   sparklinePath,
 } from "../model/series.js";
 import { ErrorBlock } from "./banners.js";
+import Constellation, { type ConstellationEdge } from "./constellation.js";
 import { button } from "./el.js";
-import type { CallOutcome } from "./use-query.js";
+import { type CallOutcome, pairKey } from "./use-query.js";
 
 /** One window of a cell's sweep: fetched (an outcome) or not (`null`). */
 export interface SweepPoint {
@@ -277,21 +281,25 @@ export default defineComponent({
       ]);
     };
 
+    const settledCount = (): number =>
+      props.outcomes.filter(
+        (outcome) => outcome.result !== null || outcome.error !== null,
+      ).length;
+
     const progress = (): VNode | null => {
       if (!props.loading) {
         return null;
       }
-      const settled = props.outcomes.filter(
-        (outcome) => outcome.result !== null || outcome.error !== null,
-      ).length;
       return h(
         "p",
         { class: "mp-muted mp-loop-progress", role: "status" },
-        `Running query ${String(Math.min(settled + 1, props.outcomes.length))} of ${String(props.outcomes.length)}…`,
+        `Running query ${String(Math.min(settledCount() + 1, props.outcomes.length))} of ${String(props.outcomes.length)}…`,
       );
     };
 
-    const best = (): VNode | null => {
+    // The best path once the loop is done, `null` while it runs or when
+    // nothing converted.
+    const pathOf = (): BestPath | null => {
       if (props.loading) {
         return null;
       }
@@ -300,7 +308,65 @@ export default defineComponent({
         matrixResults(props.spec, props.outcomes),
         { steps: PATH_STEPS },
       );
-      if (path.events.length < 2) {
+      return path.events.length < 2 ? null : path;
+    };
+
+    // The pool on a ring, one arc per settled pair in loop order; the best
+    // path lit once it is known, the pair under a sweep pulsing meanwhile.
+    const constellation = (path: BestPath | null): VNode => {
+      const { events } = props.spec;
+      const index = new Map(events.map((event, i) => [event, i]));
+      const lit = new Set(
+        path === null
+          ? []
+          : path.events
+              .slice(1)
+              .map((to, k) => `${path.events[k] ?? ""}>${to}`),
+      );
+      const sweeping =
+        props.sweeping && props.selected !== null
+          ? pairKey(props.selected)
+          : null;
+      const edges = orderedPairs(events).flatMap(
+        ([from, to], i): ConstellationEdge[] => {
+          const outcome = props.outcomes[i];
+          const key = `${from}>${to}`;
+          if (
+            outcome === undefined ||
+            (outcome.result === null && outcome.error === null)
+          ) {
+            return [];
+          }
+          const result = outcome.result as FunnelResult | null;
+          return [
+            {
+              key,
+              from: index.get(from) ?? 0,
+              to: index.get(to) ?? 0,
+              weight: result === null ? null : result.overall_conversion_rate,
+              highlight: lit.has(key),
+              pulse: sweeping === key,
+            },
+          ];
+        },
+      );
+      return h(Constellation, {
+        nodes: events,
+        layout: "ring",
+        edges,
+        highlightNodes:
+          path === null
+            ? []
+            : path.events.map((event) => index.get(event) ?? -1),
+        count: props.loading
+          ? `${String(settledCount())} / ${String(props.outcomes.length)}`
+          : null,
+        settled: !props.loading,
+      });
+    };
+
+    const best = (path: BestPath | null): VNode | null => {
+      if (path === null) {
         return null;
       }
       return h("p", { class: "mp-matrix-best" }, [
@@ -497,19 +563,26 @@ export default defineComponent({
       );
     };
 
-    return (): VNode =>
-      h("div", { class: "mp-matrix-layout" }, [
+    return (): VNode => {
+      const path = pathOf();
+      return h("div", { class: "mp-matrix-layout" }, [
         h("div", { class: "mp-matrix-main" }, [
           h(
             "p",
             { class: "mp-muted mp-loop-sub" },
             `Share of users who did the row event and then the column event within ${String(props.spec.conversionWindow)} days, over the last ${String(props.spec.last)} days. Select a cell to see the pair across windows.`,
           ),
+          // The constellation fills the band while the loop runs and
+          // shrinks beside the best path once it is done.
+          h("div", { class: "mp-loop-band" }, [
+            constellation(path),
+            progress(),
+            best(path),
+          ]),
           grid(),
-          progress(),
-          best(),
         ]),
         props.selected === null ? null : panel(props.selected),
       ]);
+    };
   },
 });
