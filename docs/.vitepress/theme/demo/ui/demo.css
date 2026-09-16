@@ -1108,6 +1108,124 @@
   color: var(--vp-c-warning-1);
 }
 
+/*
+ * The picker, the sign-in loading card and the redirect notice host the
+ * run indicator; it sits on their top edge, so they position it and clip
+ * its ends to the rounded corners.
+ */
+.mp-picker,
+.mp-pending {
+  position: relative;
+  overflow: hidden;
+}
+
+/*
+ * The result panel's bar overlaps its top border; a card clips at its
+ * padding edge, so here the bar starts inside it and is a touch thicker to
+ * read across the wider surface.
+ */
+.mp-picker .mp-loading-bar,
+.mp-pending .mp-loading-bar {
+  top: 0;
+  height: 3px;
+}
+
+.mp-picker-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin: 0 0 8px;
+}
+
+.mp-loading-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/*
+ * The patience line: empty until the wait earns it, then fades in. The
+ * transition is on opacity alone so the reduced-motion block turns it
+ * into a plain appearance.
+ */
+.mp-demo .mp-loading-note {
+  min-height: 1.5em;
+  margin-bottom: 0;
+  color: var(--vp-c-text-2);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.mp-demo .mp-loading-note-shown {
+  opacity: 1;
+}
+
+/*
+ * The picker skeleton: grey bars where the organisation headers and the
+ * project rows will be. Static by default; motion adds the shimmer.
+ */
+.mp-skeleton-picker {
+  margin-top: 16px;
+}
+
+.mp-skeleton-bar {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--vp-c-default-soft);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mp-skeleton-bar {
+    background: linear-gradient(
+      90deg,
+      var(--vp-c-default-soft) 25%,
+      var(--vp-c-divider) 50%,
+      var(--vp-c-default-soft) 75%
+    );
+    background-size: 200% 100%;
+    animation: mp-shimmer 1.4s linear infinite;
+  }
+}
+
+.mp-skeleton-org {
+  width: 140px;
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+.mp-skeleton-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 0;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+/* --- Picking a project ---------------------------------------------------- */
+
+/*
+ * While `ws.use()` runs the list stays but goes inert (the controls are
+ * disabled too, for the keyboard); the chosen row keeps full contrast
+ * with a brand outline so the visitor sees what is being opened.
+ */
+.mp-picker-busy .mp-picker-list {
+  pointer-events: none;
+}
+
+.mp-picker-busy .mp-picker-project:not(.mp-picker-opening) {
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.mp-picker-opening {
+  margin: 0 -12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--vp-c-brand-soft);
+  box-shadow: inset 0 0 0 2px var(--mp-selected-border);
+}
+
 .mp-picker-org {
   margin-top: 16px;
 }

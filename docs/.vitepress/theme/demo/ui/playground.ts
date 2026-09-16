@@ -98,6 +98,8 @@ import CodePanel, {
 } from "./code-panel.js";
 import { button } from "./el.js";
 import EventStrip from "./event-list.js";
+import LoadingBar from "./loading-bar.js";
+import LoadingCard, { type SignInPhase } from "./loading-card.js";
 import MatrixBuilder, { type MatrixDraft } from "./matrix-builder.js";
 import { matrixResults, type SweepPoint } from "./matrix-result.js";
 import ProjectPicker from "./project-picker.js";
@@ -259,6 +261,9 @@ export default defineComponent({
     const selectedPair = shallowRef<MatrixPair | null>(null);
     const linkPending = ref(false);
     const busy = ref(false);
+    // Which step of the sign-in the loading card names while the state is
+    // `callback`; set before each await rather than inferred afterwards.
+    const signInPhase = ref<SignInPhase>("sign-in");
     const expiring = ref(false);
     let expiryTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -665,6 +670,7 @@ export default defineComponent({
         goLive();
         return;
       }
+      signInPhase.value = "sign-in";
       state.value = { mode: "callback" };
       try {
         const ws =
@@ -674,6 +680,7 @@ export default defineComponent({
             projectId: "0",
             store: memory,
           }));
+        signInPhase.value = "projects";
         const me = session.me ?? (await ws.me());
         session.ws = ws;
         session.me = me;
@@ -1062,19 +1069,31 @@ export default defineComponent({
           });
         }
         case "login-pending": {
-          return h("p", { class: "mp-intro", role: "status" }, [
-            "Redirecting to Mixpanel… If nothing happens, ",
-            current.authorizeUrl === null
-              ? "retry from the start."
-              : h("a", { href: current.authorizeUrl }, "open the sign-in page"),
-          ]);
+          return h(
+            "section",
+            { class: "mp-intro mp-pending", "aria-busy": "true" },
+            [
+              h(LoadingBar, { active: true, label: null }),
+              h(
+                "p",
+                { class: "mp-loading-title", role: "status" },
+                "Redirecting to Mixpanel…",
+              ),
+              h("p", { class: "mp-muted" }, [
+                "If nothing happens, ",
+                current.authorizeUrl === null
+                  ? "retry from the start."
+                  : h(
+                      "a",
+                      { href: current.authorizeUrl },
+                      "open the sign-in page",
+                    ),
+              ]),
+            ],
+          );
         }
         case "callback": {
-          return h(
-            "p",
-            { class: "mp-intro", role: "status" },
-            "Completing sign-in…",
-          );
+          return h(LoadingCard, { phase: signInPhase.value });
         }
         case "project-picker": {
           return h(ProjectPicker, {

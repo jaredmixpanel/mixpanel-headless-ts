@@ -20,6 +20,7 @@ import {
   signOut,
 } from "../model/session-state.js";
 import { ErrorBlock } from "./banners.js";
+import LoadingCard from "./loading-card.js";
 import {
   clearSession,
   forgetRegion,
@@ -133,8 +134,8 @@ export default defineComponent({
           ]),
         ]);
       }
-      return h("div", { class: "mp-demo mp-callback", role: "status" }, [
-        h("p", "Completing sign-in…"),
+      return h("div", { class: "mp-demo mp-callback" }, [
+        h(LoadingCard, { phase: "sign-in" }),
       ]);
     };
   },
