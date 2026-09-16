@@ -68,8 +68,8 @@ interface Decoration {
   readonly summary: TraceLine | null;
 }
 
-/** One step of the clock face: a revolution every 2.4 s. */
-const CLOCK_STEP_MS = 100;
+/** One step of the clock face: a revolution every 4.8 s, slow enough that the hands read as turning rather than flickering. */
+const CLOCK_STEP_MS = 200;
 
 /** A helper function the panel shows collapsed under the program. */
 export interface CodeHelper {
