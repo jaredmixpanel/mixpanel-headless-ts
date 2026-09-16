@@ -960,6 +960,7 @@ export default defineComponent({
             selectedPair: selectedPair.value,
             sweep: sweepPoints.value,
             sweeping: matrixSweeping.value,
+            current: query.current.value,
             onOpenRetention: openRetention,
             onSelectPair: (pair: MatrixPair | null) => {
               selectedPair.value = pair;

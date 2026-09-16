@@ -113,6 +113,8 @@ export default defineComponent({
     },
     /** Whether the selected pair's sweep is running. */
     sweeping: { type: Boolean, default: false },
+    /** Index of the loop call in flight (matrix cell to shimmer), or `null`. */
+    current: { type: Number as PropType<number | null>, default: null },
   },
   emits: {
     // A ranking row was chosen: open `born → event` in the Retention tab.
@@ -140,6 +142,7 @@ export default defineComponent({
           spec,
           outcomes: props.outcomes,
           loading: props.loading,
+          current: props.current,
           selected: props.selectedPair,
           sweep: props.sweep,
           sweeping: props.sweeping,

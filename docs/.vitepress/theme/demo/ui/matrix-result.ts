@@ -134,6 +134,8 @@ export default defineComponent({
       required: true,
     },
     loading: { type: Boolean, default: false },
+    /** Index (in pair order) of the query in flight, or `null`. */
+    current: { type: Number as PropType<number | null>, default: null },
     /** The cell open in the side panel, or `null`. */
     selected: { type: Object as PropType<MatrixPair | null>, default: null },
     /** The selected pair at each window, ascending. */
@@ -159,7 +161,12 @@ export default defineComponent({
       props.selected[0] === from &&
       props.selected[1] === to;
 
-    const cell = (from: string, to: string, outcome: CallOutcome): VNode => {
+    const cell = (
+      from: string,
+      to: string,
+      outcome: CallOutcome,
+      running: boolean,
+    ): VNode => {
       const result = outcome.result as FunnelResult | null;
       if (result === null) {
         if (outcome.error !== null) {
@@ -174,14 +181,20 @@ export default defineComponent({
             "error",
           );
         }
+        // The cell whose query is in flight shimmers; the rest wait as dots.
         return h(
           "td",
           {
             key: to,
             class: "mp-num mp-matrix-pending",
-            "aria-label": "pending",
+            "aria-label": running ? "running" : "pending",
           },
-          "…",
+          running
+            ? h("span", {
+                class: "mp-skeleton-bar mp-matrix-skeleton",
+                "aria-hidden": "true",
+              })
+            : "…",
         );
       }
       const rate = result.overall_conversion_rate;
@@ -274,7 +287,7 @@ export default defineComponent({
                 const outcome = props.outcomes[i];
                 return outcome === undefined
                   ? h("td", { key: to })
-                  : cell(from, to, outcome);
+                  : cell(from, to, outcome, props.current === i);
               }),
             ]),
           ),

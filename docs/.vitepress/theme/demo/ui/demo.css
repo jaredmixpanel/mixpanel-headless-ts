@@ -1615,6 +1615,13 @@ button.mp-chip-toggle[aria-pressed="true"] {
   background: var(--vp-c-default-soft);
 }
 
+.mp-matrix-skeleton {
+  display: inline-block;
+  width: 3em;
+  height: 1em;
+  vertical-align: -0.1em;
+}
+
 .mp-sweep-skeleton-value {
   display: inline-block;
   width: 3.5em;
