@@ -30,7 +30,7 @@ export const QUERY_ORIGIN = "mixpanel-headless";
  * (`scripts/sync-library-version.mjs`); `tests/library-version.test.ts`
  * fails when the two drift.
  */
-const LIBRARY_VERSION = "0.1.0";
+const LIBRARY_VERSION = "0.2.0";
 
 /** How this process entered the library (Python `_EntryPoint`). */
 export type EntryPoint = "lib" | "cli";

@@ -1,6 +1,6 @@
 {
   "name": "@mixpanel-headless/browser",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Browser surface of Mixpanel Headless: bearer-token and redirect-PKCE auth, injectable credential storage, and a browser-safe Workspace factory.",
   "keywords": [
@@ -40,7 +40,7 @@
     "typecheck": "tsc -b tsconfig.json tsconfig.test.json"
   },
   "dependencies": {
-    "@mixpanel-headless/core": "^0.1.0"
+    "@mixpanel-headless/core": "^0.2.0"
   },
   "publishConfig": {
     "access": "public",
