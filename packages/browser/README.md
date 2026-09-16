@@ -2,8 +2,9 @@
 
 The browser surface of Mixpanel Headless: the same `Workspace` facade as
 [`@mixpanel-headless/core`](../core/README.md), constructed through
-browser-safe factories — a server-minted bearer token, or a full redirect
-PKCE login with no backend — over an injectable credential store. The Query
+browser-safe factories — a server-minted bearer token, or a full PKCE login
+with no backend, by redirect or, for embedded pages, in a popup — over an
+injectable credential store. The Query
 and App APIs are CORS-open with bearer auth in every region, so the whole
 query, discovery, report-link and entity surface runs from a page.
 
@@ -77,11 +78,83 @@ Rules for the redirect flow:
 - **Pending logins are single-use and expire** (30 minutes by default,
   `maxPendingAgeMs`); start a fresh `beginLogin` after that.
 
+### Popup flow (embedded pages)
+
+A page that is itself inside an `<iframe>` (a Notion or Confluence embed, an
+intranet panel) cannot run the redirect flow: Mixpanel's authorize page sends
+`frame-ancestors 'none'`. `loginInPopup` opens a top-level window instead,
+and because Mixpanel sends no `Cross-Origin-Opener-Policy` the popup keeps
+`window.opener`, so on landing at the redirect URI it posts the return URL
+back to the frame, which completes the exchange itself. Same `beginLogin` /
+`completeLogin` protocol, a different transport for one string.
+
+```ts
+import {
+  completeLogin,
+  createBrowserWorkspaceFromStore,
+  InMemoryCredentialStore,
+  loginInPopup,
+  relayPopupReturn,
+} from "@mixpanel-headless/browser";
+
+// Framed page: memory is enough, the page never navigates.
+const store = new InMemoryCredentialStore();
+await loginInPopup({
+  region: "us",
+  redirectUri: "https://app.example.com/oauth/callback",
+  store,
+});
+const ws = await createBrowserWorkspaceFromStore({
+  region: "us",
+  projectId: "12345",
+  store,
+});
+
+// Callback page, dual-mode: relay when this window is the popup,
+// otherwise finish a top-level redirect login as above.
+if (!relayPopupReturn()) {
+  await completeLogin({ region: "us", returnUrl: location.href, store });
+}
+```
+
+Rules for the popup flow:
+
+- **`redirectUri` must be same-origin with the page** (`OAUTH_CONFIG_ERROR`
+  otherwise) and still a compile-time constant: the popup posts to exactly
+  that origin and the frame accepts messages from exactly that origin and
+  exactly that window.
+- **Only the return URL crosses windows** — never tokens or the PKCE
+  verifier. The message is `{ type: POPUP_RETURN_MESSAGE_TYPE, v: 1, url }`;
+  anything else, from anywhere else, is ignored.
+- **The outcomes are typed.** `BROWSER_POPUP_BLOCKED` with `details.reason`
+  `"blocked"` (`window.open` returned nothing) keeps the pending record and
+  carries `error.details.authorize_url`: render it as a link or anchor and
+  offer a paste box that calls `completeLogin` on the same store; no fresh
+  `beginLogin` needed, and the record stays bounded by the pending-age gate.
+  The same code with `"in_flight"` is a second `loginInPopup` while one is
+  already running on the page (whatever the store or region — the popup
+  window name is global): refused before anything opens, without touching
+  the first call's record, no link to offer — wait for the first call. `BROWSER_POPUP_CLOSED`:
+  the user shut the popup. `OAuthError` / `OAUTH_TIMEOUT` after `timeoutMs`
+  (`DEFAULT_POPUP_TIMEOUT_MS`, five minutes); a `signal` cancels sooner.
+  Closed, timeout and abort discard the pending record; recover with a fresh
+  `loginInPopup`. The provider's refusal is still `OAUTH_AUTH_DENIED`.
+- **When the opener is gone, fall back to paste.** Electron shells such as the
+  Notion desktop app open the system browser; `relayPopupReturn()` returns
+  `false` there, so the callback page should show its own URL for the user to
+  paste into the frame. `completeLogin` accepts it with the same grammar.
+- **Inside a third-party iframe, keep tokens in memory.** Storage is
+  partitioned there, and use the host's URL/iframe embed rather than an HTML
+  block whose CSP blocks `connect-src` to `mixpanel.com`. Decide the flow with
+  `window.self !== window.top`.
+
 ## Entry point
 
 - Factories: `browserSession`, `createBrowserWorkspace`,
   `createBrowserWorkspaceFromStore`; redirect flow: `beginLogin`,
-  `completeLogin`.
+  `completeLogin`; popup flow: `loginInPopup`, `relayPopupReturn`,
+  `POPUP_WINDOW_NAME`, `POPUP_RETURN_MESSAGE_TYPE`,
+  `DEFAULT_POPUP_TIMEOUT_MS` and the `PopupHost` seam.
 - Stores: `InMemoryCredentialStore` (default), `LocalStorageCredentialStore`
   (takes any `Storage`-shaped object), the `CredentialStore` interface and
   `CREDENTIAL_KEYS` (delete every key in `CREDENTIAL_KEYS.all(region)` on

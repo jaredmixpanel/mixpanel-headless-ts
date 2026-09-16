@@ -275,6 +275,14 @@ marked `// Divergence:` at the site.
   passes `getUserAgent: () => null` to the core client
   (`MixpanelClientOptions.getUserAgent`; a caller's `clientOptions` may
   override it).
+- Login transports: Python's `OAuthFlow.login` has two, a loopback callback
+  server and a stdin paste reader; the browser has three — redirect, popup
+  (`popup-flow.ts`, for pages Mixpanel's `frame-ancestors 'none'` keeps from
+  redirecting) and paste — all sharing `parsePastedRedirect`'s grammar and
+  codes. The popup timeout reuses `OAUTH_TIMEOUT` and the 300 s default of
+  `mixpanel_headless._internal.auth.callback_server`;
+  `BROWSER_POPUP_BLOCKED` and `BROWSER_POPUP_CLOSED` are twin-less (Python
+  cannot observe a blocked or closed window; it times out).
 
 ### Runtime immutability
 

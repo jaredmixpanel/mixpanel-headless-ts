@@ -1,6 +1,6 @@
 ---
 title: In the browser
-description: "The same Workspace facade from a web page — server-minted bearer tokens or a redirect PKCE login with no backend, injectable credential storage, and the guardrails the browser build enforces."
+description: "The same Workspace facade from a web page — server-minted bearer tokens or a redirect PKCE login with no backend, a popup variant for embedded pages, injectable credential storage, and the guardrails the browser build enforces."
 ---
 
 # In the browser
@@ -8,7 +8,7 @@ description: "The same Workspace facade from a web page — server-minted bearer
 `@mixpanel-headless/browser` exposes the same `Workspace` facade as the Node package, constructed through browser-safe factories. The Query and App APIs are CORS-open with bearer auth in every region, so the whole query, discovery, report-link and entity surface runs from a page. Two ways in:
 
 - **A server-minted bearer token** — your backend holds the real credentials and hands the page a short-lived token.
-- **The redirect PKCE flow** — full in-browser OAuth, no backend required.
+- **The redirect PKCE flow** — full in-browser OAuth, no backend required. A page that is itself embedded in another site uses the same login through a popup ([below](#popup-flow-embedded-pages)).
 
 Install it with `npm install @mixpanel-headless/browser` ([Installation](/getting-started/installation)). The package is ESM, has no Node dependencies, and needs a secure context (`https:` or `localhost`) because PKCE uses WebCrypto.
 
@@ -82,6 +82,84 @@ Rules for the redirect flow:
 - **Pending logins are single-use and expire** — 30 minutes by default (`DEFAULT_MAX_PENDING_AGE_MS`; override with `maxPendingAgeMs` on `completeLogin`). Start a fresh `beginLogin` after that.
 - **The provider's refusal is typed.** A user who declines consent comes back as `OAuthError` / `OAUTH_AUTH_DENIED`; a tampered or replayed return URL as `OAUTH_STATE_MISMATCH`; a malformed one as `OAUTH_PASTE_ERROR`.
 
+## Popup flow (embedded pages)
+
+A page that is itself inside an `<iframe>` — a Notion or Confluence embed, a Salesforce or intranet panel — cannot run the redirect flow. Mixpanel's authorize page sends `frame-ancestors 'none'`, so navigating the frame to it draws a blank, and navigating the top window is not the framed page's to do. The login has to happen in a top-level window of its own: [`loginInPopup`](/reference/browser/functions/loginInPopup) opens one, sends it to Mixpanel, and waits for it to come back. Because Mixpanel sends no `Cross-Origin-Opener-Policy`, the popup keeps `window.opener` across the round trip, so when it lands on your redirect URI it can hand the return URL back to the frame with `postMessage`. The frame then finishes the exchange itself with the verifier it never let out of memory.
+
+Nothing about the token protocol changes: `loginInPopup` composes [`beginLogin`](/reference/browser/functions/beginLogin) and [`completeLogin`](/reference/browser/functions/completeLogin), and the popup is only a different transport for the one string that crosses windows.
+
+The framed page starts the flow and, when the promise settles, builds the workspace from the same store:
+
+```ts twoslash
+import {
+  createBrowserWorkspaceFromStore,
+  InMemoryCredentialStore,
+  loginInPopup,
+} from "@mixpanel-headless/browser";
+
+const store = new InMemoryCredentialStore(); // the page never navigates
+await loginInPopup({
+  region: "us",
+  redirectUri: "https://app.example.com/oauth/callback",
+  store,
+});
+
+const ws = await createBrowserWorkspaceFromStore({
+  region: "us",
+  projectId: "12345",
+  store,
+});
+console.log(await ws.events());
+```
+
+The callback page serves both flows. [`relayPopupReturn`](/reference/browser/functions/relayPopupReturn) returns `true` only when the document is the popup this library opened (its `window.name` is [`POPUP_WINDOW_NAME`](/reference/browser/variables/POPUP_WINDOW_NAME) and its opener is still there); it then posts the return and the page has nothing left to do but close. Otherwise the page is a top-level redirect return and completes it as before:
+
+```ts twoslash
+import {
+  BROWSER_NO_PENDING_LOGIN,
+  BrowserUnsupportedError,
+  completeLogin,
+  LocalStorageCredentialStore,
+  relayPopupReturn,
+} from "@mixpanel-headless/browser";
+
+if (relayPopupReturn()) {
+  window.close(); // the opener has the return; nothing else to do here
+} else {
+  const store = new LocalStorageCredentialStore(sessionStorage);
+  try {
+    await completeLogin({ region: "us", returnUrl: location.href, store });
+  } catch (error) {
+    if (
+      error instanceof BrowserUnsupportedError &&
+      error.code === BROWSER_NO_PENDING_LOGIN
+    ) {
+      // No opener and no pending record: the login started somewhere this
+      // window cannot reach. Show the URL so the user can paste it there.
+      document.body.textContent = `Copy this address back into the page you signed in from: ${location.href}`;
+    } else {
+      throw error;
+    }
+  }
+}
+```
+
+Rules for the popup flow:
+
+- **`redirectUri` must be same-origin with the page, and still a compile-time constant.** The popup posts the return URL to exactly that origin and the frame accepts messages from exactly that origin and exactly that window; a `redirectUri` on any other origin is refused with `OAUTH_CONFIG_ERROR` before any network. Everything the redirect flow says about deriving it from user input applies unchanged.
+- **The in-memory store is enough.** The framed page never navigates, so the pending record, the PKCE verifier and the tokens can all stay in the default [`InMemoryCredentialStore`](/reference/browser/classes/InMemoryCredentialStore) — and inside a third-party iframe they should (see below).
+- **Only the return URL crosses windows.** The message is `{ type: POPUP_RETURN_MESSAGE_TYPE, v: 1, url }` and nothing else: no tokens, no verifier, no client id. A compromised relay page holds a one-time code that is useless without the verifier in the frame's memory. The frame ignores messages from other origins, other windows, other shapes and other `state` values, and keeps waiting for the real one.
+- **The outcomes are typed.** `BrowserUnsupportedError` / `BROWSER_POPUP_BLOCKED` with `error.details.reason === "blocked"` means `window.open` returned nothing. The pending record is kept and the error carries `error.details.authorize_url` (and `error.details.state`): render that URL as a link or anchor the user can click — a real click on an anchor is rarely blocked — and offer a paste box for the return URL that calls `completeLogin` on the same store. No fresh `beginLogin` is needed; the record stays bounded by the pending-age gate. The same code with `reason: "in_flight"` is a second `loginInPopup` while one is already running on the page (the popup window name is global, so the guard is too, whatever the store or region): it is refused before anything is opened and without touching the first call's record, and there is no link to offer, so the page should simply wait for the first call. `BROWSER_POPUP_CLOSED` means the user shut the popup before it came back — a quiet "sign-in canceled" is the right copy. No return within `timeoutMs` ([`DEFAULT_POPUP_TIMEOUT_MS`](/reference/browser/variables/DEFAULT_POPUP_TIMEOUT_MS), five minutes) is `OAuthError` / `OAUTH_TIMEOUT`; pass a `signal` to cancel sooner, and the promise rejects with the signal's reason. Closed, timeout and abort all delete the pending record, so recovery from those is a fresh `loginInPopup`. The provider's refusal is still `OAUTH_AUTH_DENIED`, and a tampered return still `OAUTH_STATE_MISMATCH`, exactly as in the redirect flow.
+- **When the opener is gone, fall back to paste.** Electron shells such as the Notion desktop app hand `window.open` to the system browser, which has no opener; the same happens if Mixpanel ever adds a `Cross-Origin-Opener-Policy`. `relayPopupReturn()` then returns `false`, and the callback page above ends up showing its own URL for the user to paste into the framed page's box. `completeLogin` accepts that pasted URL with the same grammar and the same codes, so there is no second protocol to maintain.
+
+The window APIs the flow needs (`open`, the `message` listener, the close poll and the timer) sit behind [`PopupHost`](/reference/browser/interfaces/PopupHost), which defaults to the page's `window`; tests inject one and run under Node.
+
+### Embedding the page in Notion, Confluence, or an intranet
+
+- **Use the host's URL or iframe embed, not an HTML block.** Notion's HTML block runs your markup under a Content Security Policy whose `connect-src` does not include `mixpanel.com`, so no query can leave it; nothing on the library's side changes that. The classic Embed block — an iframe of a URL you host — has no such limit, allows `window.open` from the framed page, and is where the popup flow was designed to run.
+- **Keep tokens in memory.** Chrome and Safari partition storage inside third-party iframes: `localStorage`, `sessionStorage` and `BroadcastChannel` in the frame are not the ones the top-level popup sees, which is why the flow uses `window.opener` rather than a storage event, and why nothing you persist from the frame reaches a later visit anyway. The default `InMemoryCredentialStore` is the right store here; the user signs in again on reload.
+- **Let the page decide which flow it is in.** `window.self !== window.top` is true when framed: use `loginInPopup` there and the redirect flow at the top level, with one redirect URI and one callback page serving both. Keep the paste box reachable in the framed signed-out state, collapsed, so the Electron and popup-blocked cases have somewhere to land.
+
 ## Credential storage
 
 Storage is injected through the [`CredentialStore`](/reference/core/interfaces/CredentialStore) interface (`get`, `set`, `delete`, sync or async) and defaults to memory:
@@ -140,11 +218,13 @@ Two identity helpers ride along for pages that name what they just built: `pytho
 
 The browser build enforces its boundaries with typed errors rather than silent failures — every one is a [`BrowserUnsupportedError`](/reference/browser/classes/BrowserUnsupportedError) (a `MixpanelHeadlessError` subclass) you can `instanceof` and whose `code` you can key on:
 
-| Code                              | When                                                                                                                                                    |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BROWSER_SERVICE_ACCOUNT_REFUSED` | A service-account (Basic auth) credential reached any construction path — project secrets never ship to a page, even though CORS would permit the calls |
-| `BROWSER_EXPORT_UNSUPPORTED`      | `streamEvents` / `streamProfiles` were called — the Export API hosts serve no CORS headers, so the call is refused before any network attempt           |
-| `BROWSER_NO_PENDING_LOGIN`        | `completeLogin` found no pending login in the store (fresh tab, expired record, replayed return)                                                        |
+| Code                              | When                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BROWSER_SERVICE_ACCOUNT_REFUSED` | A service-account (Basic auth) credential reached any construction path — project secrets never ship to a page, even though CORS would permit the calls                                                                                                                                                                                |
+| `BROWSER_EXPORT_UNSUPPORTED`      | `streamEvents` / `streamProfiles` were called — the Export API hosts serve no CORS headers, so the call is refused before any network attempt                                                                                                                                                                                          |
+| `BROWSER_NO_PENDING_LOGIN`        | `completeLogin` found no pending login in the store (fresh tab, expired record, replayed return)                                                                                                                                                                                                                                       |
+| `BROWSER_POPUP_BLOCKED`           | `loginInPopup` could not open its window (`details.reason` `"blocked"`: the pending record is kept, render `details.authorize_url` as a link and offer a paste box that calls `completeLogin` on the same store) or a popup login is already running on the page (`"in_flight"`: refused without touching it; wait for the first call) |
+| `BROWSER_POPUP_CLOSED`            | The user closed the popup before it returned; the pending login is discarded and a fresh `loginInPopup` starts over                                                                                                                                                                                                                    |
 
 ::: warning Node.js only
 Streaming extraction and session-replay fetching are Node-only; use `@mixpanel-headless/node` for those workloads. See [Streaming](/guide/streaming) and [Session replay](/guide/session-replay).

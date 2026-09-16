@@ -38,13 +38,36 @@ export const BROWSER_EXPORT_UNSUPPORTED = "BROWSER_EXPORT_UNSUPPORTED";
 export const BROWSER_NO_PENDING_LOGIN = "BROWSER_NO_PENDING_LOGIN";
 
 /**
+ * Code for a popup login that could not be opened: `window.open`
+ * returned `null` (a popup blocker, or a call outside a user gesture;
+ * `details.reason` is `"blocked"`), a popup login is already in flight
+ * over the same store and region (`"in_flight"`), or there is no window
+ * at all (`"no_window"`). No Python twin by construction: browser window
+ * policy has no CLI counterpart. A blocked popup keeps the pending
+ * record, so recovery is to offer `details.authorize_url` as a link and
+ * the paste path (`completeLogin` on the same store); an in-flight
+ * refusal leaves the first login's record alone.
+ */
+export const BROWSER_POPUP_BLOCKED = "BROWSER_POPUP_BLOCKED";
+
+/**
+ * Code for a login popup the user closed before it returned. No Python
+ * twin by construction: Python cannot observe its browser tab closing
+ * and simply times out. The pending record is discarded; recovery is a
+ * fresh `loginInPopup`.
+ */
+export const BROWSER_POPUP_CLOSED = "BROWSER_POPUP_CLOSED";
+
+/**
  * Error for browser-build capability refusals.
  *
  * Thrown when a caller reaches for a surface the browser build refuses
  * on policy or platform grounds: service-account Basic auth
  * ({@link BROWSER_SERVICE_ACCOUNT_REFUSED}), Export-API streaming
- * ({@link BROWSER_EXPORT_UNSUPPORTED}) and a redirect return with no
- * pending login ({@link BROWSER_NO_PENDING_LOGIN}). The message is
+ * ({@link BROWSER_EXPORT_UNSUPPORTED}), a redirect return with no
+ * pending login ({@link BROWSER_NO_PENDING_LOGIN}), a login popup that
+ * could not be opened ({@link BROWSER_POPUP_BLOCKED}) and one the user
+ * closed before it returned ({@link BROWSER_POPUP_CLOSED}). The message is
  * explanatory (it names what was received, why it is refused, and what
  * to use instead); programs must key on
  * {@link MixpanelHeadlessError.code}.
