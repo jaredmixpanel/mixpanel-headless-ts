@@ -111,8 +111,8 @@ interface FakeHost extends PopupHost {
   }) => void;
   /** Run every live interval callback once. */
   readonly tick: () => void;
-  /** Fire every pending timeout. */
-  readonly expire: () => void;
+  /** Fire every pending timeout, or only those scheduled for `ms`. */
+  readonly expire: (ms?: number) => void;
 }
 
 /**
@@ -166,9 +166,11 @@ function fakeHost(origin: string = PAGE_ORIGIN): FakeHost {
         timer.fn();
       }
     },
-    expire: () => {
+    expire: (ms) => {
       for (const timer of host.timeouts.values()) {
-        timer.fn();
+        if (ms === undefined || timer.ms === ms) {
+          timer.fn();
+        }
       }
     },
   };
@@ -332,6 +334,7 @@ describe("loginInPopup", () => {
     expect(listenersAtOpen).toBe(1);
     popup!.closed = true;
     host.tick();
+    host.expire(0);
     await expect(login).rejects.toMatchObject({ code: BROWSER_POPUP_CLOSED });
   });
 
@@ -464,6 +467,57 @@ describe("loginInPopup", () => {
     ).toHaveLength(0);
   });
 
+  it.each([
+    [
+      "a sibling path",
+      (state: string): string =>
+        `${PAGE_ORIGIN}/oauth/callback.evil?code=X&state=${state}`,
+    ],
+    [
+      "a dot-segment escape",
+      (state: string): string =>
+        `${PAGE_ORIGIN}/oauth/callback/../x?code=X&state=${state}`,
+    ],
+    [
+      "another origin",
+      (state: string): string =>
+        `https://evil.example.net/oauth/callback?code=X&state=${state}`,
+    ],
+    ["an unparseable URL", (): string => "not a url"],
+  ])(
+    "rejects a relayed URL that is %s with OAUTH_PASTE_ERROR without throwing out of the listener",
+    async (_label, url) => {
+      const { store, host, login } = await startLogin();
+      const state = pendingState(store);
+      expect(() => {
+        host.dispatch({
+          origin: PAGE_ORIGIN,
+          source: host.nextPopup!,
+          data: relayMessage(url(state)),
+        });
+      }).not.toThrow();
+      await expect(login).rejects.toMatchObject({ code: "OAUTH_PASTE_ERROR" });
+      expect(pendingState(store)).toBe(state);
+    },
+  );
+
+  it.each([
+    ["an uppercase host", "https://App.Example.com/oauth/callback"],
+    ["an explicit default port", "https://app.example.com:443/oauth/callback"],
+  ])(
+    "accepts the browser-normalized return for a redirectUri constant with %s",
+    async (_label, redirectUri) => {
+      const { store, host, login } = await startLogin({ redirectUri });
+      const state = pendingState(store);
+      host.dispatch({
+        origin: PAGE_ORIGIN,
+        source: host.nextPopup!,
+        data: relayMessage(`${REDIRECT_URI}?code=auth-code&state=${state}`),
+      });
+      await expect(login).resolves.toMatchObject({ token_type: "Bearer" });
+    },
+  );
+
   it("forwards a provider error return even when its state does not match (OAUTH_AUTH_DENIED, not a timeout)", async () => {
     const { store, host, login } = await startLogin();
     host.dispatch({
@@ -533,6 +587,11 @@ describe("loginInPopup", () => {
 
     popup.closed = true;
     host.tick();
+    // Observing `closed` stops the poll and defers the verdict by one
+    // zero-delay timer, so a relay message already queued can still win.
+    expect(host.intervals.size).toBe(0);
+    expect([...host.timeouts.values()].map((timer) => timer.ms)).toContain(0);
+    host.expire(0);
     const error = await login.then(
       () => null,
       (error_: unknown) => error_,
@@ -545,6 +604,36 @@ describe("loginInPopup", () => {
     expect(host.timeouts.size).toBe(0);
     // Already closed by the user: close() is not called again.
     expect(popup.close).not.toHaveBeenCalled();
+  });
+
+  it("lets a relay message that arrives after the popup closed but before the deferred verdict win", async () => {
+    const { store, host, login } = await startLogin();
+    const popup = host.nextPopup!;
+    const state = pendingState(store);
+    // The relay posts, then closes itself; the poll sees `closed` first.
+    popup.closed = true;
+    host.tick();
+    host.dispatch({
+      origin: PAGE_ORIGIN,
+      source: popup,
+      data: relayMessage(`${REDIRECT_URI}?code=auth-code&state=${state}`),
+    });
+    host.expire(0);
+    await expect(login).resolves.toMatchObject({ token_type: "Bearer" });
+    expect(host.timeouts.size).toBe(0);
+  });
+
+  it("rejects with BROWSER_POPUP_CLOSED even when the store cannot delete the pending record", async () => {
+    const { store, host, login } = await startLogin();
+    const popup = host.nextPopup!;
+    store.delete = () => {
+      throw new Error("storage unavailable");
+    };
+    popup.closed = true;
+    host.tick();
+    host.expire(0);
+    // The coded outcome wins; the store failure is not allowed to mask it.
+    await expect(login).rejects.toMatchObject({ code: BROWSER_POPUP_CLOSED });
   });
 
   it("rejects with OAUTH_TIMEOUT when no return arrives, closes the popup and discards the pending record", async () => {
@@ -605,7 +694,7 @@ describe("loginInPopup", () => {
     expect(host.listeners.size).toBe(0);
   });
 
-  it("refuses a second concurrent call over the same store and region with BROWSER_POPUP_BLOCKED (in_flight)", async () => {
+  it("refuses a second call while one is running on the page with BROWSER_POPUP_BLOCKED (in_flight)", async () => {
     const first = await startLogin();
     const secondHost = fakeHost();
     const error = await loginInPopup({
@@ -623,7 +712,6 @@ describe("loginInPopup", () => {
     expect((error as BrowserUnsupportedError).code).toBe(BROWSER_POPUP_BLOCKED);
     expect((error as BrowserUnsupportedError).details).toStrictEqual({
       reason: "in_flight",
-      region: "us",
     });
     // The second call touched nothing: no popup, no DCR, no listener.
     expect(secondHost.opens).toHaveLength(0);
@@ -646,14 +734,82 @@ describe("loginInPopup", () => {
     await expect(again.login).rejects.toMatchObject({ code: "OAUTH_TIMEOUT" });
   });
 
-  it("lets a different region or store proceed while one login is in flight", async () => {
+  it("refuses a different region or store too — the popup window name is global to the page", async () => {
     const first = await startLogin();
-    const eu = await startLogin({ region: "eu", store: first.store });
-    expect(eu.host.opens).toHaveLength(1);
-    eu.host.expire();
-    await expect(eu.login).rejects.toMatchObject({ code: "OAUTH_TIMEOUT" });
-    first.host.expire();
-    await expect(first.login).rejects.toMatchObject({ code: "OAUTH_TIMEOUT" });
+    const eu = await startLogin({ region: "eu" });
+    expect(eu.host.opens).toHaveLength(0);
+    await expect(eu.login).rejects.toMatchObject({
+      code: BROWSER_POPUP_BLOCKED,
+      details: { reason: "in_flight" },
+    });
+    // The first flow's record is untouched and it still completes.
+    const state = pendingState(first.store);
+    first.host.dispatch({
+      origin: PAGE_ORIGIN,
+      source: first.host.nextPopup!,
+      data: relayMessage(`${REDIRECT_URI}?code=auth-code&state=${state}`),
+    });
+    await expect(first.login).resolves.toMatchObject({ token_type: "Bearer" });
+  });
+
+  it("releases the slot after a rejected first flow", async () => {
+    const first = await startLogin();
+    first.host.nextPopup!.closed = true;
+    first.host.tick();
+    first.host.expire(0);
+    await expect(first.login).rejects.toMatchObject({
+      code: BROWSER_POPUP_CLOSED,
+    });
+    const second = await startLogin();
+    expect(second.host.opens).toHaveLength(1);
+    const state = pendingState(second.store);
+    second.host.dispatch({
+      origin: PAGE_ORIGIN,
+      source: second.host.nextPopup!,
+      data: relayMessage(`${REDIRECT_URI}?code=auth-code&state=${state}`),
+    });
+    await expect(second.login).resolves.toMatchObject({ token_type: "Bearer" });
+  });
+
+  it("tears down the subscription and timers and rethrows when open itself throws", async () => {
+    const host = fakeHost();
+    const failure = new Error("sandboxed frame");
+    host.open = () => {
+      throw failure;
+    };
+    const { login } = await startLogin({}, host);
+    await expect(login).rejects.toBe(failure);
+    expect(host.listeners.size).toBe(0);
+    expect(host.intervals.size).toBe(0);
+    expect(host.timeouts.size).toBe(0);
+  });
+
+  it("rejects with the signal's reason when the abort fires during the DCR round trip, without opening a popup", async () => {
+    const controller = new AbortController();
+    const reason = new Error("gone mid-registration");
+    const host = fakeHost();
+    const store = new InMemoryCredentialStore();
+    const transport = bodyCapturingTransport((request) => {
+      if (request.url.endsWith("mcp/register/")) {
+        controller.abort(reason);
+        return jsonResponse(201, { client_id: "dcr-client-123" });
+      }
+      throw new Error(`unexpected URL: ${request.url}`);
+    });
+    await expect(
+      loginInPopup({
+        region: "us",
+        redirectUri: REDIRECT_URI,
+        store,
+        fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS,
+        host,
+        signal: controller.signal,
+      }),
+    ).rejects.toBe(reason);
+    expect(host.opens).toHaveLength(0);
+    expect(host.listeners.size).toBe(0);
+    expect(store.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
   });
 
   it("rejects a redirectUri on another origin with OAUTH_CONFIG_ERROR before any network", async () => {
@@ -834,6 +990,19 @@ describe("relayPopupReturn", () => {
     ["opener without postMessage", { closed: false }],
   ])("returns false with %s", (_label, opener) => {
     expect(relayPopupReturn({ window: relayWindow({ opener }) })).toBe(false);
+  });
+
+  it('returns false when postMessage throws (an opaque origin such as "null")', () => {
+    const w = relayWindow({
+      opener: {
+        closed: false,
+        postMessage: () => {
+          throw new TypeError("Invalid target origin 'null'");
+        },
+      },
+      location: { href: `${REDIRECT_URI}?code=X&state=S`, origin: "null" },
+    });
+    expect(relayPopupReturn({ window: w })).toBe(false);
   });
 
   it("returns false outside a browser (no window at all)", () => {

@@ -16,7 +16,6 @@
 
 import {
   CREDENTIAL_KEYS,
-  type CredentialStore,
   OAuthError,
   type OAuthTokens,
 } from "@mixpanel-headless/core";
@@ -33,12 +32,13 @@ import {
 } from "./redirect-flow.js";
 
 /**
- * The `window.open` target name of the login popup. A constant, so a
- * repeat click navigates the existing popup instead of opening a second
- * one, and so {@link relayPopupReturn} can tell the popup apart from a
- * redirect-mode return that happens to have an opener. Every page the
- * popup visits can read `window.name`, which is why it carries nothing
- * derived from the login.
+ * The `window.open` target name of the login popup. A constant, so
+ * {@link relayPopupReturn} can tell the popup apart from a redirect-mode
+ * return that happens to have an opener, and so the browser never holds
+ * two of these windows at once (a repeat {@link loginInPopup} call is
+ * refused before `open`, because the name is global to the page). Every
+ * page the popup visits can read `window.name`, which is why it carries
+ * nothing derived from the login.
  */
 export const POPUP_WINDOW_NAME = "mixpanel-headless-login";
 
@@ -207,11 +207,13 @@ export interface RelayPopupReturnOptions {
 }
 
 /**
- * Regions with a popup login in flight, per store: two concurrent flows
- * over one store would race for the single pending record, so the second
- * caller is refused up front instead of silently invalidating the first.
+ * Whether a popup login is running on this page. The guard is global,
+ * not per store or region, because the popup window name is: a second
+ * flow would navigate the first flow's popup away from its login and,
+ * over the same store, race for the single pending record. The second
+ * caller is refused up front instead of silently breaking the first.
  */
-const inFlightLogins = new WeakMap<CredentialStore, Set<string>>();
+let popupLoginInFlight = false;
 
 /**
  * The page's own `window`, looked up only when a flow starts, so
@@ -346,6 +348,48 @@ function readRelayedUrl(
   return message["url"];
 }
 
+/**
+ * The rejection for a relayed URL that is not the redirect URI.
+ *
+ * @param redirectUri - The caller's redirect URI.
+ * @returns The coded error.
+ */
+function relayedUrlError(redirectUri: string): OAuthError {
+  return new OAuthError(
+    "The login popup relayed a return URL that is not the redirect URI — " +
+      "start a fresh loginInPopup.",
+    "OAUTH_PASTE_ERROR",
+    { redirect_uri: redirectUri },
+  );
+}
+
+/**
+ * The rejection for a popup that did not return in time.
+ *
+ * @param timeoutMs - The budget that elapsed.
+ * @returns The coded error.
+ */
+function timeoutError(timeoutMs: number): OAuthError {
+  return new OAuthError(
+    `No return from the login popup within ${String(timeoutMs)} ms.`,
+    "OAUTH_TIMEOUT",
+    { timeout_ms: timeoutMs },
+  );
+}
+
+/**
+ * The rejection for a popup the user closed before it returned.
+ *
+ * @returns The coded error.
+ */
+function closedError(): BrowserUnsupportedError {
+  return new BrowserUnsupportedError(
+    "The login popup was closed before it returned — sign in again to retry.",
+    BROWSER_POPUP_CLOSED,
+    { reason: "closed" },
+  );
+}
+
 /** What the wait needs to know about the login it is waiting for. */
 interface PopupWaitOptions {
   readonly host: PopupHost;
@@ -378,7 +422,7 @@ interface PopupWaiter {
  * the flow opened. The promise resolves with the URL when a message
  * passes every gate; it rejects when the popup is closed first, the
  * timeout elapses, the caller aborts, or the relay posts a URL that is
- * not under the redirect URI. Every subscription and timer is torn down
+ * not the redirect URI. Every subscription and timer is torn down
  * before it settles.
  *
  * @param wait - The expectations and the seams.
@@ -386,14 +430,20 @@ interface PopupWaiter {
  * @throws {@link BrowserUnsupportedError} `BROWSER_POPUP_CLOSED` (via
  *   the promise) when the popup closes before returning.
  * @throws {@link OAuthError} (via the promise) `OAUTH_TIMEOUT` after
- *   `timeoutMs`; `OAUTH_PASTE_ERROR` for a relayed URL outside the
+ *   `timeoutMs`; `OAUTH_PASTE_ERROR` for a relayed URL that is not the
  *   redirect URI.
  */
 function startPopupWait(wait: PopupWaitOptions): PopupWaiter {
   const { host, redirectUri, state, timeoutMs, signal } = wait;
-  const expectedOrigin = new URL(redirectUri).origin;
+  // Compared field by field, never as a string prefix: the browser
+  // normalizes `location.href` (lowercase host, default port dropped,
+  // dot segments resolved), so a prefix test would refuse a legitimate
+  // return for a constant like `https://App.Example.com/cb` and accept
+  // `/cb.evil` or `/cb/../x`.
+  const want = new URL(redirectUri);
+  const expectedOrigin = want.origin;
   let popup: PopupWindowLike | null = null;
-  const timers: { poll?: unknown; timeout?: unknown } = {};
+  const timers: { poll?: unknown; timeout?: unknown; closed?: unknown } = {};
   let settled = false;
   let resolveReturned!: (url: string) => void;
   let rejectReturned!: (reason: unknown) => void;
@@ -401,11 +451,16 @@ function startPopupWait(wait: PopupWaitOptions): PopupWaiter {
     resolveReturned = resolve;
     rejectReturned = reject;
   });
+  // The flow always awaits `returned`, but a rejection that lands after
+  // the caller has already thrown (open failed, aborted meanwhile) must
+  // not surface as an unhandled rejection; awaiters still see it.
+  void returned.catch(() => undefined);
 
   const cleanup = (): void => {
     host.removeEventListener("message", onMessage);
     host.clearInterval(timers.poll);
     host.clearTimeout(timers.timeout);
+    host.clearTimeout(timers.closed);
     signal?.removeEventListener("abort", onAbort);
   };
   const settle = (outcome: () => void): void => {
@@ -429,18 +484,17 @@ function startPopupWait(wait: PopupWaitOptions): PopupWaiter {
     if (url === null) {
       return;
     }
-    if (!url.startsWith(redirectUri)) {
+    let got: URL | null;
+    try {
+      got = new URL(url);
+    } catch {
+      got = null;
+    }
+    if (got?.origin !== want.origin || got.pathname !== want.pathname) {
       // Only a bug or an attack makes the relay post an address other
       // than its own: a malformed return, in the redirect flow's terms.
       settle(() => {
-        rejectReturned(
-          new OAuthError(
-            "The login popup relayed a return URL that is not under the " +
-              "redirect URI — start a fresh loginInPopup.",
-            "OAUTH_PASTE_ERROR",
-            { redirect_uri: redirectUri },
-          ),
-        );
+        rejectReturned(relayedUrlError(redirectUri));
       });
       return;
     }
@@ -448,7 +502,7 @@ function startPopupWait(wait: PopupWaitOptions): PopupWaiter {
     // whose state does not match is left alone (the real return may
     // still arrive), except when it carries the provider's `error=` — a
     // denial must surface at once, not after the timeout.
-    const params = new URL(url).searchParams;
+    const params = got.searchParams;
     if (params.get("state") !== state && !params.has("error")) {
       return;
     }
@@ -460,13 +514,7 @@ function startPopupWait(wait: PopupWaitOptions): PopupWaiter {
   host.addEventListener("message", onMessage);
   timers.timeout = host.setTimeout(() => {
     settle(() => {
-      rejectReturned(
-        new OAuthError(
-          `No return from the login popup within ${String(timeoutMs)} ms.`,
-          "OAUTH_TIMEOUT",
-          { timeout_ms: timeoutMs },
-        ),
-      );
+      rejectReturned(timeoutError(timeoutMs));
     });
   }, timeoutMs);
   if (signal !== undefined) {
@@ -482,21 +530,24 @@ function startPopupWait(wait: PopupWaitOptions): PopupWaiter {
     attach: (opened) => {
       popup = opened;
       timers.poll = host.setInterval(() => {
-        if (opened.closed) {
-          settle(() => {
-            rejectReturned(
-              new BrowserUnsupportedError(
-                "The login popup was closed before it returned — sign in " +
-                  "again to retry.",
-                BROWSER_POPUP_CLOSED,
-                { reason: "closed" },
-              ),
-            );
-          });
+        if (!opened.closed) {
+          return;
         }
+        // The relay posts its message and then closes itself, so
+        // `closed` can be observed while that message is still queued.
+        // Deferring the rejection by one task lets the message win.
+        host.clearInterval(timers.poll);
+        timers.closed = host.setTimeout(() => {
+          settle(() => {
+            rejectReturned(closedError());
+          });
+        }, 0);
       }, CLOSE_POLL_INTERVAL_MS);
     },
     abandon: () => {
+      if (settled) {
+        return;
+      }
       settled = true;
       cleanup();
     },
@@ -511,7 +562,10 @@ function startPopupWait(wait: PopupWaitOptions): PopupWaiter {
  * documented fallback is the authorize link plus a paste box that calls
  * {@link completeLogin} on the same store, which needs the record (still
  * bounded by the age gate). The relay-URL parse failure keeps it too, as
- * the redirect flow's parse failures do.
+ * the redirect flow's parse failures do — and so does a provider
+ * `error=` return (`OAUTH_AUTH_DENIED`), because {@link completeLogin}
+ * fails its parse step before its delete step, exactly as in the
+ * redirect flow; the next `loginInPopup` overwrites it.
  *
  * @param options - The caller's options.
  * @param host - The resolved window seam.
@@ -529,6 +583,13 @@ async function runPopupLogin(
   const pendingKey = CREDENTIAL_KEYS.pendingLogin(options.region);
   const { authorizeUrl, state } = await beginLogin(options);
 
+  // A cancellation during the DCR round trip lands here: the record was
+  // just written, so it is removed before anything is opened.
+  if (options.signal?.aborted === true) {
+    await options.store.delete(pendingKey);
+    throw options.signal.reason;
+  }
+
   // Subscribed before `open`, so nothing the popup posts can be missed.
   const waiter = startPopupWait({
     host,
@@ -537,11 +598,23 @@ async function runPopupLogin(
     timeoutMs: options.timeoutMs ?? DEFAULT_POPUP_TIMEOUT_MS,
     signal: options.signal,
   });
-  const popup = host.open(
-    authorizeUrl,
-    POPUP_WINDOW_NAME,
-    options.windowFeatures ?? DEFAULT_WINDOW_FEATURES,
-  );
+  let popup: PopupWindowLike | null;
+  try {
+    popup = host.open(
+      authorizeUrl,
+      POPUP_WINDOW_NAME,
+      options.windowFeatures ?? DEFAULT_WINDOW_FEATURES,
+    );
+    if (popup !== null) {
+      waiter.attach(popup);
+      popup.focus();
+    }
+  } catch (error) {
+    // A throwing `open` (a sandboxed frame, a host seam that refuses)
+    // must not leave the subscription and timers behind.
+    waiter.abandon();
+    throw error;
+  }
   if (popup === null) {
     waiter.abandon();
     // The pending record stays: the caller's fallback is a link to
@@ -554,8 +627,6 @@ async function runPopupLogin(
       { reason: "blocked", authorize_url: authorizeUrl, state },
     );
   }
-  waiter.attach(popup);
-  popup.focus();
 
   let returnUrl: string;
   try {
@@ -563,7 +634,13 @@ async function runPopupLogin(
   } catch (error) {
     closeQuietly(popup);
     if (!(error instanceof OAuthError && error.code === "OAUTH_PASTE_ERROR")) {
-      await options.store.delete(pendingKey);
+      try {
+        await options.store.delete(pendingKey);
+      } catch {
+        // The coded outcome (closed, timed out, aborted) is the one the
+        // caller must see; a store that cannot delete is not allowed to
+        // mask it, and the record stays bounded by the age gate.
+      }
     }
     throw error;
   }
@@ -587,11 +664,11 @@ async function runPopupLogin(
 
 /**
  * Sign in through a popup: 1. refuse a `redirectUri` on another origin
- * 2. refuse a second flow over the same store and region while one is
- * in flight 3. {@link beginLogin} 4. open the authorize URL in a popup
+ * 2. refuse a second flow while one is already running on the page
+ * 3. {@link beginLogin} 4. open the authorize URL in a popup
  * named {@link POPUP_WINDOW_NAME} 5. wait for the relay page at the
  * redirect URI to post its address back ({@link relayPopupReturn}),
- * checking the message's origin, source, shape, URL prefix and state
+ * checking the message's origin, source, shape, URL and state
  * 6. {@link completeLogin} with that URL 7. close the popup. Only the
  * return URL ever crosses the window boundary: the verifier stays in
  * this page's store, and the tokens never leave it.
@@ -650,26 +727,19 @@ export async function loginInPopup(
     throw options.signal.reason;
   }
 
-  const pendingKey = CREDENTIAL_KEYS.pendingLogin(options.region);
-  let inFlight = inFlightLogins.get(options.store);
-  if (inFlight === undefined) {
-    inFlight = new Set();
-    inFlightLogins.set(options.store, inFlight);
-  }
-  if (inFlight.has(pendingKey)) {
+  if (popupLoginInFlight) {
     throw new BrowserUnsupportedError(
-      `A popup login for region '${options.region}' is already in flight ` +
-        "over this store — wait for it to settle rather than starting a " +
-        "second one.",
+      "A popup login is already running on this page — wait for it to " +
+        "settle rather than starting a second one.",
       BROWSER_POPUP_BLOCKED,
-      { reason: "in_flight", region: options.region },
+      { reason: "in_flight" },
     );
   }
-  inFlight.add(pendingKey);
+  popupLoginInFlight = true;
   try {
     return await runPopupLogin(options, host);
   } finally {
-    inFlight.delete(pendingKey);
+    popupLoginInFlight = false;
   }
 }
 
@@ -714,13 +784,19 @@ export function relayPopupReturn(options?: RelayPopupReturnOptions): boolean {
   ) {
     return false;
   }
-  opener.postMessage(
-    {
-      type: POPUP_RETURN_MESSAGE_TYPE,
-      v: MESSAGE_VERSION,
-      url: w.location.href,
-    },
-    w.location.origin,
-  );
+  try {
+    opener.postMessage(
+      {
+        type: POPUP_RETURN_MESSAGE_TYPE,
+        v: MESSAGE_VERSION,
+        url: w.location.href,
+      },
+      w.location.origin,
+    );
+  } catch {
+    // An opaque origin ("null" — a sandboxed or file: document) is not a
+    // valid target, so the page falls through to its paste fallback.
+    return false;
+  }
   return true;
 }

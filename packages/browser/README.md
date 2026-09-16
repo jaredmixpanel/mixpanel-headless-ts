@@ -131,10 +131,10 @@ Rules for the popup flow:
   carries `error.details.authorize_url`: render it as a link or anchor and
   offer a paste box that calls `completeLogin` on the same store; no fresh
   `beginLogin` needed, and the record stays bounded by the pending-age gate.
-  The same code with `"in_flight"` is a second `loginInPopup` over the same
-  store and region while one is running: refused without touching the first
-  call's record, no link to offer — wait for the first call (a repeat click
-  already focused the existing named popup). `BROWSER_POPUP_CLOSED`:
+  The same code with `"in_flight"` is a second `loginInPopup` while one is
+  already running on the page (whatever the store or region — the popup
+  window name is global): refused before anything opens, without touching
+  the first call's record, no link to offer — wait for the first call. `BROWSER_POPUP_CLOSED`:
   the user shut the popup. `OAuthError` / `OAUTH_TIMEOUT` after `timeoutMs`
   (`DEFAULT_POPUP_TIMEOUT_MS`, five minutes); a `signal` cancels sooner.
   Closed, timeout and abort discard the pending record; recover with a fresh
