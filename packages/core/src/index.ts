@@ -157,6 +157,7 @@ export {
   type MixpanelClient,
   type MixpanelClientOptions,
   type QueryHostRequestOptions,
+  type UserAgentSource,
 } from "./client/client.js";
 export {
   type EntryPoint,

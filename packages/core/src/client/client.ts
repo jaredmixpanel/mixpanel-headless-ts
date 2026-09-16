@@ -189,6 +189,15 @@ export type CustomHeaderEnvSource = () => {
   readonly value?: string | undefined;
 };
 
+/**
+ * The User-Agent source for header layer 1, consulted on every request.
+ * Returning `null` omits the header (the browser package does so because
+ * `User-Agent` is a forbidden request header under the Fetch
+ * specification and Safari forwards it into the CORS preflight, which
+ * Mixpanel's allow-list rejects); an empty string would still be sent.
+ */
+export type UserAgentSource = () => string | null;
+
 // Client-core seam types — defined in `core.ts`, re-exported here so
 // the public barrel and existing importers resolve unchanged.
 export type {
@@ -271,6 +280,13 @@ export interface MixpanelClientOptions {
    * @defaultValue an empty source (the layer is disabled)
    */
   readonly getCustomHeaderEnv?: CustomHeaderEnvSource | undefined;
+  /**
+   * Header layer-1 User-Agent source; `() => null` omits the header
+   * (see {@link UserAgentSource}).
+   *
+   * @defaultValue `getUserAgent` — `mixpanel-headless/<version> (entry=<lib|cli>; ts)`
+   */
+  readonly getUserAgent?: UserAgentSource | undefined;
   /**
    * Alternate-host routing (Python PR #235: `MP_API_BASE_URL` /
    * `MP_APP_BASE_URL`). `apiBaseUrl` routes every API family at one
@@ -633,6 +649,7 @@ interface ClientConfig {
   readonly now: () => Date;
   readonly logger: RetryLogger | undefined;
   readonly getCustomHeaderEnv: CustomHeaderEnvSource;
+  readonly getUserAgent: UserAgentSource;
   /**
    * Python PR #235: the override source is kept (not its value) so a provider is
    * consulted on every request — Python's `_endpoints_for` reads
@@ -734,7 +751,7 @@ function coreRequestHeaders(
   );
   return requestHeaders(
     {
-      getUserAgent,
+      getUserAgent: ctx.config.getUserAgent,
       getCustomHeaderEnv: ctx.config.getCustomHeaderEnv,
       sessionHeaders,
     },
@@ -1140,6 +1157,7 @@ function withProject(
     now: config.now,
     logger: config.logger,
     getCustomHeaderEnv: config.getCustomHeaderEnv,
+    getUserAgent: config.getUserAgent,
     endpointOverrides: config.endpointOverridesSource,
   });
   if (newWorkspaceId !== null) {
@@ -1188,6 +1206,7 @@ export function createMixpanelClient(
     getCustomHeaderEnv:
       options.getCustomHeaderEnv ??
       ((): { name?: string; value?: string } => ({})),
+    getUserAgent: options.getUserAgent ?? getUserAgent,
     endpointOverridesSource,
     getEndpointOverrides: endpointOverridesProvider(endpointOverridesSource),
   };

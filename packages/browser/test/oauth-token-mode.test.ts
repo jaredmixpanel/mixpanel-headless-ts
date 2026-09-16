@@ -83,6 +83,36 @@ describe("createBrowserWorkspace", () => {
     expect(capture.params["project_id"]).toBe("12345");
   });
 
+  it("sends no User-Agent header (a forbidden request header that Safari forwards into the CORS preflight)", async () => {
+    const transport = fakeTransport(() => ({ status: 200, json: [] }));
+    const ws = createBrowserWorkspace({
+      token: "tok-123",
+      projectId: "12345",
+      region: "us",
+      fetch: transport.fetch,
+    });
+    await ws.client.getEvents();
+    await ws.me();
+    expect(transport.captures).toHaveLength(2);
+    for (const capture of transport.captures) {
+      expect(Object.hasOwn(capture.headers, "user-agent")).toBe(false);
+      expect(capture.headers["authorization"]).toBe("Bearer tok-123");
+    }
+  });
+
+  it("honors a caller-supplied clientOptions.getUserAgent", async () => {
+    const transport = fakeTransport(() => ({ status: 200, json: [] }));
+    const ws = createBrowserWorkspace({
+      token: "tok-123",
+      projectId: "12345",
+      region: "us",
+      fetch: transport.fetch,
+      clientOptions: { getUserAgent: () => "my-app/1.0" },
+    });
+    await ws.client.getEvents();
+    expect(transport.captures[0]?.headers["user-agent"]).toBe("my-app/1.0");
+  });
+
   it("workspace-scoped App-API path when workspaceId is set (maybe_scoped_path via the core client)", async () => {
     const transport = fakeTransport(() => ({
       status: 200,
@@ -213,6 +243,10 @@ describe("createBrowserWorkspaceFromStore", () => {
     await ws.client.getEvents();
     expect(transport.captures[0]!.headers["authorization"]).toBe(
       "Bearer stored-tok",
+    );
+    // The store-backed factory shares the User-Agent omission.
+    expect(Object.hasOwn(transport.captures[0]!.headers, "user-agent")).toBe(
+      false,
     );
   });
 

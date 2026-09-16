@@ -276,6 +276,17 @@ function storeTokenResolver(
   };
 }
 
+/**
+ * The browser's User-Agent source: no header at all (`null`), never an
+ * empty string, which the transport would still send and the preflight
+ * would still reject.
+ *
+ * @returns `null`.
+ */
+function omitUserAgent(): null {
+  return null;
+}
+
 /** Memo for {@link liveExportOrigins} (filled on the first request). */
 let liveExportOriginSet: ReadonlySet<string> | null = null;
 
@@ -486,6 +497,8 @@ function assembleWorkspace(
     session,
     tokenResolver,
     fetch: guardBrowserFetch(baseFetch, () => client.core.endpoints()),
+    // Divergence: Python and the node package send a library User-Agent; the browser omits it. The Fetch specification lists `User-Agent` as a forbidden request header — Chrome and Firefox silently drop the library's value, but Safari forwards it into the CORS preflight's `Access-Control-Request-Headers`, where Mixpanel's `Access-Control-Allow-Headers` rejects it and every bearer-authenticated call fails. A caller may still supply its own source.
+    getUserAgent: clientOptions.getUserAgent ?? omitUserAgent,
   });
   return new Workspace({
     session,
