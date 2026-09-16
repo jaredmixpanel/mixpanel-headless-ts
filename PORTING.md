@@ -266,6 +266,15 @@ marked `// Divergence:` at the site.
   `BROWSER_SERVICE_ACCOUNT_REFUSED`, and Export-API hosts with
   `BROWSER_EXPORT_UNSUPPORTED` (they serve no CORS headers); Python has no
   such guard.
+- No `User-Agent` header: the Fetch specification lists it as a forbidden
+  request header. Chrome and Firefox drop the library's value silently, but
+  Safari forwards it into the CORS preflight's `Access-Control-Request-Headers`,
+  and Mixpanel's `Access-Control-Allow-Headers` rejects it, failing every
+  bearer-authenticated call. Python and `@mixpanel-headless/node` send
+  `mixpanel-headless/<version> (…)` — `assembleWorkspace` (`client.ts`)
+  passes `getUserAgent: () => null` to the core client
+  (`MixpanelClientOptions.getUserAgent`; a caller's `clientOptions` may
+  override it).
 
 ### Runtime immutability
 

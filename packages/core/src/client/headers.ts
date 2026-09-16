@@ -106,8 +106,13 @@ export function getUserAgent(): string {
  * `self._session.headers`).
  */
 export interface RequestHeadersDeps {
-  /** Layer-1 User-Agent source (the client defaults it to {@link getUserAgent}). */
-  getUserAgent: () => string;
+  /**
+   * Layer-1 User-Agent source (the client defaults it to
+   * {@link getUserAgent}). `null` omits the header entirely — an empty
+   * string would still be sent and still trip a browser's CORS
+   * preflight, which is what the omission exists to avoid.
+   */
+  getUserAgent: () => string | null;
   /**
    * Layer-2 env pair provider — the `MP_CUSTOM_HEADER_NAME` /
    * `MP_CUSTOM_HEADER_VALUE` values, re-read per call. Absent/empty
@@ -128,7 +133,12 @@ export interface RequestHeadersDeps {
  * Each later layer overrides the prior on header-name collision:
  *
  * 1. Library defaults — currently `User-Agent` so backend telemetry can
- *    attribute traffic to this library.
+ *    attribute traffic to this library. The layer is skipped when
+ *    `deps.getUserAgent` returns `null`: the Fetch specification lists
+ *    `User-Agent` among the forbidden request headers, and a browser that
+ *    forwards it into the CORS preflight (Safari) has every call rejected
+ *    by Mixpanel's `Access-Control-Allow-Headers`, so the browser package
+ *    disables the layer while Node keeps it.
  * 2. `MP_CUSTOM_HEADER_NAME` / `MP_CUSTOM_HEADER_VALUE` env pair (via the
  *    injected provider).
  * 3. `session.headers` (populated from `[settings].custom_header` and
@@ -157,9 +167,11 @@ export function requestHeaders(
   deps: RequestHeadersDeps,
   extra: Readonly<Record<string, string>>,
 ): Record<string, string> {
-  const headers: Record<string, string> = {
-    "User-Agent": deps.getUserAgent(),
-  };
+  const headers: Record<string, string> = {};
+  const userAgent = deps.getUserAgent();
+  if (userAgent !== null) {
+    headers["User-Agent"] = userAgent;
+  }
   const { name: customName, value: customValue } = deps.getCustomHeaderEnv();
   // Python truthiness on strings: empty/absent disables the layer.
   if (

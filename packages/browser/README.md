@@ -112,6 +112,9 @@ Rules for the redirect flow:
 - **No token refresh in the browser.** An expired stored token raises
   `OAuthError` / `OAUTH_TOKEN_ERROR`; run `beginLogin` again. Refresh lives in
   `@mixpanel-headless/node`.
+- **No `User-Agent` header.** It is a forbidden request header under the
+  Fetch specification; Safari forwards it into the CORS preflight, where
+  Mixpanel rejects it, so the factories omit it (Node sends it).
 - `OAuthError.details` redacts token material from malformed token responses,
   but scrub `details` before forwarding errors to telemetry anyway.
 

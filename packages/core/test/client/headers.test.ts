@@ -93,6 +93,33 @@ describe("requestHeaders layer order", () => {
     expect(headers["User-Agent"]).toBe("custom/1");
   });
 
+  it("a null User-Agent source omits the header and leaves the other layers intact", () => {
+    // The browser package disables layer 1 this way (`User-Agent` is a
+    // forbidden request header and Safari forwards it into the CORS
+    // preflight); the key must be absent, not empty.
+    const headers = requestHeaders(
+      {
+        ...deps({ "X-Tenant": "acme" }, { name: "X-E", value: "v" }),
+        getUserAgent: () => null,
+      },
+      { Authorization: "Bearer t" },
+    );
+    expect(Object.hasOwn(headers, "User-Agent")).toBe(false);
+    expect(headers).toStrictEqual({
+      "X-E": "v",
+      "X-Tenant": "acme",
+      Authorization: "Bearer t",
+    });
+  });
+
+  it("a session header named User-Agent still wins over a null source", () => {
+    const headers = requestHeaders(
+      { ...deps({ "User-Agent": "session-ua/1" }), getUserAgent: () => null },
+      {},
+    );
+    expect(headers["User-Agent"]).toBe("session-ua/1");
+  });
+
   it("returns a NEW dict (Python builds a fresh dict per request)", () => {
     const extra = { Authorization: "Bearer t" };
     const headers = requestHeaders(deps({}), extra);

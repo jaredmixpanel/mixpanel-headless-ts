@@ -150,10 +150,11 @@ The browser build enforces its boundaries with typed errors rather than silent f
 Streaming extraction and session-replay fetching are Node-only; use `@mixpanel-headless/node` for those workloads. See [Streaming](/guide/streaming) and [Session replay](/guide/session-replay).
 :::
 
-Two more differences from the Node package, both listed among the port's [known divergences](/architecture/porting):
+Three more differences from the Node package, all listed among the port's [known divergences](/architecture/porting):
 
 - **No token refresh in the browser.** An expired stored token raises `OAuthError` / `OAUTH_TOKEN_ERROR`; run `beginLogin` again. Refresh lives in `@mixpanel-headless/node`.
 - **Header-redirect shortlinks resolve only on Node.** Browser `fetch` hides redirect headers, so a shortlink that answers with a `3xx` cannot be expanded from a page; the long-URL `200` form resolves everywhere. See [Report links](/guide/report-links).
+- **No `User-Agent` header.** It is a forbidden request header under the Fetch specification; Safari forwards it into the CORS preflight, where Mixpanel rejects it, so the browser factories omit it (Node sends it).
 
 `OAuthError.details` redacts token material from malformed token responses, but scrub `details` before forwarding errors to telemetry anyway.
 
