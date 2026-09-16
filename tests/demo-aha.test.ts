@@ -6,14 +6,8 @@
 // ranking over the demo fixtures tells the story the fixtures were made
 // to tell.
 
-import { readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { format } from "prettier";
 import { describe, expect, it } from "vitest";
-
-import { createBrowserWorkspace } from "@mixpanel-headless/browser";
 
 import { DEMO_FIXTURES } from "../docs/.vitepress/theme/demo/fixtures/demo-project.gen.js";
 import {
@@ -26,21 +20,24 @@ import {
   rankingRows,
   renderAhaProgram,
   seedCandidates,
-  sparklinePath,
   TARGET_BUCKET,
 } from "../docs/.vitepress/theme/demo/model/aha.js";
 import {
   READ_METHODS,
   runCall,
 } from "../docs/.vitepress/theme/demo/model/call.js";
+import { fixtureCoverage } from "../docs/.vitepress/theme/demo/model/fixture-fetch.js";
 import {
-  fixtureCoverage,
-  fixtureFetch,
-} from "../docs/.vitepress/theme/demo/model/fixture-fetch.js";
-import type { RetentionResult } from "../docs/.vitepress/theme/demo/model/series.js";
+  type RetentionResult,
+  sparklinePath,
+} from "../docs/.vitepress/theme/demo/model/series.js";
+import {
+  declarationOf,
+  fixtureWorkspace,
+  reparse,
+} from "./demo-program-helpers.js";
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const MODULE = join(REPO_ROOT, "docs/.vitepress/theme/demo/model/aha.ts");
+const MODULE = "docs/.vitepress/theme/demo/model/aha.ts";
 
 const today = (): Date => new Date(2026, 8, 15);
 
@@ -64,21 +61,6 @@ const SHORT_SPEC: AhaSpec = {
   retentionUnit: "week",
   last: 30,
 };
-
-/**
- * Turn a printed literal back into JSON: quote identifier keys and drop
- * trailing commas.
- *
- * @param text - A literal as `printArg` printed it.
- * @returns The parsed value.
- */
-function reparse(text: string): unknown {
-  return JSON.parse(
-    text
-      .replaceAll(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/gu, '$1"$2":')
-      .replaceAll(/,(\s*[}\]])/gu, "$1"),
-  ) as unknown;
-}
 
 /**
  * The candidate array, born event and option literal of a rendered
@@ -107,21 +89,6 @@ function literals(program: string): {
 }
 
 /**
- * A workspace over the fixtures.
- *
- * @returns The facade.
- */
-function workspace(): ReturnType<typeof createBrowserWorkspace> {
-  return createBrowserWorkspace({
-    token: "demo",
-    projectId: DEMO_FIXTURES.project.id,
-    region: "us",
-    workspaceId: DEMO_FIXTURES.project.workspaceId,
-    fetch: fixtureFetch(DEMO_FIXTURES, { today }),
-  });
-}
-
-/**
  * Run a report's calls the way the page does — sequentially, through
  * `runCall` — and return the results in candidate order.
  *
@@ -129,7 +96,7 @@ function workspace(): ReturnType<typeof createBrowserWorkspace> {
  * @returns One result per candidate.
  */
 async function runReport(spec: AhaSpec): Promise<RetentionResult[]> {
-  const ws = workspace();
+  const ws = fixtureWorkspace(today);
   const results: RetentionResult[] = [];
   for (const call of ahaCalls(spec)) {
     results.push((await runCall(ws, call)) as RetentionResult);
@@ -239,13 +206,9 @@ const ranking = rankByRetention(candidates, results, { bucket: 4 });
 
 describe("RANK_BY_RETENTION_SOURCE", () => {
   it("is the declaration of rankByRetention in the module", () => {
-    const source = readFileSync(MODULE, "utf8");
-    const start = source.indexOf("export function rankByRetention(");
-    expect(start).toBeGreaterThan(-1);
-    const end = source.indexOf("\n}\n", start);
-    expect(end).toBeGreaterThan(start);
-    const declaration = source.slice(start, end + "\n}\n".length);
-    expect(RANK_BY_RETENTION_SOURCE).toBe(declaration.replace(/^export /u, ""));
+    expect(RANK_BY_RETENTION_SOURCE).toBe(
+      declarationOf(MODULE, "rankByRetention"),
+    );
   });
 });
 

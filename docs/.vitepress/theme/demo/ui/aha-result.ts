@@ -12,10 +12,9 @@ import {
   type AhaSpec,
   rankByRetention,
   type Ranking,
-  sparklinePath,
   TARGET_BUCKET,
 } from "../model/aha.js";
-import { formatCount, formatPct } from "../model/series.js";
+import { formatCount, formatPct, sparklinePath } from "../model/series.js";
 import { ErrorBlock } from "./banners.js";
 import type { CallOutcome, RetentionQueryResult } from "./use-query.js";
 
@@ -183,7 +182,7 @@ export default defineComponent({
       return h("div", { class: "mp-aha" }, [
         h(
           "p",
-          { class: "mp-muted mp-aha-sub" },
+          { class: "mp-muted mp-loop-sub" },
           `Average retention at ${unit} ${String(ranking.bucket)}, ${unit === "week" ? "weekly" : "daily"} cohorts over the last ${String(spec.last)} days. Median across ${String(ranking.rows.length)} candidates: ${formatPct(ranking.median)} (the dashed line). Select a row to run the pair in the Retention tab.`,
         ),
         h(

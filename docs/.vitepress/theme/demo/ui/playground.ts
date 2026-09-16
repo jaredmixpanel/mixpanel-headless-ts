@@ -2,6 +2,8 @@
 // offline workspace over the fixture transport, drives the live states
 // (sign-in, project picker, session header, sign-out) and wires the
 // workbench (tabs, strip, builders, result) to the code panel beside it.
+// The two loop reports (ranking, matrix) keep their drafts here so a tab
+// switch loses nothing, and hand a pair or a path to the single-query tabs.
 // Offline and live share the same query controller; only the facade
 // behind it differs, so the components never know the mode.
 
@@ -40,11 +42,26 @@ import { describeError, type ErrorContext } from "../model/errors.js";
 import { fixtureCoverage, fixtureFetch } from "../model/fixture-fetch.js";
 import { toMarkdown } from "../model/markdown-table.js";
 import {
+  BEST_PATH_SOURCE,
+  bestPath,
+  matrixColumns,
+  type MatrixPair,
+  matrixRows,
+  type MatrixSpec,
+  PATH_STEPS,
+  renderMatrixProgram,
+  seedPool,
+  sweepCalls,
+} from "../model/matrix.js";
+import {
+  CONVERSION_WINDOWS,
+  type ConversionWindow,
   type QuerySpec,
   type TimeRange,
   type TrendSpec,
   withWhere,
 } from "../model/query-spec.js";
+import { formatPct } from "../model/series.js";
 import {
   type DemoError,
   type DemoState,
@@ -69,12 +86,15 @@ import {
 } from "./banners.js";
 import {
   FunnelBuilder,
+  type FunnelDraft,
   RetentionBuilder,
   type RetentionDraft,
 } from "./builders.js";
-import CodePanel, { programText } from "./code-panel.js";
+import CodePanel, { type CodeHelper, programText } from "./code-panel.js";
 import { button } from "./el.js";
 import EventStrip from "./event-list.js";
+import MatrixBuilder, { type MatrixDraft } from "./matrix-builder.js";
+import { matrixResults, type SweepPoint } from "./matrix-result.js";
 import ProjectPicker from "./project-picker.js";
 import ResultActions from "./result-actions.js";
 import ResultPanel from "./result-panel.js";
@@ -89,7 +109,15 @@ import {
 } from "./session.js";
 import EngineTabs, { type Engine, panelId, tabId } from "./tabs.js";
 import TrendControls from "./trend-controls.js";
-import { type AnySpec, useQuery } from "./use-query.js";
+import {
+  type AnySpec,
+  type CallOutcome,
+  type EngineRun,
+  isLoopSpec,
+  pairKey,
+  sweepKey,
+  useQuery,
+} from "./use-query.js";
 
 const DEMO_PROJECT = {
   token: "demo",
@@ -114,6 +142,39 @@ const RUN_HINT = "// run a query to see the call here";
 const DEFAULT_BORN = "Signup";
 /** Candidates a born event needs offline for a ranking to mean anything. */
 const MIN_OFFLINE_CANDIDATES = 2;
+/** The matrix's default window (the fixtures hold all four). */
+const DEFAULT_WINDOW: ConversionWindow = 7;
+
+/**
+ * Where a loop run is while it runs, or `null` when it is not running.
+ *
+ * @param run - The engine's run.
+ * @returns Settled and total counts.
+ */
+const progressOf = (
+  run: EngineRun | null,
+): { done: number; total: number } | null => {
+  if (run === null || !run.loading) {
+    return null;
+  }
+  return {
+    done: run.outcomes.filter(
+      (outcome) => outcome.result !== null || outcome.error !== null,
+    ).length,
+    total: run.outcomes.length,
+  };
+};
+
+/**
+ * Whether a finished loop run was made under another time range than the
+ * one now selected (it is never repeated unasked).
+ *
+ * @param run - The engine's run.
+ * @param last - The selected range.
+ * @returns `true` when the run's range differs.
+ */
+const staleOf = (run: EngineRun | null, last: TimeRange): boolean =>
+  run !== null && !run.loading && run.spec.last !== last;
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => {
@@ -182,11 +243,15 @@ export default defineComponent({
     const state = shallowRef<DemoState>({ mode: "offline", ws: offlineWs });
     const region = ref<Region>(session.region ?? "us");
     const last = ref<TimeRange>(30);
-    // The ranking report's draft once the visitor has edited it (`null`
-    // seeds from the top events), and the pair a ranking row hands to the
-    // Retention tab.
+    // The loop reports' drafts once the visitor has edited them (`null`
+    // seeds from the top events), the pair a ranking row hands to the
+    // Retention tab, the path the matrix hands to the Funnel tab, and the
+    // matrix cell open in its side panel.
     const ahaDraft = shallowRef<AhaDraft | null>(null);
+    const matrixDraft = shallowRef<MatrixDraft | null>(null);
     const retentionPreset = shallowRef<RetentionDraft | null>(null);
+    const funnelPreset = shallowRef<FunnelDraft | null>(null);
+    const selectedPair = shallowRef<MatrixPair | null>(null);
     const linkPending = ref(false);
     const busy = ref(false);
     const expiring = ref(false);
@@ -238,7 +303,10 @@ export default defineComponent({
     const resetQuery = (): void => {
       query.reset();
       ahaDraft.value = null;
+      matrixDraft.value = null;
       retentionPreset.value = null;
+      funnelPreset.value = null;
+      selectedPair.value = null;
     };
     // Selecting an event keeps its math, range and filter when it is
     // already shown (a new event starts unfiltered); `groupBy` `null` clears
@@ -260,11 +328,11 @@ export default defineComponent({
           : { ...next, groupBy: chosen },
       );
     };
-    // The ranking loop is never repeated on the visitor's behalf: it costs
-    // one query per candidate, so its button says so and only it runs it.
+    // A loop is never repeated on the visitor's behalf: it costs one query
+    // per candidate or pair, so its button says so and only it runs it.
     const rerun = (patch: Partial<QuerySpec>): void => {
       const current = query.spec.value;
-      if (current !== null && current.kind !== "aha") {
+      if (current !== null && !isLoopSpec(current)) {
         run({ ...current, ...patch } as QuerySpec);
       }
     };
@@ -276,7 +344,7 @@ export default defineComponent({
       const shown = query.runs.value[next]?.spec;
       if (
         shown !== undefined &&
-        shown.kind !== "aha" &&
+        !isLoopSpec(shown) &&
         shown.last !== last.value
       ) {
         run({ ...shown, last: last.value });
@@ -346,24 +414,8 @@ export default defineComponent({
       return `The last ${String(spec.last)} days hold a single ${spec.retentionUnit}, so there is no ${spec.retentionUnit} 1 to rank by. Pick a longer range or daily buckets.`;
     });
     const ahaRun = computed(() => query.runs.value.aha ?? null);
-    const ahaProgress = computed(() => {
-      const current = ahaRun.value;
-      if (current === null || !current.loading) {
-        return null;
-      }
-      return {
-        done: current.outcomes.filter(
-          (outcome) => outcome.result !== null || outcome.error !== null,
-        ).length,
-        total: current.outcomes.length,
-      };
-    });
-    const ahaStale = computed(() => {
-      const current = ahaRun.value;
-      return (
-        current !== null && !current.loading && current.spec.last !== last.value
-      );
-    });
+    const ahaProgress = computed(() => progressOf(ahaRun.value));
+    const ahaStale = computed(() => staleOf(ahaRun.value, last.value));
     const ahaProgram = computed(() => {
       const spec = ahaRun.value?.spec;
       return spec?.kind === "aha" ? renderAhaProgram(spec) : null;
@@ -389,6 +441,111 @@ export default defineComponent({
         retentionUnit: spec.retentionUnit,
         last: last.value,
       });
+    };
+
+    // --- conversion matrix ---
+    // Offline, only the events the fixtures record funnels for; live, any.
+    const poolAllowed = computed(() =>
+      offline.value ? coverage.funnelEvents : null,
+    );
+    const matrixDraftShown = computed(
+      (): MatrixDraft =>
+        matrixDraft.value ?? {
+          events: seedPool(topNames.value, poolAllowed.value),
+          conversionWindow: DEFAULT_WINDOW,
+        },
+    );
+    const matrixAddable = computed(() => {
+      const pool = poolAllowed.value ?? query.allEvents.value ?? topNames.value;
+      return pool.filter(
+        (event) => !matrixDraftShown.value.events.includes(event),
+      );
+    });
+    const matrixSpec = computed((): MatrixSpec => ({
+      kind: "matrix",
+      ...matrixDraftShown.value,
+      last: last.value,
+    }));
+    const matrixRun = computed(() => query.runs.value.matrix ?? null);
+    const matrixRunSpec = computed((): MatrixSpec | null => {
+      const spec = matrixRun.value?.spec;
+      return spec?.kind === "matrix" ? spec : null;
+    });
+    const matrixProgress = computed(() => progressOf(matrixRun.value));
+    const matrixStale = computed(() => staleOf(matrixRun.value, last.value));
+    // The selected pair at each window: the matrix's own cell at its
+    // window, the sweep cache elsewhere, `null` where nothing has run.
+    const sweepPoints = computed((): SweepPoint[] => {
+      const pair = selectedPair.value;
+      const spec = matrixRunSpec.value;
+      const current = matrixRun.value;
+      if (pair === null || spec === null || current === null) {
+        return [];
+      }
+      const own =
+        current.outcomes.find(
+          (outcome) =>
+            JSON.stringify(outcome.call.args[0]) === JSON.stringify(pair),
+        ) ?? null;
+      return CONVERSION_WINDOWS.map((window) => {
+        const cached: CallOutcome | null =
+          query.sweeps.value[sweepKey(pair, window, spec.last)] ?? null;
+        const fromRun =
+          window === spec.conversionWindow && own?.result != null ? own : null;
+        return { window, outcome: fromRun ?? cached };
+      });
+    });
+    // Unfetched and failed windows alike: a failed one is offered again.
+    const sweepMissing = computed(() =>
+      sweepPoints.value
+        .filter((point) => point.outcome?.result == null)
+        .map((point) => point.window),
+    );
+    // The sweep calls that have run for the selected pair, in window
+    // order — printed under the loop as plain statements.
+    const sweepShown = computed(() => {
+      const pair = selectedPair.value;
+      const spec = matrixRunSpec.value;
+      if (pair === null || spec === null) {
+        return [];
+      }
+      const fetched = sweepPoints.value
+        .filter(
+          (point) =>
+            point.window !== spec.conversionWindow &&
+            point.outcome?.result != null,
+        )
+        .map((point) => point.window);
+      return sweepCalls(pair, fetched, spec.last);
+    });
+    const matrixProgram = computed(() => {
+      const spec = matrixRunSpec.value;
+      return spec === null ? null : renderMatrixProgram(spec, sweepShown.value);
+    });
+    const matrixSweeping = computed(
+      () =>
+        selectedPair.value !== null &&
+        query.sweeping.value === pairKey(selectedPair.value),
+    );
+    const runMatrix = (): void => {
+      selectedPair.value = null;
+      run(matrixSpec.value);
+    };
+    const runSweep = (): void => {
+      const pair = selectedPair.value;
+      if (pair !== null && sweepMissing.value.length > 0) {
+        void query.sweep(pair, sweepMissing.value);
+      }
+    };
+    // The matrix's best path (or one cell's pair) opens in the Funnel tab
+    // and runs: the steps and window already name a complete query.
+    const openFunnel = (
+      steps: readonly string[],
+      conversionWindow: ConversionWindow,
+    ): void => {
+      funnelPreset.value = { steps, conversionWindow };
+      selectEngine("funnel");
+      run({ kind: "funnel", steps, last: last.value, conversionWindow });
     };
     const start = async (): Promise<void> => {
       await query.loadTopEvents();
@@ -597,7 +754,7 @@ export default defineComponent({
 
     const buildLink = async (open: boolean): Promise<void> => {
       const spec = query.spec.value;
-      if (spec === null || spec.kind === "aha") {
+      if (spec === null || isLoopSpec(spec)) {
         return;
       }
       linkPending.value = true;
@@ -611,6 +768,24 @@ export default defineComponent({
     };
     const copyMarkdown = async (): Promise<void> => {
       const spec = query.spec.value;
+      if (spec?.kind === "matrix") {
+        // The copied program is complete: the loop, any sweep, the helper;
+        // the best path follows the table since a table cannot hold it.
+        const program = `${programText(setup.value, [], renderMatrixProgram(spec, sweepShown.value))}\n${BEST_PATH_SOURCE}`;
+        const results = matrixResults(spec, query.outcomes.value);
+        const path = bestPath(spec.events, results, { steps: PATH_STEPS });
+        const table = toMarkdown({
+          code: program,
+          columns: matrixColumns(spec.events),
+          rows: matrixRows(spec.events, results),
+        });
+        const best =
+          path.events.length < 2
+            ? ""
+            : `\nBest path: ${path.events.join(" → ")} · ≈ ${formatPct(path.estimate)} overall (the product of the pairwise rates)\n`;
+        await navigator.clipboard.writeText(`${table}${best}`);
+        return;
+      }
       if (spec?.kind === "aha") {
         // The copied program is complete: the loop plus the helper it ends with.
         const program = `${programText(setup.value, [], renderAhaProgram(spec))}\n${RANK_BY_RETENTION_SOURCE}`;
@@ -673,6 +848,7 @@ export default defineComponent({
       h(FunnelBuilder, {
         events: offline.value ? coverage.funnelEvents : eventNames.value,
         seed: selectedEvent.value,
+        preset: funnelPreset.value,
         ...(offline.value ? { maxSteps: OFFLINE_MAX_STEPS } : {}),
         complete: offline.value || query.allEvents.value !== null,
         onRun: ({ steps, conversionWindow }) =>
@@ -710,6 +886,20 @@ export default defineComponent({
         onMoreEvents: () => void query.loadAllEvents(),
       });
 
+    const matrixTab = (): VNode =>
+      h(MatrixBuilder, {
+        draft: matrixDraftShown.value,
+        addable: matrixAddable.value,
+        complete: offline.value || query.allEvents.value !== null,
+        running: matrixProgress.value,
+        stale: matrixStale.value,
+        onUpdate: (next: MatrixDraft) => {
+          matrixDraft.value = next;
+        },
+        onRun: runMatrix,
+        onMoreEvents: () => void query.loadAllEvents(),
+      });
+
     const tabPanel = (): VNode => {
       const current = engine.value;
       const tabs: Readonly<Record<Engine, () => VNode[]>> = {
@@ -717,6 +907,7 @@ export default defineComponent({
         funnel: () => [funnelTab()],
         retention: () => [retentionTab()],
         aha: () => [ahaTab()],
+        matrix: () => [matrixTab()],
       };
       const content = tabs[current]();
       return h(
@@ -754,13 +945,21 @@ export default defineComponent({
             loading: query.loading.value,
             error: query.error.value,
             blocked: engine.value === "aha" ? ahaBlocked.value : null,
+            selectedPair: selectedPair.value,
+            sweep: sweepPoints.value,
+            sweeping: matrixSweeping.value,
             onOpenRetention: openRetention,
+            onSelectPair: (pair: MatrixPair | null) => {
+              selectedPair.value = pair;
+            },
+            onSweep: runSweep,
+            onOpenFunnel: openFunnel,
           },
           {
             actions: () =>
               h(ResultActions, {
                 offline: offline.value,
-                linkable: engine.value !== "aha",
+                linkable: engine.value !== "aha" && engine.value !== "matrix",
                 linkUrl: query.link.value?.url ?? null,
                 linkPending: linkPending.value,
                 onLink: () => void buildLink(false),
@@ -771,6 +970,27 @@ export default defineComponent({
         ),
       ]);
 
+    // The loop reports print their program and the helper it ends with.
+    const loopCode = computed(
+      (): { program: string; helper: CodeHelper } | null => {
+        if (engine.value === "aha" && ahaProgram.value !== null) {
+          return {
+            program: ahaProgram.value,
+            helper: {
+              summary: "Show rankByRetention",
+              source: RANK_BY_RETENTION_SOURCE,
+            },
+          };
+        }
+        if (engine.value === "matrix" && matrixProgram.value !== null) {
+          return {
+            program: matrixProgram.value,
+            helper: { summary: "Show bestPath", source: BEST_PATH_SOURCE },
+          };
+        }
+        return null;
+      },
+    );
     const codeColumn = (): VNode =>
       h("aside", { class: "mp-col mp-col-code" }, [
         h(CodePanel, {
@@ -779,14 +999,8 @@ export default defineComponent({
           columns: query.result.value?.rowColumns() ?? null,
           resultBinding: query.specCall.value?.binding ?? null,
           placeholder: query.spec.value === null ? RUN_HINT : null,
-          program: engine.value === "aha" ? ahaProgram.value : null,
-          helper:
-            engine.value === "aha" && ahaProgram.value !== null
-              ? {
-                  summary: "Show rankByRetention",
-                  source: RANK_BY_RETENTION_SOURCE,
-                }
-              : null,
+          program: loopCode.value?.program ?? null,
+          helper: loopCode.value?.helper ?? null,
         }),
       ]);
 

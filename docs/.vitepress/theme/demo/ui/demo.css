@@ -1117,18 +1117,18 @@ button.mp-chip-toggle[aria-pressed="true"] {
 
 /* --- aha moments --- */
 
-.mp-aha-builder {
+.mp-loop-builder {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.mp-aha-chips {
+.mp-loop-chips {
   margin: 0;
 }
 
 /* A candidate chip with its remove button inside the pill. */
-.mp-aha-chip {
+.mp-loop-chip {
   display: inline-flex;
   gap: 2px;
   align-items: center;
@@ -1137,7 +1137,7 @@ button.mp-chip-toggle[aria-pressed="true"] {
   background: var(--vp-c-bg-soft);
 }
 
-.mp-aha-remove {
+.mp-loop-remove {
   padding: 1px 6px;
   border: 0;
   background: none;
@@ -1145,17 +1145,17 @@ button.mp-chip-toggle[aria-pressed="true"] {
   line-height: 1.2;
 }
 
-.vp-doc .mp-demo .mp-aha-hint {
+.vp-doc .mp-demo .mp-loop-hint {
   margin: 0;
   font-size: 13px;
 }
 
-.mp-aha-progress {
+.mp-loop-progress {
   margin: 8px 0 0;
   font-size: 13px;
 }
 
-.vp-doc .mp-demo .mp-aha-sub {
+.vp-doc .mp-demo .mp-loop-sub {
   margin: 0 0 12px;
   font-size: 14px;
 }
@@ -1289,4 +1289,204 @@ button.mp-chip-toggle[aria-pressed="true"] {
 .mp-code-helper summary {
   margin-bottom: 8px;
   font-size: 13px;
+}
+
+/* --- conversion matrix --- */
+
+/* The grid first, the cell's panel under it: five event columns and a
+   panel do not fit one result column side by side. */
+.mp-matrix-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.mp-matrix-main {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.mp-matrix {
+  margin-top: 4px;
+}
+
+.vp-doc .mp-demo .mp-matrix th.mp-matrix-corner {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+  white-space: nowrap;
+}
+
+.mp-demo .mp-matrix thead th.mp-num,
+.mp-demo .mp-matrix td {
+  text-align: center;
+}
+
+.mp-demo .mp-matrix th[scope="row"] {
+  font-weight: 500;
+}
+
+/* A shaded cell is its button: the fill stays on the cell, the button fills it. */
+.mp-demo .mp-matrix td.mp-matrix-cell {
+  padding: 0;
+}
+
+.mp-matrix-btn {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.mp-matrix-btn:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+.mp-matrix-btn:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -3px;
+}
+
+.mp-matrix-btn[aria-pressed="true"] {
+  border-color: var(--vp-c-text-1);
+}
+
+.vp-doc .mp-demo td.mp-cell-inverse .mp-matrix-btn[aria-pressed="true"],
+.vp-doc .mp-demo td.mp-cell-inverse .mp-matrix-btn:focus-visible {
+  border-color: #fff;
+  outline-color: #fff;
+}
+
+.mp-demo .mp-matrix td.mp-matrix-diag,
+.mp-demo .mp-matrix td.mp-matrix-pending {
+  color: var(--vp-c-text-3);
+}
+
+.mp-demo .mp-matrix td.mp-matrix-failed {
+  font-size: 12px;
+  color: var(--mp-red, #d33);
+}
+
+.vp-doc .mp-demo .mp-matrix-best {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.mp-matrix-estimate {
+  white-space: nowrap;
+  color: var(--vp-c-text-2);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+/* The panel: one pair across the four windows, the chart beside the values. */
+.mp-matrix-panel {
+  max-width: 640px;
+  padding: 12px 14px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+}
+
+.mp-matrix-panel-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.vp-doc .mp-demo .mp-matrix-panel h3 {
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.mp-matrix-panel-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+}
+
+.mp-matrix-panel-body .mp-sweep-chart {
+  flex: 1 1 260px;
+  max-width: 360px;
+}
+
+.mp-matrix-windows {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 16px;
+  margin: 8px 0;
+  padding: 0;
+  font-size: 13px;
+  list-style: none;
+}
+
+.mp-matrix-windows li {
+  display: contents;
+}
+
+.mp-matrix-windows li > .mp-num {
+  text-align: right;
+}
+
+.mp-matrix-panel .mp-actions {
+  margin-top: 8px;
+}
+
+.mp-sweep-chart {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  overflow: visible;
+  color: var(--vp-c-brand-1);
+}
+
+.mp-sweep-axis {
+  stroke: var(--vp-c-divider);
+  stroke-width: 1;
+}
+
+.mp-sweep-line {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mp-sweep-dot {
+  fill: currentcolor;
+}
+
+.mp-sweep-value,
+.mp-sweep-tick {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  fill: var(--vp-c-text-2);
+}
+
+.mp-sweep-value {
+  fill: var(--vp-c-text-1);
+  font-weight: 600;
 }

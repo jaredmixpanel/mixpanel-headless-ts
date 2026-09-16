@@ -9,7 +9,13 @@ import { TIME_RANGES, type TimeRange } from "../model/query-spec.js";
 import { segmented } from "./el.js";
 
 /** The query engines the playground offers, in tab order. */
-export const ENGINES = ["trend", "funnel", "retention", "aha"] as const;
+export const ENGINES = [
+  "trend",
+  "funnel",
+  "retention",
+  "aha",
+  "matrix",
+] as const;
 
 /** Member of {@link ENGINES}. */
 export type Engine = (typeof ENGINES)[number];
@@ -19,6 +25,7 @@ const LABEL: Readonly<Record<Engine, string>> = {
   funnel: "Funnel",
   retention: "Retention",
   aha: "Aha moments",
+  matrix: "Conversion matrix",
 };
 
 /**

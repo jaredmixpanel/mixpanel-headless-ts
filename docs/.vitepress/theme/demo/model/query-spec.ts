@@ -26,8 +26,12 @@ export const TREND_MATHS = ["total", "unique", "dau"] as const;
 /** Member of {@link TREND_MATHS}. */
 export type TrendMath = (typeof TREND_MATHS)[number];
 
-/** Funnel conversion windows (days) the playground offers. */
-export const CONVERSION_WINDOWS = [1, 7, 30] as const;
+/**
+ * Funnel conversion windows (days) the playground offers — the four the
+ * demo project records for every pair of its funnel pool, so the
+ * conversion matrix can sweep a pair across all of them.
+ */
+export const CONVERSION_WINDOWS = [1, 7, 14, 30] as const;
 
 /** Member of {@link CONVERSION_WINDOWS}. */
 export type ConversionWindow = (typeof CONVERSION_WINDOWS)[number];

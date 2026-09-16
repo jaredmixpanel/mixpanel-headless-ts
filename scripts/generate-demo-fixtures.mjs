@@ -65,14 +65,37 @@ const FUNNEL_POOL = [
   "Note Shared",
   "Upgrade",
 ];
-/** Step-to-step conversion at the 14-day window; other pairs are drawn. */
+/**
+ * Step-to-step conversion of every ordered pair at the 7-day window (the
+ * playground's default). Designed rather than drawn so the conversion
+ * matrix tells one story: Signup → Note Saved is the strongest pair and
+ * Note Saved → Note Shared the strongest continuation, so the greedy best
+ * path is Signup → Note Saved → Note Shared (100 % → 61 % → 23 %); Upgrade
+ * is rare from anywhere and nothing leads back to Signup.
+ */
 const PAIR_RATES = {
+  "Signup>App Opened": 0.44,
   "Signup>Note Saved": 0.61,
-  "Note Saved>Note Shared": 0.38,
   "Signup>Note Shared": 0.27,
   "Signup>Upgrade": 0.06,
+  "App Opened>Signup": 0.03,
+  "App Opened>Note Saved": 0.47,
+  "App Opened>Note Shared": 0.19,
+  "App Opened>Upgrade": 0.03,
+  "Note Saved>Signup": 0.02,
+  "Note Saved>App Opened": 0.33,
+  "Note Saved>Note Shared": 0.38,
+  "Note Saved>Upgrade": 0.09,
+  "Note Shared>Signup": 0.02,
+  "Note Shared>App Opened": 0.35,
+  "Note Shared>Note Saved": 0.36,
+  "Note Shared>Upgrade": 0.14,
+  "Upgrade>Signup": 0.01,
+  "Upgrade>App Opened": 0.3,
+  "Upgrade>Note Saved": 0.34,
+  "Upgrade>Note Shared": 0.21,
 };
-const WINDOW_FACTOR = { 1: 0.62, 7: 0.9, 14: 1, 30: 1.08 };
+const WINDOW_FACTOR = { 1: 0.69, 7: 1, 14: 1.11, 30: 1.2 };
 
 /**
  * born → return events offered for retention: the two onboarding events
@@ -252,9 +275,13 @@ function renderDemoFixtures() {
   }
   topEvents.sort((a, b) => b.amount - a.amount);
 
-  const pairRate = (a, b) =>
-    PAIR_RATES[`${a}>${b}`] ??
-    0.18 + 0.5 * rand() * Math.min(1, EVENTS[b] / EVENTS[a]);
+  const pairRate = (a, b) => {
+    const rate = PAIR_RATES[`${a}>${b}`];
+    if (rate === undefined) {
+      throw new Error(`generate-demo-fixtures: no PAIR_RATES entry ${a}>${b}`);
+    }
+    return rate;
+  };
   const funnels = {};
   for (const steps of [...tuples(FUNNEL_POOL, 2), ...tuples(FUNNEL_POOL, 3)]) {
     const rates = steps.slice(1).map((step, i) => pairRate(steps[i], step));

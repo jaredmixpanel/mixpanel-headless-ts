@@ -1,7 +1,9 @@
 // The funnel and retention tabs' builders, each one wrapping row. Each
 // keeps its own draft (steps, window, born/return, unit) and emits a
 // complete request when the user presses Run; the playground adds the
-// shared time range and turns it into the spec it executes.
+// shared time range and turns it into the spec it executes. Both accept a
+// preset from the loop reports, which open a pair or a path here and run
+// it at once.
 
 import {
   computed,
@@ -51,14 +53,19 @@ export const FunnelBuilder = defineComponent({
     /** Whether the full event list has been loaded (hides "more events"). */
     complete: { type: Boolean, default: false },
     maxSteps: { type: Number, default: MAX_STEPS },
+    /**
+     * Steps and window to open with (the conversion matrix hands its best
+     * path over here); read once, when the builder mounts with its tab.
+     */
+    preset: { type: Object as PropType<FunnelDraft | null>, default: null },
   },
   emits: {
     run: (draft: FunnelDraft) => draft.steps.length >= 2,
     moreEvents: () => true,
   },
   setup(props, { emit }) {
-    const steps = ref<string[]>([]);
-    const window = ref<ConversionWindow>(7);
+    const steps = ref<string[]>([...(props.preset?.steps ?? [])]);
+    const window = ref<ConversionWindow>(props.preset?.conversionWindow ?? 7);
     const shown = computed(() =>
       steps.value.length === 0 && props.seed !== null
         ? [props.seed]

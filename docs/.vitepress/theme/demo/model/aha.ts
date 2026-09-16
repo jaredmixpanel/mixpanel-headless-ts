@@ -318,30 +318,3 @@ export function rankingRows(
     entrants: row.entrants,
   }));
 }
-
-/**
- * An SVG path for a small-multiple retention curve: bucket 0 at the left
- * edge, rate 1 at the top, rate 0 at the bottom.
- *
- * @param curve - Rates by bucket, 0–1 (clamped).
- * @param width - Drawing width in user units.
- * @param height - Drawing height in user units.
- * @returns The `d` attribute, empty for an empty curve.
- * @example
- * ```ts
- * sparklinePath([1, 0.5, 0.25], 40, 10); // "M0.0,0.0 L20.0,5.0 L40.0,7.5"
- * ```
- */
-export function sparklinePath(
-  curve: readonly number[],
-  width: number,
-  height: number,
-): string {
-  const step = curve.length > 1 ? width / (curve.length - 1) : 0;
-  return curve
-    .map((rate, i) => {
-      const y = height - Math.min(Math.max(rate, 0), 1) * height;
-      return `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-}

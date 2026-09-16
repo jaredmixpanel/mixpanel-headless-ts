@@ -16,12 +16,20 @@ import { createBrowserWorkspace } from "@mixpanel-headless/browser";
 
 import { DEMO_FIXTURES } from "../docs/.vitepress/theme/demo/fixtures/demo-project.gen.js";
 import { seedCandidates } from "../docs/.vitepress/theme/demo/model/aha.js";
-import { fixtureFetch } from "../docs/.vitepress/theme/demo/model/fixture-fetch.js";
+import {
+  fixtureCoverage,
+  fixtureFetch,
+} from "../docs/.vitepress/theme/demo/model/fixture-fetch.js";
 import {
   FIXTURE_KEYS,
   SERIES_DAYS,
 } from "../docs/.vitepress/theme/demo/model/fixture-types.js";
 import {
+  MAX_POOL,
+  orderedPairs,
+} from "../docs/.vitepress/theme/demo/model/matrix.js";
+import {
+  CONVERSION_WINDOWS,
   TREND_MATHS,
   type TrendMath,
 } from "../docs/.vitepress/theme/demo/model/query-spec.js";
@@ -33,6 +41,8 @@ const OUTPUT = join(
   "docs/.vitepress/theme/demo/fixtures/demo-project.gen.ts",
 );
 const SIZE_BUDGET_BYTES = 160 * 1024;
+/** The funnel builder's and the matrix's default window. */
+const DEFAULT_WINDOW = 7;
 const CORPUS_CONFIG = join(REPO_ROOT, "conformance-runner/corpus.config.json");
 const VECTOR_BUNDLE = join(
   REPO_ROOT,
@@ -148,6 +158,30 @@ describe("demo fixtures: generator", () => {
           expect(DEMO_FIXTURES.retention[key], key).toBeDefined();
         }
       }
+    }
+  });
+
+  it("holds every ordered pair of the funnel pool at every window, and every ordered triple at the default window", () => {
+    const { funnelEvents, conversionWindows } = fixtureCoverage(DEMO_FIXTURES);
+    expect(funnelEvents).toHaveLength(MAX_POOL);
+    expect(conversionWindows).toStrictEqual([...CONVERSION_WINDOWS]);
+    const pairs = orderedPairs(funnelEvents);
+    expect(pairs).toHaveLength(MAX_POOL * (MAX_POOL - 1));
+    const triples = pairs.flatMap((pair) =>
+      funnelEvents
+        .filter((third) => !pair.includes(third))
+        .map((third) => [...pair, third]),
+    );
+    expect(triples).toHaveLength(MAX_POOL * (MAX_POOL - 1) * (MAX_POOL - 2));
+    for (const pair of pairs) {
+      for (const window of CONVERSION_WINDOWS) {
+        const key = FIXTURE_KEYS.funnel(pair, window);
+        expect(DEMO_FIXTURES.funnels[key], key).toBeDefined();
+      }
+    }
+    for (const triple of triples) {
+      const key = FIXTURE_KEYS.funnel(triple, DEFAULT_WINDOW);
+      expect(DEMO_FIXTURES.funnels[key], key).toBeDefined();
     }
   });
 

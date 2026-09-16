@@ -2,10 +2,12 @@
 // the `Call`s built from it — rendered and executed from the same objects
 // — and what each produced), the engine whose run is on screen, and the
 // discovery calls around them. A run is a list of call outcomes: one for
-// the single-query engines, one per candidate for the ranking report's
-// loop, which settles them in order. Domain logic stays in model/; this
-// composable only orders those calls and keeps stale responses from
-// overwriting newer ones. Results are class instances, hence `shallowRef`.
+// the single-query engines, one per candidate or pair for the two loop
+// reports, which settle them in order. The conversion matrix also keeps a
+// cache of per-window sweeps, so a cell opened twice costs nothing the
+// second time. Domain logic stays in model/; this composable only orders
+// those calls and keeps stale responses from overwriting newer ones.
+// Results are class instances, hence `shallowRef`.
 
 import {
   computed,
@@ -22,6 +24,13 @@ import { ahaCalls, type AhaSpec } from "../model/aha.js";
 import { type Call, runCall } from "../model/call.js";
 import { describeError, type ErrorContext } from "../model/errors.js";
 import {
+  matrixCalls,
+  type MatrixPair,
+  type MatrixSpec,
+  sweepCalls,
+} from "../model/matrix.js";
+import {
+  type ConversionWindow,
   eventsCall,
   propertiesCall,
   propertyValuesCall,
@@ -47,8 +56,10 @@ export type TopEvent = Awaited<ReturnType<Workspace["topEvents"]>>[number];
 export type ReportLink = Awaited<ReturnType<Workspace["createReportLink"]>>;
 /** Anything the result panel can hold. */
 export type AnyResult = QueryResult | FunnelQueryResult | RetentionQueryResult;
-/** Every spec an engine runs: the single-call ones plus the ranking loop. */
-export type AnySpec = QuerySpec | AhaSpec;
+/** The reports that run a loop of calls rather than one query. */
+export type LoopSpec = AhaSpec | MatrixSpec;
+/** Every spec an engine runs: the single-call ones plus the loops. */
+export type AnySpec = QuerySpec | LoopSpec;
 /** The engines, one run kept per kind. */
 export type EngineKind = AnySpec["kind"];
 
@@ -75,7 +86,7 @@ export interface EngineRun {
   /** Identifies the run: an older run's late response cannot amend a newer one. */
   readonly ticket: number;
   readonly spec: AnySpec;
-  /** In call order: one for a query, one per candidate for the ranking loop. */
+  /** In call order: one for a query, one per candidate or pair for a loop. */
   readonly outcomes: readonly CallOutcome[];
   readonly loading: boolean;
   /** The error that ended the run (a query's own, or the one that stopped the loop). */
@@ -86,6 +97,9 @@ export interface EngineRun {
 
 type Runs = Readonly<Partial<Record<EngineKind, EngineRun>>>;
 
+/** The matrix's sweep cache: {@link sweepKey} → the settled call. */
+type Sweeps = Readonly<Record<string, CallOutcome>>;
+
 /** What the playground reads and drives. */
 export interface QueryController {
   /** The engine whose run the panel shows (the selected tab). */
@@ -94,7 +108,7 @@ export interface QueryController {
   readonly runs: ShallowRef<Runs>;
   /** The shown engine's spec, or `null` before its first run. */
   readonly spec: ComputedRef<AnySpec | null>;
-  /** The shown single-query engine's result (`null` for the ranking loop). */
+  /** The shown single-query engine's result (`null` for a loop). */
   readonly result: ComputedRef<AnyResult | null>;
   /** The shown run's outcomes, call by call. */
   readonly outcomes: ComputedRef<readonly CallOutcome[]>;
@@ -109,18 +123,73 @@ export interface QueryController {
   readonly link: ComputedRef<ReportLink | null>;
   /**
    * Every call behind what is on screen, in the order it was made — the
-   * ranking loop's calls excepted, which the panel prints as the loop.
+   * loops' calls excepted, which the panel prints as the loop.
    */
   readonly calls: ComputedRef<readonly Call[]>;
   /** The call that produced `result`. */
   readonly specCall: ComputedRef<Call | null>;
+  /** The matrix's per-window sweeps, keyed by {@link sweepKey}. */
+  readonly sweeps: ShallowRef<Sweeps>;
+  /** The pair whose sweep is in flight, as {@link pairKey}, or `null`. */
+  readonly sweeping: Ref<string | null>;
   loadTopEvents: () => Promise<void>;
   run: (spec: AnySpec) => Promise<void>;
+  /** Run the matrix's pair at these windows, under the matrix run's range. */
+  sweep: (
+    pair: MatrixPair,
+    windows: readonly ConversionWindow[],
+  ) => Promise<void>;
   openBreakdown: () => Promise<void>;
   showValues: (property: string) => Promise<void>;
   loadAllEvents: () => Promise<void>;
   createLink: (name: string) => Promise<ReportLink | null>;
   reset: () => void;
+}
+
+/**
+ * Whether a spec runs a loop of calls (the ranking report, the matrix).
+ *
+ * @param spec - Any spec.
+ * @returns `true` for the loop reports.
+ */
+export function isLoopSpec(spec: AnySpec): spec is LoopSpec {
+  return spec.kind === "aha" || spec.kind === "matrix";
+}
+
+/**
+ * The cache key of one pair (a sweep in flight is named by it).
+ *
+ * @param pair - The pair.
+ * @returns `from>to`.
+ */
+export function pairKey(pair: MatrixPair): string {
+  return pair.join(">");
+}
+
+/**
+ * The sweep cache key of one pair at one window under one range.
+ *
+ * @param pair - The pair.
+ * @param window - Conversion window (days).
+ * @param last - Time range (days).
+ * @returns `last|window|from>to`.
+ */
+export function sweepKey(
+  pair: MatrixPair,
+  window: number,
+  last: number,
+): string {
+  return `${String(last)}|${String(window)}|${pairKey(pair)}`;
+}
+
+/**
+ * The calls a loop spec runs, in order.
+ *
+ * @param spec - The report.
+ * @returns Its calls.
+ */
+function loopCalls(spec: LoopSpec): Call[] {
+  return spec.kind === "aha" ? ahaCalls(spec) : matrixCalls(spec);
 }
 
 /**
@@ -137,6 +206,8 @@ export function useQuery(
 ): QueryController {
   const engine = ref<EngineKind>("trend");
   const runs = shallowRef<Runs>({});
+  const sweeps = shallowRef<Sweeps>({});
+  const sweeping = ref<string | null>(null);
   const discoveryError = shallowRef<DemoError | null>(null);
   const topEvents = shallowRef<readonly TopEvent[]>([]);
   const topLoading = ref(false);
@@ -152,7 +223,7 @@ export function useQuery(
   const active = computed(() => runs.value[engine.value] ?? null);
   const spec = computed(() => active.value?.spec ?? null);
   const single = computed(() =>
-    active.value === null || active.value.spec.kind === "aha"
+    active.value === null || isLoopSpec(active.value.spec)
       ? null
       : (active.value.outcomes[0] ?? null),
   );
@@ -219,34 +290,35 @@ export function useQuery(
   };
 
   /**
-   * The ranking loop: one request at a time, on purpose — the Query API
+   * A loop report: one request at a time, on purpose — the Query API
    * allows five concurrent requests per project, and the sequential loop
-   * is the code the panel prints. A failed candidate keeps its error and
-   * the loop goes on; an error that ends the session stops it.
+   * is the code the panel prints. A failed call keeps its error and the
+   * loop goes on; an error that ends the session stops it.
    *
    * @param next - The report to run.
    * @param ticket - This run's ticket.
    */
-  const runLoop = async (next: AhaSpec, ticket: number): Promise<void> => {
-    const loopCalls = ahaCalls(next);
-    store("aha", {
+  const runLoop = async (next: LoopSpec, ticket: number): Promise<void> => {
+    const kind = next.kind;
+    const loop = loopCalls(next);
+    store(kind, {
       ticket,
       spec: next,
-      outcomes: loopCalls.map((call) => ({ call, result: null, error: null })),
+      outcomes: loop.map((call) => ({ call, result: null, error: null })),
       loading: true,
       error: null,
       link: null,
       linkCall: null,
     });
-    for (const [i, call] of loopCalls.entries()) {
+    for (const [i, call] of loop.entries()) {
       const outcome = await settle(call);
-      const current = runs.value.aha;
+      const current = runs.value[kind];
       if (current?.ticket !== ticket) {
         return;
       }
       const settled = current.outcomes.map((o, k) => (k === i ? outcome : o));
       if (outcome.error?.fatal === true) {
-        store("aha", {
+        store(kind, {
           ...current,
           outcomes: settled,
           loading: false,
@@ -254,9 +326,9 @@ export function useQuery(
         });
         return;
       }
-      store("aha", { ...current, outcomes: settled });
+      store(kind, { ...current, outcomes: settled });
     }
-    patch("aha", ticket, { loading: false });
+    patch(kind, ticket, { loading: false });
   };
 
   return {
@@ -275,6 +347,8 @@ export function useQuery(
     link,
     calls,
     specCall,
+    sweeps,
+    sweeping,
     async loadTopEvents() {
       const call = topEventsCall();
       topCall.value = call;
@@ -290,7 +364,7 @@ export function useQuery(
     async run(next) {
       discoveryError.value = null;
       const ticket = ++sequence;
-      if (next.kind === "aha") {
+      if (isLoopSpec(next)) {
         await runLoop(next, ticket);
         return;
       }
@@ -323,6 +397,37 @@ export function useQuery(
         loading: false,
         error: outcome.error,
       });
+    },
+    // Sequential like the loops, and cached as each window settles so the
+    // panel fills in; a fatal error lands on the matrix run, where the
+    // page's watcher picks it up.
+    async sweep(pair, windows) {
+      const run = runs.value.matrix;
+      if (run?.spec.kind !== "matrix" || sweeping.value !== null) {
+        return;
+      }
+      const { ticket } = run;
+      const last = run.spec.last;
+      sweeping.value = pairKey(pair);
+      try {
+        for (const [i, call] of sweepCalls(pair, windows, last).entries()) {
+          const window = windows[i];
+          const outcome = await settle(call);
+          if (runs.value.matrix?.ticket !== ticket || window === undefined) {
+            return;
+          }
+          sweeps.value = {
+            ...sweeps.value,
+            [sweepKey(pair, window, last)]: outcome,
+          };
+          if (outcome.error?.fatal === true) {
+            patch("matrix", ticket, { error: outcome.error });
+            return;
+          }
+        }
+      } finally {
+        sweeping.value = null;
+      }
     },
     async openBreakdown() {
       const current = trendSpec();
@@ -386,6 +491,8 @@ export function useQuery(
     },
     reset() {
       runs.value = {};
+      sweeps.value = {};
+      sweeping.value = null;
       discoveryError.value = null;
       topEvents.value = [];
       allEvents.value = null;
