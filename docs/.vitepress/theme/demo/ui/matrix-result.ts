@@ -29,6 +29,7 @@ import {
 import { ErrorBlock } from "./banners.js";
 import Constellation, { type ConstellationEdge } from "./constellation.js";
 import { button } from "./el.js";
+import LoadingBar from "./loading-bar.js";
 import { type CallOutcome, pairKey } from "./use-query.js";
 
 /** One window of a cell's sweep: fetched (an outcome) or not (`null`). */
@@ -506,8 +507,10 @@ export default defineComponent({
         {
           class: "mp-matrix-panel",
           "aria-label": `${arrow(pair)} across windows`,
+          "aria-busy": props.sweeping ? "true" : "false",
         },
         [
+          h(LoadingBar, { active: props.sweeping, label: null }),
           h("div", { class: "mp-matrix-panel-head" }, [
             h("h3", `${arrow(pair)} across windows`),
             button("×", () => emit("select", null), {
@@ -517,6 +520,15 @@ export default defineComponent({
           ]),
           h("div", { class: "mp-matrix-panel-body" }, [
             complete ? chart(pair, points) : null,
+            // While the sweep runs, the chart's place is held by a skeleton
+            // and each pending value by a shimmering bar, so the panel reads
+            // as filling in rather than waiting on text.
+            !complete && props.sweeping
+              ? h("div", {
+                  class: "mp-sweep-chart mp-sweep-skeleton",
+                  "aria-hidden": "true",
+                })
+              : null,
             h(
               "ul",
               { class: "mp-matrix-windows", role: "list" },
@@ -526,7 +538,19 @@ export default defineComponent({
                     "span",
                     `${String(point.window)} day${point.window === 1 ? "" : "s"}`,
                   ),
-                  h("span", { class: "mp-num" }, pointValue(point)),
+                  h(
+                    "span",
+                    { class: "mp-num" },
+                    props.sweeping && point.outcome === null
+                      ? [
+                          h("span", {
+                            class: "mp-skeleton-bar mp-sweep-skeleton-value",
+                            "aria-hidden": "true",
+                          }),
+                          h("span", { class: "mp-visually-hidden" }, "loading"),
+                        ]
+                      : pointValue(point),
+                  ),
                 ]),
               ),
             ),

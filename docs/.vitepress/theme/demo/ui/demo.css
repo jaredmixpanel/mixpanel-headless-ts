@@ -1593,11 +1593,46 @@ button.mp-chip-toggle[aria-pressed="true"] {
 
 /* The panel: one pair across the four windows, the chart beside the values. */
 .mp-matrix-panel {
+  position: relative;
   max-width: 640px;
   padding: 12px 14px;
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
   background: var(--vp-c-bg);
+  overflow: hidden;
+}
+
+/* The sweep's bar starts inside the card's clip, like the picker's. */
+.mp-matrix-panel .mp-loading-bar {
+  top: 0;
+  height: 3px;
+}
+
+/* Placeholders while a sweep runs: the chart's footprint and each pending value. */
+.mp-sweep-skeleton {
+  min-height: 140px;
+  border-radius: 8px;
+  background: var(--vp-c-default-soft);
+}
+
+.mp-sweep-skeleton-value {
+  display: inline-block;
+  width: 3.5em;
+  height: 1em;
+  vertical-align: -0.1em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mp-sweep-skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--vp-c-default-soft) 25%,
+      var(--vp-c-divider) 50%,
+      var(--vp-c-default-soft) 75%
+    );
+    background-size: 200% 100%;
+    animation: mp-shimmer 1.4s linear infinite;
+  }
 }
 
 .mp-matrix-panel-head {
