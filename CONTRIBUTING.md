@@ -425,7 +425,9 @@ within 738 KB minified / 210 KB gzipped) — it skips without a build and runs
 in `docs.yml` after one.
 `npm run demo:canary` (`.github/workflows/demo-canary.yml`, weekly and on
 dispatch, no secrets) probes that Mixpanel's endpoints still answer CORS
-preflights from the site's origin; a failing run is the alert.
+preflights from the site's origin and that its sign-in pages still send no
+`Cross-Origin-Opener-Policy` while forbidding framing (the popup login
+depends on both); a failing run is the alert.
 
 `.github/workflows/docs.yml` runs `npm run docs:build` on every push to
 `main`, every pull request and on dispatch (the site is a downloadable

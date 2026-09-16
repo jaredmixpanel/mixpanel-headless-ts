@@ -5,8 +5,12 @@
 // JavaScript, exchanges the PKCE code and registers its OAuth client from
 // the browser), the query API must answer an unauthenticated request with
 // 401 (the endpoint is up, and it is a policy answer rather than a CORS
-// failure), and the Export API must still refuse CORS — the browser
-// package refuses it before any fetch, and this keeps that refusal honest.
+// failure), the Export API must still refuse CORS — the browser package
+// refuses it before any fetch, and this keeps that refusal honest — and the
+// sign-in pages must keep the popup login usable: no
+// `Cross-Origin-Opener-Policy` (one would sever `window.opener`, the only
+// channel from the popup back to an embedded page) while still forbidding
+// framing (the reason the login runs in a popup at all).
 //
 // A real login cannot run unattended (interactive sign-in page, no
 // client-credentials grant), so the canary checks headers, not a token.
@@ -27,6 +31,10 @@ import process from "node:process";
 const REGION_HOSTS = ["mixpanel.com", "eu.mixpanel.com", "in.mixpanel.com"];
 const EXPORT_HOST = "data.mixpanel.com";
 const REQUEST_TIMEOUT_MS = 15_000;
+// The authorize endpoint sends a visitor without a session to the sign-in
+// page; the popup traverses every hop, so each one is checked, but a chain
+// longer than this is itself a change worth reporting.
+const MAX_SIGN_IN_HOPS = 3;
 
 // The same body core's `registerClient` sends (its `DEFAULT_SCOPE`), so a
 // manual `--register` run exercises exactly the playground's registration.
@@ -196,6 +204,91 @@ async function expectUnauthorized(url) {
 }
 
 /**
+ * Whether a response forbids being framed: a `frame-ancestors 'none'`
+ * directive or an `X-Frame-Options` of `DENY` or `SAMEORIGIN`.
+ *
+ * @param {Headers} headers - The response headers.
+ * @returns {boolean} `true` when no other origin may frame the page.
+ */
+function forbidsFraming(headers) {
+  const policy = headers.get("content-security-policy") ?? "";
+  const frameAncestors = policy
+    .split(";")
+    .map((directive) => directive.trim().toLowerCase())
+    .find((directive) => directive.startsWith("frame-ancestors"));
+  if (
+    frameAncestors !== undefined &&
+    /^frame-ancestors\s+'none'$/.test(frameAncestors)
+  ) {
+    return true;
+  }
+  const frameOptions = headers.get("x-frame-options")?.trim().toUpperCase();
+  return frameOptions === "DENY" || frameOptions === "SAMEORIGIN";
+}
+
+/**
+ * The authorize endpoint, and every page it redirects a visitor without a
+ * session to, must keep the popup login usable. Two headers decide that:
+ * a `Cross-Origin-Opener-Policy` would sever `window.opener`, the only
+ * channel from the popup back to an embedded page (the relay would fall
+ * back to pasting the redirect); and framing must still be forbidden — that
+ * restriction is why the login opens a popup, so if it ever lifts, the
+ * redirect flow could run framed and the docs should say so.
+ *
+ * @param {string} host - Region host.
+ * @returns {Promise<Deviation[]>} A deviation per header that changed.
+ */
+async function expectPopupUsable(host) {
+  let url = `https://${host}/oauth/authorize/`;
+  const probe = `GET ${url} (no credentials; no COOP, framing forbidden, across redirects)`;
+  /** @type {Deviation[]} */
+  const deviations = [];
+  for (let hop = 0; hop < MAX_SIGN_IN_HOPS; hop += 1) {
+    const response = await request(url, {
+      method: "GET",
+      headers: { Accept: "text/html" },
+    });
+    if (response instanceof Error) {
+      deviations.push({
+        probe,
+        reason: `request failed at ${url}: ${response.message}`,
+      });
+      return deviations;
+    }
+    const opener = response.headers.get("cross-origin-opener-policy");
+    if (opener !== null) {
+      deviations.push({
+        probe,
+        reason: `${url} (HTTP ${response.status}) sends cross-origin-opener-policy ${JSON.stringify(opener)}; the popup loses window.opener and every embedded sign-in degrades to the paste fallback`,
+      });
+    }
+    if (!forbidsFraming(response.headers)) {
+      const frameOptions = response.headers.get("x-frame-options");
+      deviations.push({
+        probe,
+        reason: `${url} (HTTP ${response.status}) no longer forbids framing (no frame-ancestors 'none'; x-frame-options ${JSON.stringify(frameOptions)}); revisit whether the login still needs a popup`,
+      });
+    }
+    const location = response.headers.get("location");
+    if (response.status < 300 || response.status >= 400 || location === null) {
+      return deviations;
+    }
+    const next = new URL(location, url);
+    if (next.host !== host) {
+      // A hop to another host (a hosted identity provider, say) is outside
+      // what the canary can vouch for without a session; stop here.
+      return deviations;
+    }
+    url = next.href;
+  }
+  deviations.push({
+    probe,
+    reason: `still redirecting after ${MAX_SIGN_IN_HOPS} hops (last ${url})`,
+  });
+  return deviations;
+}
+
+/**
  * Dynamic client registration with the playground's redirect URI — what
  * `beginLogin` does on the first sign-in from a tab. Creates a client
  * record on Mixpanel's side, hence opt-in.
@@ -264,6 +357,7 @@ async function main(register) {
       expectCorsOpen(`${api}/app/me`, "GET", ["authorization"]),
       expectCorsOpen(`${oauth}/token/`, "POST", ["content-type"]),
       expectCorsOpen(`${oauth}/mcp/register/`, "POST", ["content-type"]),
+      expectPopupUsable(host),
     );
   }
   probes.push(
