@@ -40,7 +40,7 @@ const EMPTY: Readonly<Record<EngineKind, string>> = {
   trend: "Pick an event above to run a query.",
   funnel: "Add two or more steps and run the funnel.",
   retention: "Pick a born and a return event, then run.",
-  aha: "Which early behaviour predicts retention? Mixpanel has no report for this: it takes one retention query per candidate and a ranking, which is a loop.",
+  aha: "Which behaviours do users come back for? Mixpanel has no report for this: it takes one retention query per candidate return event and a ranking, which is a loop.",
   matrix:
     "Which events lead where? Funnels shows one path at a time; a conversion matrix takes one funnel query per ordered pair, which is a loop.",
 };
@@ -73,7 +73,7 @@ function resultTitle(spec: AnySpec, result: AnyResult | null): string {
       return `${spec.born} → ${spec.returnEvent}, ${spec.retentionUnit === "week" ? "weekly" : "daily"}, last ${spec.last} days`;
     }
     case "aha": {
-      return `Behaviours that predict retention after ${spec.born}`;
+      return `Behaviours users come back for after ${spec.born}`;
     }
     case "matrix": {
       return `Conversion between ${String(spec.events.length)} events, ${String(spec.conversionWindow)}-day window, last ${String(spec.last)} days`;
