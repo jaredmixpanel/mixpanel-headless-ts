@@ -7,6 +7,8 @@
 import {
   AuthenticationError,
   BROWSER_NO_PENDING_LOGIN,
+  BROWSER_POPUP_BLOCKED,
+  BROWSER_POPUP_CLOSED,
   BrowserUnsupportedError,
   ConfigError,
   EventNotFoundError,
@@ -31,6 +33,30 @@ const FIXTURE_MISS = /^demo fixture miss: (.+)$/u;
 
 const NO_PENDING_LOGIN_MESSAGE =
   "No sign-in in progress in this tab (it may have expired — 30 minutes — or this URL was opened in a new tab). Start again.";
+
+/** Shown in the framed pending card when `window.open` returned nothing. */
+export const POPUP_BLOCKED_MESSAGE =
+  "Your browser blocked the sign-in window. Try again from the button below (a direct click usually gets through), or open the sign-in page in a new tab and paste the address of the page you land on.";
+/** The quiet notice after the visitor closed the popup before it returned. */
+export const POPUP_CANCELED_NOTICE = "Sign-in canceled.";
+/** The quiet notice after the popup did not return within its budget. */
+export const POPUP_TIMEOUT_NOTICE =
+  "The sign-in window did not return within five minutes. Try again.";
+
+/**
+ * What the framed page does with a `loginInPopup` rejection: keep the
+ * pending card up with the fallback link (the browser refused the popup;
+ * the pending record is kept for the paste box), keep waiting (a repeat
+ * click while the popup is open, which has already focused it), drop
+ * back to signed-out with a quiet notice (closed, timed out), or end the
+ * attempt with the error block (everything the redirect flow can fail
+ * with too).
+ */
+export type PopupLoginOutcome =
+  | { readonly kind: "blocked"; readonly authorizeUrl: string }
+  | { readonly kind: "in-flight" }
+  | { readonly kind: "signed-out"; readonly notice: string }
+  | { readonly kind: "error"; readonly error: DemoError };
 
 /**
  * `hh:mm` of an ISO instant in the visitor's locale.
@@ -177,6 +203,9 @@ function describeOAuthError(
         "signed-out",
       );
     }
+    case "OAUTH_TIMEOUT": {
+      return mapped(error, POPUP_TIMEOUT_NOTICE, "signed-out");
+    }
     case "OAUTH_TOKEN_ERROR": {
       if (typeof details["has_refresh_token"] === "boolean") {
         const at =
@@ -216,9 +245,22 @@ export function describeError(
     return describeOAuthError(error, context);
   }
   if (error instanceof BrowserUnsupportedError) {
-    return error.code === BROWSER_NO_PENDING_LOGIN
-      ? mapped(error, NO_PENDING_LOGIN_MESSAGE, "signed-out")
-      : mapped(error, error.message, null);
+    switch (error.code) {
+      case BROWSER_NO_PENDING_LOGIN: {
+        return mapped(error, NO_PENDING_LOGIN_MESSAGE, "signed-out");
+      }
+      case BROWSER_POPUP_BLOCKED: {
+        // Not the end of the attempt: the pending record is kept for the
+        // link-and-paste fallback, so the copy stays inline.
+        return mapped(error, POPUP_BLOCKED_MESSAGE, null);
+      }
+      case BROWSER_POPUP_CLOSED: {
+        return mapped(error, POPUP_CANCELED_NOTICE, "signed-out");
+      }
+      default: {
+        return mapped(error, error.message, null);
+      }
+    }
   }
   if (error instanceof ConfigError) {
     const status = error.details["status_code"];
@@ -288,4 +330,40 @@ export function describeError(
     fatal: false,
     retry: null,
   };
+}
+
+/**
+ * Classify a `loginInPopup` rejection for the framed page.
+ *
+ * @param error - Whatever `loginInPopup` rejected with.
+ * @param context - Redirect URI and expiry for the copy that quotes them.
+ * @returns What the page does next.
+ */
+export function popupLoginOutcome(
+  error: unknown,
+  context: ErrorContext = {},
+): PopupLoginOutcome {
+  if (
+    error instanceof BrowserUnsupportedError &&
+    error.code === BROWSER_POPUP_BLOCKED
+  ) {
+    const { details } = error;
+    if (details["reason"] === "in_flight") {
+      return { kind: "in-flight" };
+    }
+    const authorizeUrl = details["authorize_url"];
+    if (details["reason"] === "blocked" && typeof authorizeUrl === "string") {
+      return { kind: "blocked", authorizeUrl };
+    }
+  }
+  if (
+    error instanceof BrowserUnsupportedError &&
+    error.code === BROWSER_POPUP_CLOSED
+  ) {
+    return { kind: "signed-out", notice: POPUP_CANCELED_NOTICE };
+  }
+  if (error instanceof OAuthError && error.code === "OAUTH_TIMEOUT") {
+    return { kind: "signed-out", notice: POPUP_TIMEOUT_NOTICE };
+  }
+  return { kind: "error", error: describeError(error, context) };
 }

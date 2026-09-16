@@ -340,6 +340,7 @@
 /* One ring for every focusable thing on the page, keyboard focus only. */
 .mp-btn:focus-visible,
 .mp-select:focus-visible,
+.mp-input:focus-visible,
 .mp-event:focus-visible,
 .mp-code:focus-visible,
 .mp-chart svg:focus-visible,
@@ -385,7 +386,8 @@
   font-size: 14px;
 }
 
-.mp-select {
+.mp-select,
+.mp-input {
   max-width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--vp-c-border);
@@ -395,6 +397,28 @@
   font: inherit;
   font-size: 14px;
   line-height: 1.45;
+}
+
+/* A URL field: monospace, and it never wraps the page around a long value. */
+.mp-url {
+  min-width: 0;
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+}
+
+/*
+ * The paste box (framed sign-in) and the paste-back card (callback page):
+ * one field that takes the row, the button beside it, stacking when narrow.
+ */
+.mp-paste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+.mp-paste .mp-input {
+  flex: 1 1 320px;
 }
 
 /*

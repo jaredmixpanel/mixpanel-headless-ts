@@ -23,8 +23,10 @@ import {
 
 import {
   beginLogin,
+  completeLogin,
   createBrowserWorkspace,
   createBrowserWorkspaceFromStore,
+  loginInPopup,
   type Workspace,
 } from "@mixpanel-headless/browser";
 
@@ -38,7 +40,11 @@ import {
   renderAhaProgram,
   seedCandidates,
 } from "../model/aha.js";
-import { describeError, type ErrorContext } from "../model/errors.js";
+import {
+  describeError,
+  type ErrorContext,
+  popupLoginOutcome,
+} from "../model/errors.js";
 import { fixtureCoverage, fixtureFetch } from "../model/fixture-fetch.js";
 import { toMarkdown } from "../model/markdown-table.js";
 import {
@@ -63,8 +69,10 @@ import {
 } from "../model/query-spec.js";
 import { formatPct } from "../model/series.js";
 import {
+  completePastedLogin,
   type DemoError,
   type DemoState,
+  loginTransport,
   type PickedProject,
   type PickedWorkspace,
   type Region,
@@ -102,6 +110,7 @@ import LoadingBar from "./loading-bar.js";
 import LoadingCard, { type SignInPhase } from "./loading-card.js";
 import MatrixBuilder, { type MatrixDraft } from "./matrix-builder.js";
 import { matrixResults, type SweepPoint } from "./matrix-result.js";
+import PopupPending from "./popup-pending.js";
 import ProjectPicker from "./project-picker.js";
 import ResultActions from "./result-actions.js";
 import ResultPanel from "./result-panel.js";
@@ -109,6 +118,7 @@ import {
   clearSession,
   forgetRegion,
   hopStore,
+  markLive,
   memory,
   rememberRegion,
   session,
@@ -585,6 +595,16 @@ export default defineComponent({
     };
     onBeforeUnmount(clearExpiry);
 
+    // The popup login in flight, if any: one controller per attempt, so
+    // leaving the pending state (cancel, paste, an error, unmount) ends
+    // the wait.
+    let popupAttempt: AbortController | null = null;
+    const cancelPopup = (): void => {
+      popupAttempt?.abort();
+      popupAttempt = null;
+    };
+    onBeforeUnmount(cancelPopup);
+
     /**
      * Leave the live session: every credential key out of both stores,
      * the facade and `/me` dropped, the query columns emptied.
@@ -592,6 +612,7 @@ export default defineComponent({
      * @param from - The region whose keys go first.
      */
     const wipe = async (from: Region): Promise<void> => {
+      cancelPopup();
       clearExpiry();
       resetQuery();
       clearSession();
@@ -640,14 +661,14 @@ export default defineComponent({
         notice: SIGNED_OUT_NOTICE,
       };
     };
-    const signIn = async (): Promise<void> => {
-      const chosen = region.value;
+    const signInByRedirect = async (chosen: Region): Promise<void> => {
       busy.value = true;
       try {
         rememberRegion(chosen);
         state.value = {
           mode: "login-pending",
           region: chosen,
+          transport: "redirect",
           authorizeUrl: null,
         };
         const { authorizeUrl } = await beginLogin({
@@ -655,7 +676,12 @@ export default defineComponent({
           redirectUri: __DEMO_REDIRECT_URI__,
           store: hopStore(),
         });
-        state.value = { mode: "login-pending", region: chosen, authorizeUrl };
+        state.value = {
+          mode: "login-pending",
+          region: chosen,
+          transport: "redirect",
+          authorizeUrl,
+        };
         location.assign(authorizeUrl);
       } catch (error) {
         await fail(error);
@@ -663,6 +689,132 @@ export default defineComponent({
         busy.value = false;
       }
     };
+    /**
+     * Tokens have landed in `memory` without a page hop (popup or paste):
+     * record the session the way the callback page does and go pick a
+     * project.
+     *
+     * @param chosen - The region the login ran for.
+     * @param expiresAt - `OAuthTokens.expires_at` of the tokens in memory.
+     */
+    const landTokens = async (
+      chosen: Region,
+      expiresAt: string,
+    ): Promise<void> => {
+      session.region = chosen;
+      session.expiresAt = expiresAt;
+      session.ws = null;
+      session.me = null;
+      markLive();
+      await enterPicker(chosen);
+    };
+    const pendingPopup = (
+      chosen: Region,
+      authorizeUrl: string | null,
+    ): void => {
+      state.value = {
+        mode: "login-pending",
+        region: chosen,
+        transport: "popup",
+        authorizeUrl,
+      };
+    };
+    /**
+     * Complete the login from the address the visitor pasted, then release
+     * the popup wait — in that order, since aborting it deletes the pending
+     * record the paste needs.
+     *
+     * @param returnUrl - The pasted return URL.
+     */
+    const pasteReturn = async (returnUrl: string): Promise<void> => {
+      const current = state.value;
+      if (current.mode !== "login-pending" || current.transport !== "popup") {
+        return;
+      }
+      const chosen = current.region;
+      busy.value = true;
+      try {
+        const tokens = await completePastedLogin(
+          () => completeLogin({ region: chosen, returnUrl, store: memory }),
+          cancelPopup,
+        );
+        await landTokens(chosen, tokens.expires_at);
+      } catch (error) {
+        // The popup's own return may have completed the login meanwhile;
+        // the page has moved on, and a second exchange failing is expected.
+        if (state.value.mode === "login-pending") {
+          await fail(error);
+        }
+      } finally {
+        busy.value = false;
+      }
+    };
+    const signInByPopup = async (chosen: Region): Promise<void> => {
+      if (popupAttempt !== null) {
+        return;
+      }
+      const controller = new AbortController();
+      popupAttempt = controller;
+      pendingPopup(chosen, null);
+      try {
+        // The in-memory store is enough: nothing navigates away, so the
+        // pending record, the verifier and the tokens never touch storage.
+        const tokens = await loginInPopup({
+          region: chosen,
+          redirectUri: __DEMO_REDIRECT_URI__,
+          store: memory,
+          signal: controller.signal,
+        });
+        await landTokens(chosen, tokens.expires_at);
+      } catch (error) {
+        if (controller.signal.aborted) {
+          // Cancelled by this page (the Cancel button, a paste, leaving
+          // the state); whoever aborted has already set the next state.
+          return;
+        }
+        const outcome = popupLoginOutcome(error, errorContext());
+        switch (outcome.kind) {
+          case "blocked": {
+            // The pending record is kept: "Try again" runs the flow anew
+            // from a click (a fresh record replaces it), the link opens
+            // the same authorize URL in a tab whose return is pasted back.
+            pendingPopup(chosen, outcome.authorizeUrl);
+            break;
+          }
+          case "in-flight": {
+            break;
+          }
+          case "signed-out": {
+            state.value = {
+              mode: "signed-out",
+              region: chosen,
+              notice: outcome.notice,
+            };
+            break;
+          }
+          case "error": {
+            await toError(outcome.error);
+            break;
+          }
+        }
+      } finally {
+        if (popupAttempt === controller) {
+          popupAttempt = null;
+        }
+      }
+    };
+    const cancelSignIn = (): void => {
+      const chosen = liveRegion();
+      cancelPopup();
+      state.value = { mode: "signed-out", region: chosen, notice: null };
+    };
+    // A framed page cannot run the redirect flow: Mixpanel's authorize
+    // page refuses to load into a frame, and the top window is not this
+    // page's to navigate. It signs in through a popup instead.
+    const signIn = (): Promise<void> =>
+      loginTransport(globalThis) === "popup"
+        ? signInByPopup(region.value)
+        : signInByRedirect(region.value);
     const enterPicker = async (from: Region): Promise<void> => {
       const expiresAt = session.expiresAt;
       if (expiresAt === null) {
@@ -1070,6 +1222,15 @@ export default defineComponent({
           });
         }
         case "login-pending": {
+          if (current.transport === "popup") {
+            return h(PopupPending, {
+              blockedAuthorizeUrl: current.authorizeUrl,
+              busy: busy.value,
+              onCancel: cancelSignIn,
+              onRetry: () => void signInByPopup(current.region),
+              onPaste: (url: string) => void pasteReturn(url),
+            });
+          }
           return h(
             "section",
             { class: "mp-intro mp-pending", "aria-busy": "true" },
