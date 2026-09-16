@@ -184,7 +184,7 @@ export default defineComponent({
         h(
           "p",
           { class: "mp-muted mp-aha-sub" },
-          `Average retention at ${unit} ${String(ranking.bucket)}, ${unit === "week" ? "weekly" : "daily"} cohorts over the last ${String(spec.last)} days. Median across ${String(ranking.rows.length)} candidates: ${formatPct(ranking.median)} (the dashed line). Select a row to open the pair in the Retention tab.`,
+          `Average retention at ${unit} ${String(ranking.bucket)}, ${unit === "week" ? "weekly" : "daily"} cohorts over the last ${String(spec.last)} days. Median across ${String(ranking.rows.length)} candidates: ${formatPct(ranking.median)} (the dashed line). Select a row to run the pair in the Retention tab.`,
         ),
         h(
           "ol",

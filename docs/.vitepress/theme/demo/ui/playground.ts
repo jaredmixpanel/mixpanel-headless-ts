@@ -368,8 +368,9 @@ export default defineComponent({
       const spec = ahaRun.value?.spec;
       return spec?.kind === "aha" ? renderAhaProgram(spec) : null;
     });
-    // A ranking row opens its pair in the Retention tab; the visitor runs
-    // it there.
+    // A ranking row opens its pair in the Retention tab and runs it: the
+    // row already names a complete query, so a second click would only be
+    // ceremony.
     const openRetention = (event: string): void => {
       const spec = ahaRun.value?.spec;
       if (spec?.kind !== "aha") {
@@ -381,6 +382,13 @@ export default defineComponent({
         retentionUnit: spec.retentionUnit,
       };
       selectEngine("retention");
+      run({
+        kind: "retention",
+        born: spec.born,
+        returnEvent: event,
+        retentionUnit: spec.retentionUnit,
+        last: last.value,
+      });
     };
     const start = async (): Promise<void> => {
       await query.loadTopEvents();
