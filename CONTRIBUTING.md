@@ -464,9 +464,12 @@ notes (the root `CHANGELOG.md` only points at them).
    `.changeset/*.md` with the change.
 2. On every push to `main`, `.github/workflows/release.yml` runs the gate and
    then `changesets/action`. With unreleased changesets present it opens or
-   refreshes a "Version Packages" PR (`npm run version` = `changeset version`:
-   bumps the three manifests, rewrites the `^` ranges between them, folds
-   the changesets into the changelogs). With none pending it runs
+   refreshes a "Version Packages" PR (`npm run version` = `changeset version`,
+   which bumps the three manifests, rewrites the `^` ranges between them and
+   folds the changesets into the changelogs, then
+   `scripts/sync-library-version.mjs`, which copies the new core version into
+   the User-Agent constant in `packages/core/src/client/headers.ts`). With
+   none pending it runs
    `npm run release` = `changeset publish`, which publishes every package
    whose version is not on the registry yet.
 3. Merging the "Version Packages" PR therefore publishes. `changeset publish`

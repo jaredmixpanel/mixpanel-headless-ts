@@ -297,11 +297,14 @@ function reverseKeyOrder(value: unknown): unknown {
     return value.map((item) => reverseKeyOrder(item));
   }
   if (typeof value === "object" && value !== null) {
-    const out: Record<string, unknown> = {};
-    for (const [key, member] of Object.entries(value).reverse()) {
-      out[key] = reverseKeyOrder(member);
-    }
-    return out;
+    // `Object.fromEntries` creates an own property for every key; assigning
+    // `out[key]` would turn a generated `"__proto__"` key into a prototype
+    // change and silently drop it.
+    return Object.fromEntries(
+      Object.entries(value)
+        .reverse()
+        .map(([key, member]) => [key, reverseKeyOrder(member)]),
+    );
   }
   return value;
 }
