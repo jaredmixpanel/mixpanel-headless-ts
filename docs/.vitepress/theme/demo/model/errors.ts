@@ -36,7 +36,7 @@ const NO_PENDING_LOGIN_MESSAGE =
 
 /** Shown in the framed pending card when `window.open` returned nothing. */
 export const POPUP_BLOCKED_MESSAGE =
-  "Your browser blocked the sign-in window. Try again from the button below (a direct click usually gets through), or open the sign-in page in a new tab and paste the address of the page you land on.";
+  "Your browser blocked the sign-in window. Try again from the button below, or open the sign-in page in a new tab, sign in there, and paste the address of the page you land on into the box below.";
 /** The quiet notice after the visitor closed the popup before it returned. */
 export const POPUP_CANCELED_NOTICE = "Sign-in canceled.";
 /** The quiet notice after the popup did not return within its budget. */
