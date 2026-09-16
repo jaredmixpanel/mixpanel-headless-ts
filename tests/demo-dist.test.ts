@@ -20,9 +20,10 @@ const DEMO_PAGES = new Set(["demo/index.html", "demo/callback.html"]);
 // Budgets for everything only the playground loads (the browser package,
 // the fixtures — needed at first paint, `topEvents` runs on mount — and the
 // UI): minified bytes, and gzip bytes because the transfer size is what a
-// visitor pays. Measured at 623 KB / 176 KB when the budgets were set.
+// visitor pays. Measured at 623 KB / 176 KB when the budgets were set, and
+// at 680 KB / 197 KB once the ranking report and its fixtures landed.
 const DEMO_BUDGET_BYTES = 700 * 1024;
-const DEMO_GZIP_BUDGET_BYTES = 190 * 1024;
+const DEMO_GZIP_BUDGET_BYTES = 210 * 1024;
 // A string that survives minification and lives only in the browser
 // package (its Export API refusal), so the chunk holding the library can
 // be found without knowing Rollup's file names. Pages that quote the code

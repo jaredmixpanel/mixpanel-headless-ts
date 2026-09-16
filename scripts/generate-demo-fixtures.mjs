@@ -74,15 +74,37 @@ const PAIR_RATES = {
 };
 const WINDOW_FACTOR = { 1: 0.62, 7: 0.9, 14: 1, 30: 1.08 };
 
-/** born → return events offered for retention. */
-const RETENTION_PAIRS = {
-  Signup: ["Note Saved", "App Opened", "Note Shared", "Search", "Upgrade"],
-  "App Opened": ["Note Saved", "Note Shared"],
-  Upgrade: ["Note Saved"],
+/**
+ * born → return events offered for retention: the two onboarding events
+ * against every other event (the "which behaviour predicts retention"
+ * ranking needs the full row), plus Upgrade → Note Saved.
+ */
+const RETENTION_BORN = ["Signup", "App Opened"];
+const RETENTION_EXTRA_PAIRS = { Upgrade: ["Note Saved"] };
+/**
+ * Return event → the retention curve it earns: the rate at bucket 1 and
+ * the floor the curve decays towards. Spread so the ranking tells one
+ * story at every range and unit: Note Shared clearly first, Export and
+ * Upgrade high, Note Saved in the middle, Search and App Opened around
+ * the median, Settings Changed last.
+ */
+const RETENTION_PROFILES = {
+  "Note Shared": { start: 0.62, floor: 0.36 },
+  Export: { start: 0.55, floor: 0.3 },
+  Upgrade: { start: 0.52, floor: 0.28 },
+  "Note Saved": { start: 0.44, floor: 0.18 },
+  Search: { start: 0.4, floor: 0.14 },
+  "App Opened": { start: 0.42, floor: 0.13 },
+  "Settings Changed": { start: 0.25, floor: 0.07 },
+  Signup: { start: 0.1, floor: 0.02 },
 };
+/** Born event → multiplier on every return rate (upgraded users stick). */
+const RETENTION_BORN_FACTOR = { Signup: 1, "App Opened": 0.92, Upgrade: 1.15 };
+/** Buckets the curve takes to close most of the gap to its floor. */
+const RETENTION_DECAY = 2;
 const RETENTION_SHAPES = {
-  week: { cohorts: 13, buckets: 6, unitDays: 7 },
-  day: { cohorts: 30, buckets: 8, unitDays: 1 },
+  week: { cohorts: 13, buckets: 6, unitDays: 7, factor: 1 },
+  day: { cohorts: 30, buckets: 8, unitDays: 1, factor: 0.8 },
 };
 
 /**
@@ -249,10 +271,20 @@ function renderDemoFixtures() {
     }
   }
 
+  const retentionPairs = Object.entries(RETENTION_EXTRA_PAIRS);
+  for (const born of RETENTION_BORN) {
+    retentionPairs.push([born, events.filter((event) => event !== born)]);
+  }
   const retention = {};
-  for (const [born, returns] of Object.entries(RETENTION_PAIRS)) {
+  for (const [born, returns] of retentionPairs) {
     for (const ret of returns) {
-      const scale = 0.3 + rand() * 0.25;
+      const profile = RETENTION_PROFILES[ret];
+      const rate = (bucket, shape) =>
+        RETENTION_BORN_FACTOR[born] *
+        shape.factor *
+        (profile.floor +
+          (profile.start - profile.floor) *
+            Math.exp(-(bucket - 1) / RETENTION_DECAY));
       for (const [unit, shape] of Object.entries(RETENTION_SHAPES)) {
         const bornUnique = trends[`${born}|unique`];
         const first = [];
@@ -267,7 +299,7 @@ function renderDemoFixtures() {
           const depth = Math.min(shape.buckets, shape.cohorts - c);
           const row = [1];
           for (let b = 1; b < depth; b += 1) {
-            row.push(round3(Math.min(0.95, scale * b ** -0.62 * jitter(0.1))));
+            row.push(round3(Math.min(0.95, rate(b, shape) * jitter(0.08))));
           }
           rates.push(row);
         }

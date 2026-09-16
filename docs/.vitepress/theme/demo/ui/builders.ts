@@ -152,15 +152,23 @@ export const RetentionBuilder = defineComponent({
       default: null,
     },
     seed: { type: String as PropType<string | null>, default: null },
+    /**
+     * A pair to open with (a row of the ranking report hands its pair over
+     * here); read once, when the builder mounts with its tab.
+     */
+    preset: {
+      type: Object as PropType<RetentionDraft | null>,
+      default: null,
+    },
   },
   emits: {
     run: (draft: RetentionDraft) =>
       draft.born !== "" && draft.returnEvent !== "",
   },
   setup(props, { emit }) {
-    const born = ref<string | null>(null);
-    const returnEvent = ref<string | null>(null);
-    const unit = ref<RetentionUnit>("week");
+    const born = ref<string | null>(props.preset?.born ?? null);
+    const returnEvent = ref<string | null>(props.preset?.returnEvent ?? null);
+    const unit = ref<RetentionUnit>(props.preset?.retentionUnit ?? "week");
     return (): VNode => {
       const bornEvents =
         props.pairs === null ? props.events : Object.keys(props.pairs);

@@ -160,10 +160,16 @@ export function isExprArg(arg: CallArg): arg is ExprArg {
  * objects always one key per line, arrays inline when short.
  *
  * @param arg - The argument.
- * @param depth - Current indentation depth (nesting level).
+ * @param depth - Indentation depth of the line the literal starts on (a
+ *   literal nested two calls deep prints its keys at depth 3).
  * @returns The literal text, without a trailing newline.
+ * @example
+ * ```ts
+ * printArg({ retention_unit: "week", last: 30 }, 1);
+ * // "{\n    retention_unit: \"week\",\n    last: 30,\n  }"
+ * ```
  */
-function printArg(arg: CallArg, depth = 0): string {
+export function printArg(arg: CallArg, depth = 0): string {
   if (isBindingRef(arg)) {
     return arg.$binding;
   }

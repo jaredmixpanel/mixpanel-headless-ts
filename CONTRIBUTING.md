@@ -392,7 +392,10 @@ lives in `docs/.vitepress/theme/demo/`: `model/` is framework-free TypeScript
 (no `vue`, no `window`) that vitest runs under Node — the `QuerySpec` → `Call`
 pipeline (one `Call` object is both rendered as code and executed, so the code
 shown is the code that ran), the fixture transport behind the library's
-`fetch` seam, the state machine and the error copy; `ui/` is the Vue layer
+`fetch` seam, the state machine, the error copy and the "Aha moments" ranking
+(`model/aha.ts`: one `queryRetention` call per candidate, a loop program
+printed from the same literals, and `rankByRetention`, whose displayed source
+`tests/demo-aha.test.ts` pins to the function); `ui/` is the Vue layer
 (`defineComponent` + `h()`, no SFC) and is the only place that may touch the
 DOM, storage or the library's login functions. Logic goes in `model/`, never
 in `ui/`. The fixtures are generated: `npm run generate:demo-fixtures` writes

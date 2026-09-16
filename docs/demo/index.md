@@ -42,7 +42,7 @@ const me = await ws.me();
 await ws.use({ project: "12345", workspace: 67 });
 ```
 
-Pick an event, flip the controls, and the code on the right is the call that produced the result — copy it into your own page. A value chip under a breakdown becomes a `where` filter, built with the same `Filter` the library exports:
+Pick an event, flip the controls, and the code on the right is the call that produced the result — copy it into your own page. The fourth tab, "Aha moments", ranks which early behaviour predicts retention — a report Mixpanel does not have, because it is one retention query per candidate event in a loop plus a ranking, and the loop is the code shown. A value chip under a breakdown becomes a `where` filter, built with the same `Filter` the library exports:
 
 ```ts twoslash
 import { createBrowserWorkspace, Filter } from "@mixpanel-headless/browser";

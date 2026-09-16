@@ -15,8 +15,12 @@ import { describe, expect, it } from "vitest";
 import { createBrowserWorkspace } from "@mixpanel-headless/browser";
 
 import { DEMO_FIXTURES } from "../docs/.vitepress/theme/demo/fixtures/demo-project.gen.js";
+import { seedCandidates } from "../docs/.vitepress/theme/demo/model/aha.js";
 import { fixtureFetch } from "../docs/.vitepress/theme/demo/model/fixture-fetch.js";
-import { SERIES_DAYS } from "../docs/.vitepress/theme/demo/model/fixture-types.js";
+import {
+  FIXTURE_KEYS,
+  SERIES_DAYS,
+} from "../docs/.vitepress/theme/demo/model/fixture-types.js";
 import {
   TREND_MATHS,
   type TrendMath,
@@ -131,6 +135,20 @@ describe("demo fixtures: generator", () => {
 
   it("stays within the size budget", () => {
     expect(statSync(OUTPUT).size).toBeLessThanOrEqual(SIZE_BUDGET_BYTES);
+  });
+
+  it("holds retention for every born × candidate pair of the ranking report's default set, in both units", () => {
+    const top = DEMO_FIXTURES.topEvents.map((row) => row.event);
+    for (const born of ["Signup", "App Opened"]) {
+      const candidates = seedCandidates(top, born, null);
+      expect(candidates, born).toHaveLength(DEMO_FIXTURES.events.length - 1);
+      for (const candidate of candidates) {
+        for (const unit of ["day", "week"]) {
+          const key = FIXTURE_KEYS.retention(born, candidate, unit);
+          expect(DEMO_FIXTURES.retention[key], key).toBeDefined();
+        }
+      }
+    }
   });
 
   it("stores 90 days per series and consistent breakdowns", () => {

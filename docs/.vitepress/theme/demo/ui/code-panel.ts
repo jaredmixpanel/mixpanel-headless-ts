@@ -1,8 +1,9 @@
 // The right column, sticky beside the workbench: the setup snippet plus
-// every call behind what is on screen, highlighted by the model's
-// tokenizer. Tokens get the same
-// `--shiki-light` / `--shiki-dark` variables Shiki emits, so the block
-// matches the site's code blocks in both colour schemes.
+// every call behind what is on screen — and, for the ranking report, the
+// loop program with its helper behind a disclosure — highlighted by the
+// model's tokenizer. Tokens get the same `--shiki-light` / `--shiki-dark`
+// variables Shiki emits, so the block matches the site's code blocks in
+// both colour schemes.
 
 import {
   computed,
@@ -29,20 +30,37 @@ const COLOURS: Readonly<
   ident: ["#626266", "#e0e0e0"],
 };
 
+/** A helper function the panel shows collapsed under the program. */
+export interface CodeHelper {
+  /** The disclosure's label. */
+  readonly summary: string;
+  /** The helper's source text. */
+  readonly source: string;
+}
+
 /**
  * Build the program the panel shows: the setup (its import line extended
- * with whatever the calls need), a blank line, then the calls.
+ * with whatever the calls need), a blank line, then the calls and, when a
+ * run prints as a program rather than one statement, that program.
  *
  * @param setup - The mode's setup snippet.
  * @param calls - The calls, in order.
+ * @param program - Program text to append after the calls, if any.
  * @returns The program text.
  */
-export function programText(setup: string, calls: readonly Call[]): string {
+export function programText(
+  setup: string,
+  calls: readonly Call[],
+  program = "",
+): string {
   const prefix = withImports(
     setup,
     calls.flatMap((call) => call.imports),
   ).trimEnd();
-  return `${prefix}\n\n${calls.map((call) => renderCall(call)).join("\n")}\n`;
+  const body = [...calls.map((call) => renderCall(call)), program.trimEnd()]
+    .filter((text) => text !== "")
+    .join("\n");
+  return `${prefix}\n\n${body}\n`;
 }
 
 /**
@@ -110,17 +128,29 @@ export default defineComponent({
      * query to print (its tab is open, nothing has run there yet).
      */
     placeholder: { type: String as PropType<string | null>, default: null },
+    /** A program printed after the calls (the ranking report's loop). */
+    program: { type: String as PropType<string | null>, default: null },
+    /** A helper the program calls, shown collapsed and copied with it. */
+    helper: { type: Object as PropType<CodeHelper | null>, default: null },
   },
   setup(props) {
     const copied = ref(false);
     const text = computed(() => {
-      const program = programText(props.setup, props.calls);
+      const program = programText(
+        props.setup,
+        props.calls,
+        props.program ?? "",
+      );
       return props.placeholder === null
         ? program
         : `${program}${props.placeholder}\n`;
     });
+    // The copied block is complete: the helper the program calls goes
+    // with it, whether or not the disclosure is open.
     const copy = async (): Promise<void> => {
-      await navigator.clipboard.writeText(text.value);
+      const helper =
+        props.helper === null ? "" : `\n${props.helper.source.trimEnd()}\n`;
+      await navigator.clipboard.writeText(`${text.value}${helper}`);
       copied.value = true;
       setTimeout(() => {
         copied.value = false;
@@ -143,6 +173,14 @@ export default defineComponent({
         h("pre", { class: "mp-code", tabindex: 0 }, [
           h("code", highlight(text.value)),
         ]),
+        props.helper === null
+          ? null
+          : h("details", { class: "mp-details mp-code-helper" }, [
+              h("summary", props.helper.summary),
+              h("pre", { class: "mp-code", tabindex: 0 }, [
+                h("code", highlight(props.helper.source)),
+              ]),
+            ]),
         props.columns === null || props.resultBinding === null
           ? null
           : h("div", { class: "mp-code-result" }, [

@@ -1,7 +1,9 @@
 // Reactive sequencing for the query panel: one run per engine (the spec,
-// the one `Call` built from it — rendered and executed from the same
-// object — and the result it produced), the engine whose run is on screen,
-// and the discovery calls around them. Domain logic stays in model/; this
+// the `Call`s built from it — rendered and executed from the same objects
+// — and what each produced), the engine whose run is on screen, and the
+// discovery calls around them. A run is a list of call outcomes: one for
+// the single-query engines, one per candidate for the ranking report's
+// loop, which settles them in order. Domain logic stays in model/; this
 // composable only orders those calls and keeps stale responses from
 // overwriting newer ones. Results are class instances, hence `shallowRef`.
 
@@ -16,6 +18,7 @@ import {
 
 import type { Workspace } from "@mixpanel-headless/browser";
 
+import { ahaCalls, type AhaSpec } from "../model/aha.js";
 import { type Call, runCall } from "../model/call.js";
 import { describeError, type ErrorContext } from "../model/errors.js";
 import {
@@ -44,8 +47,10 @@ export type TopEvent = Awaited<ReturnType<Workspace["topEvents"]>>[number];
 export type ReportLink = Awaited<ReturnType<Workspace["createReportLink"]>>;
 /** Anything the result panel can hold. */
 export type AnyResult = QueryResult | FunnelQueryResult | RetentionQueryResult;
+/** Every spec an engine runs: the single-call ones plus the ranking loop. */
+export type AnySpec = QuerySpec | AhaSpec;
 /** The engines, one run kept per kind. */
-export type EngineKind = QuerySpec["kind"];
+export type EngineKind = AnySpec["kind"];
 
 /** Property values loaded for a segment chip. */
 export interface PropertyValues {
@@ -53,16 +58,27 @@ export interface PropertyValues {
   readonly values: readonly string[];
 }
 
-/**
- * One engine's latest run. The spec, the call and the result are written
- * together, so what the panel draws always came from the call it shows.
- */
-interface EngineRun {
-  readonly spec: QuerySpec;
+/** One call of a run and what it produced. */
+export interface CallOutcome {
   readonly call: Call;
-  /** `null` until the first run of this engine returns, or after it failed. */
+  /** `null` while the call is pending, or after it failed. */
   readonly result: AnyResult | null;
+  readonly error: DemoError | null;
+}
+
+/**
+ * One engine's latest run. The spec, the calls and their outcomes are
+ * written together, so what the panel draws always came from the calls it
+ * shows.
+ */
+export interface EngineRun {
+  /** Identifies the run: an older run's late response cannot amend a newer one. */
+  readonly ticket: number;
+  readonly spec: AnySpec;
+  /** In call order: one for a query, one per candidate for the ranking loop. */
+  readonly outcomes: readonly CallOutcome[];
   readonly loading: boolean;
+  /** The error that ended the run (a query's own, or the one that stopped the loop). */
   readonly error: DemoError | null;
   readonly link: ReportLink | null;
   readonly linkCall: Call | null;
@@ -77,8 +93,11 @@ export interface QueryController {
   /** The latest run of each engine that has run. */
   readonly runs: ShallowRef<Runs>;
   /** The shown engine's spec, or `null` before its first run. */
-  readonly spec: ComputedRef<QuerySpec | null>;
+  readonly spec: ComputedRef<AnySpec | null>;
+  /** The shown single-query engine's result (`null` for the ranking loop). */
   readonly result: ComputedRef<AnyResult | null>;
+  /** The shown run's outcomes, call by call. */
+  readonly outcomes: ComputedRef<readonly CallOutcome[]>;
   readonly loading: ComputedRef<boolean>;
   /** The shown run's error, else the latest discovery error. */
   readonly error: ComputedRef<DemoError | null>;
@@ -88,12 +107,15 @@ export interface QueryController {
   readonly properties: ShallowRef<readonly string[] | null>;
   readonly values: ShallowRef<PropertyValues | null>;
   readonly link: ComputedRef<ReportLink | null>;
-  /** Every call behind what is on screen, in the order it was made. */
+  /**
+   * Every call behind what is on screen, in the order it was made — the
+   * ranking loop's calls excepted, which the panel prints as the loop.
+   */
   readonly calls: ComputedRef<readonly Call[]>;
   /** The call that produced `result`. */
   readonly specCall: ComputedRef<Call | null>;
   loadTopEvents: () => Promise<void>;
-  run: (spec: QuerySpec) => Promise<void>;
+  run: (spec: AnySpec) => Promise<void>;
   openBreakdown: () => Promise<void>;
   showValues: (property: string) => Promise<void>;
   loadAllEvents: () => Promise<void>;
@@ -125,19 +147,21 @@ export function useQuery(
   const namesCall = shallowRef<Call | null>(null);
   const propsCall = shallowRef<Call | null>(null);
   const valuesCall = shallowRef<Call | null>(null);
-  // Per engine, the ticket of its latest run: an older run of the same
-  // engine that resolves later is dropped, while another engine's run in
-  // flight is left alone.
-  const latest: Partial<Record<EngineKind, number>> = {};
   let sequence = 0;
 
   const active = computed(() => runs.value[engine.value] ?? null);
   const spec = computed(() => active.value?.spec ?? null);
-  const result = computed(() => active.value?.result ?? null);
+  const single = computed(() =>
+    active.value === null || active.value.spec.kind === "aha"
+      ? null
+      : (active.value.outcomes[0] ?? null),
+  );
+  const result = computed(() => single.value?.result ?? null);
+  const outcomes = computed(() => active.value?.outcomes ?? []);
   const loading = computed(() => active.value?.loading ?? false);
   const error = computed(() => active.value?.error ?? discoveryError.value);
   const link = computed(() => active.value?.link ?? null);
-  const specCall = computed(() => active.value?.call ?? null);
+  const specCall = computed(() => single.value?.call ?? null);
   const trendSpec = (): TrendSpec | null => {
     const current = runs.value.trend?.spec;
     return current?.kind === "trend" ? current : null;
@@ -151,9 +175,11 @@ export function useQuery(
       engine.value === "trend"
         ? [topCall.value, namesCall.value, propsCall.value, valuesCall.value]
         : [topCall.value, namesCall.value];
-    return [...discovery, run?.call ?? null, run?.linkCall ?? null].filter(
-      (call): call is Call => call !== null,
-    );
+    return [
+      ...discovery,
+      single.value?.call ?? null,
+      run?.linkCall ?? null,
+    ].filter((call): call is Call => call !== null);
   });
 
   const store = (kind: EngineKind, run: EngineRun): void => {
@@ -163,12 +189,25 @@ export function useQuery(
   // been replaced (or cleared by `reset`) takes nothing more.
   const patch = (
     kind: EngineKind,
-    call: Call,
+    ticket: number,
     changes: Partial<EngineRun>,
-  ): void => {
+  ): boolean => {
     const current = runs.value[kind];
-    if (current?.call === call) {
-      store(kind, { ...current, ...changes });
+    if (current?.ticket !== ticket) {
+      return false;
+    }
+    store(kind, { ...current, ...changes });
+    return true;
+  };
+  const settle = async (call: Call): Promise<CallOutcome> => {
+    try {
+      return {
+        call,
+        result: (await runCall(ws(), call)) as AnyResult,
+        error: null,
+      };
+    } catch (error_) {
+      return { call, result: null, error: describeError(error_, context()) };
     }
   };
 
@@ -179,11 +218,53 @@ export function useQuery(
     valuesCall.value = null;
   };
 
+  /**
+   * The ranking loop: one request at a time, on purpose — the Query API
+   * allows five concurrent requests per project, and the sequential loop
+   * is the code the panel prints. A failed candidate keeps its error and
+   * the loop goes on; an error that ends the session stops it.
+   *
+   * @param next - The report to run.
+   * @param ticket - This run's ticket.
+   */
+  const runLoop = async (next: AhaSpec, ticket: number): Promise<void> => {
+    const loopCalls = ahaCalls(next);
+    store("aha", {
+      ticket,
+      spec: next,
+      outcomes: loopCalls.map((call) => ({ call, result: null, error: null })),
+      loading: true,
+      error: null,
+      link: null,
+      linkCall: null,
+    });
+    for (const [i, call] of loopCalls.entries()) {
+      const outcome = await settle(call);
+      const current = runs.value.aha;
+      if (current?.ticket !== ticket) {
+        return;
+      }
+      const settled = current.outcomes.map((o, k) => (k === i ? outcome : o));
+      if (outcome.error?.fatal === true) {
+        store("aha", {
+          ...current,
+          outcomes: settled,
+          loading: false,
+          error: outcome.error,
+        });
+        return;
+      }
+      store("aha", { ...current, outcomes: settled });
+    }
+    patch("aha", ticket, { loading: false });
+  };
+
   return {
     engine,
     runs,
     spec,
     result,
+    outcomes,
     loading,
     error,
     topEvents,
@@ -207,40 +288,41 @@ export function useQuery(
       }
     },
     async run(next) {
+      discoveryError.value = null;
+      const ticket = ++sequence;
+      if (next.kind === "aha") {
+        await runLoop(next, ticket);
+        return;
+      }
       const kind = next.kind;
       if (kind === "trend" && trendSpec()?.event !== next.event) {
         clearDiscovery();
       }
-      discoveryError.value = null;
       const call = toCall(next);
       // The engine's previous result stays on screen while the new one
       // loads (no flicker on a math or range toggle); being the same
       // engine's, it fits the adapter the new spec selects.
       store(kind, {
+        ticket,
         spec: next,
-        call,
-        result: runs.value[kind]?.result ?? null,
+        outcomes: [
+          {
+            call,
+            result: runs.value[kind]?.outcomes[0]?.result ?? null,
+            error: null,
+          },
+        ],
         loading: true,
         error: null,
         link: null,
         linkCall: null,
       });
-      const ticket = ++sequence;
-      latest[kind] = ticket;
-      try {
-        const value = (await runCall(ws(), call)) as AnyResult;
-        if (latest[kind] === ticket) {
-          patch(kind, call, { result: value, loading: false });
-        }
-      } catch (error_) {
-        if (latest[kind] === ticket) {
-          patch(kind, call, {
-            result: null,
-            loading: false,
-            error: describeError(error_, context()),
-          });
-        }
-      }
+      const outcome = await settle(call);
+      patch(kind, ticket, {
+        outcomes: [outcome],
+        loading: false,
+        error: outcome.error,
+      });
     },
     async openBreakdown() {
       const current = trendSpec();
@@ -282,20 +364,21 @@ export function useQuery(
     },
     async createLink(name) {
       const current = active.value;
-      if (current === null || current.result === null) {
+      const shown = single.value;
+      if (current === null || shown === null || shown.result === null) {
         return null;
       }
       const kind = current.spec.kind;
-      const request = reportLinkCall(current.call.binding, name);
-      patch(kind, current.call, { linkCall: request });
+      const request = reportLinkCall(shown.call.binding, name);
+      patch(kind, current.ticket, { linkCall: request });
       try {
         const created = (await runCall(ws(), request, {
-          [current.call.binding]: current.result,
+          [shown.call.binding]: shown.result,
         })) as ReportLink;
-        patch(kind, current.call, { link: created });
+        patch(kind, current.ticket, { link: created });
         return created;
       } catch (error_) {
-        patch(kind, current.call, {
+        patch(kind, current.ticket, {
           error: describeError(error_, context()),
         });
         return null;

@@ -27,6 +27,15 @@ import {
 } from "@mixpanel-headless/browser";
 
 import { DEMO_FIXTURES } from "../fixtures/demo-project.gen.js";
+import {
+  type AhaSpec,
+  plannedBucket,
+  RANK_BY_RETENTION_SOURCE,
+  RANKING_COLUMNS,
+  rankingRows,
+  renderAhaProgram,
+  seedCandidates,
+} from "../model/aha.js";
 import { describeError, type ErrorContext } from "../model/errors.js";
 import { fixtureCoverage, fixtureFetch } from "../model/fixture-fetch.js";
 import { toMarkdown } from "../model/markdown-table.js";
@@ -49,6 +58,8 @@ import {
   liveSetup,
   OFFLINE_SETUP,
 } from "../model/setup-snippets.js";
+import AhaBuilder, { type AhaDraft } from "./aha-builder.js";
+import { rankOutcomes } from "./aha-result.js";
 import {
   ErrorBlock,
   FooterNote,
@@ -56,7 +67,11 @@ import {
   OfflineBar,
   SessionBar,
 } from "./banners.js";
-import { FunnelBuilder, RetentionBuilder } from "./builders.js";
+import {
+  FunnelBuilder,
+  RetentionBuilder,
+  type RetentionDraft,
+} from "./builders.js";
 import CodePanel, { programText } from "./code-panel.js";
 import { button } from "./el.js";
 import EventStrip from "./event-list.js";
@@ -74,7 +89,7 @@ import {
 } from "./session.js";
 import EngineTabs, { type Engine, panelId, tabId } from "./tabs.js";
 import TrendControls from "./trend-controls.js";
-import { useQuery } from "./use-query.js";
+import { type AnySpec, useQuery } from "./use-query.js";
 
 const DEMO_PROJECT = {
   token: "demo",
@@ -95,6 +110,10 @@ const SIGNED_OUT_NOTICE =
   "Signed out. Tokens and the client registration were deleted from this tab.";
 /** Closes the code panel's program while the shown engine has not run. */
 const RUN_HINT = "// run a query to see the call here";
+/** The ranking report's default born event, when the project has it. */
+const DEFAULT_BORN = "Signup";
+/** Candidates a born event needs offline for a ranking to mean anything. */
+const MIN_OFFLINE_CANDIDATES = 2;
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => {
@@ -163,6 +182,11 @@ export default defineComponent({
     const state = shallowRef<DemoState>({ mode: "offline", ws: offlineWs });
     const region = ref<Region>(session.region ?? "us");
     const last = ref<TimeRange>(30);
+    // The ranking report's draft once the visitor has edited it (`null`
+    // seeds from the top events), and the pair a ranking row hands to the
+    // Retention tab.
+    const ahaDraft = shallowRef<AhaDraft | null>(null);
+    const retentionPreset = shallowRef<RetentionDraft | null>(null);
     const linkPending = ref(false);
     const busy = ref(false);
     const expiring = ref(false);
@@ -210,7 +234,12 @@ export default defineComponent({
       }
     });
 
-    const run = (spec: QuerySpec): void => void query.run(spec);
+    const run = (spec: AnySpec): void => void query.run(spec);
+    const resetQuery = (): void => {
+      query.reset();
+      ahaDraft.value = null;
+      retentionPreset.value = null;
+    };
     // Selecting an event keeps its math, range and filter when it is
     // already shown (a new event starts unfiltered); `groupBy` `null` clears
     // the breakdown, `undefined` leaves it alone.
@@ -231,9 +260,11 @@ export default defineComponent({
           : { ...next, groupBy: chosen },
       );
     };
+    // The ranking loop is never repeated on the visitor's behalf: it costs
+    // one query per candidate, so its button says so and only it runs it.
     const rerun = (patch: Partial<QuerySpec>): void => {
       const current = query.spec.value;
-      if (current !== null) {
+      if (current !== null && current.kind !== "aha") {
         run({ ...current, ...patch } as QuerySpec);
       }
     };
@@ -243,9 +274,113 @@ export default defineComponent({
     const selectEngine = (next: Engine): void => {
       engine.value = next;
       const shown = query.runs.value[next]?.spec;
-      if (shown !== undefined && shown.last !== last.value) {
+      if (
+        shown !== undefined &&
+        shown.kind !== "aha" &&
+        shown.last !== last.value
+      ) {
         run({ ...shown, last: last.value });
       }
+    };
+
+    // --- ranking report ---
+    const topNames = computed(() => query.topEvents.value.map((e) => e.event));
+    // Offline, only pairs the fixtures answer; live, any event.
+    const allowedFor = (born: string): readonly string[] | null =>
+      offline.value ? (coverage.retentionPairs[born] ?? []) : null;
+    const bornEvents = computed(() =>
+      offline.value
+        ? Object.keys(coverage.retentionPairs).filter(
+            (born) =>
+              (coverage.retentionPairs[born]?.length ?? 0) >=
+              MIN_OFFLINE_CANDIDATES,
+          )
+        : eventNames.value,
+    );
+    const ahaDraftShown = computed((): AhaDraft => {
+      if (ahaDraft.value !== null) {
+        return ahaDraft.value;
+      }
+      const born = bornEvents.value.includes(DEFAULT_BORN)
+        ? DEFAULT_BORN
+        : (bornEvents.value[0] ?? "");
+      return {
+        born,
+        candidates: seedCandidates(topNames.value, born, allowedFor(born)),
+        retentionUnit: "week",
+      };
+    });
+    // A new born event reseeds the candidates (the old ones may include it).
+    const updateAhaDraft = (next: AhaDraft): void => {
+      ahaDraft.value =
+        next.born === ahaDraftShown.value.born
+          ? next
+          : {
+              ...next,
+              candidates: seedCandidates(
+                topNames.value,
+                next.born,
+                allowedFor(next.born),
+              ),
+            };
+    };
+    const ahaAddable = computed(() => {
+      const draft = ahaDraftShown.value;
+      const pool = offline.value
+        ? (allowedFor(draft.born) ?? [])
+        : (query.allEvents.value ?? topNames.value);
+      return pool.filter(
+        (event) => event !== draft.born && !draft.candidates.includes(event),
+      );
+    });
+    const ahaSpec = computed((): AhaSpec => ({
+      kind: "aha",
+      ...ahaDraftShown.value,
+      last: last.value,
+    }));
+    const ahaBlocked = computed(() => {
+      const spec = ahaSpec.value;
+      if (plannedBucket(spec) >= 1) {
+        return null;
+      }
+      return `The last ${String(spec.last)} days hold a single ${spec.retentionUnit}, so there is no ${spec.retentionUnit} 1 to rank by. Pick a longer range or daily buckets.`;
+    });
+    const ahaRun = computed(() => query.runs.value.aha ?? null);
+    const ahaProgress = computed(() => {
+      const current = ahaRun.value;
+      if (current === null || !current.loading) {
+        return null;
+      }
+      return {
+        done: current.outcomes.filter(
+          (outcome) => outcome.result !== null || outcome.error !== null,
+        ).length,
+        total: current.outcomes.length,
+      };
+    });
+    const ahaStale = computed(() => {
+      const current = ahaRun.value;
+      return (
+        current !== null && !current.loading && current.spec.last !== last.value
+      );
+    });
+    const ahaProgram = computed(() => {
+      const spec = ahaRun.value?.spec;
+      return spec?.kind === "aha" ? renderAhaProgram(spec) : null;
+    });
+    // A ranking row opens its pair in the Retention tab; the visitor runs
+    // it there.
+    const openRetention = (event: string): void => {
+      const spec = ahaRun.value?.spec;
+      if (spec?.kind !== "aha") {
+        return;
+      }
+      retentionPreset.value = {
+        born: spec.born,
+        returnEvent: event,
+        retentionUnit: spec.retentionUnit,
+      };
+      selectEngine("retention");
     };
     const start = async (): Promise<void> => {
       await query.loadTopEvents();
@@ -283,7 +418,7 @@ export default defineComponent({
      */
     const wipe = async (from: Region): Promise<void> => {
       clearExpiry();
-      query.reset();
+      resetQuery();
       clearSession();
       forgetRegion();
       await signOut(memory, hopStore(), from);
@@ -397,7 +532,7 @@ export default defineComponent({
           project: project.id,
           workspace: workspace?.id ?? null,
         });
-        query.reset();
+        resetQuery();
         state.value = {
           mode: "ready",
           region: current.region,
@@ -419,7 +554,7 @@ export default defineComponent({
       const current = state.value;
       if (current.mode === "ready" && session.me !== null) {
         clearExpiry();
-        query.reset();
+        resetQuery();
         state.value = {
           mode: "project-picker",
           region: current.region,
@@ -454,7 +589,7 @@ export default defineComponent({
 
     const buildLink = async (open: boolean): Promise<void> => {
       const spec = query.spec.value;
-      if (spec === null) {
+      if (spec === null || spec.kind === "aha") {
         return;
       }
       linkPending.value = true;
@@ -467,6 +602,19 @@ export default defineComponent({
       }
     };
     const copyMarkdown = async (): Promise<void> => {
+      const spec = query.spec.value;
+      if (spec?.kind === "aha") {
+        // The copied program is complete: the loop plus the helper it ends with.
+        const program = `${programText(setup.value, [], renderAhaProgram(spec))}\n${RANK_BY_RETENTION_SOURCE}`;
+        await navigator.clipboard.writeText(
+          toMarkdown({
+            code: program,
+            columns: RANKING_COLUMNS,
+            rows: rankingRows(rankOutcomes(spec, query.outcomes.value)),
+          }),
+        );
+        return;
+      }
       const result = query.result.value;
       const call = query.specCall.value;
       if (result === null || call === null) {
@@ -529,6 +677,7 @@ export default defineComponent({
         events: eventNames.value,
         pairs: offline.value ? coverage.retentionPairs : null,
         seed: selectedEvent.value,
+        preset: retentionPreset.value,
         onRun: ({ born, returnEvent, retentionUnit }) =>
           run({
             kind: "retention",
@@ -539,12 +688,27 @@ export default defineComponent({
           }),
       });
 
+    const ahaTab = (): VNode =>
+      h(AhaBuilder, {
+        draft: ahaDraftShown.value,
+        bornEvents: bornEvents.value,
+        addable: ahaAddable.value,
+        complete: offline.value || query.allEvents.value !== null,
+        running: ahaProgress.value,
+        blocked: ahaBlocked.value,
+        stale: ahaStale.value,
+        onUpdate: updateAhaDraft,
+        onRun: () => run(ahaSpec.value),
+        onMoreEvents: () => void query.loadAllEvents(),
+      });
+
     const tabPanel = (): VNode => {
       const current = engine.value;
       const tabs: Readonly<Record<Engine, () => VNode[]>> = {
         trend: trendTab,
         funnel: () => [funnelTab()],
         retention: () => [retentionTab()],
+        aha: () => [ahaTab()],
       };
       const content = tabs[current]();
       return h(
@@ -578,13 +742,17 @@ export default defineComponent({
             engine: engine.value,
             spec: query.spec.value,
             result: query.result.value,
+            outcomes: query.outcomes.value,
             loading: query.loading.value,
             error: query.error.value,
+            blocked: engine.value === "aha" ? ahaBlocked.value : null,
+            onOpenRetention: openRetention,
           },
           {
             actions: () =>
               h(ResultActions, {
                 offline: offline.value,
+                linkable: engine.value !== "aha",
                 linkUrl: query.link.value?.url ?? null,
                 linkPending: linkPending.value,
                 onLink: () => void buildLink(false),
@@ -603,6 +771,14 @@ export default defineComponent({
           columns: query.result.value?.rowColumns() ?? null,
           resultBinding: query.specCall.value?.binding ?? null,
           placeholder: query.spec.value === null ? RUN_HINT : null,
+          program: engine.value === "aha" ? ahaProgram.value : null,
+          helper:
+            engine.value === "aha" && ahaProgram.value !== null
+              ? {
+                  summary: "Show rankByRetention",
+                  source: RANK_BY_RETENTION_SOURCE,
+                }
+              : null,
         }),
       ]);
 

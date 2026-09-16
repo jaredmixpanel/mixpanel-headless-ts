@@ -1,13 +1,15 @@
 // The result under the workbench: a title line, the visualisation the
-// engine calls for (chart, bars or grid), the actions row, then the raw
-// rows. The controls that edit the spec live above it (tabs, strip,
-// trend-controls, builders); this component only shows what they ran.
+// engine calls for (chart, bars, grid or ranked list), the actions row,
+// then the raw rows. The controls that edit the spec live above it (tabs,
+// strip, trend-controls, builders); this component only shows what they
+// ran.
 
 import { defineComponent, h, type PropType, type VNode } from "vue";
 
-import type { QuerySpec, TrendMath } from "../model/query-spec.js";
+import type { TrendMath } from "../model/query-spec.js";
 import { funnelBars, retentionGrid, trendSeries } from "../model/series.js";
 import type { DemoError } from "../model/session-state.js";
+import AhaResult from "./aha-result.js";
 import { ErrorBlock } from "./banners.js";
 import BarList from "./bar-list.js";
 import LineChart from "./line-chart.js";
@@ -15,6 +17,8 @@ import ResultTable from "./result-table.js";
 import RetentionGrid from "./retention-grid.js";
 import type {
   AnyResult,
+  AnySpec,
+  CallOutcome,
   EngineKind,
   FunnelQueryResult,
   QueryResult,
@@ -32,6 +36,7 @@ const EMPTY: Readonly<Record<EngineKind, string>> = {
   trend: "Pick an event above to run a query.",
   funnel: "Add two or more steps and run the funnel.",
   retention: "Pick a born and a return event, then run.",
+  aha: "Which early behaviour predicts retention? Mixpanel has no report for this: it takes one retention query per candidate and a ranking, which is a loop.",
 };
 
 /**
@@ -41,7 +46,7 @@ const EMPTY: Readonly<Record<EngineKind, string>> = {
  * @param result - Its result, for the funnel's overall rate.
  * @returns The title text.
  */
-function resultTitle(spec: QuerySpec, result: AnyResult | null): string {
+function resultTitle(spec: AnySpec, result: AnyResult | null): string {
   switch (spec.kind) {
     case "trend": {
       const by = spec.groupBy === undefined ? "" : ` by ${spec.groupBy}`;
@@ -61,6 +66,9 @@ function resultTitle(spec: QuerySpec, result: AnyResult | null): string {
     case "retention": {
       return `${spec.born} → ${spec.returnEvent}, ${spec.retentionUnit === "week" ? "weekly" : "daily"}, last ${spec.last} days`;
     }
+    case "aha": {
+      return `Behaviours that predict retention after ${spec.born}`;
+    }
   }
 }
 
@@ -70,13 +78,37 @@ export default defineComponent({
   props: {
     /** The engine on show; picks the empty state while `spec` is `null`. */
     engine: { type: String as PropType<EngineKind>, required: true },
-    spec: { type: Object as PropType<QuerySpec | null>, default: null },
+    spec: { type: Object as PropType<AnySpec | null>, default: null },
     result: { type: Object as PropType<AnyResult | null>, default: null },
+    /** The shown run's outcomes; the ranking report draws from these. */
+    outcomes: {
+      type: Array as PropType<readonly CallOutcome[]>,
+      default: () => [],
+    },
     loading: { type: Boolean, default: false },
     error: { type: Object as PropType<DemoError | null>, default: null },
+    /**
+     * Replaces the ranking report's empty-state copy while its draft
+     * cannot run (a range too short for the unit).
+     */
+    blocked: { type: String as PropType<string | null>, default: null },
   },
-  setup(props, { slots }) {
-    const body = (spec: QuerySpec, result: AnyResult): VNode => {
+  emits: {
+    // A ranking row was chosen: open `born → event` in the Retention tab.
+    openRetention: (event: string) => typeof event === "string",
+  },
+  setup(props, { slots, emit }) {
+    const body = (spec: AnySpec, result: AnyResult | null): VNode | null => {
+      if (spec.kind === "aha") {
+        return h(AhaResult, {
+          spec,
+          outcomes: props.outcomes,
+          onOpen: (event: string) => emit("openRetention", event),
+        });
+      }
+      if (result === null) {
+        return null;
+      }
       switch (spec.kind) {
         case "trend": {
           return h(LineChart, {
@@ -97,8 +129,26 @@ export default defineComponent({
       }
     };
 
-    const skeleton = (): VNode | null =>
-      props.loading ? h("div", { class: "mp-skeleton-chart" }) : null;
+    // The ranking loop reports where it is under its skeleton; a query
+    // shows the bare skeleton (its previous result stays until replaced).
+    const skeleton = (spec: AnySpec): VNode | null => {
+      if (!props.loading) {
+        return null;
+      }
+      const settled = props.outcomes.filter(
+        (outcome) => outcome.result !== null || outcome.error !== null,
+      ).length;
+      return h("div", [
+        h("div", { class: "mp-skeleton-chart" }),
+        spec.kind === "aha"
+          ? h(
+              "p",
+              { class: "mp-muted mp-aha-progress", role: "status" },
+              `Running query ${String(Math.min(settled + 1, props.outcomes.length))} of ${String(props.outcomes.length)}…`,
+            )
+          : null,
+      ]);
+    };
 
     return () => {
       const { spec, result } = props;
@@ -110,12 +160,19 @@ export default defineComponent({
                 h(
                   "div",
                   { class: "mp-empty", role: "status" },
-                  EMPTY[props.engine],
+                  props.blocked ?? EMPTY[props.engine],
                 ),
               ])
             : h(ErrorBlock, { error: props.error }),
         ]);
       }
+      // A query is ready once it has a result; the loop once it has
+      // finished with at least one answer to rank.
+      const ready =
+        spec.kind === "aha"
+          ? !props.loading &&
+            props.outcomes.some((outcome) => outcome.result !== null)
+          : result !== null;
       return h(
         "section",
         { class: "mp-result", "aria-busy": props.loading ? "true" : "false" },
@@ -126,15 +183,15 @@ export default defineComponent({
           h(
             "div",
             { class: ["mp-result-body", props.loading ? "mp-loading" : ""] },
-            [result === null ? skeleton() : body(spec, result)],
+            [ready ? body(spec, result) : skeleton(spec)],
           ),
-          result === null ? null : slots["actions"]?.(),
-          result === null
-            ? null
-            : h(ResultTable, {
+          ready ? slots["actions"]?.() : null,
+          ready && result !== null
+            ? h(ResultTable, {
                 columns: result.rowColumns(),
                 rows: result.toRows(),
-              }),
+              })
+            : null,
         ],
       );
     };

@@ -1105,3 +1105,179 @@ button.mp-chip-toggle[aria-pressed="true"] {
   padding: 0 8px;
   line-height: 1.6;
 }
+
+/* --- aha moments --- */
+
+.mp-aha-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mp-aha-chips {
+  margin: 0;
+}
+
+/* A candidate chip with its remove button inside the pill. */
+.mp-aha-chip {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  padding: 2px 4px 2px 12px;
+  border: 1px solid var(--vp-c-border);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-aha-remove {
+  padding: 1px 6px;
+  border: 0;
+  background: none;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.vp-doc .mp-demo .mp-aha-hint {
+  margin: 0;
+  font-size: 13px;
+}
+
+.mp-aha-progress {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.vp-doc .mp-demo .mp-aha-sub {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.mp-aha-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Rank, event, curve, rate, lift, cohorts: one row, the event column flexes. */
+.mp-aha-open {
+  display: grid;
+  grid-template-columns: 2ch minmax(120px, 1fr) 96px 6ch 9ch auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mp-aha-open:hover {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-aha-open:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+.mp-aha-rank {
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+}
+
+.mp-aha-event {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-aha-rate {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mp-aha-lift {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+.mp-aha-meta {
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--vp-c-text-2);
+}
+
+/* Small multiple: the curve on the brand colour, the median as a dashed
+   line in the secondary text colour (3:1 against both backgrounds). */
+.mp-aha-spark {
+  display: block;
+  width: 96px;
+  height: 28px;
+  overflow: visible;
+  color: var(--vp-c-brand-1);
+}
+
+.mp-aha-curve {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mp-aha-dot {
+  fill: currentcolor;
+}
+
+.mp-aha-median {
+  stroke: var(--vp-c-text-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* A candidate whose query failed keeps its place under the ranking. */
+.mp-aha-failed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px dashed var(--vp-c-divider);
+  border-radius: 8px;
+}
+
+.mp-aha-failed .mp-error {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .mp-aha-open {
+    grid-template-columns: 2ch minmax(0, 1fr) 6ch;
+  }
+
+  .mp-aha-spark,
+  .mp-aha-lift,
+  .mp-aha-meta {
+    display: none;
+  }
+}
+
+.mp-code-helper {
+  margin-top: 8px;
+}
+
+.mp-code-helper summary {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
