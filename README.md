@@ -17,7 +17,7 @@ want.
 No installation or account needed for the demo. Explore the synthetic project,
 see the code behind each result, then sign in to query your own project.
 
-[![The playground showing event trends beside the TypeScript queries that produce them.](docs/public/playground.png)](https://jaredmixpanel.github.io/mixpanel-headless-ts/demo/)
+[![The conversion matrix comparing five events, with a suggested path, conversion rates, and the TypeScript query loop alongside.](docs/public/conversion-matrix.png)](https://jaredmixpanel.github.io/mixpanel-headless-ts/demo/)
 
 _Preview: the playground is live. The library packages are not yet published to
 npm, and APIs may change. Use the [source setup below](#run-your-first-query) to
