@@ -5,7 +5,8 @@
  * `oauth_token` mode, a runtime refusal of service-account credentials,
  * exclusion of the Export API (its hosts serve no CORS headers, so a
  * browser call is dead on arrival), and the redirect-based PKCE login
- * flow built over core's WebCrypto primitives.
+ * flow built over core's WebCrypto primitives — plus a popup variant of
+ * it for pages that are themselves embedded in another site.
  *
  * One entry point: the browser implementations plus re-exports of the
  * core surface a page needs at runtime — including the pure query
@@ -32,6 +33,8 @@ export {
 export {
   BROWSER_EXPORT_UNSUPPORTED,
   BROWSER_NO_PENDING_LOGIN,
+  BROWSER_POPUP_BLOCKED,
+  BROWSER_POPUP_CLOSED,
   BROWSER_SERVICE_ACCOUNT_REFUSED,
   BrowserUnsupportedError,
 } from "./errors.js";
@@ -53,6 +56,19 @@ export {
   ensureBrowserClientRegistered,
   type EnsureBrowserClientRegisteredOptions,
 } from "./registration.js";
+
+// --- Popup PKCE flow ---
+export {
+  DEFAULT_POPUP_TIMEOUT_MS,
+  loginInPopup,
+  POPUP_RETURN_MESSAGE_TYPE,
+  POPUP_WINDOW_NAME,
+  type PopupHost,
+  type PopupLoginOptions,
+  type PopupWindowLike,
+  relayPopupReturn,
+  type RelayPopupReturnOptions,
+} from "./popup-flow.js";
 
 // --- Core re-exports (the surface a browser consumer needs) ---
 export type { Account, Region } from "@mixpanel-headless/core";
