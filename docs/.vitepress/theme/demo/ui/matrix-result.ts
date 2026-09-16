@@ -33,6 +33,13 @@ export interface SweepPoint {
   readonly outcome: CallOutcome | null;
 }
 
+/**
+ * The row-header column's width relative to one event column. The table
+ * is fixed-layout, so a long event name truncates in its cell instead of
+ * widening the grid past the result column.
+ */
+const ROW_HEADER_SHARE = 1.4;
+
 /** Sweep chart geometry (user units = px). */
 const CHART = {
   width: 280,
@@ -206,28 +213,50 @@ export default defineComponent({
       const { events, conversionWindow, last } = props.spec;
       const pairs = orderedPairs(events);
       const index = new Map(pairs.map((pair, i) => [JSON.stringify(pair), i]));
+      const shares = events.length + ROW_HEADER_SHARE;
+      const width = (share: number): string =>
+        `${((share / shares) * 100).toFixed(2)}%`;
+      // The truncated name keeps its full text in `title` (the tooltip) and
+      // in the accessible name, so nothing is lost to the ellipsis.
+      const header = (event: string, scope: "col" | "row"): VNode =>
+        h(
+          "th",
+          {
+            key: event,
+            scope,
+            class:
+              scope === "col" ? "mp-num mp-matrix-event" : "mp-matrix-event",
+            title: event,
+            "aria-label": event,
+          },
+          event,
+        );
       return h("table", { class: "mp-matrix" }, [
         h(
           "caption",
           { class: "mp-visually-hidden" },
           `Conversion from each row event to each column event within ${String(conversionWindow)} days, last ${String(last)} days, ${String(events.length)} events`,
         ),
+        h("colgroup", [
+          h("col", { style: { width: width(ROW_HEADER_SHARE) } }),
+          ...events.map((event) =>
+            h("col", { key: event, style: { width: width(1) } }),
+          ),
+        ]),
         h("thead", [
           h("tr", [
             h("th", { scope: "col", class: "mp-matrix-corner" }, [
               h("span", { "aria-hidden": "true" }, "from ↓ to →"),
               h("span", { class: "mp-visually-hidden" }, "From"),
             ]),
-            ...events.map((event) =>
-              h("th", { key: event, scope: "col", class: "mp-num" }, event),
-            ),
+            ...events.map((event) => header(event, "col")),
           ]),
         ]),
         h(
           "tbody",
           events.map((from) =>
             h("tr", { key: from }, [
-              h("th", { scope: "row" }, from),
+              header(from, "row"),
               ...events.map((to) => {
                 if (to === from) {
                   return h(

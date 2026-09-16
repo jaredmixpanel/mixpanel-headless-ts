@@ -14,6 +14,7 @@ import AhaResult from "./aha-result.js";
 import { ErrorBlock } from "./banners.js";
 import BarList from "./bar-list.js";
 import LineChart from "./line-chart.js";
+import LoadingBar from "./loading-bar.js";
 import MatrixResult, { type SweepPoint } from "./matrix-result.js";
 import ResultTable from "./result-table.js";
 import RetentionGrid from "./retention-grid.js";
@@ -191,11 +192,24 @@ export default defineComponent({
       ]);
     };
 
+    // The kicker row carries the run indicator: the bar for every engine,
+    // the status line only for a query (a loop reports its own count).
+    const head = (spec: AnySpec | null): VNode =>
+      h("div", { class: "mp-col-head" }, [
+        h("div", { class: "mp-result-kicker" }, [
+          h("h2", "Result"),
+          h(LoadingBar, {
+            active: props.loading,
+            label: spec === null || isLoopSpec(spec) ? null : "Running query…",
+          }),
+        ]),
+      ]);
+
     return () => {
       const { spec, result } = props;
       if (spec === null) {
         return h("section", { class: "mp-result" }, [
-          h("div", { class: "mp-col-head" }, [h("h2", "Result")]),
+          head(null),
           props.error === null
             ? h("div", { class: "mp-result-body mp-chart-empty" }, [
                 h(
@@ -221,7 +235,7 @@ export default defineComponent({
         "section",
         { class: "mp-result", "aria-busy": props.loading ? "true" : "false" },
         [
-          h("div", { class: "mp-col-head" }, [h("h2", "Result")]),
+          head(spec),
           h("p", { class: "mp-result-title" }, resultTitle(spec, result)),
           props.error === null ? null : h(ErrorBlock, { error: props.error }),
           h("div", { class: ["mp-result-body", dimmed ? "mp-loading" : ""] }, [

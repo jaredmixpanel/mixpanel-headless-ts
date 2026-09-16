@@ -137,7 +137,11 @@ export default defineComponent({
           },
           [
             h("span", { class: "mp-aha-rank mp-num" }, String(entry.rank)),
-            h("span", { class: "mp-aha-event" }, entry.event),
+            h(
+              "span",
+              { class: "mp-aha-event", title: entry.event },
+              entry.event,
+            ),
             sparkline(entry.curve, ranking.median, entry.event),
             h("span", { class: "mp-aha-rate mp-num" }, formatPct(entry.rate)),
             h(
@@ -163,7 +167,7 @@ export default defineComponent({
 
     const failed = (event: string, outcome: CallOutcome): VNode =>
       h("li", { key: event, class: "mp-aha-row mp-aha-failed" }, [
-        h("span", { class: "mp-aha-event" }, event),
+        h("span", { class: "mp-aha-event", title: event }, event),
         outcome.error === null
           ? h("span", { class: "mp-muted" }, "not run")
           : h(ErrorBlock, { error: outcome.error }),

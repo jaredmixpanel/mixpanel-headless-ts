@@ -26,7 +26,11 @@ export default defineComponent({
         props.bars.map((bar, i) =>
           h("li", { key: `${i}-${bar.event}`, class: "mp-bar-row" }, [
             h("div", { class: "mp-bar-head" }, [
-              h("span", { class: "mp-bar-step" }, `${i + 1}. ${bar.event}`),
+              h(
+                "span",
+                { class: "mp-bar-step", title: bar.event },
+                `${i + 1}. ${bar.event}`,
+              ),
               h("span", { class: "mp-bar-count" }, formatCount(bar.count)),
             ]),
             h(

@@ -624,8 +624,60 @@
 /* --- Result -------------------------------------------------------------- */
 
 .mp-result {
+  position: relative;
   padding-top: 16px;
   border-top: 1px solid var(--vp-c-divider);
+}
+
+.mp-result-kicker {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.mp-result-status {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+/*
+ * The run indicator: a 2 px track over the panel's top border, a brand
+ * highlight sliding along it. Without motion the highlight fills the
+ * track, so the panel still shows a brand line while a run is in flight.
+ */
+.mp-loading-bar {
+  position: absolute;
+  top: -1px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  background: var(--vp-c-brand-soft);
+}
+
+.mp-loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--vp-c-brand-1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mp-loading-bar::after {
+    width: 40%;
+    animation: mp-slide 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes mp-slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
 }
 
 .mp-result-title {
@@ -633,6 +685,7 @@
   font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .mp-result-body {
@@ -835,7 +888,16 @@
 }
 
 .mp-bar-step {
+  min-width: 0;
+  overflow: hidden;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-bar-count {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .mp-bar-track {
@@ -1304,11 +1366,24 @@ button.mp-chip-toggle[aria-pressed="true"] {
 
 .mp-matrix-main {
   min-width: 0;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
+/*
+ * Fixed layout: the `<colgroup>` shares the width out, so a long event
+ * name truncates in its header instead of widening the table past the
+ * result column (and the column past the page).
+ */
 .mp-matrix {
+  table-layout: fixed;
+  width: 100%;
   margin-top: 4px;
+}
+
+.mp-demo .mp-matrix th,
+.mp-demo .mp-matrix td {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vp-doc .mp-demo .mp-matrix th.mp-matrix-corner {
@@ -1343,6 +1418,7 @@ button.mp-chip-toggle[aria-pressed="true"] {
   color: inherit;
   font: inherit;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -1384,6 +1460,11 @@ button.mp-chip-toggle[aria-pressed="true"] {
   font-size: 14px;
 }
 
+.mp-matrix-best strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .mp-matrix-estimate {
   white-space: nowrap;
   color: var(--vp-c-text-2);
@@ -1417,6 +1498,7 @@ button.mp-chip-toggle[aria-pressed="true"] {
   letter-spacing: 0;
   line-height: 1.4;
   text-transform: none;
+  overflow-wrap: anywhere;
 }
 
 .mp-matrix-panel-body {
