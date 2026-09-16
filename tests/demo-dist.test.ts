@@ -159,7 +159,11 @@ function readGraph(): Graph {
   const staticEdges = new Map<string, Set<string>>();
   const allEdges = new Map<string, Set<string>>();
   const libraryChunks = new Set<string>();
-  for (const path of distFiles(join(DIST, "assets"), ".js")) {
+  // Called while the skipped suite is being collected, so an absent build
+  // yields an empty graph rather than a scandir error.
+  const assets = join(DIST, "assets");
+  const files = existsSync(assets) ? distFiles(assets, ".js") : [];
+  for (const path of files) {
     const code = readFileSync(join(DIST, path), "utf8");
     sizes.set(path, Buffer.byteLength(code));
     if (path.startsWith(CHUNK_DIR) && code.includes(LIBRARY_MARKER)) {
@@ -299,10 +303,15 @@ function policyProblems(page: Page): string[] {
 describe.skipIf(!hasBuild)(
   "built docs site (skipped without docs/.vitepress/dist; run `npx vitepress build docs`)",
   () => {
-    const pages: Page[] = distFiles(DIST, ".html").map((path) => ({
-      path,
-      html: readFileSync(join(DIST, path), "utf8"),
-    }));
+    // The factory still runs when the suite is skipped (vitest registers
+    // the skipped tests by calling it), so the read has to be conditional
+    // rather than relying on the skip.
+    const pages: Page[] = hasBuild
+      ? distFiles(DIST, ".html").map((path) => ({
+          path,
+          html: readFileSync(join(DIST, path), "utf8"),
+        }))
+      : [];
 
     it("has the playground pages", () => {
       const paths = new Set(pages.map((page) => page.path));
